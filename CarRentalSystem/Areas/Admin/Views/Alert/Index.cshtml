@@ -1,0 +1,94 @@
+@model IEnumerable<CarRentalSystem.Models.Alert>
+@{
+    ViewData["Title"] = "Cảnh báo An ninh";
+    Layout = "_AdminLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h2 class="fw-800 ls-neg-1 mb-1">Giám sát An ninh</h2>
+        <p class="text-muted mb-0">Cảnh báo thời gian thực và nhật ký phát hiện hành vi khả nghi.</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-muted small text-uppercase fw-bold">
+                <tr>
+                    <th class="ps-4 py-3">Phương tiện</th>
+                    <th class="py-3">Loại cảnh báo</th>
+                    <th class="py-3">Thời điểm</th>
+                    <th class="py-3">Trạng thái</th>
+                    <th class="py-3">Mô tả</th>
+                    <th class="pe-4 py-3 text-end">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var alert in Model)
+                {
+                    <tr>
+                        <td class="ps-4">
+                            <span class="fw-800 text-dark">@alert.Car.CarName</span><br />
+                            <small class="text-muted">@alert.Car.LicensePlate</small>
+                        </td>
+                        <td>
+                            @switch (alert.AlertType)
+                            {
+                                case "OffRoute":
+                                    <span class="badge bg-warning bg-opacity-10 text-warning px-3 rounded-pill border border-warning border-opacity-25 ripple-warning">
+                                        <i class="bi bi-compass me-1"></i> Sai lộ trình
+                                    </span>
+                                    break;
+                                case "TheftRisk":
+                                    <span class="badge bg-danger bg-opacity-10 text-danger px-3 rounded-pill border border-danger border-opacity-25 ripple-danger">
+                                        <i class="bi bi-incognito me-1"></i> Nguy cơ mất trộm
+                                    </span>
+                                    break;
+                                case "SuspiciousStop":
+                                    <span class="badge bg-dark bg-opacity-10 text-dark px-3 rounded-pill border border-dark border-opacity-25">
+                                        <i class="bi bi-clock-history me-1"></i> Dừng lâu bất thường
+                                    </span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 rounded-pill">@alert.AlertType</span>
+                                    break;
+                            }
+                        </td>
+                        <td class="small text-muted">@alert.AlertTime.ToString("HH:mm - dd/MM/yyyy")</td>
+                        <td>
+                            @{
+                                var statusClass = alert.Status == "New" ? "bg-info" : "bg-success";
+                                var statusText = alert.Status == "New" ? "Mới" : "Đã xử lý";
+                            }
+                            <span class="badge @statusClass bg-opacity-10 text-@alert.Status.ToLower().Replace("new", "info").Replace("resolved", "success") fw-bold">@statusText</span>
+                        </td>
+                        <td><small class="text-muted">@alert.Description</small></td>
+                        <td class="text-end pe-4">
+                            @if (alert.Status == "New")
+                            {
+                                <form asp-action="Resolve" asp-route-id="@alert.AlertID" method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" style="font-size: 0.75rem;">
+                                        <i class="bi bi-check-lg me-1"></i> Đánh dấu đã xong
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <div class="mb-3">
+                                <i class="bi bi-shield-check display-4 opacity-10"></i>
+                            </div>
+                            <h5 class="fw-bold opacity-25">Không có cảnh báo an ninh nào</h5>
+                            <p class="small opacity-50">Tất cả phương tiện đều đang an toàn.</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

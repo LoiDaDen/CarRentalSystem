@@ -1,0 +1,101 @@
+@model IEnumerable<CarRentalSystem.Models.MaintenanceLog>
+@using CarRentalSystem.Models
+@{
+    ViewData["Title"] = "Bảo trì Hệ thống";
+    Layout = "_AdminLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h2 class="fw-800 ls-neg-1 mb-1">Bảo trì Đội xe</h2>
+        <p class="text-muted mb-0">Theo dõi lịch sử bảo dưỡng và giảm thiểu thời gian xe ngừng hoạt động.</p>
+    </div>
+    <button class="btn btn-primary shadow-sm rounded-3 px-4" data-bs-toggle="modal" data-bs-target="#logModal">
+        <i class="bi bi-plus-lg me-2"></i>Ghi nhận Bảo trì
+    </button>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-muted small text-uppercase fw-bold">
+                <tr>
+                    <th class="ps-4 py-3">Phương tiện</th>
+                    <th class="py-3">Ngày bảo trì</th>
+                    <th class="py-3">Nội dung</th>
+                    <th class="py-3">Trung tâm</th>
+                    <th class="py-3">Odometer</th>
+                    <th class="py-3">Chi phí</th>
+                    <th class="pe-4 py-3 text-end">Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr>
+                        <td class="ps-4">
+                            <span class="fw-bold">@log.Car?.CarBrand?.Name @log.Car?.CarName</span><br /><small class="text-muted">@log.Car?.LicensePlate</small>
+                        </td>
+                        <td class="small">@log.ServiceDate.ToString("dd/MM/yyyy")</td>
+                        <td><small class="text-dark">@log.Description</small></td>
+                        <td><small>@log.ServiceCenter</small></td>
+                        <td><span class="badge bg-light text-dark border">@log.OdometerAtService.ToString("N0") KM</span></td>
+                        <td class="fw-bold text-primary">@log.Cost.ToString("N0") đ</td>
+                        <td class="text-end pe-4">
+                            <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 rounded-pill">Đã xác minh</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Log Modal -->
+<div class="modal fade" id="logModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form asp-action="Create" method="post">
+                <div class="modal-header border-0 p-4 pb-0">
+                    <h5 class="fw-800 mb-0">Ghi nhận bảo trì mới</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-800 text-uppercase ls-1 opacity-50">Chọn phương tiện</label>
+                        <select name="CarID" class="form-select border-0 bg-light py-2 rounded-3" required>
+                            @foreach(var car in (IEnumerable<CarRentalSystem.Models.Car>)ViewBag.Cars ?? new List<CarRentalSystem.Models.Car>()) {
+                                <option value="@car.CarID">@car.CarBrand?.Name @car.CarName (@car.LicensePlate)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-800 text-uppercase ls-1 opacity-50">Ngày thực hiện</label>
+                            <input type="date" name="ServiceDate" class="form-control border-0 bg-light py-2 rounded-3" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-800 text-uppercase ls-1 opacity-50">Tổng chi phí</label>
+                            <input type="number" name="Cost" class="form-control border-0 bg-light py-2 rounded-3" placeholder="VNĐ" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-800 text-uppercase ls-1 opacity-50">Trung tâm bảo hành</label>
+                        <input type="text" name="ServiceCenter" class="form-control border-0 bg-light py-2 rounded-3" placeholder="Tên đại lý hoặc gara" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-800 text-uppercase ls-1 opacity-50">Số KM hiện tại (KM)</label>
+                        <input type="number" name="OdometerAtService" class="form-control border-0 bg-light py-2 rounded-3" required />
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small fw-800 text-uppercase ls-1 opacity-50">Mô tả chi tiết</label>
+                        <textarea name="Description" class="form-control border-0 bg-light py-2 rounded-3" rows="3" placeholder="Thay nhớt, kiểm tra phanh, v.v." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm fw-bold">Lưu thông tin bảo trì</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

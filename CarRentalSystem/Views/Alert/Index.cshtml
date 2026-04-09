@@ -1,0 +1,43 @@
+@model IEnumerable<CarRentalSystem.Models.Alert>
+@{
+    ViewData["Title"] = "Security Alerts";
+    Layout = "_AdminLayout";
+}
+
+<h2 class="mb-4 text-danger"><i class="bi bi-exclamation-triangle-fill"></i> System Alerts</h2>
+
+<div class="table-responsive bg-white shadow-sm rounded">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-dark">
+            <tr>
+                <th>Time</th>
+                <th>Car</th>
+                <th>Alert Type</th>
+                <th>Description</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if(!Model.Any()) {
+                <tr><td colspan="5" class="text-center text-muted py-4">No active alerts currently. The fleet is safe.</td></tr>
+            }
+            @foreach (var alert in Model)
+            {
+                <tr>
+                    <td>@alert.AlertTime.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td class="fw-bold">@alert.Car?.CarBrand?.Name @alert.Car?.CarName</td>
+                    <td>
+                        <span class="badge bg-danger fs-6">@alert.AlertType</span>
+                    </td>
+                    <td>@alert.Description</td>
+                    <td>
+                        <form asp-action="Resolve" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@alert.AlertID" />
+                            <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check2-all"></i> Mark Resolved</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

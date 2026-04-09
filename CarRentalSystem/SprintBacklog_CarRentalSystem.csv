@@ -1,0 +1,62 @@
+Task ID,Task,Description,Story ID,Sprint,State,Priority,Start,End,Estimate (Hours),Assign To,Ngày làm,Ngày kết thúc,Người làm thực tế,Note
+,"Trước khi bắt đầu & Hệ thống",,,,,,,,,,,,,
+T01,"Scope & Vision","Xác định phạm vi dự án Car Rental",PB00,1,Done,High,01/02/2026,02/02/2026,8,Huy,01/02/2026,02/02/2026,Huy,"Phân rã tính năng"
+T02,"Kế hoạch & UI","Lên kế hoạch và thiết kế Base UI/Layout",UI00,1,Done,High,02/02/2026,04/02/2026,16,Lợi,02/02/2026,04/02/2026,Lợi,"UI Framework"
+T03,"Kiến trúc","Phân tích System Architecture & MVC",PB00,1,Done,High,02/02/2026,04/02/2026,16,Tuấn,02/02/2026,04/02/2026,Tuấn,""
+T04,"Setup & DB Schema","Khởi tạo ASP.NET Core MVC & DbContext",DB01,1,Done,High,04/02/2026,06/02/2026,20,Huy,04/02/2026,06/02/2026,Huy,"Entity Framework"
+T05,"Code SQL ERD","Thiết kế CSDL (User, Car, Booking...)",DB01,1,Done,High,04/02/2026,06/02/2026,16,Huy,04/02/2026,06/02/2026,Huy,"SQL Database"
+T06,"Quản lý Backlog","Quản lý Task, Burndown Chart",PB00,1,Done,Medium,05/02/2026,07/02/2026,12,Vũ,05/02/2026,07/02/2026,Vũ,""
+T07,"Security & Risk","Xét duyệt rủi ro bảo mật hệ thống",PB00,1,Done,Medium,06/02/2026,07/02/2026,8,Vũ,06/02/2026,07/02/2026,Vũ,""
+TỔNG MODULE 1,,,,,,,,,96,,,,,
+,"Quản lý Khách hàng & Tài khoản",,,,,,,,,,,,,
+T08,"Usecase User","Vẽ Usecase Admin/Partner/Customer",PB01,1,Done,Medium,09/02/2026,10/02/2026,8,Huy,09/02/2026,10/02/2026,Huy,"Phân quyền 3 level"
+T09,"View Đăng nhập/Ký","Layout View Login, Register",UI01,1,Done,High,10/02/2026,11/02/2026,12,Lợi,10/02/2026,11/02/2026,Lợi,"Validate input"
+T10,"Logic Xác thực","Xây dựng AuthController, Cookie JWT",BE01,1,Done,High,10/02/2026,13/02/2026,16,Tuấn,10/02/2026,13/02/2026,Tuấn,"Login bảo mật"
+T11,"Thay đổi thông tin","Chức năng Cập nhật thông tin Profile User",UI02,1,Done,Medium,12/02/2026,12/02/2026,8,Lợi,12/02/2026,12/02/2026,Lợi,"Cập nhật avatar"
+T12,"Quyền Admin Role","Admin xem list users, xoá & khoá tài khoản",BE02,1,Done,High,13/02/2026,15/02/2026,12,Tuấn,13/02/2026,15/02/2026,Tuấn,"Authorize Filter"
+T13,"Kiểm thử module User","Test phân quyền tài khoản & đăng nhập",TS01,1,Done,Medium,14/02/2026,15/02/2026,8,Vũ,14/02/2026,15/02/2026,Vũ,""
+TỔNG MODULE 2,,,,,,,,,64,,,,,
+,"Quản lý Xe (Car Management)",,,,,,,,,,,,,
+T14,"Usecase Quản lý Xe","Usecase đăng xe, Maps, Admin Approval",PB02,2,Done,Medium,16/02/2026,17/02/2026,8,Huy,16/02/2026,17/02/2026,Huy,""
+T15,"Thiết kế API/Logic","CarController: Logic Thêm/Sửa/Xoá xe DB",BE03,2,Done,Critical,16/02/2026,18/02/2026,16,Tuấn,16/02/2026,18/02/2026,Tuấn,"Upload ảnh vô File"
+T16,"UI Form Đăng Xe","Build UI form đăng thông số xe, hình ảnh",UI03,2,Done,High,17/02/2026,19/02/2026,16,Lợi,17/02/2026,19/02/2026,Lợi,"Bootstrap Layout"
+T17,"Quản lý Vị Trí Xe","Map Search API & Cấu hình LocationID FK",BE04,2,Done,Critical,19/02/2026,22/02/2026,20,Tuấn,19/02/2026,22/02/2026,Tuấn,"Xử lý map Leaflet"
+T18,"Xét duyệt xe (Admin)","Chức năng CarApproval dành cho Admin",BE05,2,Done,High,20/02/2026,22/02/2026,12,Lợi,20/02/2026,22/02/2026,Lợi,"Approve/Reject status"
+T19,"GPS Tracking Live","Tích hợp Route Location VehicleTracking",BE06,2,Done,High,23/02/2026,26/02/2026,16,Tuấn,23/02/2026,26/02/2026,Tuấn,"Track toạ độ xe"
+T20,"Kiểm thử Module Xe","Test luồng Map, Tracking, Upload lỗi size",TS02,2,Done,Medium,26/02/2026,27/02/2026,12,Vũ,26/02/2026,27/02/2026,Vũ,"Postman API test"
+TỔNG MODULE 3,,,,,,,,,100,,,,,
+,"Quản lý Thuê Xe",,,,,,,,,,,,,
+T21,"Usecase Booking","Mô hình hoá luồng Đặt xe Customer -> Trả",PB03,3,Done,High,01/03/2026,02/03/2026,8,Huy,01/03/2026,02/03/2026,Huy,""
+T22,"Danh sách & Filter","Giao diện Catalogue Chi tiết xe, Bộ lọc tìm",UI04,3,Done,High,02/03/2026,04/03/2026,16,Lợi,02/03/2026,04/03/2026,Lợi,"UX Filter ngon"
+T23,"Booking Controller","Logic check trùng ngày, Insert DB Booking",BE07,3,Done,Critical,02/03/2026,06/03/2026,24,Tuấn,02/03/2026,06/03/2026,Tuấn,"Core logic EF"
+T24,"Tính giá & OverTime","Algo JS/C# tính phụ phí thời gian, tính cọc",BE08,3,Done,High,05/03/2026,07/03/2026,16,Lợi,05/03/2026,07/03/2026,Lợi,"Deposit 20%"
+T25,"Hợp đồng & Bàn giao","Export Contract PDF, Chụp ảnh xước xe",BE09,3,Done,High,08/03/2026,10/03/2026,16,Tuấn,08/03/2026,10/03/2026,Tuấn,"Sinh biên bản"
+T26,"Quản lý My Bookings","UI Custom xem List chuyến xe hành trình",UI05,3,Done,Medium,09/03/2026,11/03/2026,12,Lợi,09/03/2026,11/03/2026,Lợi,"Khách hàng huỷ đơn"
+T27,"Partner duyệt đơn","Logic Chủ xe Accept hoặc Reject đơn thuê",BE10,3,Done,High,10/03/2026,12/03/2026,12,Tuấn,10/03/2026,12/03/2026,Tuấn,"Lifecycle cập nhật"
+T28,"Test Booking","Test ngày đặt bị âm, check tính toán tiền",TS03,3,Done,High,13/03/2026,15/03/2026,16,Vũ,13/03/2026,15/03/2026,Vũ,"Automation Test"
+TỔNG MODULE 4,,,,,,,,,120,,,,,
+,"Quản lý Thanh toán & Dashboard",,,,,,,,,,,,,
+T29,"Usecase Payment","Phân tích luồng Checkout Cọc, QR Wallet",PB04,4,Done,Medium,13/03/2026,14/03/2026,8,Huy,13/03/2026,14/03/2026,Huy,"Chuyển khoản Code"
+T30,"UI Checkout","Giao diện Thanh toán, UI/UX trang Checkout",UI06,4,Done,High,15/03/2026,16/03/2026,12,Lợi,15/03/2026,16/03/2026,Lợi,"Scan Banking QR"
+T31,"Fake QR Billing","Giả lập cổng thanh toán & đổi Status DB",BE11,4,Done,Critical,15/03/2026,17/03/2026,16,Tuấn,15/03/2026,17/03/2026,Tuấn,"Mocking Gateway"
+T32,"System Promo / Code","Logic áp dụng Khuyến mãi Coupon (10-20%)",BE12,4,Done,High,16/03/2026,18/03/2026,14,Tuấn,16/03/2026,18/03/2026,Tuấn,"Trừ tiền real-time"
+T33,"Dashboard Chart.js","Giao diện Dashboard Admin/Partner Thống kê",UI07,4,Done,High,17/03/2026,20/03/2026,16,Lợi,17/03/2026,20/03/2026,Lợi,"Vẽ Report"
+T34,"Báo cáo doanh thu","Xuất file Report list đơn/thu nhập ra Excel",BE13,4,Done,Medium,18/03/2026,21/03/2026,12,Lợi,18/03/2026,21/03/2026,Lợi,"Download File CSV"
+T35,"Test Module Tiền bạc","Kiểm tra lỗi gian lận, input script payment",TS04,4,Done,Medium,19/03/2026,21/03/2026,10,Vũ,19/03/2026,21/03/2026,Vũ,"An toàn thông tin"
+TỔNG MODULE 5,,,,,,,,,88,,,,,
+,"Tích hợp Hệ thống (Integration)",,,,,,,,,,,,,
+T36,"Integrate All","Ghép nối Booking -> QR Code -> GPS Map",PB05,5,In Prog,Critical,20/03/2026,23/03/2026,20,Tuấn,20/03/2026,,Tuấn,"Nối luồng Server"
+T37,"System Test (E2E)","Test khép kín 3 phase từ Khách tới Admin",TS05,5,In Prog,Critical,22/03/2026,25/03/2026,16,Vũ,22/03/2026,,Vũ,"Viết Report Bug"
+T38,"Viết biên bản UAT","Mời User chạy thử, lập hội đồng UAT Verify",TS06,5,In Prog,Medium,24/03/2026,26/03/2026,8,Huy,,,,,""
+T39,"Hoàn thiện Document","Viết File báo cáo mềm Word, làm Slide Docs",PB06,5,To Do,High,25/03/2026,28/03/2026,24,Vũ,,,,,"Báo cáo chốt"
+TỔNG MODULE 6,,,,,,,,,68,,,,,
+TỔNG TOÀN DỰ ÁN,,,,,,,,,536,,,,,
+T51,"Code SQL","Khởi tạo script CSDL SQL",PB00,0,Done,High,25/01/2026,27/01/2026,20,Huy,25/01/2026,27/01/2026,Huy,"Script Base"
+T52,"main GUI","Mô phỏng base layout giao diện",PB00,0,Done,Medium,28/01/2026,28/01/2026,2,Lợi,28/01/2026,28/01/2026,Lợi,"Thảo luận UI"
+T53,"Quality Attribute","Chỉ tiêu chất lượng hệ thống",PB00,0,Done,High,23/01/2026,24/01/2026,10,Tuấn,23/01/2026,24/01/2026,Tuấn,"Non-functional"
+T54,"Scope and Vision","Phạm vi & Tầm nhìn dự án",PB00,0,Done,High,20/01/2026,21/01/2026,3,Vũ,20/01/2026,21/01/2026,Vũ,"Họp chốt ý tưởng"
+T55,"Constraint","Các ràng buộc phần mềm",PB00,0,Done,Medium,21/01/2026,22/01/2026,3,Tuấn,21/01/2026,22/01/2026,Tuấn,"Giấy tờ pháp lý"
+T56,"Customer Process","Quy trình khách hàng (Usecase)",PB00,0,Done,High,22/01/2026,23/01/2026,6,Huy,22/01/2026,23/01/2026,Huy,"Draw IO"
+T57,"Product backlog","Lên danh sách tính năng",PB00,0,Done,High,25/01/2026,26/01/2026,4,Vũ,25/01/2026,26/01/2026,Vũ,"Jira/Trello"
+T58,"Write Sprint backlog","Chia chặng Sprint Backlog",PB00,0,Done,High,27/01/2026,28/01/2026,10,Vũ,27/01/2026,28/01/2026,Vũ,"Nộp Plan"
+T59,"Manage Burn Down Chart","Theo dõi tiến độ biểu đồ",PB00,0,Done,High,01/02/2026,28/03/2026,15,Vũ,01/02/2026,28/03/2026,Vũ,"Update hàng tuần"

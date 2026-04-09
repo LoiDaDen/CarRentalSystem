@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Quản trị Hệ thống</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    @RenderSection("Styles", required: false)
+    <style>
+        html { font-size: 13px; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8f9fa; }
+        .admin-main-content { font-size: 0.85rem; }
+        .admin-sidebar { background: #0f172a; color: #94a3b8; border-right: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; }
+        .admin-link { color: #94a3b8; padding: 0.6rem 1rem; border-radius: 12px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin-bottom: 0.35rem; text-decoration: none; display: flex; align-items: center; font-weight: 500; font-size: 0.8rem; }
+        .admin-link:hover { background: rgba(255,255,255,0.05); color: #fff; transform: translateX(4px); }
+        .admin-link i { font-size: 1.25rem; margin-right: 0.75rem; transition: transform 0.3s ease; }
+        .admin-link.active { background: #3b82f6; color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .admin-link.active i { transform: scale(1.1); }
+        .navbar-brand { font-weight: 800; letter-spacing: -1px; background: linear-gradient(135deg, #fff 0%, #94a3b8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Sidebar Dropdown Enhancements */
+        .admin-link[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); transition: transform 0.3s ease; }
+        .admin-link .bi-chevron-down { transition: transform 0.3s ease; }
+        .collapse-horizontal { transition: width 0.3s ease; }
+        .collapse:not(.show) { display: none; }
+        .collapsing { transition: height 0.3s ease; }
+        
+        .ps-3 { padding-left: 1.5rem !important; }
+        .admin-sidebar .admin-link i { width: 1.25rem; text-align: center; }
+
+        @@media (min-width: 992px) {
+            .dropdown-menu::before {
+                content: "";
+                position: absolute;
+                top: -15px;
+                left: 0;
+                width: 100%;
+                height: 15px;
+                background: transparent;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-0">
+        <!-- Mobile Header -->
+        <div class="d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center shadow-sm sticky-top z-3">
+            <a class="navbar-brand d-flex align-items-center fs-5 m-0" href="/">
+                <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 30px; filter: brightness(0) invert(1);" />
+                CarRental
+            </a>
+            <button class="btn btn-outline-light border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar" aria-controls="adminSidebar">
+                <i class="bi bi-list fs-3"></i>
+            </button>
+        </div>
+
+        <div class="row g-0">
+            <!-- Sidebar -->
+            <div class="col-12 col-md-2 admin-sidebar offcanvas-md offcanvas-start d-flex flex-column z-index-master" tabindex="-1" id="adminSidebar" aria-labelledby="adminSidebarLabel" style="height: 100vh; overflow-y: auto; position: sticky; top: 0;">
+                <div class="offcanvas-header d-md-none border-bottom border-light border-opacity-10 mt-2">
+                    <span class="offcanvas-title text-white fs-5 fw-bold" id="adminSidebarLabel">
+                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 25px; filter: brightness(0) invert(1);" />
+                        CarRental
+                    </span>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#adminSidebar" aria-label="Close"></button>
+                </div>
+                
+                <div class="px-3 py-4 mb-2 d-none d-md-block">
+                    <a class="navbar-brand d-flex align-items-center mb-1 fs-4" href="/">
+                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 32px; filter: brightness(0) invert(1);" />
+                        CarRental
+                    </a>
+                    <span class="text-white-50 small text-uppercase fw-bold opacity-50 ls-1" style="font-size: 0.65rem;">Trung tâm Điều hành</span>
+                </div>
+                
+                <nav class="nav flex-column px-2 pb-4 flex-grow-1">
+                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                        <i class="bi bi-grid-1x2-fill"></i> Tổng quan
+                    </a>
+
+                    <div class="mb-2">
+                        <a class="admin-link d-flex justify-content-between align-items-center w-100" data-bs-toggle="collapse" href="#managementDropdown" role="button" aria-expanded="false">
+                            <span><i class="bi bi-kanban-fill"></i> Quản lý</span>
+                            <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
+                        </a>
+                        <div class="collapse @(new[]{"Car", "Booking", "User", "Maintenance", "Driver", "Membership"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Car" && ViewContext.RouteData.Values["action"]?.ToString() == "Manage" ? "active" : "")" asp-area="Admin" asp-controller="Car" asp-action="Manage">
+                                <i class="bi bi-car-front-fill" style="font-size: 1.1rem;"></i> Đội xe
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CarApproval" ? "active" : "")" asp-area="Admin" asp-controller="CarApproval" asp-action="Index">
+                                <i class="bi bi-check2-square" style="font-size: 1.1rem;"></i> Duyệt Xe Mới
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Booking" ? "active" : "")" asp-area="Admin" asp-controller="Booking" asp-action="Index">
+                                <i class="bi bi-calendar2-check-fill" style="font-size: 1.1rem;"></i> Đơn đặt xe
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Payment" ? "active" : "")" asp-area="Admin" asp-controller="Payment" asp-action="Index">
+                                <i class="bi bi-currency-exchange" style="font-size: 1.1rem;"></i> Lịch sử Giao dịch
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "DigitalContract" ? "active" : "")" asp-area="Admin" asp-controller="DigitalContract" asp-action="Index">
+                                <i class="bi bi-file-earmark-medical-fill" style="font-size: 1.1rem;"></i> Hợp đồng số
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="Index">
+                                <i class="bi bi-people-fill" style="font-size: 1.1rem;"></i> Người dùng
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "PartnerRequests" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="PartnerRequests">
+                                <i class="bi bi-person-badge-fill" style="font-size: 1.1rem;"></i> Duyệt Đối tác
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Driver" ? "active" : "")" asp-area="Admin" asp-controller="Driver" asp-action="Index">
+                                <i class="bi bi-person-workspace" style="font-size: 1.1rem;"></i> Quản lý Tài xế
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Membership" ? "active" : "")" asp-area="Admin" asp-controller="Membership" asp-action="Index">
+                                <i class="bi bi-gem text-info" style="font-size: 1.1rem;"></i> Hạng TV & Hợp đồng
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Maintenance" ? "active" : "")" asp-area="Admin" asp-controller="Maintenance" asp-action="Index">
+                                <i class="bi bi-tools" style="font-size: 1.1rem;"></i> Bảo trì
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <a class="admin-link d-flex justify-content-between align-items-center w-100" data-bs-toggle="collapse" href="#crmDropdown" role="button" aria-expanded="false">
+                            <span><i class="bi bi-headset"></i> CRM & Marketing</span>
+                            <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
+                        </a>
+                        <div class="collapse @(new[]{"Promotions", "Contacts", "Reviews"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="crmDropdown">
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Promotions" ? "active" : "")" asp-area="Admin" asp-controller="Promotions" asp-action="Index">
+                                <i class="bi bi-ticket-perforated-fill" style="font-size: 1.1rem;"></i> Mã Khuyến Mãi
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Contacts" ? "active" : "")" asp-area="Admin" asp-controller="Contacts" asp-action="Index">
+                                <i class="bi bi-envelope-paper-heart-fill" style="font-size: 1.1rem;"></i> Hỗ trợ (Inbox)
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Reviews" ? "active" : "")" asp-area="Admin" asp-controller="Reviews" asp-action="Index">
+                                <i class="bi bi-star-fill text-warning" style="font-size: 1.1rem;"></i> Kiểm duyệt Đánh giá
+                            </a>
+                        </div>
+                    </div>
+
+                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Alert" ? "active" : "")" asp-area="Admin" asp-controller="Alert" asp-action="Index">
+                        <i class="bi bi-shield-lock-fill"></i> Bảo mật
+                    </a>
+                    
+                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Lookups" ? "active" : "")" asp-area="Admin" asp-controller="Lookups" asp-action="Index">
+                        <i class="bi bi-sliders2"></i> Danh mục hệ thống
+                    </a>
+                    
+                    <div class="mb-2">
+                        <a class="admin-link d-flex justify-content-between align-items-center w-100" data-bs-toggle="collapse" href="#trackingDropdown" role="button" aria-expanded="false">
+                            <span><i class="bi bi-radar"></i> Theo dõi</span>
+                            <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
+                        </a>
+                        <div class="collapse show ps-3" id="trackingDropdown">
+                            <a class="admin-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Map" ? "active" : "")" asp-area="" asp-controller="Tracking" asp-action="Map">
+                                <i class="bi bi-geo-alt-fill" style="font-size: 1.1rem;"></i> Bản đồ số
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Connect" ? "active" : "")" asp-area="" asp-controller="Tracking" asp-action="Connect">
+                                <i class="bi bi-phone-vibrate-fill" style="font-size: 1.1rem;"></i> Kết nối IoT
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto pt-4 px-2 mb-3">
+                        <div class="border-top border-white border-opacity-10 pt-4">
+                            <a class="admin-link text-info" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-display"></i> Xem website
+                            </a>
+                            <a class="admin-link text-danger" asp-area="" asp-controller="Auth" asp-action="Logout">
+                                <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                            </a>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Main content -->
+            <main class="col-12 col-md-10 ms-sm-auto px-md-4 py-4 admin-main-content" style="min-height: 100vh; overflow-x: hidden; background-color: #f8f9fa;">
+                <!-- Desktop Top Navbar -->
+                <div class="d-none d-md-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border border-light">
+                    <div class="d-flex align-items-center">
+                        <h5 class="mb-0 fw-bold ms-2 text-dark">Hệ thống Quản trị CarRental</h5>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="dropdown">
+                            <button class="btn btn-light rounded-circle position-relative" data-bs-toggle="dropdown" aria-expanded="false" style="width: 40px; height: 40px;" id="notifBellBtn">
+                                <i class="bi bi-bell-fill text-secondary"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display:none; font-size:0.6rem;">
+                                    0
+                                </span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2 p-0" style="min-width: 340px; max-height: 400px; overflow-y: auto;" id="notifDropdown">
+                                <li class="px-3 py-2 bg-light border-bottom">
+                                    <strong class="small">Thông báo gần đây</strong>
+                                </li>
+                                <li id="notifLoading">
+                                    <div class="text-center py-3 text-muted">
+                                        <i class="bi bi-bell-slash fs-3 d-block mb-2 opacity-50"></i>
+                                        <small>Đang tải...</small>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="dropdown">
+                            <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" id="adminProfileDrop" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="https://ui-avatars.com/api/?name=@(User.Identity.Name ?? "Admin")&background=0D8ABC&color=fff" alt="mdo" width="38" height="38" class="rounded-circle me-2 shadow-sm">
+                                <strong>@(User.Identity.Name ?? "Quản trị viên")</strong>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2" aria-labelledby="adminProfileDrop">
+                                <li><a class="dropdown-item py-2" asp-area="" asp-controller="Auth" asp-action="Profile"><i class="bi bi-person me-2 text-primary"></i> Hồ sơ cá nhân</a></li>
+                                <li><a class="dropdown-item py-2" asp-area="Admin" asp-controller="Lookups" asp-action="Index"><i class="bi bi-gear me-2 text-secondary"></i> Cài đặt danh mục</a></li>
+                                <li><hr class="dropdown-divider my-2"></li>
+                                <li><a class="dropdown-item text-danger py-2 fw-bold" asp-area="" asp-controller="Auth" asp-action="Logout"><i class="bi bi-box-arrow-right me-2"></i> Đăng xuất</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="~/js/smartrental-map.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @if (TempData["Success"] != null) {
+                <text>
+                Toastify({
+                    text: "@Html.Raw(TempData["Success"])",
+                    duration: 4000,
+                    gravity: "top",
+                    position: "right",
+                    style: { background: "linear-gradient(to right, #00b09b, #96c93d)", borderRadius: "12px" }
+                }).showToast();
+                </text>
+            }
+            @if (TempData["Error"] != null) {
+                <text>
+                Toastify({
+                    text: "@Html.Raw(TempData["Error"])",
+                    duration: 5000,
+                    gravity: "top",
+                    position: "right",
+                    style: { background: "linear-gradient(to right, #ff5f6d, #ffc371)", borderRadius: "12px" }
+                }).showToast();
+                </text>
+            }
+
+            // Notification Bell Polling
+            let currentNotifCount = 0;
+            
+            function loadNotifications() {
+                fetch('/Admin/Booking/GetRecentNotifications')
+                    .then(r => r.json())
+                    .then(data => {
+                        const badge = document.getElementById('notifBadge');
+                        const dropdown = document.getElementById('notifDropdown');
+                        
+                        currentNotifCount = data.count || 0;
+                        const lastSeenStr = localStorage.getItem('lastSeenNotifCount') || '0';
+                        const lastSeenCount = parseInt(lastSeenStr);
+                        
+                        if (currentNotifCount > 0 && currentNotifCount > lastSeenCount) {
+                            badge.textContent = currentNotifCount - lastSeenCount;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+
+                        // Keep header
+                        let html = '<li class="px-3 py-2 bg-light border-bottom"><strong class="small">Thông báo gần đây (' + currentNotifCount + ')</strong></li>';
+                        
+                        if (data.items && data.items.length > 0) {
+                            data.items.forEach(function(item) {
+                                html += '<li><a class="dropdown-item py-2 d-flex align-items-start gap-2 border-bottom" href="/Admin/Booking/Index">' +
+                                    '<i class="bi ' + item.icon + ' mt-1"></i>' +
+                                    '<div><div class="small">' + item.message + '</div>' +
+                                    '<small class="text-muted">' + item.time + '</small></div></a></li>';
+                            });
+                        } else {
+                            html += '<li><div class="text-center py-3 text-muted"><i class="bi bi-bell-slash fs-3 d-block mb-2 opacity-50"></i><small>Chưa có thông báo mới.</small></div></li>';
+                        }
+                        dropdown.innerHTML = html;
+                    })
+                    .catch(err => console.error('Notification fetch error:', err));
+            }
+
+            loadNotifications();
+            setInterval(loadNotifications, 15000); // Poll every 15s
+
+            // Hide badge on click and save seen count
+            const notifBtn = document.getElementById('notifBellBtn');
+            if (notifBtn) {
+                notifBtn.addEventListener('click', function() {
+                    const badge = document.getElementById('notifBadge');
+                    if (badge) {
+                        badge.style.display = 'none';
+                    }
+                    localStorage.setItem('lastSeenNotifCount', currentNotifCount.toString());
+                });
+            }
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,155 @@
+@model List<CarRentalSystem.Models.Driver>
+@{
+    ViewData["Title"] = "Quản lý Tài xế";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-person-badge me-2"></i>Quản lý Tài xế</h4>
+        <p class="text-muted mb-0 small">Duyệt & quản lý đội ngũ tài xế của hệ thống</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge bg-dark bg-opacity-75 rounded-pill px-3 py-2">Tổng: @ViewBag.TotalCount</span>
+        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ duyệt: @ViewBag.PendingCount</span>
+        <span class="badge bg-success rounded-pill px-3 py-2">Đã duyệt: @ViewBag.ApprovedCount</span>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Filter Tabs -->
+<ul class="nav nav-pills mb-4 gap-2">
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Status == null ? "active bg-dark" : "text-dark")" asp-action="Index">
+            <i class="bi bi-list-ul me-1"></i>Tất cả
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Status == "pending" ? "active bg-warning text-dark" : "text-dark")" asp-action="Index" asp-route-status="pending">
+            <i class="bi bi-hourglass-split me-1"></i>Chờ duyệt
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Status == "approved" ? "active bg-success" : "text-dark")" asp-action="Index" asp-route-status="approved">
+            <i class="bi bi-check-circle me-1"></i>Đã duyệt
+        </a>
+    </li>
+</ul>
+
+@if (Model.Count == 0)
+{
+    <div class="text-center py-5">
+        <i class="bi bi-person-x display-1 text-muted"></i>
+        <h5 class="mt-3 text-muted">Chưa có tài xế nào</h5>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Tài xế</th>
+                        <th>Bằng lái</th>
+                        <th>Khu vực</th>
+                        <th class="text-center">Kinh nghiệm</th>
+                        <th class="text-center">Đánh giá</th>
+                        <th class="text-center">Chuyến</th>
+                        <th class="text-center">Giá/h</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; min-width: 40px;">
+                                        <i class="bi bi-person-fill text-primary"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <div class="fw-bold">@d.FullName</div>
+                                        <small class="text-muted">@d.Phone</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info bg-opacity-10 text-info">@d.LicenseType</span>
+                            </td>
+                            <td class="small text-muted">@(d.Location?.Name ?? "—")</td>
+                            <td class="text-center">@d.ExperienceYears năm</td>
+                            <td class="text-center">
+                                <span class="text-warning"><i class="bi bi-star-fill"></i></span>
+                                @d.Rating.ToString("N1")
+                            </td>
+                            <td class="text-center">@d.TotalTrips</td>
+                            <td class="text-center fw-bold">@(d.HourlyRate > 0 ? d.HourlyRate.ToString("N0") + "đ" : "—")</td>
+                            <td class="text-center">
+                                @if (!d.IsApproved)
+                                {
+                                    <span class="badge bg-warning text-dark rounded-pill px-3">
+                                        <i class="bi bi-hourglass-split me-1"></i>Chờ duyệt
+                                    </span>
+                                }
+                                else if (d.IsAvailable)
+                                {
+                                    <span class="badge bg-success rounded-pill px-3">
+                                        <i class="bi bi-check-circle me-1"></i>Sẵn sàng
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary rounded-pill px-3">
+                                        <i class="bi bi-pause-circle me-1"></i>Tạm nghỉ
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    @if (!d.IsApproved)
+                                    {
+                                        <form asp-action="Approve" asp-route-id="@d.DriverID" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-success btn-sm me-1" title="Duyệt">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-action="Reject" asp-route-id="@d.DriverID" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-danger btn-sm me-1" title="Từ chối">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="ToggleAvailability" asp-route-id="@d.DriverID" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm me-1" title="@(d.IsAvailable ? "Tạm nghỉ" : "Bật hoạt động")">
+                                                <i class="bi @(d.IsAvailable ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    <a asp-action="Details" asp-route-id="@d.DriverID" class="btn btn-outline-primary btn-sm me-1" title="Chi tiết">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@d.DriverID" method="post" class="d-inline" onsubmit="return confirm('Xác nhận xóa tài xế này?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Xóa">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

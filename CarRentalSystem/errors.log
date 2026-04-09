@@ -1,0 +1,3 @@
+﻿D:\CarRentalSystem\CarRentalSystem\CarRentalSystem\Views\LongTerm\RequestForm.cshtml(35,130): error RZ1031: The tag helper 'option' must not have C# in the element's attribute declaration area. [D:\CarRentalSystem\CarRentalSystem\CarRentalSystem\CarRentalSystem.csproj]
+D:\CarRentalSystem\CarRentalSystem\CarRentalSystem\Views\LongTerm\RequestForm.cshtml(35,130): error RZ1031: The tag helper 'option' must not have C# in the element's attribute declaration area. [D:\CarRentalSystem\CarRentalSystem\CarRentalSystem\CarRentalSystem.csproj]
+    1 Error(s)

@@ -1,0 +1,391 @@
+@model IEnumerable<CarRentalSystem.Models.Booking>
+@{ ViewData["Title"] = "Lịch Sử Thuê Xe"; }
+
+<style>
+    .booking-card { border-radius: 24px; transition: transform 0.3s, box-shadow 0.3s; }
+    .booking-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.08) !important; }
+    .tracking-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 5px; animation: blink 1.5s infinite; }
+    @@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    .status-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <a asp-controller="Car" asp-action="Index" class="btn btn-primary rounded-pill px-4">
+        <i class="bi bi-plus-lg me-2"></i>Đặt thêm xe
+    </a>
+</div>
+
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning border-0 shadow-sm rounded-4 mb-4 animate__animated animate__fadeIn">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+            <div>
+                <h6 class="mb-0 fw-bold text-dark">Thông báo quan trọng từ hệ thống</h6>
+                <p class="mb-0 small opacity-75">@Html.Raw(TempData["Warning"])</p>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5 card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+            <i class="bi bi-calendar-x display-3 text-muted opacity-25 mb-3"></i>
+            <h4>Chưa có đơn đặt xe nào</h4>
+            <p class="text-muted">Hãy bắt đầu hành trình đầu tiên của bạn!</p>
+            <a asp-controller="Car" asp-action="Index" class="btn btn-primary mt-3 px-4 rounded-pill">Đặt xe ngay</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var booking in Model)
+        {
+            var statusName = booking.BookingStatus?.Name ?? "";
+            int progress = statusName switch {
+                               "Draft" => 5,
+                               "Pending" => 15,
+                               "Confirmed" => 50,
+                               "Active" => 85,
+                               "Completed" => 100,
+                               _ => 0
+                           };
+
+            var statusBadgeClass = statusName switch {
+                "Draft" => "bg-info text-white shadow-sm",
+                "Pending" => "bg-warning text-dark",
+                "Confirmed" => "bg-primary text-white",
+                "Active" => "bg-success text-white",
+                "Completed" => "bg-secondary text-white",
+                "Cancelled" => "bg-danger text-white",
+                _ => "bg-light text-dark"
+            };
+            var statusText = statusName switch {
+                "Draft" => "Chờ thanh toán",
+                "Pending" => "Chờ xác nhận",
+                "Confirmed" => "Đã xác nhận",
+                "Active" => "Đang thuê",
+                "Completed" => "Hoàn thành",
+                "Cancelled" => "Đã hủy",
+                _ => statusName
+            };
+
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm booking-card overflow-hidden @(statusName == "Cancelled" ? "opacity-75" : "")">
+                    <div class="row g-0">
+                        <div class="col-md-5 position-relative" style="min-height: 220px;">
+                            @if (statusName == "Active")
+                            {
+                                <div id="map-@booking.BookingID" style="height: 100%; width: 100%; min-height: 220px;"></div>
+                                <div class="position-absolute top-0 start-0 m-3 z-3">
+                                    <span class="badge bg-success bg-opacity-90 rounded-pill"><div class="tracking-dot"></div> Đang theo dõi</span>
+                                </div>
+                            }
+                            else if (booking.Car?.ImageURL != null)
+                            {
+                                <img src="@booking.Car.ImageURL" class="w-100 h-100 object-fit-cover" alt="@booking.Car?.CarName" style="object-fit:cover;">
+                                @if (statusName == "Cancelled")
+                                {
+                                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background:rgba(220,53,69,0.15);">
+                                        <i class="bi bi-x-circle-fill text-danger" style="font-size: 3rem;"></i>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted p-4 text-center" style="min-height: 220px;">
+                                    <div>
+                                        <i class="bi bi-car-front display-6 opacity-25"></i>
+                                        <p class="small mt-2 opacity-50">Bản đồ khả dụng khi thuê</p>
+                                    </div>
+                                </div>
+                            }
+
+                            <span class="position-absolute bottom-0 start-0 m-3 badge @statusBadgeClass rounded-pill status-badge px-3 py-2">
+                                @statusText
+                            </span>
+                        </div>
+
+                        <div class="col-md-7">
+                            <div class="card-body p-4">
+                                @if (statusName != "Cancelled")
+                                {
+                                    <div class="d-flex justify-content-between mb-4 mt-2 position-relative">
+                                        <div class="progress position-absolute w-100" style="height: 2px; top: 12px; z-index: 0; background-color: #e2e8f0;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: @progress%"></div>
+                                        </div>
+                                        @{
+                                            string StepClass(int threshold) => progress >= threshold ? "bg-success text-white" : "bg-white border text-muted";
+                                            string LabelClass(int threshold) => progress >= threshold ? "text-success" : "text-muted";
+                                        }
+                                        <div class="text-center position-relative z-1" style="width: 25%;">
+                                            <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center @StepClass(15)" style="width:24px;height:24px;font-size:10px;"><i class="bi bi-wallet2"></i></div>
+                                            <div class="small fw-bold @LabelClass(15)" style="font-size: 0.65rem;">Đã đặt</div>
+                                        </div>
+                                        <div class="text-center position-relative z-1" style="width: 25%;">
+                                            <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center @StepClass(50)" style="width:24px;height:24px;font-size:10px;"><i class="bi bi-check-lg"></i></div>
+                                            <div class="small fw-bold @LabelClass(50)" style="font-size: 0.65rem;">Xác nhận</div>
+                                        </div>
+                                        <div class="text-center position-relative z-1" style="width: 25%;">
+                                            <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center @StepClass(85)" style="width:24px;height:24px;font-size:10px;"><i class="bi bi-car-front"></i></div>
+                                            <div class="small fw-bold @LabelClass(85)" style="font-size: 0.65rem;">Đang đi</div>
+                                        </div>
+                                        <div class="text-center position-relative z-1" style="width: 25%;">
+                                            <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center @StepClass(100)" style="width:24px;height:24px;font-size:10px;"><i class="bi bi-flag"></i></div>
+                                            <div class="small fw-bold @LabelClass(100)" style="font-size: 0.65rem;">Xong</div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-danger border-0 p-2 rounded-3 mb-3 small">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        @(string.IsNullOrEmpty(booking.CancelReason) ? "Đơn đã bị hủy" : booking.CancelReason)
+                                    </div>
+                                }
+
+                                <div class="d-flex justify-content-between mb-2 align-items-center">
+                                    <h6 class="fw-800 mb-0">@booking.Car?.CarBrand?.Name @booking.Car?.CarName</h6>
+                                    <small class="text-muted fw-bold">#@booking.BookingID</small>
+                                </div>
+                                <p class="small text-muted mb-3"><i class="bi bi-geo-alt me-1"></i> @(booking.PickupLocation?.Name ?? booking.Car?.Location?.Name ?? "Tại văn phòng")</p>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6 text-center bg-light p-2 rounded-3">
+                                        <small class="text-muted d-block" style="font-size:0.7rem;">Ngày nhận</small>
+                                        <span class="fw-bold small">@booking.StartDate.ToString("dd/MM/yyyy")</span>
+                                    </div>
+                                    <div class="col-6 text-center bg-light p-2 rounded-3">
+                                        <small class="text-muted d-block" style="font-size:0.7rem;">Ngày trả</small>
+                                        <span class="fw-bold small">@booking.EndDate.ToString("dd/MM/yyyy")</span>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="text-muted d-block">Tổng tiền</small>
+                                        <h6 class="text-primary fw-800 mb-0">@booking.TotalPrice.ToString("N0") đ</h6>
+                                    </div>
+                                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                                        @if (statusName == "Draft")
+                                        {
+                                            <a asp-controller="Payment" asp-action="CreatePayment" asp-route-bookingId="@booking.BookingID" class="btn btn-info btn-sm rounded-pill px-3 text-white fw-bold animate-pulse">
+                                                <i class="bi bi-credit-card-2-front me-1"></i>Thanh toán ngay
+                                            </a>
+                                        }
+                                        @if (statusName == "Confirmed")
+                                        {
+                                            @if (booking.TransactionID != null)
+                                            {
+                                                <a asp-controller="Booking" asp-action="TransactionContract" asp-route-id="@booking.TransactionID" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold">
+                                                    <i class="bi bi-pencil-square me-1"></i>Ký Hợp Đồng Giỏ Hàng
+                                                </a>
+                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Bạn cần ký hợp đồng trước">
+                                                    <i class="bi bi-key me-1"></i>Nhận xe
+                                                </button>
+                                            }
+                                            else if (booking.DigitalContract == null || !booking.DigitalContract.IsSignedByCustomer)
+                                            {
+                                                <a asp-controller="Booking" asp-action="Contract" asp-route-id="@booking.BookingID" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold">
+                                                    <i class="bi bi-pencil-square me-1"></i>Ký hợp đồng
+                                                </a>
+                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Bạn cần ký hợp đồng trước">
+                                                    <i class="bi bi-key me-1"></i>Nhận xe
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <form asp-controller="Booking" asp-action="CustomerConfirmPickup" method="post" class="d-inline">
+                                                    <input type="hidden" name="id" value="@booking.BookingID" />
+                                                    <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm fw-bold">
+                                                        <i class="bi bi-key me-1"></i>NHẬN XE NGAY
+                                                    </button>
+                                                </form>
+                                            }
+                                        }
+                                        @if (statusName == "Active")
+                                        {
+                                            <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#returnModal-@booking.BookingID">
+                                                <i class="bi bi-check2-circle me-1"></i>Trả xe
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#sosModal-@booking.BookingID">
+                                                <i class="bi bi-exclamation-triangle-fill me-1"></i>SOS
+                                            </button>
+                                        }
+                                        @if (statusName == "Pending")
+                                        {
+                                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#cancelModal-@booking.BookingID">
+                                                <i class="bi bi-x-circle me-1"></i>Hủy
+                                            </button>
+                                        }
+                                        @if (statusName == "Active" || statusName == "Completed")
+                                        {
+                                            @if (booking.TransactionID != null)
+                                            {
+                                                <a asp-controller="Booking" asp-action="TransactionContract" asp-route-id="@booking.TransactionID" class="btn btn-outline-info btn-sm rounded-pill px-3">
+                                                    <i class="bi bi-file-earmark-text me-1"></i>Hợp đồng Giỏ hàng
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a asp-controller="Booking" asp-action="Contract" asp-route-id="@booking.BookingID" class="btn btn-outline-info btn-sm rounded-pill px-3">
+                                                    <i class="bi bi-file-earmark-text me-1"></i>Hợp đồng
+                                                </a>
+                                            }
+                                        }
+                                        <a asp-controller="Car" asp-action="Details" asp-route-id="@booking.CarID" class="btn btn-outline-dark btn-sm rounded-pill px-3">Chi tiết</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cancel Modal -->
+            @if (statusName == "Pending")
+            {
+                <div class="modal fade" id="cancelModal-@booking.BookingID" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Xác nhận Hủy đơn</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <p class="text-muted">Bạn muốn hủy đơn <strong>#@booking.BookingID</strong> - <strong>@booking.Car?.CarBrand?.Name @booking.Car?.CarName</strong>?</p>
+                                <form asp-controller="Booking" asp-action="CancelBooking" method="post">
+                                    <input type="hidden" name="id" value="@booking.BookingID" />
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold small">Lý do hủy (tùy chọn)</label>
+                                        <textarea name="reason" class="form-control rounded-3" rows="2" placeholder="Nhập lý do hủy đơn..."></textarea>
+                                    </div>
+                                    <div class="alert alert-warning border-0 small p-2 rounded-3">
+                                        <i class="bi bi-info-circle me-1"></i>Tiền cọc sẽ được hoàn trả trong 3-5 ngày làm việc.
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-light flex-fill rounded-pill" data-bs-dismiss="modal">Giữ đơn</button>
+                                        <button type="submit" class="btn btn-danger flex-fill rounded-pill fw-bold">Xác nhận Hủy</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- SOS Modal -->
+            @if (statusName == "Active")
+            {
+                <div class="modal fade" id="sosModal-@booking.BookingID" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow" style="border-radius: 20px;">
+                            <div class="modal-header bg-danger text-white border-0" style="border-radius: 20px 20px 0 0;">
+                                <h5 class="modal-title fw-bold"><i class="bi bi-shield-fill-exclamation me-2"></i>Hỗ trợ Khẩn cấp 24/7</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4 text-center">
+                                <p class="text-muted mb-4">Mã chuyến: <strong>#@booking.BookingID</strong><br>Hệ thống đã ghi nhận vị trí hiện tại của xe để ứng cứu.</p>
+                                <a href="tel:113" class="btn btn-outline-danger btn-lg w-100 mb-3 fw-bold rounded-pill text-start shadow-sm pt-3 pb-3">
+                                    <i class="bi bi-telephone-fill me-3 ms-2 fs-5"></i>Gọi Cảnh sát (113)
+                                </a>
+                                <a href="tel:0900000000" class="btn btn-outline-warning btn-lg w-100 mb-3 fw-bold rounded-pill text-start text-dark shadow-sm pt-3 pb-3">
+                                    <i class="bi bi-tools me-3 ms-2 fs-5"></i>Cứu hộ Roadside Assistance
+                                </a>
+                                <a href="tel:19001234" class="btn btn-outline-primary btn-lg w-100 fw-bold rounded-pill text-start shadow-sm pt-3 pb-3">
+                                    <i class="bi bi-headset fs-5 me-3 ms-2 text-primary"></i>Tổng đài SmartRental (Hotline)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Return Modal -->
+                <div class="modal fade" id="returnModal-@booking.BookingID" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow" style="border-radius: 24px;">
+                            <div class="modal-header border-0 pb-0 shadow-none">
+                                <h5 class="modal-title fw-800"><i class="bi bi-car-front-fill text-primary me-2"></i>Hoàn tất chuyến xe</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <div class="bg-light p-3 rounded-4 mb-4 border border-opacity-10">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted small">Thời gian thuê:</span>
+                                        <span class="fw-bold small">@booking.StartDate.ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted small">Hạn trả dự kiến:</span>
+                                        <span class="fw-bold small @(DateTime.Now > booking.EndDate ? "text-danger" : "text-success")">@booking.EndDate.ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                    @if (DateTime.Now > booking.EndDate)
+                                    {
+                                        <div class="mt-2 text-danger small bg-danger bg-opacity-10 p-2 rounded-3">
+                                            <i class="bi bi-clock-history me-1"></i>Cảnh báo: Bạn đã quá hạn trả xe!
+                                        </div>
+                                    }
+                                </div>
+
+                                <form asp-controller="Booking" asp-action="CustomerConfirmReturn" method="post">
+                                    <input type="hidden" name="id" value="@booking.BookingID" />
+
+                                    <div class="alert alert-info border-0 rounded-4 small mb-4 py-3">
+                                        <i class="bi bi-info-circle-fill me-2"></i>Sau khi bấm "Xác nhận trả xe", hệ thống sẽ tự động tính toán chi phí trễ hạn hoặc lố KM (nêu có).
+                                    </div>
+
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold pt-3 pb-3 shadow-sm">Xác nhận trả xe <i class="bi bi-chevron-right ms-2 small"></i></button>
+                                        <button type="button" class="btn btn-link text-muted text-decoration-none fw-600" data-bs-dismiss="modal">Để sau</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            @foreach (var booking in Model.Where(b => b.BookingStatus?.Name == "Active"))
+            {
+                <text>
+                (function() {
+                    var mapId = 'map-@booking.BookingID';
+                    var carId = @booking.CarID;
+                    var mapEl = document.getElementById(mapId);
+                    if (!mapEl) return;
+                    var map = L.map(mapId, { zoomControl: false, attributionControl: false }).setView([10.7769, 106.7009], 14);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    
+                    var marker;
+                    function updatePos() {
+                        $.get('/Tracking/GetCarLocation?carId=' + carId, function(data) {
+                            if (data && data.latitude) {
+                                var pos = [data.latitude, data.longitude];
+                                if (!marker) {
+                                    marker = L.marker(pos, { icon: L.icon({
+                                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                                        iconSize: [20, 32], iconAnchor: [10, 32]
+                                    })}).addTo(map);
+                                } else {
+                                    marker.setLatLng(pos);
+                                }
+                                map.panTo(pos);
+                            }
+                        });
+                    }
+                    updatePos();
+                    setInterval(updatePos, 10000);
+                })();
+                </text>
+            }
+        });
+    </script>
+}

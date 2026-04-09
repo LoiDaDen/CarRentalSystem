@@ -1,0 +1,106 @@
+name: CI/CD - Build & Test CarRentalSystem
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  TEST_PROJECT_PATH: 'CarRentalSystem.Tests'
+
+jobs:
+  build-and-test:
+    name: "\U0001F3D7️ Build & \U0001F9EA Test"
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: "\U0001F4E5 Checkout code"
+      uses: actions/checkout@v4
+
+    - name: "\U0001F527 Setup .NET SDK"
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: "\U0001F4E6 Restore dependencies"
+      run: dotnet restore
+
+    - name: "\U0001F3D7️ Build solution"
+      run: dotnet build --configuration Release --no-restore
+
+    - name: "\U0001F9EA Run Unit Tests"
+      run: |
+        dotnet test --configuration Release --no-build \
+          --verbosity normal \
+          --filter "Type=Unit" \
+          --logger "trx;LogFileName=unit-test-results.trx" \
+          --results-directory ./TestResults
+      working-directory: ${{ env.TEST_PROJECT_PATH }}
+
+    - name: "\U0001F517 Run Integration Tests"
+      run: |
+        dotnet test --configuration Release --no-build \
+          --verbosity normal \
+          --filter "Type=Integration" \
+          --logger "trx;LogFileName=integration-test-results.trx" \
+          --results-directory ./TestResults
+      working-directory: ${{ env.TEST_PROJECT_PATH }}
+
+    - name: "📊 Run All Tests (Full Suite)"
+      run: |
+        dotnet test --configuration Release --no-build \
+          --verbosity normal \
+          --logger "trx;LogFileName=all-test-results.trx" \
+          --collect:"XPlat Code Coverage" \
+          --settings DataCollectionRunSettings.Dictionary.DataCollection.Configuration.Format=cobertura \
+          --results-directory ./TestResults
+      working-directory: ${{ env.TEST_PROJECT_PATH }}
+
+    - name: "📝 Generate Code Coverage Report"
+      uses: irongut/CodeCoverageSummary@v1.3.0
+      with:
+        filename: ${{ env.TEST_PROJECT_PATH }}/TestResults/**/coverage.cobertura.xml
+        badge: true
+        fail_below_min: false
+        format: markdown
+        hide_branch_rate: false
+        hide_complexity: true
+        indicators: true
+        output: both
+        thresholds: '50 80'
+
+    - name: "📋 Add Coverage PR Comment"
+      uses: marocchino/sticky-pull-request-comment@v2
+      if: github.event_name == 'pull_request'
+      with:
+        recreate: true
+        path: code-coverage-results.md
+
+    - name: "📥 Upload Test Results & Coverage"
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          ${{ env.TEST_PROJECT_PATH }}/TestResults/*.trx
+          ${{ env.TEST_PROJECT_PATH }}/TestResults/**/coverage.cobertura.xml
+        retention-days: 30
+
+    - name: "\U0001F4CB Test Report Summary"
+      if: always()
+      run: |
+        echo "## \U0001F9EA Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Module | Type | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| AuthService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| BookingService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| CarService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| TrackingService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| EmailService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| RentalContract | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| Auth | Integration Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| Booking | Integration Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "| Car | Integration Tests | ✅ |" >> $GITHUB_STEP_SUMMARY

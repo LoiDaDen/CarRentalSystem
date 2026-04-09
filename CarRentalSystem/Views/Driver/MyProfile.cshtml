@@ -1,0 +1,86 @@
+@model CarRentalSystem.Models.Driver
+@{ ViewData["Title"] = "Hồ Sơ Tài Xế"; }
+
+<div class="container py-4" style="max-width: 700px;">
+    <h3 class="fw-800 mb-4"><i class="bi bi-person-badge text-success me-2"></i>Hồ Sơ Tài Xế Của Tôi</h3>
+    
+    @if (!Model.IsApproved)
+    {
+        <div class="alert alert-warning d-flex align-items-center py-3" style="border-radius: 12px;">
+            <i class="bi bi-hourglass-split me-3 fs-3"></i>
+            <div>
+                <strong>Đang chờ duyệt</strong><br>
+                <small>Hồ sơ của bạn đang được Admin xem xét. Bạn sẽ nhận thông báo khi được duyệt.</small>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-success d-flex align-items-center py-3" style="border-radius: 12px;">
+            <i class="bi bi-check-circle-fill me-3 fs-3"></i>
+            <div>
+                <strong>Đã được duyệt</strong> - Bạn đã có thể nhận chuyến!
+            </div>
+        </div>
+    }
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Họ tên</label>
+                    <div class="fw-bold">@Model.FullName</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Số điện thoại</label>
+                    <div class="fw-bold">@(Model.Phone ?? "Chưa cập nhật")</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Loại bằng lái</label>
+                    <div class="fw-bold">@Model.LicenseType</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Kinh nghiệm</label>
+                    <div class="fw-bold">@Model.ExperienceYears năm</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Khu vực</label>
+                    <div class="fw-bold">@(Model.Location?.Name ?? "Toàn quốc")</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold text-muted">Đánh giá</label>
+                    <div>
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <i class="bi @(i <= Math.Round((double)Model.Rating) ? "bi-star-fill text-warning" : "bi-star text-muted")"></i>
+                        }
+                        <span class="fw-bold ms-1">@Model.Rating.ToString("0.0")</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-top mt-4 pt-4">
+                <div class="row g-3 text-center">
+                    <div class="col-4">
+                        <div class="p-3 bg-success bg-opacity-10 rounded-3">
+                            <div class="fw-800 fs-4 text-success">@Model.TotalTrips</div>
+                            <div class="text-muted small">Tổng chuyến</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 bg-primary bg-opacity-10 rounded-3">
+                            <div class="fw-800 fs-5 text-primary">@Model.HourlyRate.ToString("N0")đ</div>
+                            <div class="text-muted small">Giá/giờ</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-3 bg-warning bg-opacity-10 rounded-3">
+                            <div class="fw-800 fs-5 text-warning">@Model.DailyRate.ToString("N0")đ</div>
+                            <div class="text-muted small">Giá/ngày</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

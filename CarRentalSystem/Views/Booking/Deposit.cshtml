@@ -1,0 +1,190 @@
+@model CarRentalSystem.Models.Booking
+@{
+    ViewData["Title"] = "Thanh toán Đặt cọc";
+    var depositAmount = Model.TotalPrice * 0.2m;
+    var finalAmount = Model.TotalPrice + 150000m;
+}
+
+<style>
+    body { background-color: #f8fafc; }
+    .payment-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .countdown-box { border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1.5rem; font-weight: 800; display: inline-block; padding: 10px 20px; color: #334155; }
+    .info-list { list-unstyled mb-0; font-size: 0.9rem; }
+    .info-list li { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 12px; }
+    .info-list li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .qr-container { padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; display: inline-block; background: #fff; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .qr-container img { max-width: 200px; }
+</style>
+
+<div class="container py-5">
+    <div class="row g-4 justify-content-center">
+        <!-- Left Column: Payment Details -->
+        <div class="col-lg-6">
+            <div class="payment-card text-center mb-4">
+                <h5 class="fw-bold mb-2">Thanh toán phí giữ chỗ</h5>
+                <h3 class="fw-800 text-success mb-3">@depositAmount.ToString("N0")đ</h3>
+                
+                <p class="text-muted small mb-2">Thời gian giữ chỗ còn lại</p>
+                <div class="countdown-box mb-4" id="countdown">16:53</div>
+                
+                <p class="small fw-bold mb-0">Mã đặt xe của bạn: <span class="text-primary">@Model.BookingID</span>1773907858714</p>
+                
+                <div class="bg-light p-3 rounded-3 text-start mt-4 border">
+                    <div class="small text-muted mb-1">Loại xe: <span class="fw-bold text-dark">@Model.Car?.CarBrand?.Name @Model.Car?.CarName</span></div>
+                    <div class="small text-muted">Ngày nhận trả xe: <span class="fw-bold text-dark">@Model.StartDate.ToString("dd/MM/yyyy")</span> đến <span class="fw-bold text-dark">@Model.EndDate.ToString("dd/MM/yyyy")</span></div>
+                </div>
+            </div>
+
+            <div class="payment-card text-center">
+                <h5 class="fw-bold mb-3">Thanh toán bằng mã QR</h5>
+                <p class="small text-muted mb-4">Vui lòng quét mã QR Code hoặc chụp ảnh màn hình QR Code để thanh toán bằng ứng dụng ngân hàng</p>
+                
+                <div class="qr-container">
+                    <img src="https://img.vietqr.io/image/MB-0868497745-compact.png?amount=@(depositAmount)&addInfo=BBC1773907DB@(Model.BookingID)&accountName=HUYNHLOI" alt="VietQR" class="img-fluid" />
+                </div>
+                
+                <p class="text-muted small my-3">Hoặc</p>
+                
+                <h5 class="fw-bold mb-3">Chuyển khoản qua ngân hàng</h5>
+                <p class="small text-danger mb-4">Vui lòng nhập chính xác nội dung chuyển khoản để hệ thống ghi nhận thông tin đơn hàng</p>
+                
+                <div class="bg-light p-3 rounded-3 text-start border">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="small text-muted">Số tiền:</div>
+                            <div class="fw-bold text-dark">@depositAmount.ToString("N0")đ</div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-copy me-1"></i>Sao chép</button>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="small text-muted">Nội dung CK:</div>
+                            <div class="fw-bold text-dark">BBC1773907DB@(Model.BookingID)</div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-copy me-1"></i>Sao chép</button>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="small text-muted">Số tài khoản:</div>
+                            <div class="fw-bold text-dark">0868497745</div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-copy me-1"></i>Sao chép</button>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Ngân hàng:</div>
+                        <div class="fw-bold text-dark">MBBank</div>
+                    </div>
+                </div>
+                
+                <div class="row g-2 mt-4">
+                    <div class="col-md-6">
+                        <form asp-controller="Booking" asp-action="ConfirmManualPayment" method="post">
+                            <input type="hidden" name="id" value="@Model.BookingID" />
+                            <button type="submit" class="btn btn-outline-success w-100 py-3 fw-bold rounded-3">
+                                <i class="bi bi-check-circle me-2"></i>TÔI ĐÃ CHUYỂN KHOẢN
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <a asp-controller="Payment" asp-action="CreatePayment" asp-route-bookingId="@Model.BookingID" class="btn btn-primary w-100 py-3 fw-bold rounded-3">
+                            <i class="bi bi-qr-code-scan me-2"></i>THANH TOÁN PAYOS
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-2 text-center">
+                    <small class="text-muted"><i class="bi bi-info-circle me-1"></i>PayOS sẽ tự động duyệt đơn ngay lập tức.</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Order Info -->
+        <div class="col-lg-5">
+            <div class="payment-card sticky-top" style="top: 20px;">
+                <h5 class="fw-bold mb-4 text-center">Thông tin đơn thuê</h5>
+                
+                <div class="mb-4 rounded-3 overflow-hidden border">
+                    <img src="/images/cars/placeholder.png" alt="Car" class="w-100" style="height: 180px; object-fit: cover;" />
+                </div>
+                
+                <ul class="info-list">
+                    <li><span class="text-muted">Mã đặt xe</span> <span class="fw-bold">@Model.BookingID</span></li>
+                    <li><span class="text-muted">Tên khách thuê</span> <span class="fw-bold">@Model.User?.Name</span></li>
+                    <li><span class="text-muted">Ngày nhận</span> <span class="fw-bold">@Model.StartDate.ToString("HH:mm, dd/MM/yyyy")</span></li>
+                    <li><span class="text-muted">Ngày trả</span> <span class="fw-bold">@Model.EndDate.ToString("HH:mm, dd/MM/yyyy")</span></li>
+                    <li><span class="text-muted">Loại xe</span> <span class="fw-bold">@Model.Car?.CarBrand?.Name @Model.Car?.CarName</span></li>
+                </ul>
+                
+                <div class="bg-light p-3 rounded-3 mt-3 mb-4 border border-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">Tổng cộng tiền thuê</span>
+                        <span class="fw-800 text-dark">@finalAmount.ToString("N0")đ</span>
+                    </div>
+                    <div class="small text-muted mt-1">Bạn sẽ thanh toán khi nhận xe</div>
+                </div>
+                
+                <h6 class="fw-bold mb-3">Các bước thanh toán</h6>
+                <div class="d-flex mb-3">
+                    <div class="me-3">
+                        <div style="width: 24px; height: 24px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">1</div>
+                    </div>
+                    <div class="w-100">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Thanh toán giữ chỗ qua CarRental</span>
+                            <span class="fw-bold text-dark">@depositAmount.ToString("N0")đ</span>
+                        </div>
+                        <p class="small text-muted mb-0">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào tiền thế chấp khi nhận xe.</p>
+                    </div>
+                </div>
+                
+                <div class="d-flex">
+                    <div class="me-3">
+                        <div style="width: 24px; height: 24px; background: #94a3b8; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">2</div>
+                    </div>
+                    <div class="w-100">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">Thanh toán khi nhận xe</span>
+                            <span class="fw-bold text-dark">@((Model.TotalPrice * 0.8m + Model.DepositAmount).ToString("N0"))đ</span>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted mt-1">
+                            <span>Tiền thuê</span>
+                            <span>@((Model.TotalPrice * 0.8m).ToString("N0"))đ</span>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>Tiền thế chấp chờ thu hồi khoản phạt</span>
+                            <span>@Model.DepositAmount.ToString("N0")đ</span>
+                        </div>
+                        <div class="small text-muted fst-italic mt-1 text-warning"><i class="bi bi-shield-lock me-1"></i>Sẽ hoàn lại sau 15 ngày qua ví điện tử.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Countdown timer for 16:53
+        let timeLeft = 16 * 60 + 53;
+        const countdownEl = document.getElementById('countdown');
+        
+        setInterval(() => {
+            if(timeLeft <= 0) return;
+            timeLeft--;
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            countdownEl.textContent = `${m}:${s}`;
+        }, 1000);
+
+        // Fix: Re-enable buttons when user navigates back via browser history
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                document.querySelectorAll('button[type="submit"], a.btn').forEach(function(btn) {
+                    btn.disabled = false;
+                    if (btn.innerHTML.includes('ĐANG XỬ LÝ') || btn.innerHTML.includes('spinner')) {
+                        btn.innerHTML = btn.dataset.originalText || btn.innerText;
+                    }
+                });
+            }
+        });
+    </script>
+}

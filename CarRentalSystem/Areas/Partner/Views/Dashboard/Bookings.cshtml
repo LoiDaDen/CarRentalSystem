@@ -1,0 +1,138 @@
+@model IEnumerable<CarRentalSystem.Models.Booking>
+@{
+    ViewData["Title"] = "Đơn thuê xe của tôi";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-800 mb-1 text-dark">Đơn thuê xe</h4>
+        <p class="text-muted mb-0 small">Tất cả đơn đặt xe từ khách hàng cho đội xe của bạn.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge bg-primary rounded-pill px-3 py-2">@Model.Count() đơn tổng cộng</span>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5 card border-0 shadow-sm rounded-4">
+        <div class="card-body p-5">
+            <i class="bi bi-calendar-x display-4 text-muted opacity-25 mb-3 d-block"></i>
+            <h5 class="text-muted">Chưa có đơn thuê xe nào</h5>
+            <p class="text-muted small">Khi có khách đặt xe, chuyến sẽ hiện ở đây.</p>
+            <a asp-area="Partner" asp-controller="Dashboard" asp-action="MyCars" class="btn btn-warning rounded-pill px-4 mt-2">Quản lý đội xe</a>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        @{
+            int pending = Model.Count(b => b.BookingStatus?.Name == "Pending");
+            int confirmed = Model.Count(b => b.BookingStatus?.Name == "Confirmed");
+            int completed = Model.Count(b => b.BookingStatus?.Name == "Completed");
+            int cancelled = Model.Count(b => b.BookingStatus?.Name == "Cancelled");
+            decimal totalRevenue = Model.Where(b => b.BookingStatus?.Name == "Completed" || b.BookingStatus?.Name == "Confirmed").Sum(b => b.TotalPrice);
+        }
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="border-left: 4px solid #f59e0b !important;">
+                <div class="fw-800 text-dark fs-4">@pending</div>
+                <small class="text-muted">Chờ xác nhận</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="border-left: 4px solid #2563eb !important;">
+                <div class="fw-800 text-dark fs-4">@confirmed</div>
+                <small class="text-muted">Đã xác nhận</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="border-left: 4px solid #10b981 !important;">
+                <div class="fw-800 text-dark fs-4">@completed</div>
+                <small class="text-muted">Hoàn thành</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="border-left: 4px solid #8b5cf6 !important;">
+                <div class="fw-800" style="color: #7c3aed; font-size: 1.1rem;">@((totalRevenue/1000000).ToString("N1"))M đ</div>
+                <small class="text-muted">Tổng doanh thu</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background: #f8fafc;">
+                        <tr class="text-muted small text-uppercase" style="font-size:0.7rem; letter-spacing:0.5px;">
+                            <th class="ps-4 py-3 border-0">#Mã đơn</th>
+                            <th class="border-0">Khách hàng</th>
+                            <th class="border-0">Xe</th>
+                            <th class="border-0">Thời gian thuê</th>
+                            <th class="border-0">Tổng tiền</th>
+                            <th class="border-0">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var booking in Model)
+                        {
+                            var statusClass = booking.BookingStatus?.Name switch {
+                                "Pending" => "bg-warning bg-opacity-15 text-warning",
+                                "Confirmed" => "bg-primary bg-opacity-10 text-primary",
+                                "Active" => "bg-success bg-opacity-10 text-success",
+                                "Completed" => "bg-secondary bg-opacity-10 text-secondary",
+                                "Cancelled" => "bg-danger bg-opacity-10 text-danger",
+                                _ => "bg-light text-dark"
+                            };
+                            var statusText = booking.BookingStatus?.Name switch {
+                                "Pending" => "Chờ xác nhận",
+                                "Confirmed" => "Đã xác nhận",
+                                "Active" => "Đang thuê",
+                                "Completed" => "Hoàn thành",
+                                "Cancelled" => "Đã hủy",
+                                _ => booking.BookingStatus?.Name
+                            };
+                            <tr class="border-top border-light @(booking.BookingStatus?.Name == "Cancelled" ? "opacity-60" : "")">
+                                <td class="ps-4 py-3">
+                                    <span class="badge bg-light text-dark border fw-700">#@booking.BookingID</span>
+                                </td>
+                                <td>
+                                    <div class="fw-700 small text-dark">@booking.User?.Name</div>
+                                    <small class="text-muted">@booking.User?.Phone</small>
+                                </td>
+                                <td>
+                                    <div class="fw-600 small text-dark">@booking.Car?.CarBrand?.Name @booking.Car?.CarName</div>
+                                    <small class="text-muted">@booking.Car?.LicensePlate</small>
+                                </td>
+                                <td>
+                                    <div class="small fw-600">@booking.StartDate.ToString("dd/MM/yyyy")</div>
+                                    <small class="text-muted">→ @booking.EndDate.ToString("dd/MM/yyyy")</small>
+                                </td>
+                                <td>
+                                    <span class="fw-800 text-dark">@booking.TotalPrice.ToString("N0")</span>
+                                    <small class="text-muted">đ</small>
+                                </td>
+                                <td>
+                                    <span class="badge @statusClass rounded-pill px-3 py-2" style="font-size:0.72rem;">
+                                        @statusText
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .fw-600 { font-weight: 600; }
+    .fw-700 { font-weight: 700; }
+    .fw-800 { font-weight: 800; }
+    .opacity-60 { opacity: 0.6; }
+    .table-hover tbody tr:hover { background: #fafbff; }
+    .bg-warning.bg-opacity-15 { background-color: rgba(245,158,11,0.15) !important; }
+</style>

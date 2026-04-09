@@ -1,0 +1,315 @@
+@model CarRentalSystem.Models.Booking
+@{
+    ViewData["Title"] = "Thủ tục thanh toán";
+}
+
+<style>
+    body { background-color: #f8fafc; }
+    .checkout-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .form-control { border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; }
+    .form-control:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+    .step-badge { width: 28px; height: 28px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; }
+</style>
+
+<div class="container py-5">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <h3 class="fw-800 mb-4">Hoàn tất thủ tục thuê xe</h3>
+            
+            <form asp-action="Book" method="post" id="checkoutForm">
+                <input type="hidden" asp-for="CarID" />
+                <input type="hidden" asp-for="StartDate" />
+                <input type="hidden" asp-for="EndDate" />
+                <input type="hidden" name="PickupLocationText" value="@ViewBag.PickupLocation" />
+
+                <div class="checkout-card">
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">1</div> Thông tin người thuê</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Họ và tên</label>
+                            <input type="text" class="form-control" name="FullName" value="@User.Identity.Name" required placeholder="Nhập họ tên" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Số điện thoại</label>
+                            <input type="tel" class="form-control" name="Phone" value="@ViewBag.UserPhone" required placeholder="Nhập số điện thoại" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Ghi chú cho chủ xe (Tùy chọn)</label>
+                            <textarea class="form-control" name="Notes" rows="2" placeholder="Ví dụ: Lịch trình, yêu cầu thêm..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checkout-card">
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">2</div> Các bước thanh toán</h5>
+                    
+                    <div class="p-3 border rounded-3 mb-3 bg-light">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="fw-bold text-success"><i class="bi bi-1-circle-fill me-2"></i>Thanh toán giữ chỗ qua ứng dụng</div>
+                            <span class="fw-bold">@((Model.TotalPrice * 0.2m).ToString("N0")) đ</span>
+                        </div>
+                        <p class="small text-muted mb-0 ps-4">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào số tiền phải thanh toán khi nhận xe.</p>
+                    </div>
+
+                    <div class="p-3 border rounded-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toán khi nhận xe</div>
+                            <span class="fw-bold text-dark">@((Model.TotalPrice * 0.8m + Model.DepositAmount).ToString("N0")) đ</span>
+                        </div>
+                        <ul class="small text-muted mb-0 ps-4 list-unstyled">
+                            <li class="d-flex justify-content-between mb-1"><span>Tiền thuê (còn lại)</span> <span>@((Model.TotalPrice * 0.8m).ToString("N0")) đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tài sản Đặt cọc / Thế chấp</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
+                            <li class="d-flex text-warning mt-2"><i class="bi bi-shield-lock me-2"></i> <span>Tiền cọc sẽ được giữ lại vòng 15 ngày để tra cứu Phạt Nguội giao thông trước khi hoàn trả tự động vào ví của bạn.</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="checkout-card">
+                    <!-- Dịch vụ & Bảo hiểm -->
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge" style="background:#7c3aed;">3</div> Dịch vụ & Bảo hiểm</h5>
+                    
+                    <!-- Insurance Options -->
+                    <div class="p-3 border rounded-3 mb-3 bg-light border-primary">
+                        <div class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary fs-5"></i>Gói Bảo Hiểm Chuyến Đi</div>
+                        <input type="hidden" name="InsuranceTier" id="insuranceTierInput" value="Basic" />
+                        
+                        <div class="form-check p-3 border rounded-3 mb-2 bg-white" style="cursor: pointer;" onclick="selectInsurance('Basic', 0); document.getElementById('insBasic').checked=true;">
+                            <input class="form-check-input" type="radio" name="insuranceRadio" id="insBasic" checked>
+                            <label class="form-check-label w-100" for="insBasic" style="cursor: pointer;">
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold">Cơ bản (Basic)</span>
+                                    <span class="text-success fw-bold">Miễn phí</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Bồi thường có mức khấu trừ cao, khách tự chịu trách nhiệm phần xát xước nhẹ.</small>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check p-3 border rounded-3 mb-2 bg-white" style="cursor: pointer;" onclick="selectInsurance('Premium', 150000); document.getElementById('insPremium').checked=true;">
+                            <input class="form-check-input" type="radio" name="insuranceRadio" id="insPremium">
+                            <label class="form-check-label w-100" for="insPremium" style="cursor: pointer;">
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold fs-6">Cao cấp (Premium)</span>
+                                    <span class="text-dark fw-bold">150.000đ/ngày</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Hỗ trợ chi phí sửa chữa thân vỏ, đèn kính. Giảm 80% mức khấu trừ.</small>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 border rounded-3 bg-white" style="cursor: pointer;" onclick="selectInsurance('Full Cover', 300000); document.getElementById('insFull').checked=true;">
+                            <input class="form-check-input" type="radio" name="insuranceRadio" id="insFull">
+                            <label class="form-check-label w-100" for="insFull" style="cursor: pointer;">
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold fs-6">Toàn diện (Full Cover) <span class="badge bg-danger ms-1">HOT</span></span>
+                                    <span class="text-dark fw-bold">300.000đ/ngày</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Miễn thường 100%. Bao gồm thủy kích, mất cắp. Yên tâm tuyệt đối cho khách thuê.</small>
+                            </label>
+                        </div>
+                        <input type="hidden" id="insuranceFeeInput" value="0" />
+                    </div>
+
+                    <!-- Delivery Option -->
+                    @if (ViewBag.PickupLocationType == "owner")
+                    {
+                        <div class="p-3 border rounded-3 mb-3 bg-light border-primary">
+                            <div class="fw-bold mb-2"><i class="bi bi-truck me-2 text-primary"></i>Địa chỉ giao xe (+50.000đ)</div>
+                            <input type="text" class="form-control bg-white form-control-sm" name="DeliveryAddress" id="deliveryAddressInput" value="@ViewBag.PickupLocation" readonly />
+                            <input type="hidden" name="DeliveryFee" id="deliveryFeeInput" value="50000" />
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" name="DeliveryFee" id="deliveryFeeInput" value="0" />
+                    }
+
+                    <!-- Add-ons -->
+                    <div class="mb-4">
+                        <input type="hidden" name="AddOnFee" id="addonFeeInput" value="@Model.AddOnFee" />
+                        @if (ViewBag.SelectedAddons != null && ((List<KeyValuePair<string, decimal>>)ViewBag.SelectedAddons).Any())
+                        {
+                            foreach (var addon in (List<KeyValuePair<string, decimal>>)ViewBag.SelectedAddons)
+                            {
+                                <input type="hidden" name="SelectedAddons" value="@addon.Key|@addon.Value" />
+                            }
+                        }
+                    </div>
+
+                    <!-- Driver Option -->
+                    <div class="p-3 border rounded-3 mb-3">
+                        <div class="fw-bold mb-3"><i class="bi bi-person-workspace me-2 text-info"></i>Thuê tài xế (Tùy chọn)</div>
+                        <select class="form-select" name="SelectedDriverID" id="driverSelect" onchange="calcDriver()">
+                            <option value="" data-price="0">Tự lái (Không thuê tài xế)</option>
+                            @if (ViewBag.Drivers != null)
+                            {
+                                foreach (var driver in ViewBag.Drivers as List<CarRentalSystem.Models.Driver>)
+                                {
+                                    <option value="@driver.DriverID" data-price="@driver.DailyRate">@driver.FullName - @driver.DailyRate.ToString("N0")đ/ngày (Đánh giá: @driver.Rating ⭐)</option>
+                                }
+                            }
+                        </select>
+                        <input type="hidden" name="DriverFee" id="driverFeeInput" value="0" />
+                    </div>
+
+                    <!-- Voucher -->
+                    <div class="p-3 border rounded-3">
+                        <div class="fw-bold mb-2"><i class="bi bi-ticket-perforated me-2 text-danger"></i>Mã giảm giá</div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="voucherCode" placeholder="Nhập mã voucher..." style="text-transform:uppercase;" />
+                            <button type="button" class="btn btn-outline-primary fw-bold" onclick="checkVoucher()">Áp dụng</button>
+                        </div>
+                        <div id="voucherResult" class="small mt-2"></div>
+                        <input type="hidden" name="PromotionID" id="promoIdInput" value="" />
+                        <input type="hidden" name="DiscountAmount" id="discountInput" value="0" />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-lg w-100 fw-bold py-3 mt-2 rounded-3 shadow-sm">XÁC NHẬN VÀ TIẾN HÀNH THANH TOÁN QUÉT MÃ</button>
+            </form>
+
+            <script>
+                var baseTotal = @Model.TotalPrice;
+                var days = @(ViewBag.DiffDays);
+                var remHours = @(ViewBag.DiffHours);
+                // Tổng giờ thực tế để tính addon/bảo hiểm theo ngày (làm tròn lên)
+                var totalDaysForAddon = days > 0 ? days : 1;
+                if (remHours > 0) totalDaysForAddon = days + 1; // Nếu có giờ lẻ thì tính thêm 1 ngày
+                
+                var memDiscountPercent = @(ViewBag.MembershipTier != null ? ViewBag.MembershipTier.DiscountPercent : 0);
+                
+                function calcDriver() { var opts = document.getElementById('driverSelect').options; var sel = opts[opts.selectedIndex]; var price = parseInt(sel.getAttribute('data-price')) || 0; document.getElementById('driverFeeInput').value = price * totalDaysForAddon; updateTotal(); }
+                function selectInsurance(tier, dailyPrice) { document.getElementById('insuranceTierInput').value = tier; document.getElementById('insuranceFeeInput').value = dailyPrice * days; updateTotal(); }
+                function checkVoucher(){var code=document.getElementById('voucherCode').value.trim();if(!code)return;fetch('/api/Voucher/check?code='+encodeURIComponent(code)+'&totalPrice='+baseTotal).then(r=>r.json()).then(d=>{var el=document.getElementById('voucherResult');if(d.success){el.innerHTML='<span class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>'+d.message+' (-'+parseInt(d.discountAmount).toLocaleString()+'đ)</span>';document.getElementById('promoIdInput').value=d.promotionId;document.getElementById('discountInput').value=d.discountAmount;updateTotal();}else{el.innerHTML='<span class="text-danger"><i class="bi bi-x-circle me-1"></i>'+d.message+'</span>';document.getElementById('promoIdInput').value='';document.getElementById('discountInput').value='0';updateTotal();}});}
+                function updateTotal(){
+                    var delivery=parseInt(document.getElementById('deliveryFeeInput').value)||0;
+                    var addons=parseInt(document.getElementById('addonFeeInput').value)||0;
+                    var insurance=parseInt(document.getElementById('insuranceFeeInput').value)||0;
+                    var discount=parseInt(document.getElementById('discountInput').value)||0;
+                    var driver=parseInt(document.getElementById('driverFeeInput').value)||0;
+                    var preTotal=baseTotal+delivery+addons+insurance+driver+150000;
+                    var memDiscount = preTotal * (memDiscountPercent / 100);
+                    var finalTotal = preTotal - memDiscount - discount;
+                    
+                    document.getElementById('grandTotal').innerText=finalTotal.toLocaleString()+' đ';
+                    var memDisplayObj = document.getElementById('membershipDiscountDisplay');
+                    if (memDisplayObj) memDisplayObj.innerText = '-' + memDiscount.toLocaleString() + ' đ';
+                    var insSpan=document.getElementById('insuranceDisplayAmount');
+                    if(insSpan)insSpan.innerText=insurance>0?insurance.toLocaleString()+' đ':'Miễn phí';
+                    var insLbl=document.getElementById('insuranceDisplayLabel');
+                    if(insLbl)insLbl.innerText=insurance>0?'Phí bảo hiểm ('+document.getElementById('insuranceTierInput').value+')':'Phí bảo hiểm (Basic)';
+                    var dvSpan=document.getElementById('driverDisplayAmount');
+                    var dvRow=document.getElementById('driverFeeRow');
+                    if(dvSpan && dvRow) {
+                        if (driver > 0) {
+                            dvSpan.innerText = driver.toLocaleString()+' đ';
+                            dvRow.style.cssText = 'display: flex !important;';
+                        } else {
+                            dvRow.style.cssText = 'display: none !important;';
+                        }
+                    }
+                }
+                
+                // Explicitly call updateTotal on load to ensure deliveryFee is included
+                updateTotal();
+                document.addEventListener('DOMContentLoaded', updateTotal);
+            </script>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="checkout-card sticky-top" style="top: 100px;">
+                <h5 class="fw-bold mb-4">Thông tin đơn thuê</h5>
+                
+                <div class="d-flex mb-4">
+                    <div class="flex-shrink-0">
+                        <div style="width: 100px; height: 70px; background: #e2e8f0; border-radius: 8px; overflow: hidden;">
+                            <img src="/images/cars/placeholder.png" alt="Car" style="width: 100%; height: 100%; object-fit: cover;" />
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <h6 class="fw-bold mb-1">@Model.Car?.CarBrand?.Name @Model.Car?.CarName</h6>
+                        <div class="text-muted small"><i class="bi bi-ev-front me-1"></i>@Model.Car?.Transmission • @Model.Car?.Seats chỗ</div>
+                    </div>
+                </div>
+
+                <ul class="list-unstyled small mb-4">
+                    <li class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                        <span class="text-muted">Nhận xe</span>
+                        <div class="text-end fw-bold">
+                            @Model.StartDate.ToString("HH:mm, dd/MM/yyyy")<br/>
+                            <span class="text-muted fw-normal" style="font-size: 0.75rem;">@ViewBag.PickupLocation</span>
+                        </div>
+                    </li>
+                    <li class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                        <span class="text-muted">Trả xe</span>
+                        <div class="text-end fw-bold">
+                            @Model.EndDate.ToString("HH:mm, dd/MM/yyyy")<br/>
+                            <span class="text-muted fw-normal" style="font-size: 0.75rem;">@ViewBag.PickupLocation</span>
+                        </div>
+                    </li>
+                </ul>
+
+                @{
+                    var diffDays = (int)ViewBag.DiffDays;
+                    var diffHrs = (int)ViewBag.DiffHours;
+                    var durationLabel = diffDays > 0 ? diffDays + " ngày" : "";
+                    if (diffHrs > 0) durationLabel += (diffDays > 0 ? " " : "") + diffHrs + " giờ";
+                    if (string.IsNullOrEmpty(durationLabel)) durationLabel = "1 giờ";
+                }
+                <h6 class="fw-bold mb-3">Chi tiết giá (@durationLabel)</h6>
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-muted">Đơn giá thuê</span>
+                    <span>@Model.Car?.PricePerDay.ToString("N0") đ/ngày</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-muted" id="insuranceDisplayLabel">Phí bảo hiểm (Basic)</span>
+                    <span class="text-success fw-bold" id="insuranceDisplayAmount">Miễn phí</span>
+                </div>
+                <!-- Vị trí cắm AddonFee & Combo vào đây -->
+                @if (ViewBag.SelectedAddons != null && ((List<KeyValuePair<string, decimal>>)ViewBag.SelectedAddons).Any())
+                {
+                    <div class="mb-2 small border-top pt-2 mt-2">
+                        <span class="text-dark fw-bold mb-1 d-block"><i class="bi bi-gift text-danger me-1"></i>Combo & Tiện ích đi kèm</span>
+                        @foreach (var addon in (List<KeyValuePair<string, decimal>>)ViewBag.SelectedAddons)
+                        {
+                            <div class="d-flex justify-content-between ps-3 mb-1">
+                                <span class="text-muted"><i class="bi bi-dot"></i> @addon.Key</span>
+                                <span class="text-success fw-bold">@addon.Value.ToString("N0") đ</span>
+                            </div>
+                        }
+                    </div>
+                }
+                
+                <div class="d-flex justify-content-between mb-2 small" id="driverFeeRow" style="display: none !important;">
+                    <span class="text-muted">Phí tài xế</span>
+                    <span class="text-info fw-bold" id="driverDisplayAmount"></span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-muted">VAT & VAT dịch vụ</span>
+                    <span>150.000 đ</span>
+                </div>
+                @if (ViewBag.PickupLocationType == "owner")
+                {
+                <div class="d-flex justify-content-between mb-2 small">
+                    <span class="text-muted">Phí giao nhận xe</span>
+                    <span>50.000 đ</span>
+                </div>
+                }
+                
+                @if (ViewBag.MembershipTier != null && ViewBag.MembershipTier.DiscountPercent > 0)
+                {
+                    var memColor = ViewBag.MembershipTier.Color ?? "#cd7f32";
+                    <div class="d-flex justify-content-between mb-2 small pt-2 border-top">
+                        <span style="color: @memColor;" class="fw-bold"><i class="bi @ViewBag.MembershipTier.Icon me-1"></i>Ưu đãi hạng @ViewBag.MembershipTier.Name</span>
+                        <span class="text-success fw-bold" id="membershipDiscountDisplay">0 đ</span>
+                    </div>
+                }
+                
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-4 border-top">
+                    <span class="fw-bold text-dark">Tổng cộng tiền thuê</span>
+                    <span id="grandTotal" class="fw-800 fs-4 text-success">@((Model.TotalPrice + 150000).ToString("N0")) đ</span>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,266 @@
+@model CarRentalSystem.Models.Car
+@{
+    ViewData["Title"] = "Thêm Xe Mới";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    .form-control, .form-select { border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0.75rem 1rem; font-weight: 500; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-control:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+    .form-label { font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; margin-bottom: 0.5rem; }
+    .section-card { background: white; border-radius: 20px; padding: 1.75rem; border: 1px solid #f1f5f9; box-shadow: 0 2px 12px rgba(0,0,0,0.04); margin-bottom: 1.5rem; }
+    .section-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #3b82f6; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 1.5rem; }
+    .upload-area { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+    .upload-area:hover { border-color: #3b82f6; background: #f0f7ff; }
+    #mapPicker { height: 300px; border-radius: 12px; z-index: 1; border: 1px solid #e2e8f0; }
+    .preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+    .preview-item { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #e2e8f0; }
+    .toggle-card { border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; }
+    .toggle-card:has(input:checked) { border-color: #3b82f6; background: #eff6ff; }
+    .toggle-card input { width: 20px; height: 20px; }
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h2 class="fw-800 ls-neg-1 mb-1">Thêm Xe Mới</h2>
+        <p class="text-muted mb-0">Điền đầy đủ thông tin để thêm phương tiện vào đội xe.</p>
+    </div>
+    <a asp-area="Admin" asp-controller="Car" asp-action="Manage" class="btn btn-light rounded-3 px-4 py-2 fw-bold border">
+        <i class="bi bi-arrow-left me-2"></i>Quay lại
+    </a>
+</div>
+
+<form asp-area="Admin" asp-controller="Car" asp-action="Create" method="post" enctype="multipart/form-data">
+    <div asp-validation-summary="All" class="text-danger fw-bold mb-3"></div>
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <!-- Thông tin cơ bản -->
+            <div class="section-card">
+                <div class="section-title"><i class="bi bi-info-circle me-2"></i>Thông tin cơ bản</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Hãng xe <span class="text-danger">*</span></label>
+                        <select asp-for="BrandID" asp-items="ViewBag.Brands" class="form-select" required>
+                            <option value="">-- Chọn hãng --</option>
+                        </select>
+                        <span asp-validation-for="BrandID" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tên xe (Dòng xe) <span class="text-danger">*</span></label>
+                        <input asp-for="CarName" class="form-control" placeholder="Vd: Camry 2.5Q, Civic RS..." required />
+                        <span asp-validation-for="CarName" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Loại xe <span class="text-danger">*</span></label>
+                        <select asp-for="CarTypeID" asp-items="ViewBag.CarTypes" class="form-select" required>
+                            <option value="">-- Chọn loại --</option>
+                        </select>
+                        <span asp-validation-for="CarTypeID" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Số chỗ ngồi <span class="text-danger">*</span></label>
+                        <input type="number" asp-for="Seats" class="form-control" min="2" max="16" placeholder="5" required />
+                        <span asp-validation-for="Seats" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thông số kỹ thuật -->
+            <div class="section-card">
+                <div class="section-title"><i class="bi bi-gear me-2"></i>Thông số kỹ thuật</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Nhiên liệu <span class="text-danger">*</span></label>
+                        <select asp-for="FuelType" class="form-select">
+                            <option value="Xăng">⛽ Xăng</option>
+                            <option value="Dầu">🛢️ Dầu</option>
+                            <option value="Điện">⚡ Điện</option>
+                            <option value="Hybrid">🔋 Hybrid</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Hộp số <span class="text-danger">*</span></label>
+                        <select asp-for="Transmission" class="form-select">
+                            <option value="Tự động">Số tự động</option>
+                            <option value="Số sàn">Số sàn</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Mức tiêu hao</label>
+                        <div class="input-group">
+                            <input asp-for="FuelConsumption" id="FuelConsumption" class="form-control" placeholder="Vd: 8.0" />
+                            <span class="input-group-text bg-light fw-bold text-muted" id="fuelUnitLabel">L/100km</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Biển số xe <span class="text-danger">*</span></label>
+                        <input asp-for="LicensePlate" class="form-control" placeholder="Vd: 51A-123.45" required style="font-family: monospace;" />
+                        <span asp-validation-for="LicensePlate" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">VIN (Số khung) <span class="text-danger">*</span></label>
+                        <input asp-for="VIN" class="form-control" placeholder="17 ký tự" maxlength="17" required style="font-family: monospace;" />
+                        <span asp-validation-for="VIN" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Odometer hiện tại (KM)</label>
+                        <input type="number" asp-for="CurrentOdometer" class="form-control" placeholder="0" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Ngày bảo dưỡng tiếp theo</label>
+                        <input type="date" asp-for="NextMaintenanceDate" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mô tả -->
+            <div class="section-card">
+                <div class="section-title"><i class="bi bi-text-left me-2"></i>Mô tả xe</div>
+                <textarea asp-for="Description" class="form-control" rows="4" placeholder="Mô tả chi tiết về xe, tính năng nổi bật, lịch sử bảo dưỡng..."></textarea>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Giá & Kinh doanh -->
+            <div class="section-card">
+                <div class="section-title"><i class="bi bi-currency-exchange me-2"></i>Giá & Kinh doanh</div>
+                <div class="mb-3">
+                    <label class="form-label">Giá thuê/ngày (VNĐ) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="number" asp-for="PricePerDay" class="form-control" placeholder="500000" required />
+                        <span class="input-group-text bg-light border fw-bold">đ</span>
+                    </div>
+                    <span asp-validation-for="PricePerDay" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Giá ưu đãi (nếu có)</label>
+                    <div class="input-group">
+                        <input type="number" asp-for="DiscountPrice" class="form-control" placeholder="Để trống nếu không có" />
+                        <span class="input-group-text bg-light border fw-bold">đ</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Khu vực (Tỉnh/Thành)</label>
+                    <select asp-for="LocationID" asp-items="ViewBag.Locations" class="form-select" required>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label">Vị trí giao nhận chính xác <span class="text-danger">*</span></label>
+                    <div class="input-group mb-2">
+                        <input type="text" asp-for="CarAddress" id="carAddressInput" class="form-control" placeholder="Tìm hoặc chọn trên bản đồ..." required readonly />
+                        <button class="btn btn-outline-primary" type="button" id="btnGetCurrentLocation" title="Lấy vị trí của tôi">
+                            <i class="bi bi-crosshair"></i>
+                        </button>
+                    </div>
+                    <div id="mapPicker" class="mb-2"></div>
+                    <small class="text-muted d-block mb-2">Di chuyển ghim đỏ để chọn vị trí chính xác bãi đỗ xe/nơi giao xe.</small>
+                    <input type="hidden" asp-for="Latitude" id="latInput" />
+                    <input type="hidden" asp-for="Longitude" id="lngInput" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Trạng thái</label>
+                    <select asp-for="CarStatusID" asp-items="ViewBag.CarStatuses" class="form-select">
+                    </select>
+                </div>
+                <label class="toggle-card mb-3">
+                    <div>
+                        <div class="fw-bold small">Xe Premium</div>
+                        <small class="text-muted">Hiển thị badge PREMIUM trên xe</small>
+                    </div>
+                    <input type="checkbox" asp-for="IsPremium" />
+                </label>
+            </div>
+
+            <!-- Ảnh xe -->
+            <div class="section-card">
+                <div class="section-title"><i class="bi bi-image me-2"></i>Ảnh xe (Có thể chọn nhiều)</div>
+                <label class="upload-area d-block" for="imageFiles">
+                    <div id="uploadPrompt">
+                        <i class="bi bi-cloud-upload fs-1 text-muted opacity-50 d-block mb-2"></i>
+                        <div class="fw-bold text-muted">Click để chọn ảnh</div>
+                        <small class="text-muted">JPG, PNG, WEBP · Chọn nhiều ảnh</small>
+                    </div>
+                    <div id="previewContainer" class="preview-container"></div>
+                </label>
+                <input type="file" name="imageFiles" id="imageFiles" class="d-none" accept="image/*" multiple onchange="previewImages(this)" />
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex gap-3">
+                <a asp-area="Admin" asp-controller="Car" asp-action="Manage" class="btn btn-light flex-grow-1 rounded-3 py-3 fw-bold border">Hủy</a>
+                <button type="submit" class="btn btn-primary flex-grow-1 rounded-3 py-3 fw-bold shadow-sm">
+                    <i class="bi bi-save me-2"></i>Lưu xe
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    function previewImages(input) {
+        const container = document.getElementById('previewContainer');
+        container.innerHTML = '';
+        if (input.files && input.files.length > 0) {
+            document.getElementById('uploadPrompt').style.display = 'none';
+            Array.from(input.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'preview-item';
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        } else {
+            document.getElementById('uploadPrompt').style.display = 'block';
+        }
+    }
+
+    // --- MAP PICKER LOGIC ---
+    document.addEventListener("DOMContentLoaded", function () {
+        var defaultLat = 10.7769;
+        var defaultLng = 106.7009;
+
+        if (typeof SmartMap !== 'undefined') {
+            const picker = SmartMap.initPickerMap({
+                containerId: 'mapPicker',
+                btnLocationId: 'btnGetCurrentLocation',
+                latInputId: 'latInput',
+                lngInputId: 'lngInput',
+                addressInputId: 'carAddressInput',
+                locationDropdownId: 'LocationID'
+            });
+
+            if (picker) {
+                picker.map.setView([defaultLat, defaultLng], 14);
+                picker.marker.setLatLng([defaultLat, defaultLng]);
+                document.getElementById('latInput').value = defaultLat;
+                document.getElementById('lngInput').value = defaultLng;
+                
+                // Trigger auto-geocode to address
+                const fakeEvent = { latlng: { lat: defaultLat, lng: defaultLng } };
+                picker.map.fire('click', fakeEvent);
+            }
+        }
+    });
+
+    // --- FUEL UNIT LOGIC ---
+    document.addEventListener("DOMContentLoaded", function () {
+        const fuelTypeSelect = document.getElementById('FuelType');
+        const fuelUnitLabel = document.getElementById('fuelUnitLabel');
+        if (fuelTypeSelect && fuelUnitLabel) {
+            fuelTypeSelect.addEventListener('change', function (e) {
+                fuelUnitLabel.innerText = e.target.value === 'Điện' ? 'kWh/100km' : 'L/100km';
+            });
+            fuelTypeSelect.dispatchEvent(new Event('change'));
+        }
+    });
+</script>
+}

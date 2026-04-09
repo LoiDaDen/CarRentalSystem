@@ -1,0 +1,97 @@
+@model IEnumerable<CarRentalSystem.Models.ContactMessage>
+@{
+    ViewData["Title"] = "Hỗ trợ khách hàng";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    .fw-800 { font-weight: 800; }
+    .table-contact td { padding: 1.25rem 1.25rem; vertical-align: middle; cursor: pointer; }
+    .table-contact tr:hover { background-color: #f8fafd; }
+    .avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #e0e7ff; color: #3b82f6; }
+</style>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-3">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h2 class="fw-800 mb-1" style="letter-spacing: -1px;">Trung tâm hỗ trợ (CRM)</h2>
+        <p class="text-muted mb-0">Quản lý các yêu cầu, thắc mắc từ khách hàng.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge bg-danger rounded-pill px-3 py-2 fs-6 shadow-sm">
+            @Model.Count(m => !m.IsResolved) chưa xử lý
+        </span>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0 table-contact">
+            <thead style="background: #f8fafd;">
+                <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
+                    <th class="ps-4">Khách hàng</th>
+                    <th>Tiêu đề</th>
+                    <th>Ngày gửi</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var msg in Model)
+                {
+                    <tr onclick="window.location.href='@Url.Action("Details", new { id = msg.MessageID })'">
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="avatar-circle">
+                                    @msg.Name.Substring(0, 1).ToUpper()
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark">@msg.Name</div>
+                                    <div class="small text-muted">@msg.Email</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="fw-600 @(msg.IsResolved ? "text-muted" : "text-dark")">
+                            @msg.Subject
+                        </td>
+                        <td class="small text-muted">
+                            @msg.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </td>
+                        <td>
+                            @if (msg.IsResolved)
+                            {
+                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1"><i class="bi bi-check2-all me-1"></i>Đã phản hồi</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger text-white rounded-pill px-3 py-1 shadow-sm"><i class="bi bi-clock me-1"></i>Chưa xử lý</span>
+                            }
+                        </td>
+                        <td class="text-end pe-4">
+                            <a asp-action="Details" asp-route-id="@msg.MessageID" class="btn btn-sm btn-light rounded-3 shadow-sm px-3 fw-bold text-primary" onclick="event.stopPropagation();">
+                                Xem
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox display-4 opacity-10 d-block mb-3"></i>
+                            <p class="fw-bold opacity-50 mb-0">Hộp thư hỗ trợ đang trống</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

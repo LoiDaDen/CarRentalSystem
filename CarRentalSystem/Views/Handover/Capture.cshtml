@@ -1,0 +1,233 @@
+@model dynamic
+@{
+    var typeText = ViewBag.Type == "CheckIn" ? "Nhận xe (Check-in)" : "Trả xe (Check-out)";
+    ViewData["Title"] = "Biên Bản: " + typeText;
+    var booking = ViewBag.Booking as CarRentalSystem.Models.Booking;
+}
+
+<style>
+    .capture-box {
+        border: 2px dashed #ddd;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        background: #fafafa;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .capture-box:hover {
+        border-color: #0d6efd;
+        background: #f0f7ff;
+    }
+    .capture-box i {
+        font-size: 2rem;
+        color: #adb5bd;
+        margin-bottom: 10px;
+    }
+    .img-preview {
+        max-width: 100%;
+        max-height: 150px;
+        border-radius: 8px;
+        display: none;
+        margin-top: 10px;
+    }
+</style>
+
+<div class="container py-5 max-w-700" style="max-width: 700px; margin: 0 auto;">
+    <div class="d-flex align-items-center mb-4">
+        <a href="javascript:history.back()" class="text-dark me-3"><i class="bi bi-arrow-left fs-4"></i></a>
+        <h3 class="fw-bold mb-0">Biên bản @typeText</h3>
+    </div>
+
+    @if (booking != null)
+    {
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4 d-flex align-items-center">
+                <div class="bg-primary text-white rounded p-3 me-3"><i class="bi bi-car-front-fill fs-3"></i></div>
+                <div>
+                    <h5 class="fw-bold mb-1">Mã chuyến: #@booking.BookingID - @booking.Car?.CarBrand?.Name @booking.Car?.CarName</h5>
+                    <p class="text-muted mb-0 small"><i class="bi bi-calendar-event me-1"></i> @booking.StartDate.ToString("dd/MM/yyyy HH:mm") → @booking.EndDate.ToString("dd/MM/yyyy HH:mm")</p>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="alert alert-warning border-0 shadow-sm rounded-3 mb-4">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Lưu ý quan trọng:</strong> 
+        Vui lòng chụp rõ các góc của xe. Hình ảnh này là cơ sở duy nhất để giải quyết tranh chấp về tình trạng trầy xước, hư hỏng xe.
+    </div>
+
+    <form asp-controller="Handover" asp-action="Submit" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="BookingID" value="@booking?.BookingID" />
+        <input type="hidden" name="Type" value="@ViewBag.Type" />
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-4">Thông số cơ bản</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Số Km hiện tại (ODO) <span class="text-danger">*</span></label>
+                        <input type="number" name="Odo" class="form-control form-control-lg bg-light" placeholder="Ví dụ: 54000" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Mức nhiên liệu <span class="text-danger">*</span></label>
+                        <select name="FuelLevel" class="form-select form-select-lg bg-light" required>
+                            <option value="F">Đầy bình (F)</option>
+                            <option value="3/4">3/4 bình</option>
+                            <option value="1/2">Nửa bình (1/2)</option>
+                            <option value="1/4">1/4 bình</option>
+                            <option value="E">Cạn bình (E)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-4">Chụp ảnh hiện trạng xe</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Mặt trước xe</label>
+                        <div class="capture-box" onclick="document.getElementById('imgFront').click()">
+                            <i class="bi bi-camera"></i>
+                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
+                            <img id="preview_imgFront" class="img-preview" />
+                        </div>
+                        <input type="file" id="imgFront" name="imgFront" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgFront')" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Mặt sau xe</label>
+                        <div class="capture-box" onclick="document.getElementById('imgBack').click()">
+                            <i class="bi bi-camera"></i>
+                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
+                            <img id="preview_imgBack" class="img-preview" />
+                        </div>
+                        <input type="file" id="imgBack" name="imgBack" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgBack')" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Hông xe trái</label>
+                        <div class="capture-box" onclick="document.getElementById('imgLeft').click()">
+                            <i class="bi bi-camera"></i>
+                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
+                            <img id="preview_imgLeft" class="img-preview" />
+                        </div>
+                        <input type="file" id="imgLeft" name="imgLeft" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgLeft')" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Hông xe phải</label>
+                        <div class="capture-box" onclick="document.getElementById('imgRight').click()">
+                            <i class="bi bi-camera"></i>
+                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
+                            <img id="preview_imgRight" class="img-preview" />
+                        </div>
+                        <input type="file" id="imgRight" name="imgRight" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgRight')" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">Nội thất xe (hàng ghế trước)</label>
+                        <div class="capture-box" onclick="document.getElementById('imgInside').click()">
+                            <i class="bi bi-camera"></i>
+                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
+                            <img id="preview_imgInside" class="img-preview" />
+                        </div>
+                        <input type="file" id="imgInside" name="imgInside" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgInside')" required>
+                    </div>
+                    
+                    <div class="col-12 mt-4 pt-4 border-top">
+                        <label class="form-label fw-bold d-block mb-3"><i class="bi bi-pen me-2 text-primary"></i>Chữ ký Điện tử Khách Hàng <span class="text-danger">*</span></label>
+                        <p class="small text-muted mb-2">Vui lòng ký ngón tay của bạn vào vùng trống bên dưới (dùng màn hình cảm ứng hoặc chuột).</p>
+                        <div class="border rounded-4 bg-white overflow-hidden shadow-sm" style="touch-action: none; position: relative;">
+                            <canvas id="signatureCanvas" style="width:100%; height: 200px; cursor: crosshair; display: block;"></canvas>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2 align-items-center">
+                            <span class="small text-danger" id="signatureWarning" style="display:none;"><i class="bi bi-exclamation-circle me-1"></i>Bạn chưa ký tên</span>
+                            <div class="ms-auto">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearCanvas()"><i class="bi bi-eraser-fill me-1"></i>Xóa làm lại</button>
+                            </div>
+                        </div>
+                        <input type="hidden" name="SignatureBase64" id="signatureBase64" required />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm mb-5">
+            XÁC NHẬN VÀ GỬI BIÊN BẢN
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        function previewImage(input, imgId) {
+            const imgEl = document.getElementById(imgId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgEl.src = e.target.result;
+                    imgEl.style.display = 'block';
+                    input.parentElement.querySelector('i').style.display = 'none';
+                    input.parentElement.querySelector('.text-muted').style.display = 'none';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        // E-Signature Logic
+        var canvas = document.getElementById('signatureCanvas');
+        var ctx = canvas.getContext('2d');
+        var isDrawing = false;
+        var hasDrawn = false;
+        
+        // Match actual size to style size to avoid blurry lines
+        function resizeCanvas() {
+            var rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height || 200;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000000';
+        
+        function getPos(e) {
+            var rect = canvas.getBoundingClientRect();
+            var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function strokeStart(e) { e.preventDefault(); isDrawing = true; hasDrawn = true; var pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); document.getElementById('signatureWarning').style.display = 'none'; }
+        function strokeMove(e) { e.preventDefault(); if(isDrawing) { var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); updateBlob(); } }
+        function strokeEnd(e) { isDrawing = false; }
+        
+        canvas.addEventListener('mousedown', strokeStart);
+        canvas.addEventListener('mousemove', strokeMove);
+        window.addEventListener('mouseup', strokeEnd);
+        
+        canvas.addEventListener('touchstart', strokeStart, {passive: false});
+        canvas.addEventListener('touchmove', strokeMove, {passive: false});
+        window.addEventListener('touchend', strokeEnd);
+
+        function clearCanvas() { 
+            ctx.clearRect(0,0,canvas.width, canvas.height); 
+            document.getElementById('signatureBase64').value = ''; 
+            hasDrawn = false;
+        }
+        
+        function updateBlob() { 
+            document.getElementById('signatureBase64').value = canvas.toDataURL('image/png'); 
+        }
+        
+        document.querySelector('form').addEventListener('submit', function(e) {
+            if(!hasDrawn) {
+                e.preventDefault();
+                document.getElementById('signatureWarning').style.display = 'inline-block';
+                canvas.parentElement.style.border = '2px solid red';
+            }
+        });
+    </script>
+}

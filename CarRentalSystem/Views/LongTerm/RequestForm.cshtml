@@ -1,0 +1,426 @@
+@model CarRentalSystem.Models.ContractType
+@{
+    ViewData["Title"] = "Nhu Cầu Thuê Của Bạn";
+    var contracts = ViewBag.ContractTypes as List<CarRentalSystem.Models.ContractType>;
+    var selectedContract = ViewBag.SelectedContract as CarRentalSystem.Models.ContractType;
+    var isLongTerm = selectedContract != null && selectedContract.MinDurationDays >= 30;
+}
+
+<div class="container py-5 mt-5">
+    <!-- Advanced Consultation Form -->
+    <div class="row justify-content-center" id="request-form">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-5">
+                <div class="card-body p-4 p-md-5 bg-white">
+                    <h5 class="fw-bolder mb-4 text-dark text-uppercase" style="letter-spacing: 0.5px;">NHU CẦU THUÊ CỦA BẠN</h5>
+                    <form asp-action="SubmitRequest" method="post">
+                        <!-- Section 1 -->
+                        <div class="row g-4 mb-5">
+                            <div class="col-md-3">
+                                <label class="small text-muted fw-bold mb-2">Địa điểm muốn thuê</label>
+                                <select name="Location" class="form-select bg-light border-0 shadow-none">
+                                    <option>Hồ Chí Minh</option>
+                                    <option>Hà Nội</option>
+                                    <option>Đà Nẵng</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small text-muted fw-bold mb-2">Ngày hẹn lấy xe</label>
+                                <input type="datetime-local" name="StartDate" id="startDateInput" class="form-control bg-light border-0 shadow-none" required min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small text-muted fw-bold mb-2">Gói thuê</label>
+                                <select name="ContractTypeID" id="contractSelect" class="form-select bg-light border-0 shadow-none" onchange="toggleFormFields(this)">
+                                    @if (contracts != null)
+                                    {
+                                        foreach (var c in contracts)
+                                        {
+                                            var isSelected = (selectedContract != null && c.ContractTypeID == selectedContract.ContractTypeID) ? "selected" : "";
+                                            <!option value="@c.ContractTypeID" data-days="@c.MinDurationDays" data-name="@c.Name" @isSelected>@c.Name</!option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3" id="durationSection">
+                                <label class="small text-muted fw-bold mb-2">Thời gian thuê</label>
+                                <select name="RentDuration" id="durationSelect" class="form-select bg-light border-0 shadow-none">
+                                    <!-- Populated dynamically by JS -->
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Ngày tùy chỉnh: Lịch chọn nhiều ngày -->
+                        <div class="mb-4" id="customEndDateSection" style="display: none;">
+                            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                                <div class="card-header bg-white border-0 p-3 d-flex justify-content-between align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="changeCalMonth(-1)"><i class="bi bi-chevron-left"></i></button>
+                                    <h6 class="fw-bold mb-0" id="calMonthLabel"></h6>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="changeCalMonth(1)"><i class="bi bi-chevron-right"></i></button>
+                                </div>
+                                <div class="card-body p-3 pt-0">
+                                    <div class="row g-0 text-center mb-2">
+                                        <div class="col fw-bold small text-muted">T2</div>
+                                        <div class="col fw-bold small text-muted">T3</div>
+                                        <div class="col fw-bold small text-muted">T4</div>
+                                        <div class="col fw-bold small text-muted">T5</div>
+                                        <div class="col fw-bold small text-muted">T6</div>
+                                        <div class="col fw-bold small text-danger">T7</div>
+                                        <div class="col fw-bold small text-danger">CN</div>
+                                    </div>
+                                    <div id="calendarGrid"></div>
+                                </div>
+                                <div class="card-footer bg-light border-0 p-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small text-muted"><i class="bi bi-hand-index me-1"></i>Nhấn vào từng ngày để chọn/bỏ chọn</span>
+                                        <span class="badge bg-primary rounded-pill px-3 py-2 fs-6" id="selectedDaysBadge">0 ngày</span>
+                                    </div>
+                                    <div class="mt-2 small" id="selectedDatesPreview" style="color: #6c757d;"></div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="SelectedDates" id="selectedDatesInput" />
+                        </div>
+
+                        <h5 class="fw-bolder mb-4 text-dark text-uppercase" style="letter-spacing: 0.5px;">YÊU CẦU VỀ XE</h5>
+                        
+                        <!-- Budget -->
+                        <div class="mb-4" id="budgetSection">
+                            <label class="small text-muted fw-bold mb-3" id="budgetLabel">Chi phí bạn có thể trả 1 tháng</label>
+                            <div class="d-flex align-items-center gap-3">
+                                <input type="text" id="budgetMin" name="BudgetMin" class="form-control text-center fw-bold bg-light border-0 shadow-none" value="7.000.000" readonly>
+                                <span class="text-muted">-</span>
+                                <input type="text" id="budgetMax" class="form-control text-center fw-bold bg-light border-0 shadow-none" value="40.000.000" readonly>
+                            </div>
+                            <input type="range" class="form-range mt-3" min="0" max="100" step="1" value="0" id="priceRange" style="accent-color: #10b981;">
+                        </div>
+
+                        <!-- Car Suggestions based on budget -->
+                        <div class="mb-4" id="carSuggestionSection" style="display: none;">
+                            <label class="small text-muted fw-bold mb-2"><i class="bi bi-lightbulb text-warning me-1"></i>Đề xuất xe phù hợp ngân sách</label>
+                            <div id="carSuggestionList" class="row g-3 mt-1">
+                                <!-- Populated by JS -->
+                            </div>
+                            <input type="hidden" name="Brand" id="selectedBrand" value="">
+                            <input type="hidden" name="ModelStr" id="selectedModel" value="">
+                        </div>
+
+                        <!-- Requirements -->
+                        <div class="mb-4">
+                            <label class="small text-muted fw-bold mb-2">Yêu cầu chi tiết về xe muốn thuê</label>
+                            <textarea name="Note" id="noteField" class="form-control bg-light border-0 shadow-none" rows="4" 
+                                      placeholder="@(isLongTerm ? "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM. Giới hạn 1 tháng chạy 3.000 km, hợp đồng 1 năm. Ưu tiên dòng xe Sedona, Carnival." : "Ví dụ: Mong muốn xe rộng sạch sẽ, không mùi, cần xe gấp vào cuối tuần này.")"></textarea>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="d-flex align-items-center justify-content-between gap-3 pt-3 border-top mt-2 pt-4">
+                            <a href="/LongTerm" class="btn btn-outline-secondary fw-bold px-5 py-2 rounded-3 shadow-sm w-100">HỦY</a>
+                            <button type="submit" class="btn btn-success fw-bold px-5 py-2 rounded-3 shadow-sm w-100" style="background-color: #38bdf8; border: none; background: linear-gradient(135deg, #4ade80 0%, #10b981 100%);">TIẾP TỤC</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Car suggestion data based on budget ranges
+        const carSuggestions = {
+            monthly: [
+                { minBudget: 7000000, maxBudget: 12000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front' },
+                { minBudget: 7000000, maxBudget: 15000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front' },
+                { minBudget: 10000000, maxBudget: 18000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front' },
+                { minBudget: 12000000, maxBudget: 22000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 15000000, maxBudget: 25000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 18000000, maxBudget: 30000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 20000000, maxBudget: 35000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 25000000, maxBudget: 40000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill' },
+            ],
+            weekly: [
+                { minBudget: 2000000, maxBudget: 4000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front' },
+                { minBudget: 2000000, maxBudget: 5000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front' },
+                { minBudget: 3000000, maxBudget: 6000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front' },
+                { minBudget: 4000000, maxBudget: 7000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 5000000, maxBudget: 9000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 6000000, maxBudget: 10000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 7000000, maxBudget: 12000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 8000000, maxBudget: 15000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill' },
+            ]
+        };
+
+        // Budget configurations per contract type
+        const budgetConfigs = {
+            'Theo năm':       { label: 'Chi phí bạn có thể trả 1 tháng', min: 7000000, max: 40000000, type: 'monthly' },
+            'Theo tháng':     { label: 'Chi phí bạn có thể trả 1 tháng', min: 7000000, max: 40000000, type: 'monthly' },
+            'Trong tuần':     { label: 'Chi phí bạn có thể trả 1 tuần',  min: 2000000, max: 15000000, type: 'weekly' },
+            'Ngày tùy chỉnh': { label: 'Ngân sách dự kiến',               min: 2000000, max: 40000000, type: 'monthly' },
+        };
+
+        function formatCurrency(n) {
+            return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            var startSelect = document.getElementById('contractSelect');
+            if (startSelect) toggleFormFields(startSelect);
+
+            // Price range slider
+            var priceRange = document.getElementById('priceRange');
+            if (priceRange) {
+                priceRange.addEventListener('input', function() {
+                    updateBudgetDisplay();
+                    updateCarSuggestions();
+                });
+            }
+        });
+
+        function toggleFormFields(selectObj) {
+            const selectedOption = selectObj.options[selectObj.selectedIndex];
+            const contractName = selectedOption.getAttribute('data-name') || '';
+            const durationSelect = document.getElementById('durationSelect');
+            const noteField = document.getElementById('noteField');
+            const budgetLabel = document.getElementById('budgetLabel');
+            const priceRange = document.getElementById('priceRange');
+
+            durationSelect.innerHTML = "";
+            let optionsHTML = "";
+
+            const durationSection = document.getElementById('durationSection');
+            const customEndDateSection = document.getElementById('customEndDateSection');
+
+            // Duration options based on contract type name
+            if (contractName === 'Ngày tùy chỉnh') {
+                durationSection.style.display = 'none';
+                customEndDateSection.style.display = 'block';
+                durationSelect.innerHTML = '<option value="Tùy chỉnh">Tùy chỉnh</option>';
+                noteField.placeholder = "Ví dụ: Tôi chỉ cần xe vào các ngày T2, T3, T7, CN trong tháng này.";
+                renderCalendar();
+            } else {
+                durationSection.style.display = 'block';
+                customEndDateSection.style.display = 'none';
+
+                if (contractName === 'Theo năm') {
+                    for (let i = 1; i <= 20; i++) {
+                        optionsHTML += `<option value="${i} Năm">${i} Năm</option>`;
+                    }
+                    noteField.placeholder = "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM. Ưu tiên dòng xe Sedona, Carnival.";
+                } else if (contractName === 'Theo tháng') {
+                    for (let i = 1; i <= 12; i++) {
+                        optionsHTML += `<option value="${i} Tháng">${i} Tháng</option>`;
+                    }
+                    noteField.placeholder = "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM.";
+                } else if (contractName === 'Trong tuần') {
+                    for (let i = 2; i <= 5; i++) {
+                        optionsHTML += `<option value="${i} Ngày">${i} Ngày</option>`;
+                    }
+                    noteField.placeholder = "Ví dụ: Mong muốn xe rộng sạch sẽ, không mùi, cần xe trong tuần tới.";
+                } else {
+                    optionsHTML = '<option value="1 Tháng">1 Tháng</option>';
+                }
+            }
+
+            durationSelect.innerHTML = optionsHTML;
+
+            // Update budget section
+            const config = budgetConfigs[contractName];
+            if (config) {
+                budgetLabel.textContent = config.label;
+                document.getElementById('budgetMax').value = formatCurrency(config.max);
+                // Reset slider
+                priceRange.value = 0;
+                updateBudgetDisplay();
+                updateCarSuggestions();
+            }
+        }
+
+        function updateBudgetDisplay() {
+            const selectObj = document.getElementById('contractSelect');
+            const selectedOption = selectObj.options[selectObj.selectedIndex];
+            const contractName = selectedOption.getAttribute('data-name') || '';
+            const config = budgetConfigs[contractName];
+            if (!config) return;
+
+            const slider = document.getElementById('priceRange');
+            const pct = parseInt(slider.value) / 100;
+            const currentValue = Math.round(config.min + (config.max - config.min) * pct);
+            
+            // Round to nearest 500,000
+            const rounded = Math.round(currentValue / 500000) * 500000;
+            const finalValue = Math.min(rounded, config.max);
+
+            document.getElementById('budgetMin').value = formatCurrency(finalValue);
+        }
+
+        function updateCarSuggestions() {
+            const selectObj = document.getElementById('contractSelect');
+            const selectedOption = selectObj.options[selectObj.selectedIndex];
+            const contractName = selectedOption.getAttribute('data-name') || '';
+            const config = budgetConfigs[contractName];
+            if (!config) return;
+
+            const slider = document.getElementById('priceRange');
+            const pct = parseInt(slider.value) / 100;
+            const budget = Math.round(config.min + (config.max - config.min) * pct);
+            const rounded = Math.round(budget / 500000) * 500000;
+            const finalBudget = Math.min(rounded, config.max);
+
+            const suggestions = carSuggestions[config.type] || carSuggestions.monthly;
+            const matched = suggestions.filter(s => finalBudget >= s.minBudget && finalBudget <= s.maxBudget);
+
+            const container = document.getElementById('carSuggestionList');
+            const section = document.getElementById('carSuggestionSection');
+
+            if (matched.length > 0) {
+                section.style.display = 'block';
+                let html = '';
+                matched.forEach((car, idx) => {
+                    html += `
+                    <div class="col-md-4 col-6">
+                        <div class="card shadow-sm rounded-3 h-100 suggestion-card" 
+                             style="cursor:pointer; transition: all 0.2s; border: 2px solid transparent;" 
+                             onclick="selectSuggestion('${car.brand}', '${car.model}', this)"
+                             onmouseover="this.style.borderColor='#10b981'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.2)'"
+                             onmouseout="if(!this.classList.contains('selected')){this.style.borderColor='transparent'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'}">
+                            <div class="card-body p-3 text-center">
+                                <i class="bi ${car.img} fs-2 text-primary mb-2 d-block"></i>
+                                <h6 class="fw-bold mb-1 small">${car.label}</h6>
+                                <span class="badge bg-light text-muted">${car.seats}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } else {
+                section.style.display = 'none';
+                container.innerHTML = '';
+            }
+        }
+
+        function selectSuggestion(brand, model, el) {
+            // Remove previous selections
+            document.querySelectorAll('.suggestion-card').forEach(c => {
+                c.classList.remove('selected');
+                c.style.borderColor = 'transparent';
+                c.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+            });
+            // Mark selected
+            el.classList.add('selected');
+            el.style.borderColor = '#10b981';
+            el.style.boxShadow = '0 0 0 2px #10b981';
+            // Set hidden fields
+            document.getElementById('selectedBrand').value = brand;
+            document.getElementById('selectedModel').value = model;
+        }
+
+        // ====== CALENDAR MULTI-SELECT ======
+        let calYear, calMonth;
+        const selectedDates = new Set();
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        function initCalendar() {
+            const now = new Date();
+            calYear = now.getFullYear();
+            calMonth = now.getMonth();
+            renderCalendar();
+        }
+
+        function changeCalMonth(delta) {
+            calMonth += delta;
+            if (calMonth > 11) { calMonth = 0; calYear++; }
+            if (calMonth < 0) { calMonth = 11; calYear--; }
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const label = document.getElementById('calMonthLabel');
+            if (!grid || !label) return;
+
+            const monthNames = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+            label.textContent = `${monthNames[calMonth]} ${calYear}`;
+
+            const firstDay = new Date(calYear, calMonth, 1);
+            const lastDay = new Date(calYear, calMonth + 1, 0);
+            // Monday = 0, Sunday = 6
+            let startDow = (firstDay.getDay() + 6) % 7;
+
+            let html = '';
+            let dayNum = 1;
+            const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
+
+            for (let i = 0; i < totalCells; i++) {
+                if (i % 7 === 0) html += '<div class="row g-0 text-center">';
+
+                if (i < startDow || dayNum > lastDay.getDate()) {
+                    html += '<div class="col p-1"><div style="width:100%;padding:8px;">&nbsp;</div></div>';
+                } else {
+                    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+                    const dateObj = new Date(calYear, calMonth, dayNum);
+                    const isPast = dateObj < today;
+                    const isSelected = selectedDates.has(dateStr);
+                    const isWeekend = (i % 7 === 5 || i % 7 === 6);
+
+                    let btnClass = 'btn btn-sm w-100 rounded-3 fw-bold ';
+                    if (isPast) {
+                        btnClass += 'btn-light text-muted disabled';
+                    } else if (isSelected) {
+                        btnClass += 'text-white shadow-sm';
+                    } else {
+                        btnClass += 'btn-outline-secondary';
+                    }
+
+                    const bgStyle = isSelected && !isPast ? 'background: linear-gradient(135deg, #4ade80, #10b981); border-color: #10b981;' : '';
+                    const textColor = isWeekend && !isSelected && !isPast ? 'color: #dc3545;' : '';
+
+                    html += `<div class="col p-1">
+                        <button type="button" class="${btnClass}" style="padding:8px 2px; ${bgStyle} ${textColor}"
+                            ${isPast ? 'disabled' : `onclick="toggleDate('${dateStr}')"`}>${dayNum}</button>
+                    </div>`;
+                    dayNum++;
+                }
+
+                if ((i + 1) % 7 === 0) html += '</div>';
+            }
+            grid.innerHTML = html;
+        }
+
+        function toggleDate(dateStr) {
+            if (selectedDates.has(dateStr)) {
+                selectedDates.delete(dateStr);
+            } else {
+                selectedDates.add(dateStr);
+            }
+            updateSelectedDatesUI();
+            renderCalendar();
+        }
+
+        function updateSelectedDatesUI() {
+            const badge = document.getElementById('selectedDaysBadge');
+            const preview = document.getElementById('selectedDatesPreview');
+            const hiddenInput = document.getElementById('selectedDatesInput');
+
+            const count = selectedDates.size;
+            badge.textContent = `${count} ngày`;
+
+            // Sort dates and format for display
+            const sorted = [...selectedDates].sort();
+            if (sorted.length > 0) {
+                const formatted = sorted.map(d => {
+                    const parts = d.split('-');
+                    return `${parts[2]}/${parts[1]}`;
+                });
+                preview.innerHTML = '<i class="bi bi-calendar-check text-success me-1"></i><strong>Ngày đã chọn:</strong> ' + formatted.join(', ');
+            } else {
+                preview.innerHTML = '';
+            }
+
+            // Store in hidden input
+            hiddenInput.value = sorted.join(',');
+        }
+
+        // Initialize calendar on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initCalendar();
+        });
+    </script>
+}

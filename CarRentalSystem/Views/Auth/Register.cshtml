@@ -1,0 +1,188 @@
+@model CarRentalSystem.Models.User
+@{ ViewData["Title"] = "Tạo Tài Khoản"; }
+
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-6 col-lg-5">
+        <div class="text-center mb-5">
+            <h1 class="fw-800 text-primary mb-2">Gia Nhập UltraDrive</h1>
+            <p class="text-muted">Đăng ký để truy cập đội xe tự lái cao cấp của chúng tôi.</p>
+        </div>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger border-0 shadow-sm mb-4 py-3">
+                <i class="bi bi-exclamation-triangle me-2"></i> @ViewBag.Error
+            </div>
+        }
+
+        <div class="card border-0 shadow-lg p-4 p-md-5 rounded-4">
+            <div class="text-center mb-4">
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#qrModal">
+                    <i class="bi bi-qr-code-scan me-2"></i>Quét QR trên CCCD để tự động điền
+                </button>
+            </div>
+
+            <form asp-action="Register" method="post">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số CCCD</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-person-badge text-muted"></i></span>
+                            <input asp-for="CitizenId" id="citizenIdInput" class="form-control bg-transparent border-0 py-2" placeholder="Nhập hoặc quét mã QR" required />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Họ và Tên</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-person text-muted"></i></span>
+                            <input asp-for="Name" id="nameInput" class="form-control bg-transparent border-0 py-2" placeholder="VD: Nguyễn Văn A" required />
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Giới tính</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-gender-ambiguous text-muted"></i></span>
+                            <select asp-for="Gender" id="genderInput" class="form-select bg-transparent border-0 py-2" style="background-color: transparent;" required>
+                                <option value="">Chọn giới tính</option>
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Ngày sinh</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-calendar text-muted"></i></span>
+                            <input asp-for="DateOfBirth" id="dobInput" type="date" class="form-control bg-transparent border-0 py-2" required />
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ thường trú</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-geo-alt text-muted"></i></span>
+                            <input asp-for="Address" id="addressInput" class="form-control bg-transparent border-0 py-2" placeholder="Nhập địa chỉ" required />
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số Giấy phép lái xe (GPLX)</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-card-heading text-muted"></i></span>
+                            <input asp-for="DrivingLicenseNumber" class="form-control bg-transparent border-0 py-2" placeholder="Nhập số hạng GPLX của bạn" required />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ Email</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-envelope text-muted"></i></span>
+                            <input type="email" asp-for="Email" class="form-control bg-transparent border-0 py-2" placeholder="email@example.com" required />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số điện thoại</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-phone text-muted"></i></span>
+                            <input asp-for="Phone" class="form-control bg-transparent border-0 py-2" placeholder="090..." required />
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Mật khẩu</label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-lock text-muted"></i></span>
+                            <input type="password" asp-for="PasswordHash" class="form-control bg-transparent border-0 py-2" placeholder="Tối thiểu 6 ký tự" required />
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm rounded-pill py-3 mt-5">Tạo Tài Khoản</button>
+                
+                <div class="mt-5 text-center">
+                    <p class="text-muted small mb-0">Đã có tài khoản? <a asp-action="Login" class="fw-bold text-decoration-none">Đăng nhập ngay</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Header cho Scanner -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" id="qrModalLabel">Quét CCCD của bạn</h5>
+        <button type="button" id="closeQrModal" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center pt-2">
+        <p class="text-muted small mb-3">Đưa mã QR trên thẻ CCCD vào khung hình để hệ thống tự động điền thông tin cá nhân.</p>
+        <div id="reader" style="width: 100%; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let html5QrcodeScanner = null;
+            const qrModalEl = document.getElementById('qrModal');
+
+            qrModalEl.addEventListener('shown.bs.modal', function () {
+                if(!html5QrcodeScanner) {
+                    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, /* verbose= */ false);
+                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                } else {
+                    // Cố gắng render lại nếu đã có
+                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                }
+            });
+
+            qrModalEl.addEventListener('hidden.bs.modal', function () {
+                if(html5QrcodeScanner) {
+                    html5QrcodeScanner.clear().catch(error => { console.error("Failed to clear html5QrcodeScanner. ", error); });
+                }
+            });
+
+            function onScanSuccess(decodedText, decodedResult) {
+                // Định dạng QR CCCD VVN:
+                // Số CCCD|Số CMND cũ|Họ và tên|Ngày sinh (ddMMyyyy)|Giới tính|Địa chỉ thường trú|Ngày cấp thẻ (ddMMyyyy)
+                console.log(`Code matched = ${decodedText}`, decodedResult);
+                
+                let parts = decodedText.split('|');
+                if (parts.length >= 6) {
+                    // Thành công, phân tích và điền vào form
+                    document.getElementById('citizenIdInput').value = parts[0] ? parts[0].trim() : '';
+                    document.getElementById('nameInput').value = parts[2] ? parts[2].trim() : '';
+                    document.getElementById('genderInput').value = parts[4] ? parts[4].trim() : '';
+                    document.getElementById('addressInput').value = parts[5] ? parts[5].trim() : '';
+                    
+                    let dobRaw = parts[3]; // "ddMMyyyy"
+                    if(dobRaw && dobRaw.length === 8) {
+                        let dd = dobRaw.substring(0,2);
+                        let MM = dobRaw.substring(2,4);
+                        let yyyy = dobRaw.substring(4,8);
+                        document.getElementById('dobInput').value = `${yyyy}-${MM}-${dd}`;
+                    }
+
+                    // Tắt scanner và đóng modal
+                    html5QrcodeScanner.clear();
+                    document.getElementById('closeQrModal').click();
+                    
+                    alert('Đã tải thông tin từ CCCD thành công!');
+                } else {
+                    // Không đúng định dạng CCCD
+                    console.log('Phát hiện QR code nhưng không phải định dạng CCCD: ' + decodedText);
+                }
+            }
+
+            function onScanFailure(error) {
+                // handle scan failure, usually better to ignore and keep scanning.
+            }
+        });
+    </script>
+}
+

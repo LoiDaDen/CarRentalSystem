@@ -1,0 +1,255 @@
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Tìm xe gần bạn - SmartRental";
+    var carTypes = ViewBag.CarTypes as List<string> ?? new List<string>();
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+        #map-container { display: flex; height: calc(100vh - 72px); overflow: hidden; position: relative; }
+        #map { flex: 1; height: 100%; z-index: 1; }
+        #car-sidebar { width: 400px; min-width: 400px; height: 100%; overflow-y: auto; background: #fff; border-right: 1px solid #e9ecef; box-shadow: 4px 0 20px rgba(0,0,0,.07); z-index: 2; position: relative; }
+        
+        /* Floating Filter Bar */
+        #filter-bar {
+            position: absolute;
+            top: 20px;
+            left: 420px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .filter-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 0.875rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            background: #fff;
+        }
+        .filter-select:focus { border-color: #3b82f6; }
+
+        .car-pin-price {
+            background: #2563eb;
+            color: white;
+            border: 2px solid white;
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+            cursor: pointer;
+            transition: all .2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .car-pin-price:hover, .car-pin-price.active {
+            background: #1e40af;
+            transform: scale(1.15) translateY(-2px);
+            box-shadow: 0 8px 20px rgba(30,64,175,0.4);
+        }
+
+        .car-card-small {
+            border: 1px solid transparent;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 4px;
+        }
+        .car-card-small:hover { background: #f8fafc; border-color: #e2e8f0; transform: translateY(-2px); }
+        .car-card-small.active { background: #eff6ff; border-color: #3b82f6; box-shadow: 0 4px 15px rgba(59,130,246,0.15); }
+        
+        .badge-type { font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; background: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; }
+    </style>
+}
+
+<div id="map-container">
+    <!-- Filter Bar -->
+    <div id="filter-bar">
+        <div class="d-flex align-items-center gap-2 me-2">
+            <i class="bi bi-sliders2 text-primary"></i>
+            <span class="fw-bold small">Bộ lọc:</span>
+        </div>
+        
+        <select id="type-filter" class="filter-select" onchange="applyFilters()">
+            <option value="">Loại xe (Tất cả)</option>
+            @foreach (var type in carTypes)
+            {
+                <option value="@type">@type</option>
+            }
+        </select>
+
+        <select id="trans-filter" class="filter-select" onchange="applyFilters()">
+            <option value="">Hộp số (Tất cả)</option>
+            <option value="Tự động">Tự động</option>
+            <option value="Số sàn">Số sàn</option>
+        </select>
+
+        <select id="amenity-filter" class="filter-select" onchange="applyFilters()">
+            <option value="">Tiện nghi (Tất cả)</option>
+            @foreach (var amenity in ViewBag.Amenities as List<string>)
+            {
+                <option value="@amenity">@amenity</option>
+            }
+        </select>
+
+        <select id="rating-filter" class="filter-select" onchange="applyFilters()">
+            <option value="0">Đánh giá (Tất cả)</option>
+            <option value="4.5">4.5+ ⭐</option>
+            <option value="4">4.0+ ⭐</option>
+            <option value="3">3.0+ ⭐</option>
+        </select>
+
+        <select id="price-filter" class="filter-select" onchange="applyFilters()">
+            <option value="0">Giá (Tất cả)</option>
+            <option value="800000">Dưới 800k</option>
+            <option value="1500000">Từ 800k - 1tr5</option>
+            <option value="9999999">Trên 1tr5</option>
+        </select>
+
+        <div class="ms-auto text-muted small" id="result-count"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div id="car-sidebar">
+        <div class="p-4 border-bottom sticky-top bg-white">
+            <h5 class="fw-bold mb-1">Discovery Map</h5>
+            <p id="car-count" class="text-muted small mb-0">Hệ thống đang tải dữ liệu xe...</p>
+        </div>
+        <div id="car-list" class="p-3"></div>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+</div>
+
+@section Scripts {
+    <script>
+        const rawCarsData = @Html.Raw(ViewBag.CarsJson ?? "[]");
+        let activeMapObj = null;
+
+        function buildCard(car) {
+            const type = car.Type || car.type || 'Khác';
+            const trans = car.Transmission || car.transmission || '';
+            const brand = car.Brand || car.brand || '';
+            const name = car.CarName || car.carName || '';
+            const price = Number(car.PricePerDay || car.pricePerDay || 0);
+            const rating = Number(car.Rating || car.rating || 5.0);
+            const id = car.CarID || car.carID || car.id;
+            const img = car.Image || car.image || '';
+
+            return `
+            <div class="car-card-small bg-white p-3" id="card-${id}" onclick="focusCar(${id})">
+                <div class="d-flex gap-3">
+                    <div class="position-relative" style="width:105px;height:75px;flex-shrink:0">
+                        ${img ? `<img src="${img}" onerror="this.onerror=null;this.src='/images/cars/placeholder.png';" style="width:100%;height:100%;object-fit:cover;border-radius:12px">` : '<div class="bg-light rounded-3 h-100 d-flex align-items-center justify-content-center"><i class="bi bi-car-front fs-2 text-secondary opacity-50"></i></div>'}
+                        <div class="position-absolute bottom-0 end-0 bg-white px-1 rounded-start-2 shadow-sm" style="font-size:0.75rem; font-weight: 700;">
+                            <i class="bi bi-star-fill text-warning"></i> ${rating.toFixed(1)}
+                        </div>
+                    </div>
+                    <div style="min-width:0" class="flex-grow-1 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="badge-type">${type}</span>
+                                <span class="small text-muted fw-bold"><i class="bi bi-gear-wide-connected me-1"></i>${trans === 'Tự động' ? 'AT' : 'MT'}</span>
+                            </div>
+                            <div class="fw-bold text-truncate" style="font-size:0.95rem" title="${brand} ${name}">${brand} ${name}</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-end mt-1">
+                            <div class="fw-bold text-primary" style="font-size:1rem">${price.toLocaleString('vi-VN')} ₫</div>
+                            <a href="/Car/Details/${id}" class="btn btn-primary btn-sm rounded-pill px-3 py-1 fw-bold shadow-sm" style="font-size: 0.8rem;" onclick="event.stopPropagation()">Đặt ngay</a>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function applyFilters() {
+            const type = document.getElementById('type-filter').value;
+            const trans = document.getElementById('trans-filter').value;
+            const amenity = document.getElementById('amenity-filter').value;
+            const ratingInput = parseFloat(document.getElementById('rating-filter').value) || 0;
+            const priceVal = parseInt(document.getElementById('price-filter').value) || 0;
+
+            const filtered = rawCarsData.filter(car => {
+                const carType = car.Type || car.type || '';
+                const carTrans = car.Transmission || car.transmission || '';
+                const carPrice = Number(car.PricePerDay || car.pricePerDay || 0);
+                const carRating = Number(car.Rating || car.rating || 0);
+                const carFeatures = car.Features || car.features || '';
+
+                const matchType = !type || carType === type;
+                const matchTrans = !trans || carTrans === trans;
+                const matchAmenity = !amenity || (carFeatures && carFeatures.includes(amenity));
+                const matchRating = carRating >= ratingInput;
+                
+                let matchPrice = true;
+                if (priceVal === 800000) matchPrice = carPrice < 800000;
+                else if (priceVal === 1500000) matchPrice = carPrice >= 800000 && carPrice <= 1500000;
+                else if (priceVal === 9999999) matchPrice = carPrice > 1500000;
+                
+                return matchType && matchTrans && matchAmenity && matchRating && matchPrice;
+            });
+
+            updateDisplay(filtered);
+        }
+
+        function updateDisplay(cars) {
+            const carList = document.getElementById('car-list');
+            const carCount = document.getElementById('car-count');
+            const resultCount = document.getElementById('result-count');
+
+            if (cars.length === 0) {
+                carList.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-emoji-frown display-3 d-block mb-3 opacity-25"></i><p>Không tìm thấy xe phù hợp với bộ lọc.</p></div>';
+                carCount.textContent = '0 xe đang khả dụng';
+                resultCount.textContent = '0 kết quả';
+                if (activeMapObj) {
+                    activeMapObj.renderMarkers([]); // render empty
+                }
+            } else {
+                carCount.textContent = `${cars.length} xe đang khả dụng`;
+                resultCount.textContent = `${cars.length} kết quả`;
+                carList.innerHTML = cars.map(buildCard).join('');
+
+                if (!activeMapObj) {
+                    activeMapObj = SmartMap.initClusterMap('map', cars, focusCar);
+                } else {
+                    activeMapObj.renderMarkers(cars);
+                }
+            }
+        }
+
+        function focusCar(carId) {
+            if (!activeMapObj) return;
+            const marker = activeMapObj.markerMap[carId];
+            if (marker) {
+                activeMapObj.map.flyTo(marker.getLatLng(), 15, { animate: true, duration: 0.8 });
+                document.querySelectorAll('.car-pin-price').forEach(p => p.classList.remove('active'));
+                marker.getElement()?.querySelector('.car-pin-price')?.classList.add('active');
+            }
+            document.querySelectorAll('.car-card-small').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById('card-' + carId);
+            if (card) {
+                card.classList.add('active');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // Initial run
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDisplay(rawCarsData);
+        });
+    </script>
+}

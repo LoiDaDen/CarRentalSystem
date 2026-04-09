@@ -1,0 +1,523 @@
+@model CarRentalSystem.Models.Cart
+@{
+    ViewData["Title"] = "Giỏ hàng của tôi";
+}
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-800 mb-0"><i class="bi bi-cart3 text-success me-2"></i>Giỏ hàng của bạn</h2>
+        <a asp-controller="Car" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-2"></i>Tiếp tục chọn xe
+        </a>
+    </div>
+
+    @if (Model.CartItems == null || !Model.CartItems.Any())
+    {
+        <div class="text-center py-5 bg-light rounded-4 border-2 border-dashed">
+            <div class="mb-4">
+                <i class="bi bi-cart-x text-muted" style="font-size: 5rem;"></i>
+            </div>
+            <h4 class="text-muted">Giỏ hàng của bạn đang trống</h4>
+            <p class="text-muted mb-4">Hãy chọn cho mình một chiếc xe ưng ý để bắt đầu chuyến hành trình nhé!</p>
+            <a asp-controller="Car" asp-action="Index" class="btn btn-success btn-lg px-5 rounded-pill shadow-sm fw-bold">Xem danh sách xe</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-header bg-white py-3 border-bottom border-light">
+                        <div class="row align-items-center">
+                            <div class="col-6">
+                                <span class="fw-bold text-muted small text-uppercase" style="letter-spacing: 1px;">Thông tin xe</span>
+                            </div>
+                            <div class="col-3 text-center">
+                                <span class="fw-bold text-muted small text-uppercase" style="letter-spacing: 1px;">Thời gian</span>
+                            </div>
+                            <div class="col-3 text-end">
+                                <span class="fw-bold text-muted small text-uppercase" style="letter-spacing: 1px;">Giá dự kiến</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        @foreach (var item in Model.CartItems.OrderByDescending(i => i.CartItemID))
+                        {
+                            <div class="cart-item-row p-4 border-bottom border-light position-relative" id="cart-item-@item.CartItemID">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-3 overflow-hidden shadow-sm me-3" style="width: 120px; height: 80px;">
+                                                <img src="@(item.Car?.CarImages?.FirstOrDefault()?.ImageUrl ?? item.Car?.ImageURL ?? "/images/cars/placeholder.png")" 
+                                                     alt="@item.Car?.CarName" class="w-100 h-100 object-fit-cover">
+                                            </div>
+                                            <div>
+                                                <h6 class="fw-bold mb-1">@item.Car?.CarBrand?.Name @item.Car?.CarName</h6>
+                                                <div class="small text-muted mb-2">
+                                                    <i class="bi bi-geo-alt me-1"></i>@item.Car?.Location?.Name
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" class="btn btn-link text-danger p-0 small text-decoration-none fw-bold" onclick="removeFromCart(@item.CartItemID)">
+                                                        <i class="bi bi-trash3 me-1"></i>Xóa
+                                                    </button>
+                                                    <span class="text-muted small">|</span>
+                                                    <button type="button" class="btn btn-link text-primary p-0 small text-decoration-none fw-bold inspect-car-btn" 
+                                                            data-bs-toggle="modal" data-bs-target="#inspectionModal" 
+                                                            onclick="setInspectionData('@Html.Raw(item.Car?.CarBrand?.Name) @Html.Raw(item.Car?.CarName)')">
+                                                        <i class="bi bi-camera me-1"></i>Kiểm tra xe trước khi thuê
+                                                    </button>
+                                                </div>
+                                                @{
+                                                    var drivers = ViewBag.Drivers as List<CarRentalSystem.Models.Driver>;
+                                                }
+                                                <div class="mt-2">
+                                                    <label class="small text-muted fw-bold"><i class="bi bi-person-badge me-1"></i>Tài xế:</label>
+                                                    <select class="form-select form-select-sm driver-selector mt-1" data-item-id="@item.CartItemID">
+                                                        <option value="0">🚗 Tự lái (Không cần tài xế)</option>
+                                                        @if (drivers != null)
+                                                        {
+                                                            @foreach (var d in drivers)
+                                                            {
+                                                                if (item.DriverID == d.DriverID)
+                                                                {
+                                                                    <option value="@d.DriverID" data-rate="@d.DailyRate" data-rating="@d.Rating" selected>
+                                                                        🧑‍✈️ @d.FullName — ⭐@d.Rating (@d.ExperienceYears năm KN) — @d.DailyRate.ToString("N0")đ/ngày
+                                                                    </option>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <option value="@d.DriverID" data-rate="@d.DailyRate" data-rating="@d.Rating">
+                                                                        🧑‍✈️ @d.FullName — ⭐@d.Rating (@d.ExperienceYears năm KN) — @d.DailyRate.ToString("N0")đ/ngày
+                                                                    </option>
+                                                                }
+                                                            }
+                                                        }
+                                                    </select>
+                                                    <div class="driver-fee-display-@item.CartItemID small text-primary fw-bold mt-1" style="display:@(item.WithDriver ? "block" : "none");">
+                                                        <i class="bi bi-info-circle me-1"></i>Phí tài xế sẽ được tính thêm khi thanh toán
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 text-center my-3 my-md-0">
+                                        <div class="mb-2 text-start">
+                                            <label class="small text-muted mb-1 fw-bold">Gói thuê (Chọn nhanh):</label>
+                                            @{
+                                                var contractTypes = ViewBag.ContractTypes as List<CarRentalSystem.Models.ContractType>;
+                                            }
+                                            <select class="form-select form-select-sm rent-package-selector mb-2" data-item-id="@item.CartItemID">
+                                                @if (contractTypes != null)
+                                                {
+                                                    @foreach (var ct in contractTypes)
+                                                    {
+                                                        string label = ct.Name;
+                                                        if (ct.DiscountPercent > 0) { label += $" (Giảm {ct.DiscountPercent:0.##}%)"; }
+                                                        <option value="@ct.ContractTypeID" data-days="@ct.MinDurationDays" data-discount="@ct.DiscountPercent">@label</option>
+                                                    }
+                                                }
+                                            </select>
+                                            <label class="small text-muted mb-1 fw-bold">Nhận xe:</label>
+                                            <input type="datetime-local" class="form-control form-control-sm cart-date-picker start-date-picker" 
+                                                   data-item-id="@item.CartItemID"
+                                                   data-price-per-hour="@item.Car?.PricePerHour"
+                                                   data-max-price="@item.Car?.PricePerDay"
+                                                   value="@item.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+                                        </div>
+                                        <div class="text-start">
+                                            <label class="small text-muted mb-1 fw-bold">Trả xe:</label>
+                                            <input type="datetime-local" class="form-control form-control-sm cart-date-picker end-date-picker" 
+                                                   data-item-id="@item.CartItemID"
+                                                   value="@item.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+                                        </div>
+                                        @{
+                                            var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
+                                        }
+                                        <span class="badge bg-light text-dark border mt-2 hours-badge-@item.CartItemID">@hours giờ</span>
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                        <div class="fw-800 fs-5 text-success mb-1 item-price-@item.CartItemID">@item.EstimatedPrice.ToString("N0") đ</div>
+                                        <div class="item-discount-info-@item.CartItemID" style="display:none;">
+                                            <small class="text-decoration-line-through text-muted item-original-price-@item.CartItemID"></small>
+                                            <span class="badge bg-danger bg-opacity-10 text-danger ms-1 item-discount-badge-@item.CartItemID"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top: 100px;">
+                    <h5 class="fw-bold mb-4">Tổng quan giỏ hàng</h5>
+                    <div class="d-flex justify-content-between mb-3 text-muted">
+                        <span>Số lượng xe:</span>
+                        <span class="fw-bold text-dark">@Model.CartItems.Count xe</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2" id="cartDiscountRow" style="display:none !important;">
+                        <span class="text-danger"><i class="bi bi-tag-fill me-1"></i>Chiết khấu gói thuê:</span>
+                        <span class="fw-bold text-danger" id="cartDiscountDisplay">-0 đ</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="fw-bold fs-5">Tạm tính:</span>
+                        <span class="fw-800 fs-4 text-success" id="cartTotalDisplay">@Model.CartItems.Sum(i => i.EstimatedPrice).ToString("N0") đ</span>
+                    </div>
+                    
+                    <div class="alert alert-info border-0 rounded-4 p-3 mb-4" style="background: linear-gradient(135deg, #eff6ff, #dbeafe);">
+                        <div class="d-flex">
+                            <i class="bi bi-info-circle-fill text-primary me-2 mt-1"></i>
+                            <div class="small text-primary fw-600">
+                                Tất cả xe trong giỏ hàng sẽ được gom vào MỘT hợp đồng duy nhất để bạn có thể ký và thanh toán nhanh chóng.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form asp-controller="Cart" asp-action="CheckoutAll" method="post" class="mb-3">
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold fs-5 shadow">
+                            Thanh toán toàn bộ
+                        </button>
+                    </form>
+                    
+                    <a asp-controller="Car" asp-action="Index" class="btn btn-outline-success w-100 rounded-pill py-2 fw-bold mb-3">
+                        Thêm xe khác vào giỏ
+                    </a>
+                    
+                    <div class="text-center">
+                        <small class="text-muted"><i class="bi bi-shield-check me-1"></i>Giao dịch an toàn & bảo mật</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Inspection Modal -->
+<div class="modal fade" id="inspectionModal" tabindex="-1" aria-labelledby="inspectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" id="inspectionModalLabel">
+                    <i class="bi bi-shield-check text-success me-2"></i>Tình trạng xe Giao/Nhận
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-4">
+                    Đối với các gói thuê xe đặc biệt là dài hạn, quý khách vui lòng kiểm tra kỹ tình trạng xe ngoại thất và nội thất qua các ảnh chụp cập nhật thực tế mới nhất trước khi ký hợp đồng để đảm bảo sự minh bạch.
+                </p>
+                <h6 class="fw-bold mb-3 text-primary" id="carInspectionName">Xe</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card border-light rounded-3 overflow-hidden h-100 shadow-sm">
+                            <img src="/images/inspection/car_front.png" class="card-img-top object-fit-cover" style="height: 200px;" alt="Mặt trước">
+                            <div class="card-body py-2 px-3 bg-light">
+                                <h6 class="card-title fw-bold small mb-0"><i class="bi bi-1-square me-2"></i>Mặt trước (Nắp capo, cản trước)</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-light rounded-3 overflow-hidden h-100 shadow-sm">
+                            <img src="/images/inspection/car_back.png" class="card-img-top object-fit-cover" style="height: 200px;" alt="Mặt sau">
+                            <div class="card-body py-2 px-3 bg-light">
+                                <h6 class="card-title fw-bold small mb-0"><i class="bi bi-2-square me-2"></i>Mặt sau (Cốp, cản sau)</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-light rounded-3 overflow-hidden h-100 shadow-sm">
+                            <img src="/images/inspection/car_left.png" class="card-img-top object-fit-cover" style="height: 200px;" alt="Bên trái">
+                            <div class="card-body py-2 px-3 bg-light">
+                                <h6 class="card-title fw-bold small mb-0"><i class="bi bi-3-square me-2"></i>Thân xe (Bên trái)</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-light rounded-3 overflow-hidden h-100 shadow-sm">
+                            <img src="/images/inspection/car_right.png" class="card-img-top object-fit-cover" style="height: 200px;" alt="Bên phải">
+                            <div class="card-body py-2 px-3 bg-light">
+                                <h6 class="card-title fw-bold small mb-0"><i class="bi bi-4-square me-2"></i>Thân xe (Bên phải)</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-warning mt-4 mb-0 border-0 rounded-3">
+                    <div class="d-flex">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-2 mt-1"></i>
+                        <div class="small fw-600">
+                            Khách hàng có quyền yêu cầu đổi xe nếu tình trạng hiện thực lúc nhận xe không đúng như hình ảnh và thông tin đã cung cấp.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 mt-3">
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Đã kiểm tra sơ bộ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function setInspectionData(carName) {
+            document.getElementById('carInspectionName').innerText = 'Thông tin chi tiết xe: ' + carName;
+        }
+
+        async function removeFromCart(itemId) {
+            const result = await Swal.fire({
+                title: 'Xác nhận xóa?',
+                text: "Bạn có chắc muốn xóa xe này khỏi giỏ hàng?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6e7881',
+                confirmButtonText: 'Đồng ý xóa',
+                cancelButtonText: 'Hủy'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const formData = new FormData();
+                    formData.append('id', itemId);
+                    
+                    const res = await fetch('/Cart/RemoveFromCart', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success) {
+                        const row = document.getElementById(`cart-item-${itemId}`);
+                        row.classList.add('fade-out');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                        
+                        if (typeof updateCartBadge === 'function') updateCartBadge();
+                    } else {
+                        Swal.fire('Lỗi', data.message || 'Không thể xóa sản phẩm.', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Lỗi', 'Có lỗi xảy ra khi kết nối máy chủ.', 'error');
+                }
+            }
+        }
+
+        // Handle date changes
+        document.querySelectorAll('.cart-date-picker').forEach(picker => {
+            picker.addEventListener('change', async function() {
+                const itemId = this.getAttribute('data-item-id');
+                const row = document.getElementById(`cart-item-${itemId}`);
+                const startInput = row.querySelector('.start-date-picker');
+                const endInput = row.querySelector('.end-date-picker');
+                
+                const start = new Date(startInput.value);
+                const end = new Date(endInput.value);
+                
+                if (isNaN(start) || isNaN(end) || end <= start) {
+                    Swal.fire('Lỗi', 'Ngày trả xe phải sau ngày nhận xe.', 'warning');
+                    return;
+                }
+
+                // Calculate price locally
+                const diffHours = Math.ceil((end - start) / (1000 * 60 * 60));
+                document.querySelector(`.hours-badge-${itemId}`).innerText = `${diffHours} giờ`;
+
+                const pricePerHour = parseFloat(startInput.getAttribute('data-price-per-hour')) || 0;
+                let maxPrice = parseFloat(startInput.getAttribute('data-max-price')) || 0;
+                const maxDayPrice = maxPrice;
+
+                let estimatedPrice = 0;
+                const fullDays = Math.floor(diffHours / 24);
+                const rem = diffHours % 24;
+                let remP = 0;
+                if (rem > 0) {
+                    remP = Math.min(rem * pricePerHour, maxDayPrice);
+                }
+                estimatedPrice = (fullDays * maxDayPrice) + remP;
+
+                // Apply discount from selected ContractType
+                const pkgSelector = row.querySelector('.rent-package-selector');
+                const selectedOpt = pkgSelector?.options[pkgSelector.selectedIndex];
+                const discountPct = parseFloat(selectedOpt?.getAttribute('data-discount')) || 0;
+                let originalPrice = estimatedPrice;
+                let discountAmount = 0;
+
+                const discountInfoEl = document.querySelector(`.item-discount-info-${itemId}`);
+                const originalPriceEl = document.querySelector(`.item-original-price-${itemId}`);
+                const discountBadgeEl = document.querySelector(`.item-discount-badge-${itemId}`);
+
+                if (discountPct > 0) {
+                    discountAmount = Math.round(estimatedPrice * discountPct / 100);
+                    estimatedPrice = estimatedPrice - discountAmount;
+                    if (discountInfoEl) {
+                        discountInfoEl.style.display = 'block';
+                        originalPriceEl.innerText = new Intl.NumberFormat('vi-VN').format(originalPrice) + ' đ';
+                        discountBadgeEl.innerText = '-' + discountPct + '%';
+                    }
+                } else {
+                    if (discountInfoEl) discountInfoEl.style.display = 'none';
+                }
+
+                // Format price
+                document.querySelector(`.item-price-${itemId}`).innerText = new Intl.NumberFormat('vi-VN').format(estimatedPrice) + ' đ';
+
+                // Sync with server
+                const formData = new FormData();
+                formData.append('cartItemId', itemId);
+                formData.append('startDate', startInput.value);
+                formData.append('endDate', endInput.value);
+                formData.append('estimatedPrice', estimatedPrice);
+
+                try {
+                    const res = await fetch('/Cart/UpdateCartItemDates', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('cartTotalDisplay').innerText = new Intl.NumberFormat('vi-VN').format(data.cartTotal) + ' đ';
+                        
+                        // Update discount summary in sidebar
+                        const discountRow = document.getElementById('cartDiscountRow');
+                        const allDiscountInfos = document.querySelectorAll('[class*="item-discount-info-"]');
+                        let totalDiscount = 0;
+                        allDiscountInfos.forEach(el => {
+                            if (el.style.display !== 'none') {
+                                const badge = el.querySelector('[class*="item-discount-badge-"]');
+                                const origEl = el.querySelector('[class*="item-original-price-"]');
+                                if (badge && origEl) {
+                                    const pctText = badge.innerText.replace(/[^0-9.]/g, '');
+                                    const origText = origEl.innerText.replace(/[^0-9]/g, '');
+                                    const orig = parseInt(origText) || 0;
+                                    const pct = parseFloat(pctText) || 0;
+                                    totalDiscount += Math.round(orig * pct / 100);
+                                }
+                            }
+                        });
+                        if (totalDiscount > 0) {
+                            discountRow.style.display = 'flex';
+                            discountRow.style.cssText = 'display:flex !important';
+                            document.getElementById('cartDiscountDisplay').innerText = '-' + new Intl.NumberFormat('vi-VN').format(totalDiscount) + ' đ';
+                        } else {
+                            discountRow.style.cssText = 'display:none !important';
+                        }
+                    }
+                } catch(e) {
+                    console.error("Update failed", e);
+                }
+            });
+        });
+
+        // Handle Package Selection (from ContractType)
+        document.querySelectorAll('.rent-package-selector').forEach(selector => {
+            selector.addEventListener('change', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const row = document.getElementById(`cart-item-${itemId}`);
+                const startInput = row.querySelector('.start-date-picker');
+                const endInput = row.querySelector('.end-date-picker');
+                
+                if (this.value === 'custom') return;
+                
+                const selectedOption = this.options[this.selectedIndex];
+                const days = parseInt(selectedOption.getAttribute('data-days')) || 1;
+                
+                const start = new Date(startInput.value);
+                if (isNaN(start)) return;
+                
+                let end = new Date(start);
+                end.setDate(end.getDate() + days);
+                
+                // Adjust timezone offset to preserve local time format correctly
+                end.setMinutes(end.getMinutes() - end.getTimezoneOffset());
+                endInput.value = end.toISOString().slice(0,16);
+                
+                // Trigger calculation manually
+                const event = new Event('change');
+                endInput.dispatchEvent(event);
+            });
+        });
+        
+        // Ensure manual date picks auto-select the best matching package
+        document.querySelectorAll('.cart-date-picker').forEach(picker => {
+            picker.addEventListener('input', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const row = document.getElementById(`cart-item-${itemId}`);
+                const startInput = row.querySelector('.start-date-picker');
+                const endInput = row.querySelector('.end-date-picker');
+                const selector = row.querySelector('.rent-package-selector');
+
+                if (!selector) return;
+
+                const start = new Date(startInput.value);
+                const end = new Date(endInput.value);
+                if (isNaN(start) || isNaN(end) || end <= start) return;
+
+                const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24));
+                
+                // Find the best matching contract type (highest days <= diffDays, tie-break by discount)
+                let bestOption = null;
+                let maxMatchDays = -1;
+                let maxDiscount = -1;
+
+                Array.from(selector.options).forEach(opt => {
+                    const optDays = parseInt(opt.getAttribute('data-days')) || 0;
+                    const optDiscount = parseFloat(opt.getAttribute('data-discount')) || 0;
+                    
+                    if (optDays <= diffDays) {
+                        if (optDays > maxMatchDays || (optDays === maxMatchDays && optDiscount > maxDiscount)) {
+                            maxMatchDays = optDays;
+                            maxDiscount = optDiscount;
+                            bestOption = opt;
+                        }
+                    }
+                });
+
+                if (bestOption) {
+                    selector.value = bestOption.value;
+                }
+            });
+        });
+
+        // Handle Driver Selection
+        document.querySelectorAll('.driver-selector').forEach(selector => {
+            selector.addEventListener('change', async function() {
+                const itemId = this.getAttribute('data-item-id');
+                const driverId = parseInt(this.value) || 0;
+                const feeDisplay = document.querySelector(`.driver-fee-display-${itemId}`);
+
+                const formData = new FormData();
+                formData.append('cartItemId', itemId);
+                formData.append('driverId', driverId);
+
+                try {
+                    const res = await fetch('/Cart/UpdateCartItemDriver', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (data.withDriver && feeDisplay) {
+                            feeDisplay.style.display = 'block';
+                            feeDisplay.innerHTML = `<i class="bi bi-person-check me-1"></i>Tài xế: <strong>${data.driverName}</strong> — ${new Intl.NumberFormat('vi-VN').format(data.dailyRate)}đ/ngày`;
+                        } else if (feeDisplay) {
+                            feeDisplay.style.display = 'none';
+                        }
+                    }
+                } catch(e) {
+                    console.error("Driver update failed", e);
+                }
+            });
+        });
+    </script>
+    <style>
+        .cart-item-row { transition: all 0.3s ease; }
+        .cart-item-row:hover { background-color: #f8fafc; }
+        .fade-out { opacity: 0; transform: translateX(20px); pointer-events: none; }
+        .object-fit-cover { object-fit: cover; }
+        .fw-800 { font-weight: 800; }
+        .fw-600 { font-weight: 600; }
+    </style>
+}

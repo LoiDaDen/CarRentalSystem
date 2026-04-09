@@ -1,0 +1,102 @@
+@model IEnumerable<CarRentalSystem.Models.Driver>
+@{ ViewData["Title"] = "Thuê Tài Xế"; }
+
+<style>
+    .driver-card { border-radius: 16px; transition: transform 0.3s, box-shadow 0.3s; border: none; overflow: hidden; }
+    .driver-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,.1); }
+    .driver-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #10b981; }
+    .driver-stat { background: #f8f9fa; border-radius: 10px; padding: 8px 12px; text-align: center; }
+</style>
+
+<div class="container py-4">
+    <div class="text-center mb-5">
+        <h1 class="fw-800 mb-2"><i class="bi bi-person-badge text-success"></i> Thuê Tài Xế Chuyên Nghiệp</h1>
+        <p class="text-muted lead">Đội ngũ tài xế giàu kinh nghiệm, an toàn, chuyên nghiệp. Giá hợp lý.</p>
+        @if (User.Identity != null && User.Identity.IsAuthenticated)
+        {
+            <a asp-action="Register" class="btn btn-outline-success rounded-pill px-4 fw-bold mt-2"><i class="bi bi-plus-circle me-2"></i>Đăng ký làm Tài Xế</a>
+        }
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <select class="form-select fw-bold" onchange="window.location.href='?locationId='+this.value">
+                <option value="">Tất cả khu vực</option>
+                @if (ViewBag.Locations != null)
+                {
+                    foreach (var loc in ViewBag.Locations)
+                    {
+                        <option value="@loc.LocationID">@loc.Name</option>
+                    }
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        @foreach (var driver in Model)
+        {
+            <div class="col-lg-4 col-md-6">
+                <div class="card driver-card h-100 bg-white shadow-sm">
+                    <div class="card-body p-4 text-center">
+                        @if (!string.IsNullOrEmpty(driver.AvatarUrl))
+                        {
+                            <img src="@driver.AvatarUrl" alt="@driver.FullName" class="driver-avatar mb-3">
+                        }
+                        else
+                        {
+                            <div class="driver-avatar mx-auto mb-3 bg-success bg-opacity-10 d-flex align-items-center justify-content-center">
+                                <i class="bi bi-person-fill text-success fs-1"></i>
+                            </div>
+                        }
+                        <h5 class="fw-bold mb-1">@driver.FullName</h5>
+                        <div class="text-muted small mb-3">
+                            <i class="bi bi-geo-alt me-1"></i>@(driver.Location?.Name ?? "Toàn quốc")
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-2 mb-3">
+                            <div class="d-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="bi @(i <= Math.Round((double)driver.Rating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.75rem;"></i>
+                                }
+                                <span class="fw-800 ms-1" style="color: #92400e; font-size: 0.8rem;">@driver.Rating.ToString("0.0")</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-center gap-3 mb-3">
+                            <div class="driver-stat">
+                                <div class="fw-800 text-success">@driver.ExperienceYears</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">Năm KN</div>
+                            </div>
+                            <div class="driver-stat">
+                                <div class="fw-800 text-primary">@driver.TotalTrips</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">Chuyến</div>
+                            </div>
+                            <div class="driver-stat">
+                                <div class="fw-800 text-warning">@driver.LicenseType</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">Bằng lái</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <div>
+                                <div class="fw-800 text-success fs-5">@driver.HourlyRate.ToString("N0")<span class="text-muted fw-normal fs-6">đ/h</span></div>
+                                <div class="text-muted small">@driver.DailyRate.ToString("N0")đ/ngày</div>
+                            </div>
+                            <a asp-action="Profile" asp-route-id="@driver.DriverID" class="btn btn-success rounded-pill px-3 fw-bold">Chi tiết</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (!Model.Any())
+        {
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-person-x display-1 text-muted opacity-50 mb-3 d-block"></i>
+                <h4 class="fw-bold">Chưa có tài xế nào</h4>
+                <p class="text-muted">Hãy là người đầu tiên đăng ký làm tài xế!</p>
+            </div>
+        }
+    </div>
+</div>

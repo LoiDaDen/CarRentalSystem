@@ -1,0 +1,259 @@
+@model IEnumerable<CarRentalSystem.Models.User>
+@{
+    ViewData["Title"] = "Quản lý Người dùng";
+    Layout = "_AdminLayout";
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Người dùng</h2>
+        <p class="text-muted mb-0">Theo dõi và quản lý tài khoản khách hàng, phân quyền quản trị.</p>
+    </div>
+    <form method="get" class="d-flex gap-2">
+        <div class="input-group" style="max-width: 300px;">
+            <span class="input-group-text bg-white border-end-0 rounded-start-4 border">
+                <i class="bi bi-search text-muted"></i>
+            </span>
+            <input type="text" name="search" value="@ViewBag.Search" class="form-control border-start-0 ps-0 rounded-end-4 border"
+                   placeholder="Tìm theo tên, email..." />
+        </div>
+        <button class="btn btn-primary rounded-3 px-4 fw-bold">Tìm</button>
+        @if (!string.IsNullOrEmpty(ViewBag.Search))
+        {
+            <a href="@Url.Action("Index")" class="btn btn-light rounded-3 border">Xóa lọc</a>
+        }
+    </form>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-5">
+    <div class="col-md-3">
+        <a href="@Url.Action("Index", new { role = "", search = ViewBag.Search })" class="text-decoration-none">
+            <div class="card shadow-sm rounded-4 p-4 text-center transition-all hover-translate-y @(string.IsNullOrEmpty(ViewBag.ActiveRole) ? "border-primary border-2 shadow-lg" : "border-0")">
+                <h3 class="fw-800 mb-0 text-dark">@ViewBag.TotalUsers</h3>
+                <small class="text-muted fw-bold text-uppercase" style="font-size:0.7rem; letter-spacing:1px;">Tổng tài khoản</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="@Url.Action("Index", new { role = "Customer", search = ViewBag.Search })" class="text-decoration-none">
+            <div class="card shadow-sm rounded-4 p-4 text-center transition-all hover-translate-y @(ViewBag.ActiveRole == "Customer" ? "border-primary border-2 shadow-lg" : "border-0")" style="background: linear-gradient(135deg,#eff6ff,#fff);">
+                <h3 class="fw-800 mb-0 text-primary">@ViewBag.TotalCustomers</h3>
+                <small class="text-muted fw-bold text-uppercase" style="font-size:0.7rem; letter-spacing:1px;">Khách hàng</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="@Url.Action("Index", new { role = "Partner", search = ViewBag.Search })" class="text-decoration-none">
+            <div class="card shadow-sm rounded-4 p-4 text-center transition-all hover-translate-y @(ViewBag.ActiveRole == "Partner" ? "border-warning border-2 shadow-lg" : "border-0")" style="background: linear-gradient(135deg,#fef3c7,#fff);">
+                <h3 class="fw-800 mb-0 text-warning">@ViewBag.TotalPartners</h3>
+                <small class="text-muted fw-bold text-uppercase" style="font-size:0.7rem; letter-spacing:1px;">Đối tác</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="@Url.Action("Index", new { role = "Admin", search = ViewBag.Search })" class="text-decoration-none">
+            <div class="card shadow-sm rounded-4 p-4 text-center transition-all hover-translate-y @(ViewBag.ActiveRole == "Admin" ? "border-success border-2 shadow-lg" : "border-0")" style="background: linear-gradient(135deg,#ecfdf5,#fff);">
+                <h3 class="fw-800 mb-0 text-success">@ViewBag.TotalAdmins</h3>
+                <small class="text-muted fw-bold text-uppercase" style="font-size:0.7rem; letter-spacing:1px;">Quản trị viên</small>
+            </div>
+        </a>
+    </div>
+</div>
+
+<style>
+    .hover-translate-y:hover { transform: translateY(-4px); }
+    .transition-all { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+</style>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead style="background: #f8fafd;">
+                <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
+                    <th class="ps-4 py-3">Người dùng</th>
+                    <th class="py-3">Liên hệ</th>
+                    <th class="py-3 text-center">Trạng thái</th>
+                    <th class="py-3">Vai trò</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    <tr style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ekycUser-@user.UserID">
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(user.Name)&background=3b82f6&color=fff&size=40&rounded=true"
+                                     alt="@user.Name" width="40" height="40" class="rounded-circle shadow-sm" />
+                                <div>
+                                    <div class="fw-800 text-dark">@user.Name</div>
+                                    <small class="text-muted">ID #@user.UserID</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-500 small">@user.Email</div>
+                            @if (!string.IsNullOrEmpty(user.Phone))
+                            {
+                                <small class="text-muted"><i class="bi bi-phone me-1"></i>@user.Phone</small>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (user.IsBlacklisted)
+                            {
+                                <span class="badge bg-dark rounded-pill px-3 py-1 mb-1 d-block"><i class="bi bi-x-circle-fill me-1"></i>Đã khóa</span>
+                            }
+                            @if (user.IsVerified)
+                            {
+                                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1 d-block"><i class="bi bi-shield-check me-1"></i>eKYC OK</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3 py-1 d-block"><i class="bi bi-shield-exclamation me-1"></i>Chưa eKYC</span>
+                            }
+                        </td>
+                        <td>
+                            @{
+                                var roleBg = user.Role == "Admin" ? "bg-danger" : user.Role == "Staff" ? "bg-warning text-dark" : "bg-success";
+                                var roleIcon = user.Role == "Admin" ? "bi-shield-fill" : user.Role == "Staff" ? "bi-person-badge-fill" : "bi-person-fill";
+                            }
+                            <span class="badge @roleBg text-white rounded-pill px-3 py-2 fw-bold" style="font-size:0.77rem;">
+                                <i class="bi @roleIcon me-1"></i>@user.Role
+                            </span>
+                        </td>
+
+                    </tr>
+
+                    <!-- Delete Modal -->
+                    <div class="modal fade" id="delUser-@user.UserID" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered modal-sm">
+                            <div class="modal-content border-0 shadow-lg rounded-4">
+                                <div class="modal-body p-4 text-center">
+                                    <div class="mb-3">
+                                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style="width:60px;height:60px;">
+                                            <i class="bi bi-person-x-fill text-danger fs-3"></i>
+                                        </span>
+                                    </div>
+                                    <h6 class="fw-800 mb-1">Xóa tài khoản?</h6>
+                                    <p class="text-muted small mb-4">@user.Name sẽ bị xóa khỏi hệ thống.</p>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-light flex-grow-1 rounded-3" data-bs-dismiss="modal">Hủy</button>
+                                        <form asp-action="Delete" asp-route-id="@user.UserID" method="post" class="flex-grow-1">
+                                            <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">Xóa</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- eKYC Modal -->
+                    <div class="modal fade" id="ekycUser-@user.UserID" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content border-0 shadow-lg rounded-4">
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="fw-bold mb-0">Hồ sơ chi tiết: @user.Name</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="p-3 mb-4 bg-light rounded-3">
+                                        <h6 class="fw-bold mb-3">Thông tin cá nhân</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.7rem;">Số CCCD / Passport</small>
+                                                <div class="fw-medium">@(string.IsNullOrEmpty(user.CitizenId) ? "Chưa cập nhật" : user.CitizenId)</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.7rem;">Giấy phép lái xe (GPLX)</small>
+                                                <div class="fw-medium">@(string.IsNullOrEmpty(user.DrivingLicenseNumber) ? "Chưa cập nhật" : user.DrivingLicenseNumber)</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.7rem;">Giới tính</small>
+                                                <div class="fw-medium">@(string.IsNullOrEmpty(user.Gender) ? "Chưa" : user.Gender)</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.7rem;">Ngày sinh</small>
+                                                <div class="fw-medium">@(user.DateOfBirth?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.7rem;">Địa chỉ thường trú</small>
+                                                <div class="fw-medium">@(string.IsNullOrEmpty(user.Address) ? "Chưa cập nhật" : user.Address)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <h6 class="fw-bold mb-3">Tài liệu định danh (eKYC)</h6>
+                                    <div class="row g-3 text-center">
+                                        <div class="col-4">
+                                            <div class="small fw-bold mb-2">CCCD mặt trước</div>
+                                            @if(!string.IsNullOrEmpty(user.IdCardFrontUrl)) { <img src="@user.IdCardFrontUrl" class="img-fluid rounded border" /> } else { <span class="text-muted small">Chưa có</span> }
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="small fw-bold mb-2">CCCD mặt sau</div>
+                                            @if(!string.IsNullOrEmpty(user.IdCardBackUrl)) { <img src="@user.IdCardBackUrl" class="img-fluid rounded border" /> } else { <span class="text-muted small">Chưa có</span> }
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="small fw-bold mb-2">Bằng lái xe</div>
+                                            @if(!string.IsNullOrEmpty(user.DrivingLicenseUrl)) { <img src="@user.DrivingLicenseUrl" class="img-fluid rounded border" /> } else { <span class="text-muted small">Chưa có</span> }
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @if (user.Role != "Admin")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Admin" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-shield-fill me-1"></i>Thăng Admin
+                                                    </button>
+                                                </form>
+                                            }
+                                            @if (user.Role == "Admin")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Customer" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-person-fill me-1"></i>Hạ xuống Customer
+                                                    </button>
+                                                </form>
+                                            }
+                                            <form asp-action="ToggleBlacklist" asp-route-id="@user.UserID" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-dark btn-sm rounded-pill fw-500">
+                                                    <i class="bi bi-slash-circle me-1"></i>@(user.IsBlacklisted ? "Mở Khóa" : "Khóa Tài Khoản")
+                                                </button>
+                                            </form>
+                                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill fw-500" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#delUser-@user.UserID">
+                                                <i class="bi bi-trash3 me-1"></i>Xóa
+                                            </button>
+                                        </div>
+                                        <form asp-action="ToggleVerify" asp-route-id="@user.UserID" method="post" class="d-inline mb-0">
+                                            <button type="submit" class="btn @(user.IsVerified ? "btn-outline-danger" : "btn-success") px-4 fw-bold rounded-pill h-100">
+                                                @(user.IsVerified ? "Hủy Duyệt eKYC" : "Xác Nhận Hợp Lệ")
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <i class="bi bi-people display-4 opacity-10 d-block mb-3"></i>
+                            <p class="fw-bold opacity-50">Không tìm thấy người dùng nào</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

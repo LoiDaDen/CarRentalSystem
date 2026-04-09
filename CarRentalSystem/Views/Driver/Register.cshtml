@@ -1,0 +1,83 @@
+@{ 
+    ViewData["Title"] = "Đăng Ký Tài Xế"; 
+    var currentUser = ViewBag.CurrentUser as CarRentalSystem.Models.User;
+}
+
+<div class="container py-4" style="max-width: 700px;">
+    <div class="text-center mb-4">
+        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:80px;height:80px;">
+            <i class="bi bi-person-badge-fill text-success fs-1"></i>
+        </div>
+        <h2 class="fw-800">Đăng Ký Làm Tài Xế</h2>
+        <p class="text-muted">Gia nhập đội ngũ tài xế chuyên nghiệp của CarRental. Thu nhập hấp dẫn, linh hoạt thời gian.</p>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 p-4">
+        <form asp-action="Register" method="post">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Họ và tên <span class="text-danger">*</span></label>
+                    <input type="text" name="FullName" class="form-control" placeholder="Nguyễn Văn A" value="@(currentUser?.Name ?? "")" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Số điện thoại <span class="text-danger">*</span></label>
+                    <input type="text" name="Phone" class="form-control" placeholder="0901234567" value="@(currentUser?.Phone ?? "")" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Loại bằng lái <span class="text-danger">*</span></label>
+                    <select name="LicenseType" class="form-select" required>
+                        <option value="B1">B1 - Xe dưới 9 chỗ</option>
+                        <option value="B2" selected>B2 - Xe dưới 9 chỗ (lái xe thuê)</option>
+                        <option value="C">C - Xe tải</option>
+                        <option value="D">D - Xe khách</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Số bằng lái</label>
+                    <input type="text" name="LicenseNumber" class="form-control" placeholder="Số trên bằng lái xe">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Kinh nghiệm (năm) <span class="text-danger">*</span></label>
+                    <input type="number" name="ExperienceYears" class="form-control" value="1" min="0" max="50" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Khu vực hoạt động</label>
+                    <select name="LocationID" class="form-select">
+                        <option value="">Toàn quốc</option>
+                        @if (ViewBag.Locations != null)
+                        {
+                            foreach (var loc in ViewBag.Locations)
+                            {
+                                <option value="@loc.LocationID">@loc.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Giá theo giờ (VNĐ)</label>
+                    <input type="number" name="HourlyRate" class="form-control" value="80000" min="50000">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Giá theo ngày (VNĐ)</label>
+                    <input type="number" name="DailyRate" class="form-control" value="500000" min="200000">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Giới thiệu bản thân</label>
+                    <textarea name="Description" class="form-control" rows="3" placeholder="Tôi có nhiều năm kinh nghiệm lái xe đường dài, an toàn, thân thiện..."></textarea>
+                </div>
+            </div>
+
+            <div class="alert alert-success mt-4 small d-flex align-items-start">
+                <i class="bi bi-info-circle-fill me-2 mt-1"></i>
+                <div>
+                    <strong>Lưu ý:</strong> Sau khi đăng ký, hồ sơ của bạn sẽ được Admin xét duyệt trong vòng 24h. 
+                    Bạn sẽ nhận thông báo qua email khi hồ sơ được duyệt.
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-pill mt-3">
+                <i class="bi bi-send me-2"></i>Gửi Đăng Ký
+            </button>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,290 @@
+@using System.Globalization
+@model IEnumerable<CarRentalSystem.Models.Car>
+@{ ViewData["Title"] = "CarRental - Tìm Xe Của Bạn"; }
+
+<style>
+    body { background-color: #f4f6f8; }
+    .sidebar-filter {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 20px;
+    }
+    .filter-title {
+        font-weight: 800;
+        font-size: 1.1rem;
+        margin-bottom: 16px;
+        color: #1a1c20;
+    }
+    .form-check-label { font-weight: 500; color: #444; }
+    .car-card {
+        border-radius: 16px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: none;
+        overflow: hidden;
+    }
+    .car-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+    }
+    .price-tag {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0d6efd;
+    }
+    .btn-brand-filter {
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        padding: 8px 16px;
+        font-weight: 600;
+        color: #555;
+        background: white;
+        transition: all 0.2s;
+    }
+    .btn-brand-filter:hover, .btn-brand-filter.active {
+        background: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    .page-header {
+        background: white;
+        padding: 30px 0;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <h2 class="fw-bolder mb-0">Hơn @Model.Count() xe sẵn sàng phục vụ</h2>
+        <p class="text-muted mt-1 mb-0">Lựa chọn chiếc xe lý tưởng cho chuyến đi của bạn.</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <form method="get" asp-action="Index" class="row g-4" id="filterForm">
+        <!-- LEFT SIDEBAR -->
+        <div class="col-lg-3">
+            <div class="sidebar-filter">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bolder mb-0"><i class="bi bi-funnel"></i> Bộ Lọc</h5>
+                    <a href="@Url.Action("Index")" class="text-danger small fw-bold text-decoration-none">Xóa lọn</a>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="filter-title">Địa điểm</div>
+                    <select class="form-select form-select-sm fw-bold border-1" name="location" onchange="document.getElementById('filterForm').submit()">
+                        <option value="">Toàn quốc</option>
+                        @if(ViewBag.Locations != null) {
+                            foreach (var loc in ViewBag.Locations) {
+                                <option value="@loc.Name" selected="@(Context.Request.Query["location"].ToString() == loc.Name.ToString())">@loc.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                @if (ViewBag.Contract == null) {
+                    <div class="mb-4">
+                        <div class="filter-title">Thời gian chờ (Nhận - Trả)</div>
+                        <input type="datetime-local" class="form-control form-control-sm mb-2 fw-bold" name="startDate" value="@Context.Request.Query["startDate"]" onchange="document.getElementById('filterForm').submit()">
+                        <input type="datetime-local" class="form-control form-control-sm fw-bold" name="endDate" value="@Context.Request.Query["endDate"]" onchange="document.getElementById('filterForm').submit()">
+                    </div>
+                } else {
+                    <input type="hidden" name="contractId" value="@(ViewBag.Contract.ContractTypeID)" />
+                    <div class="mb-4 p-3 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-25">
+                        <div class="filter-title text-success"><i class="bi bi-file-earmark-text-fill me-1"></i>Đang áp dụng hợp đồng</div>
+                        <div class="fw-bold fs-6">@ViewBag.Contract.Name</div>
+                        <div class="small mt-1 text-muted">@ViewBag.Contract.MinDurationDays ngày</div>
+                    </div>
+                }
+
+                <div class="mb-4">
+                    <div class="filter-title">Loại xe</div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="category" value="" id="catAll" @(string.IsNullOrEmpty(Context.Request.Query["category"]) ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
+                        <label class="form-check-label" for="catAll">Tất cả</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="category" value="Sedan 5 chỗ" id="catSedan" @(Context.Request.Query["category"] == "Sedan 5 chỗ" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
+                        <label class="form-check-label" for="catSedan">Sedan 5 chỗ</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="category" value="SUV 7 chỗ" id="catSuv7" @(Context.Request.Query["category"] == "SUV 7 chỗ" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
+                        <label class="form-check-label" for="catSuv7">SUV 7 chỗ</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="category" value="MPV 7 chỗ" id="catMpv" @(Context.Request.Query["category"] == "MPV 7 chỗ" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
+                        <label class="form-check-label" for="catMpv">MPV 7 chỗ</label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="filter-title">Tính năng nổi bật</div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="isPremium" value="true" id="isPremium" @(Context.Request.Query["isPremium"] == "true" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
+                        <label class="form-check-label" for="isPremium"><i class="bi bi-gem text-warning"></i> Chuyên nghiệp / Xế xịn</label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- RIGHT MAIN CONTENT -->
+        <div class="col-lg-9">
+            <!-- Top Brands & Sort -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex gap-2 pe-3" style="overflow-x: auto;">
+                    <button type="submit" name="brandId" value="" class="btn-brand-filter @(string.IsNullOrEmpty(Context.Request.Query["brandId"]) ? "active" : "")">Tất cả hãng</button>
+                    @if(ViewBag.Brands != null)
+                    {
+                        foreach (var brand in ViewBag.Brands)
+                        {
+                            var bId = brand.BrandID.ToString();
+                            <button type="submit" name="brandId" value="@bId" class="btn-brand-filter @(Context.Request.Query["brandId"] == bId ? "active" : "")">@brand.Name</button>
+                        }
+                    }
+                </div>
+                <div class="flex-shrink-0">
+                    <select class="form-select fw-bold border-0 shadow-sm" name="sort" onchange="document.getElementById('filterForm').submit()">
+                        <option value="price_asc" selected="@(Context.Request.Query["sort"] == "price_asc")">Giá thấp đến cao</option>
+                        <option value="price_desc" selected="@(Context.Request.Query["sort"] == "price_desc")">Giá cao đến thấp</option>
+                        <option value="newest" selected="@(Context.Request.Query["sort"] == "newest" || string.IsNullOrEmpty(Context.Request.Query["sort"]))">Đề xuất (Mới nhất)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Car Grid -->
+            <div class="row g-4">
+                @foreach (var car in Model)
+                {
+                    var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
+                    var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
+                    var carReviewCount = carReviews.Count;
+                    var p4h = car.PricePerDay * 0.4m;
+                    var p8h = car.PricePerDay * 0.7m;
+                    var p24h = car.PricePerDay;
+                    var p12h = car.PricePerDay * 0.85m;
+                    var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card car-card h-100 bg-white shadow-sm">
+                            <div class="position-relative">
+                                @if (car.IsPremium)
+                                {
+                                    <span class="badge bg-dark position-absolute top-0 start-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm"><i class="bi bi-gem text-warning"></i> Premium</span>
+                                }
+                                @if (isElectric)
+                                {
+                                    <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm" style="background: linear-gradient(135deg, #10b981, #06b6d4);"><i class="bi bi-lightning-charge-fill"></i> Xe Điện</span>
+                                }
+                                <img src="@(car.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800")" class="card-img-top object-fit-cover" style="height: 200px;" alt="@car.CarName">
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small fw-bold text-uppercase">@car.CarBrand?.Name</span>
+                                    <div class="d-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                                        @for (int s = 1; s <= 5; s++)
+                                        {
+                                            <i class="bi @(s <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.7rem;"></i>
+                                        }
+                                        <span class="fw-800 ms-1" style="color: #92400e; font-size: 0.75rem;">@carAvgRating.ToString("0.0")</span>
+                                        @if (carReviewCount > 0)
+                                        {
+                                            <span class="text-muted" style="font-size: 0.65rem;">(@carReviewCount)</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                                    <h5 class="fw-bolder mb-0 text-dark">@car.CarName</h5>
+                                    @if(car.OwnerID == null)
+                                    {
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size: 0.65rem;"><i class="bi bi-building"></i> Xe Hệ Thống</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" style="font-size: 0.65rem;"><i class="bi bi-person-badge"></i> Xe Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
+                                    }
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mb-2 text-muted small fw-500">
+                                    <span><i class="bi bi-gear"></i> @car.Transmission</span> •
+                                    <span><i class="bi bi-person"></i> @car.Seats</span> •
+                                    @if (isElectric)
+                                    {
+                                        <span><i class="bi bi-lightning-charge text-success"></i> Điện</span>
+                                    }
+                                    else
+                                    {
+                                        <span><i class="bi bi-fuel-pump"></i> @car.FuelType</span>
+                                    }
+                                </div>
+
+                                <div class="d-flex gap-1 mb-2">
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 fw-bold" style="font-size: 0.7rem;">4h: @((p4h/1000).ToString("N0"))K</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-bold" style="font-size: 0.7rem;">8h: @((p8h/1000).ToString("N0"))K</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 fw-bold" style="font-size: 0.7rem;">12h: @((p12h/1000).ToString("N0"))K</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 fw-bold" style="font-size: 0.7rem;">24h: @((p24h/1000).ToString("N0"))K</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    @if(ViewBag.Contract == null) {
+                                        <div class="d-flex flex-column">
+                                            <div class="small text-muted mb-1">Bảng giá tham khảo</div>
+                                            <select class="form-select form-select-sm border-0 bg-success bg-opacity-10 text-success fw-bold" style="width: 155px; cursor: pointer;" onchange="document.getElementById('detail_car_@car.CarID').href='/Car/Details/@car.CarID?duration=' + this.value + '&startDate=@(Context.Request.Query["startDate"])&endDate=@(Context.Request.Query["endDate"])&contractId=@(ViewBag.ContractId)'">
+                                                @for(int h=1; h<=24; h++) {
+                                                    var bdBaseP = car.PricePerHour * h;
+                                                    decimal bdComboP = bdBaseP;
+                                                    if(h==4) bdComboP = car.PricePerDay * 0.4m;
+                                                    else if(h==8) bdComboP = car.PricePerDay * 0.7m;
+                                                    else if(h==12) bdComboP = car.PricePerDay * 0.85m;
+                                                    else if(h==24) bdComboP = car.PricePerDay;
+
+                                                    if(h==4 || h==8 || h==12 || h==24) {
+                                                        var strP = string.Join("", (bdBaseP.ToString("N0")+"đ").Select(c => c + "\u0336"));
+                                                        if(h == 24) {
+                                                            <option value="@h" selected>@(h)h: @strP @bdComboP.ToString("N0")đ</option>
+                                                        } else {
+                                                            <option value="@h">@(h)h: @strP @bdComboP.ToString("N0")đ</option>
+                                                        }
+                                                    } else {
+                                                        <option value="@h">@(h)h: @bdBaseP.ToString("N0")đ</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    } else {
+                                        <div class="d-flex flex-column">
+                                            <div class="small text-muted mb-1">Giá Hợp Đồng</div>
+                                            <div class="fw-bold text-success fs-5">Giảm @ViewBag.Contract.DiscountPercent.ToString("0.##")%</div>
+                                        </div>
+                                    }
+                                    <a id="detail_car_@car.CarID" asp-action="Details" asp-route-id="@car.CarID" asp-route-duration="24" asp-route-startDate="@Context.Request.Query["startDate"]" asp-route-endDate="@Context.Request.Query["endDate"]" asp-route-contractId="@ViewBag.ContractId" class="btn btn-outline-primary btn-sm px-3 rounded-pill fw-bold">Chi tiết</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (!Model.Any())
+                {
+                    <div class="col-12 text-center py-5">
+                        <div class="py-5 bg-white rounded-4 shadow-sm border border-danger border-opacity-10">
+                            <i class="bi bi-calendar-x display-1 text-danger opacity-50 mb-4 d-block"></i>
+                            <h4 class="fw-800">Trùng lịch / Không có xe</h4>
+                            <p class="text-muted px-5">KHÔNG tìm thấy xe theo đúng yêu cầu thời gian hoặc bộ lọc của bạn. Thử thay đổi các thông số tìm kiếm!</p>
+                            <a asp-action="Index" class="btn btn-outline-danger px-4 rounded-pill mt-2">Bỏ lọc</a>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Pagination dummy -->
+            @if (Model.Any())
+            {
+                <div class="text-center mt-5">
+                    <button type="button" class="btn btn-outline-primary fw-bold px-5 py-2 rounded-pill shadow-sm" style="border-width: 2px;">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Xem thêm...
+                    </button>
+                </div>
+            }
+        </div>
+    </form>
+</div>

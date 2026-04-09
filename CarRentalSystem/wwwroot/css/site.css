@@ -1,0 +1,190 @@
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --secondary: #64748b;
+    --dark: #0f172a;
+    --light: #f8fafc;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --glass: rgba(255, 255, 255, 0.8);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+body {
+    background-color: #f1f5f9;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--dark);
+}
+
+.navbar {
+    background: rgba(15, 23, 42, 0.9) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -1px;
+    font-weight: 800;
+    color: var(--primary) !important;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Hero Section */
+.hero-gradient {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 120px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-gradient::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--primary);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    border-radius: 0.75rem;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    transform: scale(1.02);
+}
+
+/* Custom Widgets */
+.stat-card {
+    padding: 1.5rem;
+    border-left: 4px solid var(--primary);
+}
+
+.hero-section {
+    position: relative;
+    padding: 8rem 0;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: white;
+    margin-bottom: 4rem;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: url('/images/pattern.svg') center/cover opacity 0.1;
+    pointer-events: none;
+}
+
+.car-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.status-available { background: #dcfce7; color: #166534; }
+.status-rented { background: #fee2e2; color: #991b1b; }
+
+/* Admin Sidebar */
+.admin-sidebar {
+    background: #0f172a;
+    min-height: calc(100vh - 72px);
+    color: #94a3b8;
+    padding: 2rem 1rem;
+}
+
+.admin-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s;
+}
+
+.admin-link i { margin-right: 0.75rem; }
+
+.admin-link:hover, .admin-link.active {
+    background: rgba(255,255,255,0.05);
+    color: white;
+}
+/* Dropdown Enhancement */
+.dropdown-menu {
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(10px);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem;
+    margin-top: 0.5rem !important;
+}
+
+.dropdown-item {
+    border-radius: 0.5rem;
+    padding: 0.6rem 1rem;
+    color: #94a3b8 !important;
+    transition: all 0.2s;
+}
+
+.dropdown-item:hover {
+    background: rgba(255,255,255,0.05) !important;
+    color: white !important;
+    transform: translateX(4px);
+}
+
+.dropdown-item i {
+    color: var(--primary);
+}
+
+.nav-item.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+/* Animations */.animate {
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+}
+
+@keyframes slideIn {
+    0% {
+        transform: translateY(1rem);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0rem);
+        opacity: 1;
+    }
+}
+
+.slideIn {
+    animation-name: slideIn;
+}

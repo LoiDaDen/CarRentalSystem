@@ -1,0 +1,94 @@
+@model CarRentalSystem.Models.Promotion
+@{
+    ViewData["Title"] = "Tạo Mã Khuyến Mãi";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    .form-control, .form-select { border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0.75rem 1rem; transition: all 0.2s; }
+    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .section-card { background: white; border-radius: 20px; padding: 2rem; border: 1px solid #f1f5f9; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h2 class="fw-bold mb-1" style="letter-spacing: -1px;">Thêm Khuyến Mãi</h2>
+        <p class="text-muted mb-0">Thiết lập chương trình giảm giá mới.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-light shadow-sm rounded-3 fw-bold px-4 py-2 border">Quay lại</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="section-card">
+            <form asp-action="Create" method="post">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Mã Voucher (Code) <span class="text-danger">*</span></label>
+                        <input asp-for="PromoCode" class="form-control" style="text-transform: uppercase; font-family: monospace; font-size: 1.1rem; font-weight: bold;" placeholder="VD: SUMMER2026" required />
+                        <span asp-validation-for="PromoCode" class="text-danger small"></span>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Trạng thái phát hành</label>
+                        <select asp-for="IsActive" class="form-select">
+                            <option value="true">🟢 Đang hoạt động</option>
+                            <option value="false">🔴 Tạm ngưng</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-uppercase text-muted">% Giảm giá <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" step="0.5" asp-for="DiscountPercent" class="form-control" required min="1" max="100" />
+                            <span class="input-group-text bg-light fw-bold text-danger border">%</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Giảm tối đa (VNĐ)</label>
+                        <div class="input-group">
+                            <input type="number" asp-for="MaxDiscountAmount" class="form-control" placeholder="Để trống nếu không giới hạn" />
+                            <span class="input-group-text bg-light fw-bold border">đ</span>
+                        </div>
+                        <small class="text-muted">Nhập số tiền tối đa được giảm.</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Ngày Bắt đầu <span class="text-danger">*</span></label>
+                        <input type="date" asp-for="ValidFrom" class="form-control" required value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Ngày Kết thúc <span class="text-danger">*</span></label>
+                        <input type="date" asp-for="ValidUntil" class="form-control" required value="@DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Giới hạn số lượt dùng <span class="text-danger">*</span></label>
+                        <input type="number" asp-for="UsageLimit" class="form-control" value="100" required />
+                    </div>
+                </div>
+
+                <hr class="my-4 border-light">
+                
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary rounded-3 px-5 py-3 fw-bold shadow-sm">
+                        <i class="bi bi-save me-2"></i>Lưu Khuyến Mãi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 bg-primary bg-opacity-10 text-primary rounded-4 p-4 shadow-sm">
+            <h6 class="fw-bold mb-3"><i class="bi bi-lightbulb-fill me-2 text-warning"></i>Kinh nghiệm tạo Promo Code</h6>
+            <ul class="small mb-0 opacity-75 list-unstyled lh-lg">
+                <li><i class="bi bi-check-circle-fill me-2"></i>Mã code nên ngắn gọn (6-12 ký tự).</li>
+                <li><i class="bi bi-check-circle-fill me-2"></i>Tránh dùng số 0 và chữ O, số 1 và chữ I để giảm nhầm lẫn.</li>
+                <li><i class="bi bi-check-circle-fill me-2"></i>Luôn giới hạn số lượng và ngày hết hạn.</li>
+                <li><i class="bi bi-check-circle-fill me-2"></i>Mức giảm giá lớn nên có trần (Tối đa VD: 500k).</li>
+            </ul>
+        </div>
+    </div>
+</div>

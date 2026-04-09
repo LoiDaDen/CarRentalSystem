@@ -1,0 +1,81 @@
+@model IEnumerable<CarRentalSystem.Models.Car>
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Duyệt Xe Mới";
+}
+
+<div class="container-fluid py-4">
+    <div class="mb-4">
+        <h2 class="fw-bold text-dark mb-1">Duyệt Xe Mới</h2>
+        <p class="text-muted">Xem xét các xe đối tác vừa đăng tải lên sàn trước khi cho phép hoạt động.</p>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show border-0 mb-4 shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show border-0 mb-4 shadow-sm" role="alert">
+            <i class="bi bi-x-circle-fill me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
+            <div class="opacity-25 mb-3">
+                <i class="bi bi-check2-circle display-1"></i>
+            </div>
+            <h4 class="text-muted fw-normal">Hiện không có xe nào đang chờ duyệt</h4>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var car in Model)
+            {
+                <div class="col-md-6 col-xl-4">
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+                        <img src="@car.ImageURL" class="card-img-top" alt="@car.CarName" style="height: 200px; object-fit: cover;">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0">@car.CarName</h5>
+                                <span class="badge bg-warning text-dark px-2">Chờ duyệt</span>
+                            </div>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-person me-1"></i>Chủ xe: <strong>@car.Owner?.Name</strong>
+                            </p>
+                            
+                            <ul class="list-unstyled small mb-4">
+                                <li class="mb-1"><i class="bi bi-tag me-2"></i>Hãng: @car.CarBrand?.Name</li>
+                                <li class="mb-1"><i class="bi bi-hash me-2"></i>Biển số: <code>@car.LicensePlate</code></li>
+                                <li class="mb-1"><i class="bi bi-upc-scan me-2"></i>Số khung: <code>@car.VIN</code></li>
+                                <li class="mb-1"><i class="bi bi-cash me-2"></i>Giá: @car.PricePerDay.ToString("N0")đ/ngày</li>
+                                <li class="mb-1"><i class="bi bi-geo-alt me-2"></i>Vị trí: @car.Location?.Name</li>
+                            </ul>
+
+                            <div class="bg-light p-3 rounded-3 mb-4">
+                                <p class="small text-muted mb-0">@car.Description</p>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <form asp-action="Approve" asp-route-id="@car.CarID" method="post" class="flex-grow-1">
+                                    <button type="submit" class="btn btn-success w-100 rounded-pill fw-bold">Duyệt</button>
+                                </form>
+                                <form asp-action="Reject" asp-route-id="@car.CarID" method="post" class="flex-grow-1">
+                                    <button type="submit" class="btn btn-outline-danger w-100 rounded-pill fw-bold">Từ chối</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
