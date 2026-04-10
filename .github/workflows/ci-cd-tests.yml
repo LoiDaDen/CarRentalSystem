@@ -12,54 +12,88 @@ env:
 
 jobs:
   build-and-test:
-    name: "\U0001F3D7️ Build & \U0001F9EA Test"
+    name: "🏗️ Build & 🧪 Test"
     runs-on: ubuntu-latest
 
     steps:
-    - name: "\U0001F4E5 Checkout code"
+    - name: "📥 Checkout code"
       uses: actions/checkout@v4
 
-    - name: "\U0001F527 Setup .NET SDK"
+    - name: "🔧 Setup .NET SDK"
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: "\U0001F4E6 Restore dependencies"
-      run: dotnet restore
-
-    - name: "\U0001F3D7️ Build solution"
-      run: dotnet build --configuration Release --no-restore
-
-    - name: "\U0001F9EA Run Unit Tests"
+    - name: "📦 Restore dependencies"
       run: |
+        dotnet restore CarRentalSystem/CarRentalSystem.csproj
+        dotnet restore CarRentalSystem.Tests/CarRentalSystem.Tests.csproj
+
+    - name: "🏗️ Build solution"
+      run: |
+        dotnet build CarRentalSystem/CarRentalSystem.csproj --configuration Release --no-restore
+        dotnet build CarRentalSystem.Tests/CarRentalSystem.Tests.csproj --configuration Release --no-restore
+
+    # ============================================================
+    # 🧪 UNIT TESTS — Hiển thị chi tiết từng test đang chạy
+    # ============================================================
+    - name: "🧪 Run Unit Tests (Chi tiết)"
+      run: |
+        echo "=========================================="
+        echo "🧪 BẮT ĐẦU CHẠY UNIT TESTS"
+        echo "=========================================="
         dotnet test --configuration Release --no-build \
-          --verbosity normal \
+          --verbosity detailed \
           --filter "Type=Unit" \
+          --logger "console;verbosity=detailed" \
           --logger "trx;LogFileName=unit-test-results.trx" \
           --results-directory ./TestResults
+        echo "=========================================="
+        echo "✅ UNIT TESTS HOÀN TẤT"
+        echo "=========================================="
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
-    - name: "\U0001F517 Run Integration Tests"
+    # ============================================================
+    # 🔗 INTEGRATION TESTS — Hiển thị chi tiết từng test đang chạy
+    # ============================================================
+    - name: "🔗 Run Integration Tests (Chi tiết)"
       run: |
+        echo "=========================================="
+        echo "🔗 BẮT ĐẦU CHẠY INTEGRATION TESTS"
+        echo "=========================================="
         dotnet test --configuration Release --no-build \
-          --verbosity normal \
+          --verbosity detailed \
           --filter "Type=Integration" \
+          --logger "console;verbosity=detailed" \
           --logger "trx;LogFileName=integration-test-results.trx" \
           --results-directory ./TestResults
+        echo "=========================================="
+        echo "✅ INTEGRATION TESTS HOÀN TẤT"
+        echo "=========================================="
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
-    - name: "📊 Run All Tests (Full Suite)"
+    # ============================================================
+    # 📊 FULL TEST SUITE + CODE COVERAGE
+    # ============================================================
+    - name: "📊 Run All Tests + Coverage (Chi tiết)"
       run: |
+        echo "=========================================="
+        echo "📊 BẮT ĐẦU CHẠY TOÀN BỘ TESTS + COVERAGE"
+        echo "=========================================="
         dotnet test --configuration Release --no-build \
-          --verbosity normal \
+          --verbosity detailed \
+          --logger "console;verbosity=detailed" \
           --logger "trx;LogFileName=all-test-results.trx" \
           --collect:"XPlat Code Coverage" \
-          --settings DataCollectionRunSettings.Dictionary.DataCollection.Configuration.Format=cobertura \
           --results-directory ./TestResults
+        echo "=========================================="
+        echo "✅ FULL TEST SUITE HOÀN TẤT"
+        echo "=========================================="
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
     - name: "📝 Generate Code Coverage Report"
       uses: irongut/CodeCoverageSummary@v1.3.0
+      if: always()
       with:
         filename: ${{ env.TEST_PROJECT_PATH }}/TestResults/**/coverage.cobertura.xml
         badge: true
@@ -88,19 +122,88 @@ jobs:
           ${{ env.TEST_PROJECT_PATH }}/TestResults/**/coverage.cobertura.xml
         retention-days: 30
 
-    - name: "\U0001F4CB Test Report Summary"
+    # ============================================================
+    # 📋 BẢNG KẾT QUẢ CHI TIẾT — Parse .trx hiển thị từng test
+    # ============================================================
+    - name: "📋 Bảng kết quả chi tiết từng Test Case"
       if: always()
       run: |
-        echo "## \U0001F9EA Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "## 🧪 Kết Quả Test Chi Tiết — CarRentalSystem" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Module | Type | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|--------|------|--------|" >> $GITHUB_STEP_SUMMARY
-        echo "| AuthService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| BookingService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| CarService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| TrackingService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| EmailService | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| RentalContract | Unit Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| Auth | Integration Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| Booking | Integration Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
-        echo "| Car | Integration Tests | ✅ |" >> $GITHUB_STEP_SUMMARY
+        echo "📅 Thời gian: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # --- Parse Unit Test Results ---
+        UNIT_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/unit-test-results.trx"
+        if [ -f "$UNIT_TRX" ]; then
+          UNIT_PASSED=$(grep -c 'outcome="Passed"' "$UNIT_TRX" || echo "0")
+          UNIT_FAILED=$(grep -c 'outcome="Failed"' "$UNIT_TRX" || echo "0")
+          UNIT_TOTAL=$((UNIT_PASSED + UNIT_FAILED))
+          echo "### 🧪 Unit Tests: $UNIT_PASSED/$UNIT_TOTAL passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| # | Test Name | Kết quả | Thời gian |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|-----------|---------|-----------|" >> $GITHUB_STEP_SUMMARY
+          COUNT=0
+          grep -oP 'testName="[^"]*" [^>]*outcome="[^"]*" [^>]*duration="[^"]*"' "$UNIT_TRX" | while read -r line; do
+            COUNT=$((COUNT + 1))
+            TEST_NAME=$(echo "$line" | grep -oP 'testName="\K[^"]*')
+            OUTCOME=$(echo "$line" | grep -oP 'outcome="\K[^"]*')
+            DURATION=$(echo "$line" | grep -oP 'duration="\K[^"]*')
+            if [ "$OUTCOME" = "Passed" ]; then
+              ICON="✅"
+            else
+              ICON="❌"
+            fi
+            echo "| $COUNT | \`$TEST_NAME\` | $ICON $OUTCOME | $DURATION |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ⚠️ Unit Test results file not found" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # --- Parse Integration Test Results ---
+        INT_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/integration-test-results.trx"
+        if [ -f "$INT_TRX" ]; then
+          INT_PASSED=$(grep -c 'outcome="Passed"' "$INT_TRX" || echo "0")
+          INT_FAILED=$(grep -c 'outcome="Failed"' "$INT_TRX" || echo "0")
+          INT_TOTAL=$((INT_PASSED + INT_FAILED))
+          echo "### 🔗 Integration Tests: $INT_PASSED/$INT_TOTAL passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| # | Test Name | Kết quả | Thời gian |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|-----------|---------|-----------|" >> $GITHUB_STEP_SUMMARY
+          COUNT=0
+          grep -oP 'testName="[^"]*" [^>]*outcome="[^"]*" [^>]*duration="[^"]*"' "$INT_TRX" | while read -r line; do
+            COUNT=$((COUNT + 1))
+            TEST_NAME=$(echo "$line" | grep -oP 'testName="\K[^"]*')
+            OUTCOME=$(echo "$line" | grep -oP 'outcome="\K[^"]*')
+            DURATION=$(echo "$line" | grep -oP 'duration="\K[^"]*')
+            if [ "$OUTCOME" = "Passed" ]; then
+              ICON="✅"
+            else
+              ICON="❌"
+            fi
+            echo "| $COUNT | \`$TEST_NAME\` | $ICON $OUTCOME | $DURATION |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ⚠️ Integration Test results file not found" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # --- Overall Summary ---
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        ALL_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/all-test-results.trx"
+        if [ -f "$ALL_TRX" ]; then
+          TOTAL_PASSED=$(grep -c 'outcome="Passed"' "$ALL_TRX" || echo "0")
+          TOTAL_FAILED=$(grep -c 'outcome="Failed"' "$ALL_TRX" || echo "0")
+          TOTAL=$((TOTAL_PASSED + TOTAL_FAILED))
+          if [ "$TOTAL_FAILED" -eq 0 ]; then
+            echo "### ✅ TỔNG KẾT: $TOTAL_PASSED/$TOTAL tests PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ TỔNG KẾT: $TOTAL_FAILED/$TOTAL tests FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "### ⚠️ Full test results file not found" >> $GITHUB_STEP_SUMMARY
+        fi
