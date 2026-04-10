@@ -127,77 +127,60 @@ jobs:
     # ============================================================
     - name: "📋 Bảng kết quả chi tiết từng Test Case"
       if: always()
+      shell: bash
       run: |
+        set +e
+
         echo "## 🧪 Kết Quả Test Chi Tiết — CarRentalSystem" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "📅 Thời gian: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
 
-        # --- Parse Unit Test Results ---
-        UNIT_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/unit-test-results.trx"
-        if [ -f "$UNIT_TRX" ]; then
-          UNIT_PASSED=$(grep -c 'outcome="Passed"' "$UNIT_TRX" || echo "0")
-          UNIT_FAILED=$(grep -c 'outcome="Failed"' "$UNIT_TRX" || echo "0")
-          UNIT_TOTAL=$((UNIT_PASSED + UNIT_FAILED))
-          echo "### 🧪 Unit Tests: $UNIT_PASSED/$UNIT_TOTAL passed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| # | Test Name | Kết quả | Thời gian |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|-----------|---------|-----------|" >> $GITHUB_STEP_SUMMARY
-          COUNT=0
-          grep -oP 'testName="[^"]*" [^>]*outcome="[^"]*" [^>]*duration="[^"]*"' "$UNIT_TRX" | while read -r line; do
-            COUNT=$((COUNT + 1))
-            TEST_NAME=$(echo "$line" | grep -oP 'testName="\K[^"]*')
-            OUTCOME=$(echo "$line" | grep -oP 'outcome="\K[^"]*')
-            DURATION=$(echo "$line" | grep -oP 'duration="\K[^"]*')
-            if [ "$OUTCOME" = "Passed" ]; then
-              ICON="✅"
-            else
-              ICON="❌"
-            fi
-            echo "| $COUNT | \`$TEST_NAME\` | $ICON $OUTCOME | $DURATION |" >> $GITHUB_STEP_SUMMARY
-          done
-          echo "" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "### ⚠️ Unit Test results file not found" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-        fi
+        parse_trx() {
+          local TRX_FILE="$1"
+          local SECTION_TITLE="$2"
+          local SECTION_ICON="$3"
 
-        # --- Parse Integration Test Results ---
-        INT_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/integration-test-results.trx"
-        if [ -f "$INT_TRX" ]; then
-          INT_PASSED=$(grep -c 'outcome="Passed"' "$INT_TRX" || echo "0")
-          INT_FAILED=$(grep -c 'outcome="Failed"' "$INT_TRX" || echo "0")
-          INT_TOTAL=$((INT_PASSED + INT_FAILED))
-          echo "### 🔗 Integration Tests: $INT_PASSED/$INT_TOTAL passed" >> $GITHUB_STEP_SUMMARY
+          if [ ! -f "$TRX_FILE" ]; then
+            echo "### ⚠️ $SECTION_TITLE — file not found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            return
+          fi
+
+          local PASSED=$(grep -o 'outcome="Passed"' "$TRX_FILE" | wc -l)
+          local FAILED=$(grep -o 'outcome="Failed"' "$TRX_FILE" | wc -l)
+          local TOTAL=$((PASSED + FAILED))
+
+          echo "### $SECTION_ICON $SECTION_TITLE: $PASSED/$TOTAL passed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| # | Test Name | Kết quả | Thời gian |" >> $GITHUB_STEP_SUMMARY
           echo "|---|-----------|---------|-----------|" >> $GITHUB_STEP_SUMMARY
-          COUNT=0
-          grep -oP 'testName="[^"]*" [^>]*outcome="[^"]*" [^>]*duration="[^"]*"' "$INT_TRX" | while read -r line; do
+
+          local COUNT=0
+          grep -o 'testName="[^"]*"[^>]*outcome="[^"]*"[^>]*duration="[^"]*"' "$TRX_FILE" | while IFS= read -r line; do
             COUNT=$((COUNT + 1))
-            TEST_NAME=$(echo "$line" | grep -oP 'testName="\K[^"]*')
-            OUTCOME=$(echo "$line" | grep -oP 'outcome="\K[^"]*')
-            DURATION=$(echo "$line" | grep -oP 'duration="\K[^"]*')
-            if [ "$OUTCOME" = "Passed" ]; then
-              ICON="✅"
-            else
+            local TEST_NAME=$(echo "$line" | sed 's/.*testName="\([^"]*\)".*/\1/')
+            local OUTCOME=$(echo "$line" | sed 's/.*outcome="\([^"]*\)".*/\1/')
+            local DURATION=$(echo "$line" | sed 's/.*duration="\([^"]*\)".*/\1/')
+            local ICON="✅"
+            if [ "$OUTCOME" != "Passed" ]; then
               ICON="❌"
             fi
             echo "| $COUNT | \`$TEST_NAME\` | $ICON $OUTCOME | $DURATION |" >> $GITHUB_STEP_SUMMARY
           done
           echo "" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "### ⚠️ Integration Test results file not found" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-        fi
+        }
+
+        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/unit-test-results.trx" "Unit Tests" "🧪"
+        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/integration-test-results.trx" "Integration Tests" "🔗"
 
         # --- Overall Summary ---
         echo "---" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         ALL_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/all-test-results.trx"
         if [ -f "$ALL_TRX" ]; then
-          TOTAL_PASSED=$(grep -c 'outcome="Passed"' "$ALL_TRX" || echo "0")
-          TOTAL_FAILED=$(grep -c 'outcome="Failed"' "$ALL_TRX" || echo "0")
+          TOTAL_PASSED=$(grep -o 'outcome="Passed"' "$ALL_TRX" | wc -l)
+          TOTAL_FAILED=$(grep -o 'outcome="Failed"' "$ALL_TRX" | wc -l)
           TOTAL=$((TOTAL_PASSED + TOTAL_FAILED))
           if [ "$TOTAL_FAILED" -eq 0 ]; then
             echo "### ✅ TỔNG KẾT: $TOTAL_PASSED/$TOTAL tests PASSED" >> $GITHUB_STEP_SUMMARY
