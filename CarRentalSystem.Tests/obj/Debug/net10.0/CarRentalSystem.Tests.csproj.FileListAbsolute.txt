@@ -942,3 +942,4 @@ e:\CarRentalSystem\CarRentalSystem\CarRentalSystem\CarRentalSystem.Tests\bin\Deb
 e:\CarRentalSystem\CarRentalSystem\CarRentalSystem\CarRentalSystem.Tests\bin\Debug\net10.0\SixLabors.Fonts.dll
 e:\CarRentalSystem\CarRentalSystem\CarRentalSystem\CarRentalSystem.Tests\bin\Debug\net10.0\System.IO.Packaging.dll
 e:\CarRentalSystem\CarRentalSystem\CarRentalSystem\CarRentalSystem.Tests\bin\Debug\net10.0\XLParser.dll
+e:\CarRentalSystem\CarRentalSystem\CarRentalSystem\CarRentalSystem.Tests\obj\Debug\net10.0\CarRentalSystem.Tests.sourcelink.json

@@ -91,6 +91,25 @@ jobs:
         echo "=========================================="
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
+    # ============================================================
+    # 🌐 SMOKE TESTS — Khởi động app rồi test trực tiếp trên web
+    # ============================================================
+    - name: "🌐 Smoke Tests — Chạy app & test trên web (Chi tiết)"
+      run: |
+        echo "=========================================="
+        echo "🌐 KHỞI ĐỘNG APP & TEST TRỰC TIẾP TRÊN WEB"
+        echo "=========================================="
+        dotnet test --configuration Release --no-build \
+          --verbosity detailed \
+          --filter "Type=Smoke" \
+          --logger "console;verbosity=detailed" \
+          --logger "trx;LogFileName=smoke-test-results.trx" \
+          --results-directory ./TestResults
+        echo "=========================================="
+        echo "✅ SMOKE TESTS HOÀN TẤT"
+        echo "=========================================="
+      working-directory: ${{ env.TEST_PROJECT_PATH }}
+
     - name: "📝 Generate Code Coverage Report"
       uses: irongut/CodeCoverageSummary@v1.3.0
       if: always()
@@ -173,6 +192,7 @@ jobs:
 
         parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/unit-test-results.trx" "Unit Tests" "🧪"
         parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/integration-test-results.trx" "Integration Tests" "🔗"
+        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/smoke-test-results.trx" "Smoke Tests — Chạy app & test trên web" "🌐"
 
         # --- Overall Summary ---
         echo "---" >> $GITHUB_STEP_SUMMARY
