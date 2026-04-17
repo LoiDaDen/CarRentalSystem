@@ -86,6 +86,70 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("Alerts");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.AuditLog", b =>
+                {
+                    b.Property<long>("AuditLogID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("AuditLogID"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("EntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("NewValues")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OldValues")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RequestUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("AuditLogID");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EntityType", "Action");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.AvailabilitySchedule", b =>
                 {
                     b.Property<int>("ScheduleID")
@@ -226,6 +290,8 @@ namespace CarRentalSystem.Migrations
 
                     b.HasIndex("ContractTypeID");
 
+                    b.HasIndex("CreatedAt");
+
                     b.HasIndex("PickupLocationID");
 
                     b.HasIndex("PromotionID");
@@ -235,6 +301,8 @@ namespace CarRentalSystem.Migrations
                     b.HasIndex("TransactionID");
 
                     b.HasIndex("UserID");
+
+                    b.HasIndex("StartDate", "EndDate");
 
                     b.ToTable("Bookings");
                 });
@@ -452,9 +520,15 @@ namespace CarRentalSystem.Migrations
 
                     b.HasIndex("CarTypeID");
 
+                    b.HasIndex("LicensePlate")
+                        .IsUnique();
+
                     b.HasIndex("LocationID");
 
                     b.HasIndex("OwnerID");
+
+                    b.HasIndex("VIN")
+                        .IsUnique();
 
                     b.ToTable("Cars");
                 });
@@ -1250,6 +1324,102 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("InspectionRecords");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.Invoice", b =>
+                {
+                    b.Property<int>("InvoiceID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InvoiceID"));
+
+                    b.Property<decimal>("AddOnFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AmountDue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("BookingID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("DeliveryFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DepositDeducted")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DriverFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("LateFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("RentalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TaxPercent")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
+                    b.HasKey("InvoiceID");
+
+                    b.HasIndex("BookingID");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("Invoices");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.Location", b =>
                 {
                     b.Property<int>("LocationID")
@@ -1807,7 +1977,16 @@ namespace CarRentalSystem.Migrations
 
                     b.HasKey("UserID");
 
+                    b.HasIndex("CitizenId")
+                        .IsUnique()
+                        .HasFilter("[CitizenId] IS NOT NULL");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
                     b.HasIndex("MembershipTierID");
+
+                    b.HasIndex("Role");
 
                     b.ToTable("Users");
                 });
@@ -1923,6 +2102,16 @@ namespace CarRentalSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("Car");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.AuditLog", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Booking", b =>
@@ -2235,6 +2424,25 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("Booking");
 
                     b.Navigation("Inspector");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.Invoice", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.LongTermRental", b =>

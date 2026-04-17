@@ -2,6 +2,7 @@ using CarRentalSystem.Data;
 using CarRentalSystem.Repositories;
 using CarRentalSystem.Services;
 using CarRentalSystem.BackgroundJobs;
+using CarRentalSystem.Middleware;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using Hangfire.SqlServer;
@@ -95,8 +96,18 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
+// ═══════════════════════════════════════════════
+// 🛡️ GLOBAL ERROR HANDLING — Bắt mọi exception
+// ═══════════════════════════════════════════════
+app.UseGlobalExceptionHandler();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+// ═══════════════════════════════════════════════
+// 📝 AUDIT LOG — Ghi lại mọi thao tác POST/PUT/DELETE
+// ═══════════════════════════════════════════════
+app.UseAuditLog();
 
 // ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE DASHBOARD — chỉ Admin mới truy cập được

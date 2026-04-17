@@ -69,6 +69,10 @@ namespace CarRentalSystem.Data
         // Phase 8: Driver Reviews
         public DbSet<DriverReview> DriverReviews { get; set; }
 
+        // Phase 9: Enterprise Audit & Invoice
+        public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<Invoice> Invoices { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -331,6 +335,98 @@ namespace CarRentalSystem.Data
                 .WithMany()
                 .HasForeignKey(dr => dr.UserID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ═══ Invoice Configuration ═══
+            modelBuilder.Entity<Invoice>()
+                .HasOne(i => i.Booking)
+                .WithMany()
+                .HasForeignKey(i => i.BookingID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Invoice>()
+                .HasOne(i => i.User)
+                .WithMany()
+                .HasForeignKey(i => i.UserID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Invoice>()
+                .HasIndex(i => i.InvoiceNumber)
+                .IsUnique();
+
+            // ═══ AuditLog Configuration ═══
+            modelBuilder.Entity<AuditLog>()
+                .HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // ═══════════════════════════════════════════
+            // ⚡ DATABASE INDEXES — Tối ưu hiệu năng query
+            // ═══════════════════════════════════════════
+
+            // User indexes
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.CitizenId)
+                .IsUnique()
+                .HasFilter("[CitizenId] IS NOT NULL");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Role);
+
+            // Car indexes
+            modelBuilder.Entity<Car>()
+                .HasIndex(c => c.CarStatusID);
+
+            modelBuilder.Entity<Car>()
+                .HasIndex(c => c.LocationID);
+
+            modelBuilder.Entity<Car>()
+                .HasIndex(c => c.BrandID);
+
+            modelBuilder.Entity<Car>()
+                .HasIndex(c => c.CarTypeID);
+
+            modelBuilder.Entity<Car>()
+                .HasIndex(c => c.LicensePlate)
+                .IsUnique();
+
+            modelBuilder.Entity<Car>()
+                .HasIndex(c => c.VIN)
+                .IsUnique();
+
+            // Booking indexes
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.UserID);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.CarID);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.BookingStatusID);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.CreatedAt);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.StartDate, b.EndDate });
+
+            // Payment index
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => p.BookingID);
+
+            // AuditLog indexes
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.Timestamp);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => a.UserId);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => new { a.EntityType, a.Action });
         }
     }
 }

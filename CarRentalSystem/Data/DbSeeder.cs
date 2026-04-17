@@ -56,7 +56,6 @@ namespace CarRentalSystem.Data
                 };
                 context.Users.AddRange(users);
                 context.SaveChanges();
-                context.SaveChanges();
             }
             
             // Rename existing locations from Districts to Cities if they haven't been renamed yet

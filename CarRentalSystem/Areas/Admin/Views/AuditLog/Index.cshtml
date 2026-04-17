@@ -1,0 +1,171 @@
+@model CarRentalSystem.Helpers.PaginatedList<CarRentalSystem.Models.AuditLog>
+@{
+    ViewData["Title"] = "Audit Log — Lịch sử thao tác hệ thống";
+    Layout = "~/Areas/Admin/Views/_ViewStart.cshtml";
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="bi bi-shield-check text-primary"></i> Audit Log — Lịch sử thao tác</h3>
+        <span class="badge bg-secondary fs-6">Tổng: @Model.TotalCount bản ghi</span>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small">Hành động</label>
+                    <select name="action" class="form-select form-select-sm">
+                        <option value="">-- Tất cả --</option>
+                        @if (ViewBag.Actions != null)
+                        {
+                            foreach (var a in (List<string>)ViewBag.Actions)
+                            {
+                                <option value="@a" selected="@(ViewBag.CurrentAction == a)">@a</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Module</label>
+                    <select name="entityType" class="form-select form-select-sm">
+                        <option value="">-- Tất cả --</option>
+                        @if (ViewBag.EntityTypes != null)
+                        {
+                            foreach (var e in (List<string>)ViewBag.EntityTypes)
+                            {
+                                <option value="@e" selected="@(ViewBag.CurrentEntityType == e)">@e</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Người dùng</label>
+                    <input name="userName" value="@ViewBag.CurrentUserName" class="form-control form-control-sm" placeholder="Tên user..." />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Từ ngày</label>
+                    <input type="date" name="fromDate" value="@ViewBag.FromDate" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Đến ngày</label>
+                    <input type="date" name="toDate" value="@ViewBag.ToDate" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-search"></i> Lọc
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Audit Log Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th width="40">#</th>
+                        <th width="140">Thời gian</th>
+                        <th width="100">Người dùng</th>
+                        <th width="80">Hành động</th>
+                        <th width="90">Module</th>
+                        <th>Mô tả</th>
+                        <th width="120">IP</th>
+                        <th width="50"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                Chưa có dữ liệu audit log
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var log in Model)
+                    {
+                        var actionBadge = log.Action switch
+                        {
+                            "Create" => "bg-success",
+                            "Update" => "bg-warning text-dark",
+                            "Delete" => "bg-danger",
+                            "Login" => "bg-info",
+                            "Logout" => "bg-secondary",
+                            _ => "bg-primary"
+                        };
+                        <tr>
+                            <td class="text-muted small">@log.AuditLogID</td>
+                            <td class="small">@log.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                            <td>
+                                <span class="fw-semibold">@(log.UserName ?? "System")</span>
+                            </td>
+                            <td>
+                                <span class="badge @actionBadge">@log.Action</span>
+                            </td>
+                            <td><span class="badge bg-outline-secondary border text-dark">@log.EntityType</span></td>
+                            <td class="small text-truncate" style="max-width: 300px;">@log.Description</td>
+                            <td class="small text-muted">@log.IpAddress</td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@log.AuditLogID" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <span class="text-muted small">
+                    Trang @Model.PageIndex / @Model.TotalPages (Tổng @Model.TotalCount bản ghi)
+                </span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @if (Model.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-route-page="@(Model.PageIndex - 1)"
+                                   asp-route-action="@ViewBag.CurrentAction"
+                                   asp-route-entityType="@ViewBag.CurrentEntityType"
+                                   asp-route-userName="@ViewBag.CurrentUserName"
+                                   asp-route-fromDate="@ViewBag.FromDate"
+                                   asp-route-toDate="@ViewBag.ToDate">&laquo;</a>
+                            </li>
+                        }
+                        @foreach (var p in Model.GetPageRange(7))
+                        {
+                            <li class="page-item @(p == Model.PageIndex ? "active" : "")">
+                                <a class="page-link" asp-route-page="@p"
+                                   asp-route-action="@ViewBag.CurrentAction"
+                                   asp-route-entityType="@ViewBag.CurrentEntityType"
+                                   asp-route-userName="@ViewBag.CurrentUserName"
+                                   asp-route-fromDate="@ViewBag.FromDate"
+                                   asp-route-toDate="@ViewBag.ToDate">@p</a>
+                            </li>
+                        }
+                        @if (Model.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-route-page="@(Model.PageIndex + 1)"
+                                   asp-route-action="@ViewBag.CurrentAction"
+                                   asp-route-entityType="@ViewBag.CurrentEntityType"
+                                   asp-route-userName="@ViewBag.CurrentUserName"
+                                   asp-route-fromDate="@ViewBag.FromDate"
+                                   asp-route-toDate="@ViewBag.ToDate">&raquo;</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>

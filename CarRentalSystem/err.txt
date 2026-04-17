@@ -1,8 +1,0 @@
-D:\CarRentalSystem (1)\CarRentalSystem\CarRentalSystem\Controllers\BookingController.cs(85,42): error CS1061: 'ApplicationDbContext' does not contain a definition for 'CarPricings' and no accessible extension method 'CarPricings' accepting a first argument of type 'ApplicationDbContext' could be found (are you missing a using directive or an assembly reference?) [D:\CarRentalSystem (1)\CarRentalSystem\CarRentalSystem\CarRentalSystem.csproj]
-D:\CarRentalSystem (1)\CarRentalSystem\CarRentalSystem\Controllers\BookingController.cs(223,42): error CS1061: 'ApplicationDbContext' does not contain a definition for 'CarPricings' and no accessible extension method 'CarPricings' accepting a first argument of type 'ApplicationDbContext' could be found (are you missing a using directive or an assembly reference?) [D:\CarRentalSystem (1)\CarRentalSystem\CarRentalSystem\CarRentalSystem.csproj]
-
-Build FAILED.
-    91 Warning(s)
-    2 Error(s)
-
-Time Elapsed 00:00:05.50

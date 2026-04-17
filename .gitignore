@@ -46,3 +46,9 @@ node_modules/
 ## Misc
 *.log
 *.tmp
+build_*.txt
+err.txt
+errors.log
+query_out.csv
+statuses_out.csv
+seed_data.sql
