@@ -6,6 +6,7 @@ namespace CarRentalSystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [IgnoreAntiforgeryToken] // API controllers nhận JSON, không gửi AntiForgeryToken
     public class VoucherController : ControllerBase
     {
         private readonly ApplicationDbContext _db;

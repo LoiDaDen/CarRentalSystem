@@ -252,6 +252,29 @@ namespace CarRentalSystem.Controllers
 
                     bool filesUploaded = false;
                     var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+                    const long maxFileSize = 5 * 1024 * 1024; // 🔒 5MB max per file
+
+                    // Helper: validate file before upload
+                    string? ValidateFile(IFormFile? file, string label)
+                    {
+                        if (file == null || file.Length == 0) return null;
+                        if (file.Length > maxFileSize) return $"{label} vượt quá giới hạn 5MB.";
+                        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                        if (string.IsNullOrEmpty(ext) || !allowedExtensions.Contains(ext))
+                            return $"Định dạng file {label} không hợp lệ. Chỉ chấp nhận JPG, PNG, PDF.";
+                        return null;
+                    }
+
+                    // Validate all files first before saving any
+                    var frontErr = ValidateFile(uploadIdFront, "CCCD mặt trước");
+                    var backErr = ValidateFile(uploadIdBack, "CCCD mặt sau");
+                    var licErr = ValidateFile(uploadLicense, "Bằng lái xe");
+                    var firstErr = frontErr ?? backErr ?? licErr;
+                    if (firstErr != null)
+                    {
+                        TempData["ErrorMessage"] = firstErr;
+                        return RedirectToAction("Profile");
+                    }
 
                     if (uploadIdFront != null && uploadIdFront.Length > 0)
                     {

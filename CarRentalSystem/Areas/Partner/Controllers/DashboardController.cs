@@ -42,6 +42,9 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         {
             if (imageFile == null || imageFile.Length == 0) return null;
 
+            // 🔒 Validate file size (max 5MB)
+            if (imageFile.Length > 5 * 1024 * 1024) return null;
+
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
             var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
             if (!allowedExtensions.Contains(ext)) return null;
@@ -119,12 +122,20 @@ namespace CarRentalSystem.Areas.Partner.Controllers
             var user = await _db.Users.FindAsync(userId);
             if (user == null) return NotFound();
 
-            user.Role = "Partner";
-            user.IsVerified = false;
+            // 🔒 SECURITY: Không tự đổi role ngay — đặt cờ chờ Admin duyệt
+            // Admin sẽ duyệt và đổi role trong Areas/Admin/UserController
+            if (user.Role == "Partner" || user.Role == "Admin")
+            {
+                TempData["Info"] = "Bạn đã có quyền Partner.";
+                return RedirectToAction("Index");
+            }
+
+            user.IsVerified = false; // Đánh dấu = "pending partner approval"
+            user.PartnerAddress = "PENDING_PARTNER_APPROVAL"; // Flag cho Admin filter
             await _db.SaveChangesAsync();
 
-            TempData["Success"] = "Yêu cầu đã được gửi! Bạn đã được cấp quyền Truy cập Đối tác, hãy hoàn tất hồ sơ eKYC để được Duyệt bán xe.";
-            return RedirectToAction("Index");
+            TempData["Success"] = "Yêu cầu trở thành Đối tác đã được gửi! Vui lòng hoàn tất hồ sơ eKYC và chờ Admin duyệt.";
+            return RedirectToAction("Index", "Home", new { area = "" });
         }
 
         // GET /Partner/Dashboard/Profile

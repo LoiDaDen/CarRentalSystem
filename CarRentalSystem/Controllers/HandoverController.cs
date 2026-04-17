@@ -64,10 +64,24 @@ namespace CarRentalSystem.Controllers
             string uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "Handovers");
             if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
 
+            // 🔒 Upload security constants
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            const long maxFileSize = 5 * 1024 * 1024; // 5MB per file
+
             async Task<string?> SaveFile(IFormFile? file)
             {
                 if (file == null || file.Length == 0) return null;
-                string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+
+                // Validate file size
+                if (file.Length > maxFileSize)
+                    throw new InvalidOperationException($"File {file.FileName} vượt quá giới hạn 5MB.");
+
+                // Validate extension
+                var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (string.IsNullOrEmpty(ext) || !allowedExtensions.Contains(ext))
+                    throw new InvalidOperationException($"File {file.FileName} có định dạng không hợp lệ. Chỉ chấp nhận JPG, PNG, WEBP.");
+
+                string fileName = Guid.NewGuid().ToString() + ext;
                 string filePath = Path.Combine(uploadPath, fileName);
                 using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
                 return $"/SecureFile/GetSecureImage?folder=Handovers&fileName={fileName}";

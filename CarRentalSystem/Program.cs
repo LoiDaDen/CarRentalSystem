@@ -10,7 +10,14 @@ using Hangfire.SqlServer;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    // ═══════════════════════════════════════════════════
+    // 🛡️ GLOBAL CSRF PROTECTION — Tự động validate AntiForgeryToken
+    // cho mọi POST/PUT/DELETE action (trừ [IgnoreAntiforgeryToken])
+    // ═══════════════════════════════════════════════════
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
+});
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -70,7 +77,25 @@ builder.Services.AddAuthentication("Cookies")
         options.LoginPath = "/Auth/Login";
         options.LogoutPath = "/Auth/Logout";
         options.AccessDeniedPath = "/Auth/AccessDenied";
+
+        // ═══════════════════════════════════════════════════
+        // 🔒 SESSION SECURITY — Cookie timeout & hardening
+        // ═══════════════════════════════════════════════════
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.Name = "CarRental.Auth";
     });
+
+// ═══════════════════════════════════════════════════
+// 🚦 REQUEST SIZE LIMIT — Giới hạn upload 10MB max
+// ═══════════════════════════════════════════════════
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
+});
 
 var app = builder.Build();
 
@@ -92,9 +117,26 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// ═══════════════════════════════════════════════════
+// 🔒 SECURITY HEADERS — Chống clickjacking, XSS, MIME sniffing
+// ═══════════════════════════════════════════════════
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    await next();
+});
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+// ═══════════════════════════════════════════════
+// 🚦 RATE LIMITING — Chống brute force & API abuse
+// ═══════════════════════════════════════════════
+app.UseRateLimiting();
 
 // ═══════════════════════════════════════════════
 // 🛡️ GLOBAL ERROR HANDLING — Bắt mọi exception

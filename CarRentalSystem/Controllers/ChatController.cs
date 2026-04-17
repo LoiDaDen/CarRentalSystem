@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using CarRentalSystem.Data;
 using CarRentalSystem.Services;
+using Microsoft.AspNetCore.Authorization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -8,6 +9,7 @@ namespace CarRentalSystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [IgnoreAntiforgeryToken] // API controllers nhận JSON, không gửi AntiForgeryToken
     public class ChatController : ControllerBase
     {
         private readonly ICarService _carService;

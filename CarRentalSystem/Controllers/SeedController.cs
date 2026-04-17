@@ -1,10 +1,12 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Controllers
 {
+    [Authorize(Roles = UserRoleConstants.Admin)]
     public class SeedController : Controller
     {
         private readonly ApplicationDbContext _context;

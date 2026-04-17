@@ -249,6 +249,13 @@ namespace CarRentalSystem.Controllers
                 // Handle image upload if provided
                 if (imageFile != null && imageFile.Length > 0)
                 {
+                    // 🔒 Validate file size (max 5MB)
+                    if (imageFile.Length > 5 * 1024 * 1024)
+                    {
+                        ModelState.AddModelError("imageFile", "Ảnh xe vượt quá giới hạn 5MB.");
+                        return View(car);
+                    }
+
                     var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
                     var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
                     
