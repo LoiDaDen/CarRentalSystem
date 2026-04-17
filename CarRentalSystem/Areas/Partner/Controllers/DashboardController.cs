@@ -46,7 +46,7 @@ namespace CarRentalSystem.Areas.Partner.Controllers
             var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
             if (!allowedExtensions.Contains(ext)) return null;
 
-            var uploadDir = Path.Combine(_env.WebRootPath, "uploads", "cars");
+            var uploadDir = Path.Combine(_env.WebRootPath, "images", "cars");
             Directory.CreateDirectory(uploadDir); // ensure folder exists
 
             var fileName = $"{Guid.NewGuid()}{ext}";
@@ -57,7 +57,7 @@ namespace CarRentalSystem.Areas.Partner.Controllers
                 await imageFile.CopyToAsync(stream);
             }
 
-            return $"/uploads/cars/{fileName}";
+            return $"/images/cars/{fileName}";
         }
 
         // GET /Partner/Dashboard
@@ -307,6 +307,95 @@ namespace CarRentalSystem.Areas.Partner.Controllers
                 .ToListAsync();
 
             return View(bookings);
+        }
+
+        // ═══ HỢP ĐỒNG ĐỐI TÁC ═══
+
+        // GET /Partner/Dashboard/Contract
+        public async Task<IActionResult> Contract()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+
+            var contracts = await _db.PartnerContracts
+                .Where(pc => pc.PartnerUserID == userId)
+                .OrderByDescending(pc => pc.CreatedAt)
+                .ToListAsync();
+
+            return View(contracts);
+        }
+
+        // GET /Partner/Dashboard/ContractDetails/5
+        public async Task<IActionResult> ContractDetails(int id)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+
+            var contract = await _db.PartnerContracts
+                .FirstOrDefaultAsync(pc => pc.PartnerContractID == id && pc.PartnerUserID == userId);
+
+            if (contract == null) return NotFound();
+            return View(contract);
+        }
+
+        // POST /Partner/Dashboard/SignContract/5
+        [HttpPost]
+        public async Task<IActionResult> SignContract(int id)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+
+            var contract = await _db.PartnerContracts
+                .FirstOrDefaultAsync(pc => pc.PartnerContractID == id && pc.PartnerUserID == userId);
+
+            if (contract == null) return NotFound();
+
+            if (contract.Status != "Pending")
+            {
+                TempData["Error"] = "Hợp đồng này không ở trạng thái chờ ký.";
+                return RedirectToAction("Contract");
+            }
+
+            if (DateTime.Now > contract.ExpiresAt)
+            {
+                TempData["Error"] = "Hợp đồng đã quá hạn ký (7 ngày). Vui lòng liên hệ Admin.";
+                return RedirectToAction("Contract");
+            }
+
+            contract.SignedByPartyB = true;
+            contract.PartyBSignDate = DateTime.Now;
+            contract.Status = "Active";
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã ký xác nhận hợp đồng #{contract.ContractNo} thành công! Hợp đồng đã có hiệu lực.";
+            return RedirectToAction("Contract");
+        }
+
+        // POST /Partner/Dashboard/CancelContract/5
+        [HttpPost]
+        public async Task<IActionResult> CancelContract(int id, string? reason)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+
+            var contract = await _db.PartnerContracts
+                .FirstOrDefaultAsync(pc => pc.PartnerContractID == id && pc.PartnerUserID == userId);
+
+            if (contract == null) return NotFound();
+
+            if (contract.Status != "Active")
+            {
+                TempData["Error"] = "Chỉ có thể hủy hợp đồng đang có hiệu lực.";
+                return RedirectToAction("Contract");
+            }
+
+            contract.Status = "Cancelled";
+            contract.CancelledAt = DateTime.Now;
+            contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã hủy hợp đồng #{contract.ContractNo}.";
+            return RedirectToAction("Contract");
         }
     }
 }

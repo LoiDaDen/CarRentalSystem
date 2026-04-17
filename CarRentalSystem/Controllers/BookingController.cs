@@ -182,6 +182,19 @@ namespace CarRentalSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Book(Booking booking, int? SelectedDriverID, decimal DriverFee)
         {
+            // Validate input trước khi xử lý
+            if (booking.EndDate <= booking.StartDate)
+            {
+                TempData["BookingError"] = "Ngày kết thúc phải sau ngày bắt đầu.";
+                return RedirectToAction("Details", "Car", new { id = booking.CarID });
+            }
+
+            if (booking.StartDate.Date < DateTime.Today)
+            {
+                TempData["BookingError"] = "Không thể đặt xe cho ngày trong quá khứ.";
+                return RedirectToAction("Details", "Car", new { id = booking.CarID });
+            }
+
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (int.TryParse(userIdString, out int userId))
             {
@@ -203,10 +216,10 @@ namespace CarRentalSystem.Controllers
             if (booking.DeliveryFee > 0 && !string.IsNullOrEmpty(booking.DeliveryAddress) && car.Location != null)
             {
                 var regionName = car.Location.Name ?? "";
-                bool isValid = booking.DeliveryAddress.Contains(regionName, StringComparison.OrdinalIgnoreCase) || 
+                bool isValid = booking.DeliveryAddress.Contains(regionName, StringComparison.OrdinalIgnoreCase) ||
                                (regionName.Contains("Hồ Chí Minh") && booking.DeliveryAddress.Contains("HCM", StringComparison.OrdinalIgnoreCase)) ||
                                (regionName.Contains("Sài Gòn") && booking.DeliveryAddress.Contains("HCM", StringComparison.OrdinalIgnoreCase));
-                
+
                 if (!isValid)
                 {
                     TempData["BookingError"] = $"Lỗi: Tùy chọn giao xe tận nơi chỉ hỗ trợ trong phạm vi khu vực {regionName} (nơi xe đang bảo quản). Địa chỉ bạn nhập không thuộc khu vực này.";
@@ -214,21 +227,9 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
-            if (booking.StartDate.Date < DateTime.Today)
-            {
-                TempData["BookingError"] = $"Rất tiếc, mẫu xe {car.CarBrand?.Name} {car.CarName} đã được người khác thuê trong thời gian này. Vui lòng chọn xe khác hoặc đổi ngày.";
-                return RedirectToAction("Details", "Car", new { id = booking.CarID });
-            }
-
-            if (booking.EndDate <= booking.StartDate)
-            {
-                TempData["BookingError"] = "Ngày kết thúc phải sau ngày bắt đầu.";
-                return RedirectToAction("Details", "Car", new { id = booking.CarID });
-            }
-
             var existingBookings = await _bookingService.GetAllBookingsAsync();
-            bool isOverlapped = existingBookings.Any(b => b.CarID == booking.CarID && 
-                b.BookingStatus?.Name != "Cancelled" && b.BookingStatus?.Name != "Completed" && 
+            bool isOverlapped = existingBookings.Any(b => b.CarID == booking.CarID &&
+                b.BookingStatus?.Name != "Cancelled" && b.BookingStatus?.Name != "Completed" &&
                 ((booking.StartDate >= b.StartDate && booking.StartDate < b.EndDate) ||
                  (booking.EndDate > b.StartDate && booking.EndDate <= b.EndDate) ||
                  (booking.StartDate <= b.StartDate && booking.EndDate >= b.EndDate)));
@@ -336,8 +337,10 @@ namespace CarRentalSystem.Controllers
                     Status = "Pending"
                 };
                 _context.DriverBookings.Add(driverBooking);
-                
+                await _context.SaveChangesAsync();
+
                 booking.DriverBookingID = driverBooking.DriverBookingID;
+                _bookingService.UpdateBooking(booking);
             }
 
             await _context.SaveChangesAsync();

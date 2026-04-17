@@ -13,9 +13,9 @@ namespace CarRentalSystem.Models
         public string StartLocation { get; set; }
         [Required, MaxLength(200)]
         public string EndLocation { get; set; }
-        public string RouteData { get; set; } // JSON coords
+        public string? RouteData { get; set; } // JSON coords
 
         [ForeignKey("BookingID")]
-        public Booking Booking { get; set; }
+        public Booking? Booking { get; set; }
     }
 }

@@ -18,10 +18,10 @@
                         <div class="row g-4 mb-5">
                             <div class="col-md-3">
                                 <label class="small text-muted fw-bold mb-2">Địa điểm muốn thuê</label>
-                                <select name="Location" class="form-select bg-light border-0 shadow-none">
-                                    <option>Hồ Chí Minh</option>
-                                    <option>Hà Nội</option>
-                                    <option>Đà Nẵng</option>
+                                <select name="Location" id="locationSelect" class="form-select bg-light border-0 shadow-none" onchange="updateCarSuggestions()">
+                                    <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+                                    <option value="Hà Nội">Hà Nội</option>
+                                    <option value="Đà Nẵng">Đà Nẵng</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -126,24 +126,24 @@
         // Car suggestion data based on budget ranges
         const carSuggestions = {
             monthly: [
-                { minBudget: 7000000, maxBudget: 12000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front' },
-                { minBudget: 7000000, maxBudget: 15000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front' },
-                { minBudget: 10000000, maxBudget: 18000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front' },
-                { minBudget: 12000000, maxBudget: 22000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 15000000, maxBudget: 25000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 18000000, maxBudget: 30000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 20000000, maxBudget: 35000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 25000000, maxBudget: 40000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 7000000, maxBudget: 12000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 7000000, maxBudget: 15000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Đà Nẵng'] },
+                { minBudget: 10000000, maxBudget: 18000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 12000000, maxBudget: 22000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội'] },
+                { minBudget: 15000000, maxBudget: 25000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 18000000, maxBudget: 30000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 20000000, maxBudget: 35000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh'] },
+                { minBudget: 25000000, maxBudget: 40000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
             ],
             weekly: [
-                { minBudget: 2000000, maxBudget: 4000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front' },
-                { minBudget: 2000000, maxBudget: 5000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front' },
-                { minBudget: 3000000, maxBudget: 6000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front' },
-                { minBudget: 4000000, maxBudget: 7000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 5000000, maxBudget: 9000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 6000000, maxBudget: 10000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 7000000, maxBudget: 12000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill' },
-                { minBudget: 8000000, maxBudget: 15000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill' },
+                { minBudget: 2000000, maxBudget: 4000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 2000000, maxBudget: 5000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Đà Nẵng'] },
+                { minBudget: 3000000, maxBudget: 6000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 4000000, maxBudget: 7000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội'] },
+                { minBudget: 5000000, maxBudget: 9000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 6000000, maxBudget: 10000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
+                { minBudget: 7000000, maxBudget: 12000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh'] },
+                { minBudget: 8000000, maxBudget: 15000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
             ]
         };
 
@@ -263,8 +263,14 @@
             const rounded = Math.round(budget / 500000) * 500000;
             const finalBudget = Math.min(rounded, config.max);
 
+            const locationSelect = document.getElementById('locationSelect');
+            const selectedLocation = locationSelect ? locationSelect.value : 'Hồ Chí Minh';
+            
             const suggestions = carSuggestions[config.type] || carSuggestions.monthly;
-            const matched = suggestions.filter(s => finalBudget >= s.minBudget && finalBudget <= s.maxBudget);
+            const matched = suggestions.filter(s => 
+                s.maxBudget >= finalBudget && 
+                (!s.locations || s.locations.includes(selectedLocation))
+            );
 
             const container = document.getElementById('carSuggestionList');
             const section = document.getElementById('carSuggestionSection');
@@ -292,6 +298,23 @@
             } else {
                 section.style.display = 'none';
                 container.innerHTML = '';
+            }
+
+            // Update placeholder based on location
+            const noteField = document.getElementById('noteField');
+            if (noteField) {
+                let locText = selectedLocation;
+                if (locText === 'Hồ Chí Minh') locText = 'HCM';
+                
+                if (contractName === 'Ngày tùy chỉnh') {
+                    noteField.placeholder = "Ví dụ: Tôi chỉ cần xe vào các ngày T2, T3, T7, CN trong tháng này.";
+                } else if (contractName === 'Theo năm') {
+                    noteField.placeholder = `Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển ${locText}. Ưu tiên dòng xe Sedona, Carnival.`;
+                } else if (contractName === 'Theo tháng') {
+                    noteField.placeholder = `Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển ${locText}.`;
+                } else if (contractName === 'Trong tuần') {
+                    noteField.placeholder = "Ví dụ: Mong muốn xe rộng sạch sẽ, không mùi, cần xe trong tuần tới.";
+                }
             }
         }
 

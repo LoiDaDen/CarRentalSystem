@@ -90,7 +90,7 @@
                             <span><i class="bi bi-kanban-fill"></i> Quản lý</span>
                             <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                         </a>
-                        <div class="collapse @(new[]{"Car", "Booking", "User", "Maintenance", "Driver", "Membership"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
+                        <div class="collapse @(new[]{"Car", "Booking", "User", "Maintenance", "Driver", "Membership", "PartnerContract", "DigitalContract"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
                             <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Car" && ViewContext.RouteData.Values["action"]?.ToString() == "Manage" ? "active" : "")" asp-area="Admin" asp-controller="Car" asp-action="Manage">
                                 <i class="bi bi-car-front-fill" style="font-size: 1.1rem;"></i> Đội xe
                             </a>
@@ -105,6 +105,9 @@
                             </a>
                             <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "DigitalContract" ? "active" : "")" asp-area="Admin" asp-controller="DigitalContract" asp-action="Index">
                                 <i class="bi bi-file-earmark-medical-fill" style="font-size: 1.1rem;"></i> Hợp đồng số
+                            </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "PartnerContract" ? "active" : "")" asp-area="Admin" asp-controller="PartnerContract" asp-action="Index">
+                                <i class="bi bi-file-earmark-person-fill" style="font-size: 1.1rem;"></i> HĐ Đối tác/Tài xế
                             </a>
                             <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="Index">
                                 <i class="bi bi-people-fill" style="font-size: 1.1rem;"></i> Người dùng

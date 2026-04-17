@@ -64,7 +64,7 @@ namespace CarRentalSystem.Controllers
 
             await HttpContext.SignInAsync("Cookies", principal);
 
-            if (user.Role == "Admin")
+            if (user.Role == UserRoleConstants.Admin)
                 return RedirectToAction("Index", "Dashboard", new { area = "Admin" });
                 
             return RedirectToAction("Index", "Home");
@@ -119,9 +119,10 @@ namespace CarRentalSystem.Controllers
 
             await _authService.RegisterAsync(user);
 
-            // Gửi email xác thực
+            // Gửi email xác thực qua Hangfire Queue (không block user)
             var verifyUrl = Url.Action("VerifyEmail", "Auth", new { userId = user.UserID, token = user.EmailVerificationToken }, Request.Scheme);
-            await _emailService.SendVerificationEmailAsync(user.Email, verifyUrl);
+            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                job => job.SendVerificationEmail(user.Email, verifyUrl));
 
             // Chuyển hướng đến trang báo thành công
             TempData["RegisteredEmail"] = user.Email;
@@ -186,7 +187,8 @@ namespace CarRentalSystem.Controllers
                 await _authService.UpdateUserAsync(user);
 
                 var verifyUrl = Url.Action("VerifyEmail", "Auth", new { userId = user.UserID, token = user.EmailVerificationToken }, Request.Scheme);
-                await _emailService.SendVerificationEmailAsync(user.Email, verifyUrl);
+                Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                    job => job.SendVerificationEmail(user.Email, verifyUrl));
             }
 
             // Luôn báo thành công để tránh lộ thông tin email có tồn tại hay không
@@ -245,7 +247,7 @@ namespace CarRentalSystem.Controllers
                     user.Address = updatedUser.Address;
 
                     // Handle eKYC Uploads
-                    string uploadPath = Path.Combine(_env.WebRootPath, "uploads", "ekyc");
+                    string uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "eKyc");
                     if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
 
                     bool filesUploaded = false;
@@ -262,7 +264,7 @@ namespace CarRentalSystem.Controllers
                         string fileName = Guid.NewGuid().ToString() + ext;
                         string filePath = Path.Combine(uploadPath, fileName);
                         using (var stream = new FileStream(filePath, FileMode.Create)) { await uploadIdFront.CopyToAsync(stream); }
-                        user.IdCardFrontUrl = "/uploads/ekyc/" + fileName;
+                        user.IdCardFrontUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={fileName}";
                         filesUploaded = true;
                     }
 
@@ -277,7 +279,7 @@ namespace CarRentalSystem.Controllers
                         string fileName = Guid.NewGuid().ToString() + ext;
                         string filePath = Path.Combine(uploadPath, fileName);
                         using (var stream = new FileStream(filePath, FileMode.Create)) { await uploadIdBack.CopyToAsync(stream); }
-                        user.IdCardBackUrl = "/uploads/ekyc/" + fileName;
+                        user.IdCardBackUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={fileName}";
                         filesUploaded = true;
                     }
 
@@ -292,7 +294,7 @@ namespace CarRentalSystem.Controllers
                         string fileName = Guid.NewGuid().ToString() + ext;
                         string filePath = Path.Combine(uploadPath, fileName);
                         using (var stream = new FileStream(filePath, FileMode.Create)) { await uploadLicense.CopyToAsync(stream); }
-                        user.DrivingLicenseUrl = "/uploads/ekyc/" + fileName;
+                        user.DrivingLicenseUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={fileName}";
                         filesUploaded = true;
                     }
 

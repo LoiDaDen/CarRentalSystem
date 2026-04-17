@@ -13,6 +13,7 @@ namespace CarRentalSystem.Services
         Task<IEnumerable<Booking>> GetUserBookingsAsync(int userId);
         Task<Booking> GetBookingByIdAsync(int id);
         Task CreateBookingAsync(Booking booking);
+        void UpdateBooking(Booking booking);
         Task UpdateBookingStatusAsync(int id, string status);
         Task ConfirmPickupAsync(int bookingId, string? notes);
         Task CancelBookingAsync(int bookingId, string reason);
@@ -46,14 +47,14 @@ namespace CarRentalSystem.Services
         {
             var bookings = await _bookingRepo.Query()
                 .Include(b => b.Car)
-                .Include(b => b.Car.CarBrand)
+                    .ThenInclude(c => c!.CarBrand)
                 .Include(b => b.User)
                 .Include(b => b.BookingStatus)
                 .Include(b => b.DigitalContract)
                 .Include(b => b.ContractType)
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
-                
+
             return await AutoCancelExpiredBookings(bookings);
         }
 
@@ -74,16 +75,19 @@ namespace CarRentalSystem.Services
         private async Task<IEnumerable<Booking>> AutoCancelExpiredBookings(List<Booking> bookings)
         {
             bool hasChanges = false;
-            var cancelStatus = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Cancelled" || s.Name == "Canceled");
+            var cancelStatus = await _statusRepo.Query()
+                .FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Cancelled || s.Name == BookingStatusConstants.Canceled);
             if (cancelStatus == null) return bookings;
 
             foreach (var b in bookings)
             {
-                if ((b.BookingStatus?.Name == "Draft" || b.BookingStatus?.Name == "Pending") && b.StartDate.AddHours(1) < DateTime.Now)
+                if ((b.BookingStatus?.Name == BookingStatusConstants.Draft || b.BookingStatus?.Name == BookingStatusConstants.Pending) &&
+                    b.StartDate.AddHours(1) < DateTime.Now)
                 {
                     b.BookingStatusID = cancelStatus.BookingStatusID;
-                    b.BookingStatus = cancelStatus; 
-                    b.AdminNotes = (string.IsNullOrEmpty(b.AdminNotes) ? "" : b.AdminNotes + "\n") + $"Hệ thống tự động hủy đơn lúc {DateTime.Now:dd/MM/yyyy HH:mm} do quá giờ nhận xe 1 tiếng mà chưa được xác nhận.";
+                    b.BookingStatus = cancelStatus;
+                    b.AdminNotes = (string.IsNullOrEmpty(b.AdminNotes) ? "" : b.AdminNotes + "\n") +
+                                   $"Hệ thống tự động hủy đơn lúc {DateTime.Now:dd/MM/yyyy HH:mm} do quá giờ nhận xe 1 tiếng mà chưa được xác nhận.";
                     _bookingRepo.Update(b);
                     hasChanges = true;
                 }
@@ -111,13 +115,18 @@ namespace CarRentalSystem.Services
 
         public async Task CreateBookingAsync(Booking booking)
         {
-            var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Draft");
-            if (status == null) status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Pending");
-            
+            var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Draft);
+            if (status == null) status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending);
+
             if (status != null) booking.BookingStatusID = status.BookingStatusID;
 
             await _bookingRepo.AddAsync(booking);
             await _bookingRepo.SaveChangesAsync();
+        }
+
+        public void UpdateBooking(Booking booking)
+        {
+            _bookingRepo.Update(booking);
         }
 
         public async Task CompleteBookingAsync(int bookingId)
@@ -137,13 +146,13 @@ namespace CarRentalSystem.Services
                 contract.CalculateFees(totalDays);
             }
             
-            var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Completed");
+            var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Completed);
             if (status != null) booking.BookingStatusID = status.BookingStatusID;
 
             // Make car available again
             if (booking.Car != null)
             {
-                var availableStatus = await _carStatusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Available");
+                var availableStatus = await _carStatusRepo.Query().FirstOrDefaultAsync(s => s.Name == CarStatusConstants.Available);
                 if (availableStatus != null)
                 {
                     booking.Car.CarStatusID = availableStatus.CarStatusID;
@@ -164,7 +173,7 @@ namespace CarRentalSystem.Services
 
             if (booking == null) return;
 
-            var activeStatus = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Active");
+            var activeStatus = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Active);
             if (activeStatus != null) booking.BookingStatusID = activeStatus.BookingStatusID;
 
             if (!string.IsNullOrEmpty(notes)) booking.AdminNotes = notes;
@@ -172,7 +181,7 @@ namespace CarRentalSystem.Services
             // Mark car as Rented
             if (booking.Car != null)
             {
-                var rentedStatus = await _carStatusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Rented");
+                var rentedStatus = await _carStatusRepo.Query().FirstOrDefaultAsync(s => s.Name == CarStatusConstants.Rented);
                 if (rentedStatus != null)
                 {
                     booking.Car.CarStatusID = rentedStatus.CarStatusID;
@@ -192,16 +201,16 @@ namespace CarRentalSystem.Services
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
             if (booking == null) return;
 
-            var cancelledStatus = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Cancelled");
+            var cancelledStatus = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Cancelled || s.Name == BookingStatusConstants.Canceled);
             if (cancelledStatus != null) booking.BookingStatusID = cancelledStatus.BookingStatusID;
 
             booking.CancelReason = reason;
-            booking.DepositStatus = "Refunded";
+            booking.DepositStatus = DepositStatusConstants.Refunded;
 
             // Reset car status back to Available when booking is cancelled
             if (booking.Car != null)
             {
-                var availableStatus = await _carStatusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Available");
+                var availableStatus = await _carStatusRepo.Query().FirstOrDefaultAsync(s => s.Name == CarStatusConstants.Available);
                 if (availableStatus != null)
                 {
                     booking.Car.CarStatusID = availableStatus.CarStatusID;

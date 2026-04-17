@@ -1,0 +1,248 @@
+@model List<CarRentalSystem.Models.PartnerContract>
+@{
+    ViewData["Title"] = "Hợp đồng của tôi";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-file-earmark-text me-2"></i>Hợp đồng của tôi</h4>
+        <p class="text-muted mb-0 small">Xem và ký xác nhận hợp đồng hợp tác với hệ thống</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại Dashboard
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (Model.Count == 0)
+{
+    <div class="text-center py-5">
+        <i class="bi bi-file-earmark-x display-1 text-muted"></i>
+        <h5 class="mt-3 text-muted">Chưa có hợp đồng nào</h5>
+        <p class="text-muted small">Hợp đồng sẽ được tạo tự động sau khi Admin xác minh tài khoản của bạn</p>
+    </div>
+}
+else
+{
+    @foreach (var contract in Model)
+    {
+        var daysLeft = (contract.ExpiresAt - DateTime.Now).TotalDays;
+        var isPending = contract.Status == "Pending";
+        var isActive = contract.Status == "Active";
+        var isExpired = contract.Status == "Expired";
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4 @(isPending ? "border-start border-warning border-4" : isActive ? "border-start border-success border-4" : "")">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">
+                            <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                            HĐ Hợp tác Ký gửi & Vận hành Xe
+                        </h5>
+                        <p class="text-muted small mb-0">Số: <strong>@contract.ContractNo</strong> · Ngày tạo: @contract.CreatedAt.ToString("dd/MM/yyyy")</p>
+                    </div>
+                    <div>
+                        @if (isPending)
+                        {
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fs-6">
+                                <i class="bi bi-hourglass-split me-1"></i>Chờ ký
+                            </span>
+                        }
+                        else if (isActive)
+                        {
+                            <span class="badge bg-success rounded-pill px-3 py-2 fs-6">
+                                <i class="bi bi-check-circle me-1"></i>Đã ký · Có hiệu lực
+                            </span>
+                        }
+                        else if (isExpired)
+                        {
+                            <span class="badge bg-secondary rounded-pill px-3 py-2 fs-6">
+                                <i class="bi bi-clock-history me-1"></i>Hết hạn ký
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger rounded-pill px-3 py-2 fs-6">
+                                <i class="bi bi-x-circle me-1"></i>Đã hủy
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Contract Summary -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3 text-center">
+                            <p class="small text-muted mb-1">Tỷ lệ doanh thu</p>
+                            <p class="fw-bold text-success fs-4 mb-0">@contract.PartyBRevenuePercent%</p>
+                            <p class="small text-muted mb-0">Cho bạn (Chủ xe)</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3 text-center">
+                            <p class="small text-muted mb-1">Phí vận hành</p>
+                            <p class="fw-bold text-primary fs-4 mb-0">@contract.PartyARevenuePercent%</p>
+                            <p class="small text-muted mb-0">Cho hệ thống</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3 text-center">
+                            <p class="small text-muted mb-1">Thanh toán</p>
+                            <p class="fw-bold fs-5 mb-0">Ngày @contract.PaymentDay</p>
+                            <p class="small text-muted mb-0">@contract.PaymentCycle</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="bg-light rounded-3 p-3 text-center">
+                            <p class="small text-muted mb-1">Thời hạn HĐ</p>
+                            <p class="fw-bold fs-5 mb-0">@(contract.ContractDurationMonths == 0 ? "Vĩnh viễn" : $"{contract.ContractDurationMonths} tháng")</p>
+                            <p class="small text-muted mb-0">Báo trước @contract.NoticePeriodDays ngày</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Countdown / Actions -->
+                @if (isPending)
+                {
+                    <div class="alert @(daysLeft > 0 ? "alert-warning" : "alert-danger") d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            @if (daysLeft > 0)
+                            {
+                                <i class="bi bi-clock-fill me-2"></i>
+                                <strong>Bạn còn @Math.Ceiling(daysLeft) ngày</strong> <text>để ký xác nhận hợp đồng này.</text>
+                                <span class="small d-block mt-1">Hạn ký: @contract.ExpiresAt.ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>Hợp đồng đã quá hạn ký!</strong> <text>Vui lòng liên hệ Admin để được hỗ trợ.</text>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a asp-action="ContractDetails" asp-route-id="@contract.PartnerContractID" class="btn btn-outline-primary rounded-pill px-4">
+                            <i class="bi bi-eye me-1"></i>Xem chi tiết HĐ
+                        </a>
+                        @if (daysLeft > 0)
+                        {
+                            <button type="button" class="btn btn-success rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#signModal-@contract.PartnerContractID">
+                                <i class="bi bi-pen me-1"></i>Ký xác nhận
+                            </button>
+                        }
+                    </div>
+
+                    <!-- Sign Confirmation Modal -->
+                    @if (daysLeft > 0)
+                    {
+                        <div class="modal fade" id="signModal-@contract.PartnerContractID" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content rounded-4 border-0 shadow">
+                                    <div class="modal-header bg-success text-white border-0 rounded-top-4">
+                                        <h5 class="modal-title"><i class="bi bi-pen me-2"></i>Ký xác nhận Hợp đồng</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body p-4">
+                                        <div class="text-center mb-3">
+                                            <i class="bi bi-shield-check display-3 text-success"></i>
+                                        </div>
+                                        <p class="text-center">
+                                            Bạn xác nhận đã đọc và đồng ý với toàn bộ điều khoản của hợp đồng
+                                            <strong>#@contract.ContractNo</strong>?
+                                        </p>
+                                        <div class="alert alert-info small">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Sau khi ký, hợp đồng sẽ có hiệu lực <strong>vĩnh viễn</strong> cho đến khi bạn quyết định chấm dứt (báo trước @contract.NoticePeriodDays ngày).
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-0">
+                                        <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Hủy</button>
+                                        <form asp-action="SignContract" asp-route-id="@contract.PartnerContractID" method="post">
+                                            <button type="submit" class="btn btn-success rounded-pill px-4">
+                                                <i class="bi bi-check-lg me-1"></i>Xác nhận ký
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+                else if (isActive)
+                {
+                    <div class="d-flex gap-2">
+                        <a asp-action="ContractDetails" asp-route-id="@contract.PartnerContractID" class="btn btn-outline-primary rounded-pill px-4">
+                            <i class="bi bi-eye me-1"></i>Xem chi tiết HĐ
+                        </a>
+                        <button type="button" class="btn btn-outline-danger rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#cancelModal-@contract.PartnerContractID">
+                            <i class="bi bi-x-lg me-1"></i>Chấm dứt hợp đồng
+                        </button>
+                    </div>
+
+                    <!-- Cancel Confirmation Modal -->
+                    <div class="modal fade" id="cancelModal-@contract.PartnerContractID" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content rounded-4 border-0 shadow">
+                                <div class="modal-header bg-danger text-white border-0 rounded-top-4">
+                                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Chấm dứt Hợp đồng</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form asp-action="CancelContract" asp-route-id="@contract.PartnerContractID" method="post">
+                                    <div class="modal-body p-4">
+                                        <p>Bạn thực sự muốn chấm dứt hợp đồng <strong>#@contract.ContractNo</strong>?</p>
+                                        <div class="alert alert-warning small">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            Theo điều khoản, cần báo trước <strong>@contract.NoticePeriodDays ngày</strong> trước khi chấm dứt hợp đồng.
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Lý do chấm dứt</label>
+                                            <textarea name="reason" class="form-control rounded-3" rows="3" placeholder="Nhập lý do..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-0">
+                                        <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Quay lại</button>
+                                        <button type="submit" class="btn btn-danger rounded-pill px-4">
+                                            <i class="bi bi-x-lg me-1"></i>Xác nhận hủy
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <a asp-action="ContractDetails" asp-route-id="@contract.PartnerContractID" class="btn btn-outline-secondary rounded-pill px-4">
+                        <i class="bi bi-eye me-1"></i>Xem chi tiết
+                    </a>
+                }
+
+                @if (contract.Status == "Cancelled" && !string.IsNullOrEmpty(contract.CancelReason))
+                {
+                    <div class="alert alert-danger mt-3 mb-0 small">
+                        <i class="bi bi-info-circle me-1"></i>Lý do hủy: @contract.CancelReason
+                        @if (contract.CancelledAt.HasValue)
+                        {
+                            <span class="d-block mt-1">Ngày hủy: @contract.CancelledAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}

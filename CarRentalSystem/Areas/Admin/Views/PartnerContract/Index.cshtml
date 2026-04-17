@@ -1,0 +1,293 @@
+@{
+    ViewData["Title"] = "Quản lý Hợp đồng Đối tác & Tài xế";
+    var driverContracts = ViewBag.DriverContracts as List<CarRentalSystem.Models.DriverContract> ?? new List<CarRentalSystem.Models.DriverContract>();
+    var partnerContracts = ViewBag.PartnerContracts as List<CarRentalSystem.Models.PartnerContract> ?? new List<CarRentalSystem.Models.PartnerContract>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-file-earmark-text me-2"></i>Quản lý Hợp đồng Đối tác & Tài xế</h4>
+        <p class="text-muted mb-0 small">Theo dõi & quản lý hợp đồng hợp tác với đối tác và tài xế</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <span class="badge bg-primary bg-opacity-75 rounded-pill px-3 py-2">
+            <i class="bi bi-person-workspace me-1"></i>Tài xế: @ViewBag.TotalDriverContracts
+        </span>
+        <span class="badge bg-info bg-opacity-75 rounded-pill px-3 py-2">
+            <i class="bi bi-building me-1"></i>Đối tác: @ViewBag.TotalPartnerContracts
+        </span>
+        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">
+            <i class="bi bi-hourglass-split me-1"></i>Chờ ký: @ViewBag.PendingCount
+        </span>
+        <span class="badge bg-success rounded-pill px-3 py-2">
+            <i class="bi bi-check-circle me-1"></i>Đã ký: @ViewBag.ActiveCount
+        </span>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Filter Tabs -->
+<ul class="nav nav-pills mb-4 gap-2 flex-wrap">
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Category == null && ViewBag.Status == null ? "active bg-dark" : "text-dark")" asp-action="Index">
+            <i class="bi bi-list-ul me-1"></i>Tất cả
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Category == "driver" ? "active bg-primary" : "text-dark")" asp-action="Index" asp-route-category="driver">
+            <i class="bi bi-person-workspace me-1"></i>Tài xế
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Category == "partner" ? "active bg-info" : "text-dark")" asp-action="Index" asp-route-category="partner">
+            <i class="bi bi-building me-1"></i>Đối tác
+        </a>
+    </li>
+    <li class="nav-item ms-3 border-start ps-3">
+        <a class="nav-link @(ViewBag.Status == "pending" ? "active bg-warning text-dark" : "text-dark")" asp-action="Index" asp-route-status="pending">
+            <i class="bi bi-hourglass-split me-1"></i>Chờ ký
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Status == "active" ? "active bg-success" : "text-dark")" asp-action="Index" asp-route-status="active">
+            <i class="bi bi-check-circle me-1"></i>Đã ký
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(ViewBag.Status == "expired" ? "active bg-secondary" : "text-dark")" asp-action="Index" asp-route-status="expired">
+            <i class="bi bi-clock-history me-1"></i>Hết hạn
+        </a>
+    </li>
+</ul>
+
+@if (driverContracts.Count == 0 && partnerContracts.Count == 0)
+{
+    <div class="text-center py-5">
+        <i class="bi bi-file-earmark-x display-1 text-muted"></i>
+        <h5 class="mt-3 text-muted">Chưa có hợp đồng nào</h5>
+        <p class="text-muted small">Hợp đồng sẽ tự động tạo khi Admin duyệt tài xế hoặc xác minh đối tác</p>
+    </div>
+}
+else
+{
+    <!-- Driver Contracts Section -->
+    @if (driverContracts.Count > 0)
+    {
+        <div class="mb-4">
+            <h6 class="fw-bold text-primary mb-3">
+                <i class="bi bi-person-workspace me-2"></i>Hợp đồng Tài xế (@driverContracts.Count)
+            </h6>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Số HĐ</th>
+                                <th>Tài xế (Bên B)</th>
+                                <th>Bằng lái</th>
+                                <th class="text-center">Ngày tạo</th>
+                                <th class="text-center">Hạn ký</th>
+                                <th class="text-center">Trạng thái</th>
+                                <th class="text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in driverContracts)
+                            {
+                                var daysLeft = (c.ExpiresAt - DateTime.Now).TotalDays;
+                                <tr>
+                                    <td class="ps-4">
+                                        <span class="fw-bold text-primary">@c.ContractNo</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; min-width: 36px;">
+                                                <i class="bi bi-person-fill text-primary"></i>
+                                            </div>
+                                            <div class="ms-2">
+                                                <div class="fw-bold">@c.PartyBFullName</div>
+                                                <small class="text-muted">CCCD: @(c.PartyBCCCD ?? "—")</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info bg-opacity-10 text-info">@c.PartyBLicenseType</span>
+                                    </td>
+                                    <td class="text-center small text-muted">@c.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-center">
+                                        @if (c.Status == "Pending")
+                                        {
+                                            if (daysLeft > 0)
+                                            {
+                                                <span class="badge bg-warning text-dark rounded-pill">
+                                                    <i class="bi bi-clock me-1"></i>Còn @Math.Ceiling(daysLeft) ngày
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger rounded-pill">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>Quá hạn
+                                                </span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">@c.ExpiresAt.ToString("dd/MM/yyyy")</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (c.Status == "Pending")
+                                        {
+                                            <span class="badge bg-warning text-dark rounded-pill px-3"><i class="bi bi-hourglass-split me-1"></i>Chờ ký</span>
+                                        }
+                                        else if (c.Status == "Active")
+                                        {
+                                            <span class="badge bg-success rounded-pill px-3"><i class="bi bi-check-circle me-1"></i>Đã ký</span>
+                                        }
+                                        else if (c.Status == "Expired")
+                                        {
+                                            <span class="badge bg-secondary rounded-pill px-3"><i class="bi bi-clock-history me-1"></i>Hết hạn</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger rounded-pill px-3"><i class="bi bi-x-circle me-1"></i>Đã hủy</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="DriverDetails" asp-route-id="@c.DriverContractID" class="btn btn-outline-primary btn-sm" title="Xem chi tiết">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            @if (c.Status == "Pending" || c.Status == "Active")
+                                            {
+                                                <form asp-action="CancelDriver" asp-route-id="@c.DriverContractID" method="post" class="d-inline" onsubmit="return confirm('Xác nhận hủy hợp đồng này?')">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Hủy HĐ">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Partner Contracts Section -->
+    @if (partnerContracts.Count > 0)
+    {
+        <div class="mb-4">
+            <h6 class="fw-bold text-info mb-3">
+                <i class="bi bi-building me-2"></i>Hợp đồng Đối tác (@partnerContracts.Count)
+            </h6>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Số HĐ</th>
+                                <th>Đối tác (Bên B)</th>
+                                <th class="text-center">Tỷ lệ</th>
+                                <th class="text-center">Ngày tạo</th>
+                                <th class="text-center">Hạn ký</th>
+                                <th class="text-center">Trạng thái</th>
+                                <th class="text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in partnerContracts)
+                            {
+                                var daysLeft = (c.ExpiresAt - DateTime.Now).TotalDays;
+                                <tr>
+                                    <td class="ps-4">
+                                        <span class="fw-bold text-info">@c.ContractNo</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle bg-info bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; min-width: 36px;">
+                                                <i class="bi bi-building-fill text-info"></i>
+                                            </div>
+                                            <div class="ms-2">
+                                                <div class="fw-bold">@c.PartyBFullName</div>
+                                                <small class="text-muted">CCCD: @(c.PartyBCCCD ?? "—")</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success bg-opacity-10 text-success">@c.PartyBRevenuePercent%/@c.PartyARevenuePercent%</span>
+                                    </td>
+                                    <td class="text-center small text-muted">@c.CreatedAt.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-center">
+                                        @if (c.Status == "Pending")
+                                        {
+                                            if (daysLeft > 0)
+                                            {
+                                                <span class="badge bg-warning text-dark rounded-pill">
+                                                    <i class="bi bi-clock me-1"></i>Còn @Math.Ceiling(daysLeft) ngày
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger rounded-pill">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>Quá hạn
+                                                </span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">@c.ExpiresAt.ToString("dd/MM/yyyy")</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (c.Status == "Pending")
+                                        {
+                                            <span class="badge bg-warning text-dark rounded-pill px-3"><i class="bi bi-hourglass-split me-1"></i>Chờ ký</span>
+                                        }
+                                        else if (c.Status == "Active")
+                                        {
+                                            <span class="badge bg-success rounded-pill px-3"><i class="bi bi-check-circle me-1"></i>Đã ký</span>
+                                        }
+                                        else if (c.Status == "Expired")
+                                        {
+                                            <span class="badge bg-secondary rounded-pill px-3"><i class="bi bi-clock-history me-1"></i>Hết hạn</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger rounded-pill px-3"><i class="bi bi-x-circle me-1"></i>Đã hủy</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a asp-action="PartnerDetails" asp-route-id="@c.PartnerContractID" class="btn btn-outline-primary btn-sm" title="Xem chi tiết">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            @if (c.Status == "Pending" || c.Status == "Active")
+                                            {
+                                                <form asp-action="CancelPartner" asp-route-id="@c.PartnerContractID" method="post" class="d-inline" onsubmit="return confirm('Xác nhận hủy hợp đồng này?')">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Hủy HĐ">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}

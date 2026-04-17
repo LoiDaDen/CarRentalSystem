@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const ownerDeliverySection = document.getElementById('ownerDeliverySection');
     let pickerMapObj = null;
     let deliveryDistanceKm = 0;
+    let deliveryDurationMinutes = 0;
+    let estimatedDeliveryTime = null;
+
+    // Delivery info display element
+    let deliveryInfoEl = null;
 
     function handleLocationToggle() {
         if (locOwner && locOwner.checked) {
@@ -30,59 +35,72 @@ document.addEventListener('DOMContentLoaded', function () {
                         const finalLoc = document.getElementById('finalPickupLocation');
                         if (pickupCoords) pickupCoords.value = "Đang lấy địa chỉ...";
                         
-                        deliveryDistanceKm = calculateDistance(carData.lat, carData.lng, lat, lng);
-                        updatePrices();
+                        // 1. Dùng OSRM API để lấy khoảng cách và thời gian lái xe thật
+                        fetch(`https://router.project-osrm.org/route/v1/driving/${carData.lng},${carData.lat};${lng},${lat}?overview=false`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.routes && data.routes.length > 0) {
+                                    const route = data.routes[0];
+                                    deliveryDistanceKm = route.distance / 1000;
+                                    const durationSec = route.duration;
+                                    
+                                    // Thời gian giao xe = Thời gian chạy xe + 1 giờ chuẩn bị
+                                    const totalHoursNeeded = 1 + (durationSec / 3600);
+                                    deliveryDurationMinutes = durationSec / 60;
+                                    estimatedDeliveryTime = new Date(now.getTime() + totalHoursNeeded * 3600000);
+                                    
+                                    // Tính thời điểm sớm nhất có thể giao xe
+                                    const now = new Date();
+                                    const minStart = new Date(now.getTime() + totalHoursNeeded * 3600000);
+                                    
+                                    const startInput = document.getElementById('startDate');
+                                    if (startInput) {
+                                        const currentStart = new Date(startInput.value);
+                                        // Nếu giờ bắt đầu hiện tại nhỏ hơn giờ bắt buộc tối thiểu -> Đẩy giờ lên
+                                        if (isNaN(currentStart) || currentStart < minStart) {
+                                            if (startInput._flatpickr) {
+                                                startInput._flatpickr.setDate(minStart, true);
+                                                startInput._flatpickr.set('minDate', minStart);
+                                            } else {
+                                                const pad = num => String(num).padStart(2, '0');
+                                                startInput.value = `${minStart.getFullYear()}-${pad(minStart.getMonth() + 1)}-${pad(minStart.getDate())}T${pad(minStart.getHours())}:${pad(minStart.getMinutes())}`;
+                                                startInput.min = startInput.value;
+                                            }
+                                            
+                                            // Thông báo nhẹ cho người dùng biết giờ đã được điều chỉnh
+                                            if (typeof Swal !== 'undefined' && totalHoursNeeded > 1.5) {
+                                                Swal.fire({
+                                                    toast: true,
+                                                    position: 'top-end',
+                                                    icon: 'info',
+                                                    title: `Giờ nhận xe được dời xuống do thời gian giao xe mất khoảng ${Math.ceil(totalHoursNeeded)} tiếng!`,
+                                                    showConfirmButton: false,
+                                                    timer: 4000
+                                                });
+                                            }
+                                        } else if (startInput._flatpickr) {
+                                            startInput._flatpickr.set('minDate', minStart);
+                                        }
+                                    }
+                                } else {
+                                    // Dự phòng dùng khoảng cách đường chim bay nếu API lỗi
+                                    deliveryDistanceKm = calculateDistance(carData.lat, carData.lng, lat, lng);
+                                }
+                                updatePrices();
+                                updateDeliveryInfoDisplay();
+                            })
+                            .catch(err => {
+                                console.error("OSRM error", err);
+                                deliveryDistanceKm = calculateDistance(carData.lat, carData.lng, lat, lng);
+                                updatePrices();
+                                updateDeliveryInfoDisplay();
+                            });
                         
+                        // 2. Lấy tên địa chỉ (Bỏ chặn khu vực, cho phép khách hàng mọi nơi đều thuê được)
                         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
                             .then(res => res.json())
                             .then(data => {
                                 if (data && data.address) {
-                                    const addrStr = JSON.stringify(data.address).toLowerCase();
-                                    const regionTarget = (carData.region || "").toLowerCase();
-                                    
-                                    const matchMapping = [
-                                        { keys: ["hồ chí minh", "ho chi minh", "hcmc", "sg"], val: "TP. Hồ Chí Minh" },
-                                        { keys: ["hà nội", "ha noi"], val: "Hà Nội" },
-                                        { keys: ["đà nẵng", "da nang"], val: "Đà Nẵng" },
-                                        { keys: ["cần thơ", "can tho"], val: "Cần Thơ" },
-                                        { keys: ["bình dương", "binh duong"], val: "Bình Dương" },
-                                        { keys: ["đồng nai", "dong nai"], val: "Đồng Nai" },
-                                        { keys: ["nha trang", "khánh hòa", "khanh hoa"], val: "Nha Trang" },
-                                        { keys: ["hải phòng", "hai phong"], val: "Hải Phòng" },
-                                        { keys: ["vũng tàu", "vung tau", "bà rịa"], val: "Bà Rịa - Vũng Tàu" },
-                                        { keys: ["cà mau", "ca mau"], val: "Cà Mau" },
-                                        { keys: ["lâm đồng", "lam dong", "đà lạt", "da lat"], val: "Lâm Đồng" },
-                                        { keys: ["phú quốc", "phu quoc", "kiên giang", "kien giang"], val: "Phú Quốc" }
-                                    ];
-                                    
-                                    let foundVal = null;
-                                    for (const m of matchMapping) {
-                                        if (m.keys.some(k => addrStr.includes(k))) {
-                                            foundVal = m.val; break;
-                                        }
-                                    }
-                                    
-                                    let isValid = false;
-                                    if (foundVal && regionTarget.includes(foundVal.toLowerCase())) isValid = true;
-                                    else if (!foundVal && addrStr.includes(regionTarget)) isValid = true;
-                                    if (regionTarget.includes("hồ chí minh") && addrStr.includes("ho chi minh")) isValid = true;
-                                    
-                                    if (!isValid) {
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Ngoài khu vực hỗ trợ',
-                                            text: `BonbonCar chỉ hỗ trợ giao xe trong khu vực ${carData.region}. Vui lòng chọn điểm nhận xe khác.`,
-                                            confirmButtonColor: '#10b981'
-                                        });
-                                        pickerMapObj.marker.setLatLng([carData.lat, carData.lng]);
-                                        pickerMapObj.map.panTo([carData.lat, carData.lng]);
-                                        deliveryDistanceKm = 0;
-                                        if (pickupCoords) pickupCoords.value = carData.address || coordsStr;
-                                        if (finalLoc) finalLoc.value = carData.address || coordsStr;
-                                        updatePrices();
-                                        return;
-                                    }
-                                    
                                     const displayName = data.display_name;
                                     if (pickupCoords) pickupCoords.value = displayName;
                                     if (finalLoc) finalLoc.value = displayName;
@@ -127,11 +145,14 @@ document.addEventListener('DOMContentLoaded', function () {
             deliveryDistanceKm = 0;
         }
         updatePrices();
+                                updateDeliveryInfoDisplay();
     }
 
     if (locCustomer && locOwner) {
         locCustomer.addEventListener('change', handleLocationToggle);
         locOwner.addEventListener('change', handleLocationToggle);
+        // Initial call to update delivery info display
+        handleLocationToggle();
     }
 
     // Haversine distance calculation
@@ -146,15 +167,35 @@ document.addEventListener('DOMContentLoaded', function () {
         return R * c;
     }
 
-    // Calculate shipping fee: 3000đ/km + fuel (distance * 2 * 8L/100km * 25000đ/L)
+    // Calculate shipping fee: 3000đ/km
     function calculateShippingFee(distanceKm) {
         if (distanceKm <= 0) return 0;
         const kmFee = Math.ceil(distanceKm) * 3000;
-        const fuelFee = Math.ceil(distanceKm * 2 * 8 / 100 * 25000);
-        return kmFee + fuelFee;
+        return kmFee;
     }
 
-    // 3. Dynamic Price Calculation - LINEAR PRICING between packages
+    // Update delivery info display
+    function updateDeliveryInfoDisplay() {
+        const distanceEl = document.getElementById('deliveryDistanceDisplay');
+        const timeEl = document.getElementById('deliveryTimeDisplay');
+        const locOwnerEl = document.getElementById('locOwner');
+        
+        if (!distanceEl || !timeEl) return;
+        
+        if (locOwnerEl && locOwnerEl.checked && deliveryDistanceKm > 0) {
+            distanceEl.textContent = deliveryDistanceKm.toFixed(1) + ' km';
+            const totalHours = 1 + (deliveryDurationMinutes / 60);
+            if (totalHours >= 1) {
+                timeEl.textContent = '~' + Math.ceil(totalHours) + ' tiếng';
+            } else {
+                timeEl.textContent = '~' + Math.ceil(deliveryDurationMinutes) + ' phút';
+            }
+        } else {
+            distanceEl.textContent = 'Chọn vị trí để tính';
+            timeEl.textContent = '-';
+        }
+    }
+
     function calculateLinearPrice(hours) {
         if (hours <= 0) return 0;
 
@@ -165,22 +206,32 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Ensure 24h fallback for multi-day multiplier
         const maxDayPrice = p24 > 0 ? p24 : carData.price;
-
-        if (hours <= 4) return Math.min(hours * carData.pricePerHour, p4);
-        if (hours <= 8) return Math.min(p4 + (hours - 4) * carData.pricePerHour, p8);
-        if (hours <= 12) return Math.min(p8 + (hours - 8) * carData.pricePerHour, p12);
-        if (hours <= 24) return Math.min(p12 + (hours - 12) * carData.pricePerHour, maxDayPrice);
         
         const fullDays = Math.floor(hours / 24);
-        const rem = hours % 24;
-        let remP = 0;
-        if (rem > 0) {
-            if (rem <= 4) remP = Math.min(rem * carData.pricePerHour, p4);
-            else if (rem <= 8) remP = Math.min(p4 + (rem - 4) * carData.pricePerHour, p8);
-            else if (rem <= 12) remP = Math.min(p8 + (rem - 8) * carData.pricePerHour, p12);
-            else remP = Math.min(p12 + (rem - 12) * carData.pricePerHour, maxDayPrice);
+        const remHours = hours % 24;
+
+        const blocks = [
+            { h: 1, cost: carData.pricePerHour },
+            { h: 4, cost: p4 },
+            { h: 8, cost: p8 },
+            { h: 12, cost: p12 },
+            { h: 24, cost: maxDayPrice }
+        ];
+        
+        let dp = new Array(25).fill(Infinity);
+        dp[0] = 0;
+        for (let i = 1; i <= 24; i++) {
+            for (let b of blocks) {
+                if (i >= b.h) {
+                    dp[i] = Math.min(dp[i], dp[i - b.h] + b.cost);
+                }
+            }
         }
-        return (fullDays * maxDayPrice) + remP;
+        for (let i = 23; i >= 1; i--) {
+            dp[i] = Math.min(dp[i], dp[i + 1]);
+        }
+        
+        return (fullDays * maxDayPrice) + dp[remHours];
     }
 
     function updatePrices() {
@@ -224,17 +275,12 @@ document.addEventListener('DOMContentLoaded', function () {
         
         if (isOwnerDelivery) {
             deliveryFee = calculateShippingFee(deliveryDistanceKm);
-            if (deliveryFee < 50000) deliveryFee = 50000; // Minimum delivery fee
             if (deliveryFeeRow) {
                 deliveryFeeRow.classList.remove('d-none');
                 deliveryFeeRow.classList.add('d-flex');
                 const feeSpan = deliveryFeeRow.querySelector('span:last-child');
                 if (feeSpan) {
-                    if (deliveryDistanceKm > 0) {
-                        feeSpan.textContent = `+${deliveryFee.toLocaleString('en-US')} đ (${deliveryDistanceKm.toFixed(1)}km)`;
-                    } else {
-                        feeSpan.textContent = `+50,000 đ`;
-                    }
+                    feeSpan.textContent = `+${deliveryFee.toLocaleString('en-US')} đ (${deliveryDistanceKm.toFixed(1)}km)`;
                 }
             }
         } else {
@@ -272,11 +318,17 @@ document.addEventListener('DOMContentLoaded', function () {
         let discountPercent = discountInput ? parseFloat(discountInput.value) || 0 : 0;
         let discountVal = (totalPrice * discountPercent) / 100;
         
+        const memDiscountInput = document.getElementById('membershipDiscount');
+        const memDiscountAmountSpan = document.getElementById('memDiscountAmount');
+        let memDiscountPercent = memDiscountInput ? parseFloat(memDiscountInput.value) || 0 : 0;
+        let memDiscountVal = (totalPrice * memDiscountPercent) / 100;
+
         if (baseRent) baseRent.innerText = totalPrice.toLocaleString('en-US') + ' đ';
         if (discountAmountSpan) discountAmountSpan.innerText = '-' + discountVal.toLocaleString('en-US') + ' đ';
+        if (memDiscountAmountSpan) memDiscountAmountSpan.innerText = '-' + memDiscountVal.toLocaleString('en-US') + ' đ';
         
-        // Grand total = rental - discount + VAT + delivery + addons
-        const grandTotal = totalPrice - discountVal + 200000 + deliveryFee + addonTotal;
+        // Grand total = rental - contract_discount - mem_discount + VAT + delivery + addons
+        const grandTotal = totalPrice - discountVal - memDiscountVal + 200000 + deliveryFee + addonTotal;
         if (finalTotal) finalTotal.innerText = grandTotal.toLocaleString('en-US') + ' đ';
 
         // Show/hide addon total row in pricing summary
@@ -309,6 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         endInput.value = `${newEnd.getFullYear()}-${pad(newEnd.getMonth() + 1)}-${pad(newEnd.getDate())}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
                     }
                     updatePrices();
+                                updateDeliveryInfoDisplay();
                 }
             }
         });
@@ -332,6 +385,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Initial price update
     updatePrices();
+                                updateDeliveryInfoDisplay();
 
     const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {

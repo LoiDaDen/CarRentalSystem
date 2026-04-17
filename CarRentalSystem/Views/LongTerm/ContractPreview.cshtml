@@ -49,7 +49,10 @@
         }
         parsedEnd = parsedStart.AddDays(totalDays);
     }
-    decimal totalContractPrice = discountedPerDay * totalDays;
+    decimal membershipDiscountPct = ViewBag.MembershipTier != null ? ViewBag.MembershipTier.DiscountPercent : 0;
+    decimal totalContractPriceBeforeMem = discountedPerDay * totalDays;
+    decimal memDiscountAmount = totalContractPriceBeforeMem * (membershipDiscountPct / 100m);
+    decimal totalContractPrice = totalContractPriceBeforeMem - memDiscountAmount;
 }
 
 <div class="container py-5 mt-5">
@@ -88,6 +91,13 @@
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted small">Giảm giá gói:</span>
                             <span class="fw-bold text-success">-@contract.DiscountPercent.ToString("0.##")%</span>
+                        </div>
+                    }
+                    @if (memDiscountAmount > 0)
+                    {
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Thành viên @ViewBag.MembershipTier.Name:</span>
+                            <span class="fw-bold text-success">-@string.Format("{0:N0}", memDiscountAmount) ₫</span>
                         </div>
                     }
                     <hr>
@@ -179,11 +189,11 @@
                                 <span class="fw-bold text-success">-@contract.DiscountPercent.ToString("0.##")%</span>
                             </div>
                         }
-                        @if (ViewBag.MembershipTier != null && ViewBag.MembershipTier.DiscountPercent > 0)
+                        @if (memDiscountAmount > 0)
                         {
                             <div class="d-flex justify-content-between mb-2 small">
-                                <span>Ưu đãi hạng thành viên @ViewBag.MembershipTier.Name:</span>
-                                <span class="fw-bold text-success">-@ViewBag.MembershipTier.DiscountPercent%</span>
+                                <span>Ưu đãi hạng thành viên @ViewBag.MembershipTier.Name (-@ViewBag.MembershipTier.DiscountPercent%):</span>
+                                <span class="fw-bold text-success">-@string.Format("{0:N0}", memDiscountAmount) VNĐ</span>
                             </div>
                         }
                         <hr>
@@ -248,18 +258,20 @@
 
                     <div class="alert alert-info border-0 p-4 rounded-4 shadow-sm mb-0 text-center" style="background-color: #eef2ff;">
                         <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary"></i>Xác nhận thủ tục Đặt Xe Doanh Nghiệp</h6>
-                        <p class="small text-muted mb-4">Để tiến hành, quý khách vui lòng thanh toán cọc bằng chuyển khoản ngân hàng trước khi xác nhận ký điện tử Hợp Đồng Doanh Nghiệp.</p>
+                        <p class="small text-muted mb-4">Trước khi ký hợp đồng, quý khách sẽ được xem và kiểm tra tình trạng xe chi tiết qua hình ảnh thực tế 360° để đảm bảo sự minh bạch.</p>
                         
-                        <form asp-action="ConfirmAndDeposit" method="post" id="signForm">
+                        <form asp-action="VehicleInspection" method="get" id="signForm">
                             <input type="hidden" name="carId" value="@car.CarID" />
                             <input type="hidden" name="contractId" value="@contract.ContractTypeID" />
                             <input type="hidden" name="duration" value="@duration" />
+                            <input type="hidden" name="customerName" form="signForm" value="@name" />
+                            <input type="hidden" name="customerPhone" form="signForm" value="@phone" />
                             <input type="hidden" name="startDateStr" value="@ViewBag.StartDateStr" />
                             <input type="hidden" name="selectedDates" value="@ViewBag.SelectedDates" />
 
                             <div class="d-flex gap-2 justify-content-center mt-2">
                                 <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm text-secondary" style="border: 1px solid #ddd;" onclick="window.history.back()">Quay lại sửa yêu cầu</button>
-                                <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm"><i class="bi bi-credit-card me-2"></i>XÁC NHẬN ĐƠN VÀ ĐẶT CỌC NGAY</button>
+                                <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm"><i class="bi bi-camera me-2"></i>XÁC NHẬN — XEM XE TRƯỚC KHI KÝ</button>
                             </div>
                         </form>
                     </div>

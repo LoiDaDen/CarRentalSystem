@@ -62,6 +62,13 @@ namespace CarRentalSystem.Data
         public DbSet<WalletTransaction> WalletTransactions { get; set; }
         public DbSet<DynamicPricingRule> DynamicPricingRules { get; set; }
 
+        // Phase 7: Partner & Driver Contracts
+        public DbSet<DriverContract> DriverContracts { get; set; }
+        public DbSet<PartnerContract> PartnerContracts { get; set; }
+
+        // Phase 8: Driver Reviews
+        public DbSet<DriverReview> DriverReviews { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -280,6 +287,50 @@ namespace CarRentalSystem.Data
                 .WithOne(dc => dc.BookingTransaction)
                 .HasForeignKey<DigitalContract>(dc => dc.TransactionID)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // ═══ DigitalContract Configuration ═══
+            modelBuilder.Entity<DigitalContract>()
+                .Property(dc => dc.RentalPricePerDay)
+                .HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<DigitalContract>()
+                .Property(dc => dc.TotalContractValue)
+                .HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<DigitalContract>()
+                .Property(dc => dc.DepositAmount)
+                .HasColumnType("decimal(18,2)");
+
+            // ═══ Driver Contract Configuration ═══
+            modelBuilder.Entity<DriverContract>()
+                .Property(dc => dc.BaseSalary)
+                .HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<DriverContract>()
+                .Property(dc => dc.TripFee)
+                .HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<DriverContract>()
+                .HasOne(dc => dc.Driver)
+                .WithMany()
+                .HasForeignKey(dc => dc.DriverID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ═══ Partner Contract Configuration ═══
+            modelBuilder.Entity<PartnerContract>()
+                .HasOne(pc => pc.PartnerUser)
+                .WithMany()
+                .HasForeignKey(pc => pc.PartnerUserID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ═══ Driver Review Configuration ═══
+            modelBuilder.Entity<DriverReview>()
+                .HasOne(dr => dr.Driver)
+                .WithMany(d => d.DriverReviews)
+                .HasForeignKey(dr => dr.DriverID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DriverReview>()
+                .HasOne(dr => dr.User)
+                .WithMany()
+                .HasForeignKey(dr => dr.UserID)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

@@ -1,3 +1,4 @@
+using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = UserRoleConstants.Admin)]
     public class BookingController : Controller
     {
         private readonly IBookingService _bookingService;
@@ -25,7 +26,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var bookings = await _bookingService.GetAllBookingsAsync();
 
             if (string.IsNullOrEmpty(status))
-                bookings = bookings.Where(b => b.BookingStatus?.Name != "Draft");
+                bookings = bookings.Where(b => b.BookingStatus?.Name != BookingStatusConstants.Draft);
             else
                 bookings = bookings.Where(b => b.BookingStatus?.Name == status);
 
@@ -77,25 +78,25 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var since = DateTime.Now.AddHours(-24);
             
             var notifications = allBookings
-                .Where(b => b.CreatedAt >= since && b.BookingStatus?.Name != "Draft")
+                .Where(b => b.CreatedAt >= since && b.BookingStatus?.Name != BookingStatusConstants.Draft)
                 .OrderByDescending(b => b.CreatedAt)
                 .Take(10)
                 .Select(b => new {
                     id = b.BookingID,
                     message = b.BookingStatus?.Name switch {
-                        "Pending" => $"Đơn mới #{b.BookingID} - {b.User?.Name ?? "Khách"} đặt xe {b.Car?.CarName ?? ""}",
-                        "Cancelled" => $"Đơn #{b.BookingID} đã bị hủy bởi {b.User?.Name ?? "Khách"}",
-                        "Confirmed" => $"Đơn #{b.BookingID} đã được xác nhận",
-                        "Completed" => $"Đơn #{b.BookingID} đã hoàn thành",
+                        BookingStatusConstants.Pending => $"Đơn mới #{b.BookingID} - {b.User?.Name ?? "Khách"} đặt xe {b.Car?.CarName ?? ""}",
+                        BookingStatusConstants.Cancelled => $"Đơn #{b.BookingID} đã bị hủy bởi {b.User?.Name ?? "Khách"}",
+                        BookingStatusConstants.Confirmed => $"Đơn #{b.BookingID} đã được xác nhận",
+                        BookingStatusConstants.Completed => $"Đơn #{b.BookingID} đã hoàn thành",
                         _ => $"Đơn #{b.BookingID} - {b.BookingStatus?.Name}"
                     },
                     time = b.CreatedAt.ToString("HH:mm dd/MM"),
                     status = b.BookingStatus?.Name ?? "Unknown",
                     icon = b.BookingStatus?.Name switch {
-                        "Pending" => "bi-bell-fill text-warning",
-                        "Cancelled" => "bi-x-circle-fill text-danger",
-                        "Confirmed" => "bi-check-circle-fill text-success",
-                        "Completed" => "bi-trophy-fill text-info",
+                        BookingStatusConstants.Pending => "bi-bell-fill text-warning",
+                        BookingStatusConstants.Cancelled => "bi-x-circle-fill text-danger",
+                        BookingStatusConstants.Confirmed => "bi-check-circle-fill text-success",
+                        BookingStatusConstants.Completed => "bi-trophy-fill text-info",
                         _ => "bi-info-circle text-secondary"
                     }
                 })

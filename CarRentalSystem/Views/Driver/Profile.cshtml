@@ -1,80 +1,415 @@
 @model CarRentalSystem.Models.Driver
-@{ ViewData["Title"] = Model.FullName + " - Tài Xế"; }
+@{
+    ViewData["Title"] = Model.FullName + " - Tài Xế";
+    var reviews = Model.DriverReviews?.OrderByDescending(r => r.CreatedAt).ToList() ?? new List<CarRentalSystem.Models.DriverReview>();
+    var totalReviews = ViewBag.TotalReviews ?? 0;
+    var avgRating = ViewBag.AverageRating ?? (double)Model.Rating;
+    var distribution = ViewBag.RatingDistribution as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var canReview = ViewBag.CanReview ?? false;
+    var hasReviewed = ViewBag.HasReviewed ?? false;
+}
 
-<div class="container py-4" style="max-width: 800px;">
-    <a asp-action="Index" class="text-decoration-none text-muted small mb-3 d-inline-block"><i class="bi bi-arrow-left me-1"></i>Quay lại danh sách</a>
-    
-    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-        <div class="text-center p-5" style="background: linear-gradient(135deg, #10b981, #059669);">
+<style>
+    .driver-profile-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
+        padding: 50px 0 40px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    .driver-profile-hero::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: radial-gradient(circle at 80% 20%, rgba(59,130,246,0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 20% 80%, rgba(16,185,129,0.2) 0%, transparent 50%);
+    }
+    .hero-content { position: relative; z-index: 1; }
+    .driver-avatar-lg {
+        width: 130px; height: 130px; border-radius: 50%; object-fit: cover;
+        border: 4px solid rgba(255,255,255,0.3); box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        transition: transform 0.3s;
+    }
+    .driver-avatar-lg:hover { transform: scale(1.05); }
+    .driver-avatar-placeholder-lg {
+        width: 130px; height: 130px; border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        border: 4px solid rgba(255,255,255,0.3);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+    .stars-display { display: flex; gap: 2px; justify-content: center; }
+    .stars-display i { font-size: 1.2rem; }
+    .stars-display .filled { color: #fbbf24; }
+    .stars-display .empty { color: rgba(255,255,255,0.3); }
+
+    /* Stat cards */
+    .stat-card {
+        background: white; border-radius: 16px; padding: 20px;
+        text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+    .stat-val { font-weight: 800; font-size: 1.6rem; }
+    .stat-lbl { font-size: 0.75rem; color: #64748b; font-weight: 600; margin-top: 2px; }
+
+    /* Info section */
+    .info-section {
+        background: white; border-radius: 16px; padding: 24px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .section-title {
+        font-weight: 800; font-size: 1rem; color: #1e293b;
+        margin-bottom: 16px; padding-bottom: 10px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .section-title i { color: #3b82f6; }
+
+    /* Price cards */
+    .price-card {
+        background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+        border: 1px solid #d1fae5; border-radius: 14px;
+        padding: 18px; text-align: center; transition: transform 0.2s;
+    }
+    .price-card:hover { transform: translateY(-2px); }
+    .price-card .val { font-weight: 800; font-size: 1.5rem; color: #059669; }
+    .price-card .unit { font-size: 0.8rem; color: #6b7280; }
+    .price-card .lbl { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+
+    /* Rating distribution */
+    .rating-summary {
+        display: flex; gap: 24px; align-items: center;
+        margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .rating-big {
+        text-align: center; min-width: 100px;
+    }
+    .rating-big .number { font-size: 3rem; font-weight: 800; color: #1e293b; line-height: 1; }
+    .rating-big .out-of { font-size: 0.8rem; color: #94a3b8; }
+    .rating-bars { flex: 1; min-width: 200px; }
+    .rating-bar-row {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+    }
+    .rating-bar-label { font-size: 0.72rem; font-weight: 600; color: #64748b; width: 20px; text-align: right; }
+    .rating-bar-track {
+        flex: 1; height: 8px; background: #f1f5f9;
+        border-radius: 4px; overflow: hidden;
+    }
+    .rating-bar-fill {
+        height: 100%; border-radius: 4px;
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        transition: width 0.5s ease;
+    }
+    .rating-bar-count { font-size: 0.65rem; color: #94a3b8; width: 30px; }
+
+    /* Review items */
+    .review-item {
+        padding: 16px 0; border-bottom: 1px solid #f1f5f9;
+        display: flex; gap: 12px; animation: slideUp 0.3s ease forwards;
+        opacity: 0;
+    }
+    .review-item:last-child { border-bottom: none; }
+    .review-item:nth-child(1) { animation-delay: 0.05s; }
+    .review-item:nth-child(2) { animation-delay: 0.1s; }
+    .review-item:nth-child(3) { animation-delay: 0.15s; }
+    .review-item:nth-child(4) { animation-delay: 0.2s; }
+    .review-item:nth-child(5) { animation-delay: 0.25s; }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .review-avatar {
+        width: 40px; height: 40px; border-radius: 50%;
+        object-fit: cover; flex-shrink: 0; border: 2px solid #e2e8f0;
+    }
+    .review-avatar-placeholder {
+        width: 40px; height: 40px; border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: 700; font-size: 0.8rem; flex-shrink: 0;
+    }
+    .review-body { flex: 1; }
+    .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+    .review-name { font-weight: 700; font-size: 0.85rem; color: #1e293b; }
+    .review-date { font-size: 0.68rem; color: #94a3b8; }
+    .review-stars { font-size: 0.72rem; margin-bottom: 4px; }
+    .review-stars .filled { color: #f59e0b; }
+    .review-stars .empty { color: #e2e8f0; }
+    .review-comment { font-size: 0.82rem; color: #475569; line-height: 1.5; }
+
+    /* Review form */
+    .review-form {
+        background: linear-gradient(135deg, #f8fafc, #eff6ff);
+        border: 2px solid #dbeafe; border-radius: 16px;
+        padding: 20px; margin-top: 16px;
+    }
+    .review-form h6 { font-weight: 700; color: #1e293b; margin-bottom: 12px; }
+    .star-rating { display: flex; gap: 4px; margin-bottom: 12px; }
+    .star-rating input { display: none; }
+    .star-rating label {
+        font-size: 1.5rem; color: #e2e8f0; cursor: pointer;
+        transition: color 0.15s, transform 0.15s;
+    }
+    .star-rating label:hover { transform: scale(1.2); }
+    .star-rating input:checked ~ label { color: #e2e8f0; }
+    .star-rating label.active, .star-rating label:hover ~ label { color: #e2e8f0; }
+    .star-rating label.active { color: #f59e0b !important; }
+
+    .no-review-notice {
+        background: #fefce8; border: 1px solid #fde68a;
+        border-radius: 12px; padding: 16px; text-align: center;
+        margin-top: 16px;
+    }
+    .no-review-notice i { font-size: 1.5rem; color: #f59e0b; display: block; margin-bottom: 6px; }
+    .no-review-notice p { font-size: 0.8rem; color: #92400e; margin: 0; }
+
+    .empty-reviews {
+        text-align: center; padding: 30px 20px; color: #94a3b8;
+    }
+    .empty-reviews i { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+
+    .back-link {
+        text-decoration: none; color: #64748b; font-size: 0.82rem;
+        display: inline-flex; align-items: center; gap: 4px;
+        transition: color 0.2s;
+    }
+    .back-link:hover { color: #1e293b; }
+</style>
+
+<!-- Hero Section -->
+<div class="driver-profile-hero">
+    <div class="container hero-content">
+        <a asp-action="Index" class="back-link text-white-50 mb-3 d-inline-flex">
+            <i class="bi bi-arrow-left"></i> Quay lại danh sách
+        </a>
+        <div class="text-center">
             @if (!string.IsNullOrEmpty(Model.AvatarUrl))
             {
-                <img src="@Model.AvatarUrl" alt="@Model.FullName" class="rounded-circle border border-4 border-white shadow mb-3" style="width:120px;height:120px;object-fit:cover;">
+                <img src="@Model.AvatarUrl" alt="@Model.FullName" class="driver-avatar-lg mb-3">
             }
             else
             {
-                <div class="rounded-circle bg-white bg-opacity-25 d-inline-flex align-items-center justify-content-center mb-3" style="width:120px;height:120px;">
-                    <i class="bi bi-person-fill text-white" style="font-size: 3rem;"></i>
+                <div class="driver-avatar-placeholder-lg mx-auto mb-3">
+                    <i class="bi bi-person-fill text-white" style="font-size: 3.5rem;"></i>
                 </div>
             }
-            <h2 class="fw-800 text-white mb-1">@Model.FullName</h2>
-            <div class="text-white-50"><i class="bi bi-geo-alt me-1"></i>@(Model.Location?.Name ?? "Toàn quốc")</div>
-            
-            <div class="d-flex justify-content-center gap-2 mt-3">
+            <h1 class="fw-800 mb-1" style="font-size: 1.8rem;">@Model.FullName</h1>
+            <div class="text-white-50 mb-3"><i class="bi bi-geo-alt me-1"></i>@(Model.Location?.Name ?? "Toàn quốc")</div>
+
+            <div class="stars-display mb-2">
                 @for (int i = 1; i <= 5; i++)
                 {
-                    <i class="bi @(i <= Math.Round((double)Model.Rating) ? "bi-star-fill" : "bi-star") text-warning fs-5"></i>
+                    <i class="bi @(i <= Math.Round((double)Model.Rating) ? "bi-star-fill filled" : "bi-star empty")"></i>
                 }
-                <span class="text-white fw-bold ms-2 fs-5">@Model.Rating.ToString("0.0")</span>
             </div>
-        </div>
-
-        <div class="card-body p-4">
-            <div class="row g-3 mb-4">
-                <div class="col-4 text-center">
-                    <div class="p-3 bg-success bg-opacity-10 rounded-3">
-                        <div class="fw-800 fs-4 text-success">@Model.ExperienceYears</div>
-                        <div class="text-muted small fw-bold">Năm kinh nghiệm</div>
-                    </div>
-                </div>
-                <div class="col-4 text-center">
-                    <div class="p-3 bg-primary bg-opacity-10 rounded-3">
-                        <div class="fw-800 fs-4 text-primary">@Model.TotalTrips</div>
-                        <div class="text-muted small fw-bold">Chuyến đi</div>
-                    </div>
-                </div>
-                <div class="col-4 text-center">
-                    <div class="p-3 bg-warning bg-opacity-10 rounded-3">
-                        <div class="fw-800 fs-4 text-warning">@Model.LicenseType</div>
-                        <div class="text-muted small fw-bold">Bằng lái</div>
-                    </div>
-                </div>
-            </div>
-
-            @if (!string.IsNullOrEmpty(Model.Description))
-            {
-                <div class="mb-4">
-                    <h6 class="fw-bold"><i class="bi bi-chat-quote me-2"></i>Giới thiệu</h6>
-                    <p class="text-muted">@Model.Description</p>
-                </div>
-            }
-
-            <div class="border-top pt-4">
-                <h6 class="fw-bold mb-3"><i class="bi bi-tags me-2"></i>Bảng giá</h6>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="p-3 border rounded-3 text-center">
-                            <div class="text-muted small">Theo giờ</div>
-                            <div class="fw-800 fs-4 text-success">@Model.HourlyRate.ToString("N0")<span class="fs-6 text-muted fw-normal">đ</span></div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-3 border rounded-3 text-center">
-                            <div class="text-muted small">Theo ngày</div>
-                            <div class="fw-800 fs-4 text-primary">@Model.DailyRate.ToString("N0")<span class="fs-6 text-muted fw-normal">đ</span></div>
-                        </div>
-                    </div>
-                </div>
+            <div class="text-white fw-bold" style="font-size: 1.1rem;">
+                @(avgRating.ToString("0.0"))
+                <span class="text-white-50 fw-normal" style="font-size: 0.8rem;"> · @totalReviews đánh giá</span>
             </div>
         </div>
     </div>
 </div>
+
+<div class="container py-4" style="max-width: 900px;">
+    <!-- Stats -->
+    <div class="row g-3 mb-4" style="margin-top: -50px; position: relative; z-index: 2;">
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-val text-success">@Model.ExperienceYears</div>
+                <div class="stat-lbl">Năm kinh nghiệm</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-val text-primary">@Model.TotalTrips</div>
+                <div class="stat-lbl">Chuyến đi</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-val text-warning">@Model.LicenseType</div>
+                <div class="stat-lbl">Bằng lái</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Description -->
+    @if (!string.IsNullOrEmpty(Model.Description))
+    {
+        <div class="info-section mb-4">
+            <div class="section-title"><i class="bi bi-chat-quote"></i> Giới thiệu</div>
+            <p class="text-muted mb-0" style="font-size: 0.88rem; line-height: 1.7;">@Model.Description</p>
+        </div>
+    }
+
+    <!-- Pricing -->
+    <div class="info-section mb-4">
+        <div class="section-title"><i class="bi bi-tags"></i> Bảng giá</div>
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="price-card">
+                    <div class="lbl"><i class="bi bi-clock me-1"></i>Theo giờ</div>
+                    <div class="val">@Model.HourlyRate.ToString("N0")<span class="unit">đ</span></div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="price-card">
+                    <div class="lbl"><i class="bi bi-calendar-day me-1"></i>Theo ngày</div>
+                    <div class="val">@Model.DailyRate.ToString("N0")<span class="unit">đ</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews Section -->
+    <div class="info-section mb-4">
+        <div class="section-title"><i class="bi bi-chat-left-heart"></i> Đánh giá & Bình luận</div>
+
+        <!-- Rating Summary -->
+        <div class="rating-summary">
+            <div class="rating-big">
+                <div class="number">@(avgRating.ToString("0.0"))</div>
+                <div class="stars-display" style="justify-content: center;">
+                    @for (int i = 1; i <= 5; i++)
+                    {
+                        <i class="bi @(i <= Math.Round(avgRating) ? "bi-star-fill filled" : "bi-star empty")" style="font-size: 0.9rem;"></i>
+                    }
+                </div>
+                <div class="out-of">@totalReviews đánh giá</div>
+            </div>
+            <div class="rating-bars">
+                @for (int star = 5; star >= 1; star--)
+                {
+                    var count = distribution.ContainsKey(star) ? distribution[star] : 0;
+                    var pct = totalReviews > 0 ? (count * 100.0 / totalReviews) : 0;
+                    <div class="rating-bar-row">
+                        <span class="rating-bar-label">@star★</span>
+                        <div class="rating-bar-track">
+                            <div class="rating-bar-fill" style="width: @pct%"></div>
+                        </div>
+                        <span class="rating-bar-count">@count</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Review List -->
+        @if (reviews.Any())
+        {
+            foreach (var review in reviews)
+            {
+                <div class="review-item">
+                    <div class="review-avatar-placeholder">@(review.User?.Name?.Substring(0, 1) ?? "?")</div>
+                    <div class="review-body">
+                        <div class="review-header">
+                            <span class="review-name">@(review.User?.Name ?? "Ẩn danh")</span>
+                            <span class="review-date">@review.CreatedAt.ToString("dd/MM/yyyy")</span>
+                        </div>
+                        <div class="review-stars">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="bi @(i <= review.Rating ? "bi-star-fill filled" : "bi-star empty")"></i>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(review.Comment))
+                        {
+                            <div class="review-comment">@review.Comment</div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="empty-reviews">
+                <i class="bi bi-chat-dots"></i>
+                <div>Chưa có đánh giá nào.</div>
+                <div style="font-size: 0.72rem; margin-top: 4px;">Hãy là người đầu tiên đánh giá tài xế này!</div>
+            </div>
+        }
+
+        <!-- Review Form (only for users who have rented this driver) -->
+        @if (canReview)
+        {
+            <div class="review-form">
+                <h6><i class="bi bi-pencil-square me-2"></i>Viết đánh giá</h6>
+                <form asp-controller="Driver" asp-action="CreateReview" method="post">
+                    <input type="hidden" name="driverId" value="@Model.DriverID" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" style="font-size: 0.82rem;">Đánh giá sao</label>
+                        <div class="star-rating" id="starRating">
+                            @for (int i = 5; i >= 1; i--)
+                            {
+                                <input type="radio" name="rating" value="@i" id="star-@i" @(i == 5 ? "checked" : "")>
+                                <label for="star-@i" class="@(i <= 5 ? "active" : "")" data-value="@i">
+                                    <i class="bi bi-star-fill"></i>
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" style="font-size: 0.82rem;">Bình luận (không bắt buộc)</label>
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Chia sẻ trải nghiệm của bạn với tài xế này..."
+                                  style="border-radius: 12px; font-size: 0.85rem; border: 1px solid #d1d5db;"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 fw-bold" style="font-size: 0.85rem;">
+                        <i class="bi bi-send me-2"></i>Gửi đánh giá
+                    </button>
+                </form>
+            </div>
+        }
+        else if (hasReviewed)
+        {
+            <div class="no-review-notice" style="background: #f0fdf4; border-color: #bbf7d0;">
+                <i class="bi bi-check-circle-fill" style="color: #059669;"></i>
+                <p style="color: #166534;">Bạn đã đánh giá tài xế này. Cảm ơn bạn!</p>
+            </div>
+        }
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="no-review-notice">
+                <i class="bi bi-info-circle"></i>
+                <p>Chỉ khách hàng đã từng thuê tài xế này mới có thể viết đánh giá.</p>
+            </div>
+        }
+        else
+        {
+            <div class="no-review-notice">
+                <i class="bi bi-lock"></i>
+                <p>Vui lòng <a asp-controller="Auth" asp-action="Login" class="fw-bold text-primary">đăng nhập</a> để đánh giá tài xế.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Star rating interaction
+        document.querySelectorAll('.star-rating label').forEach(label => {
+            label.addEventListener('click', function() {
+                const val = parseInt(this.dataset.value);
+                document.querySelectorAll('.star-rating label').forEach(l => {
+                    l.classList.toggle('active', parseInt(l.dataset.value) <= val);
+                });
+            });
+            label.addEventListener('mouseenter', function() {
+                const val = parseInt(this.dataset.value);
+                document.querySelectorAll('.star-rating label').forEach(l => {
+                    l.style.color = parseInt(l.dataset.value) <= val ? '#f59e0b' : '#e2e8f0';
+                });
+            });
+        });
+
+        document.querySelector('.star-rating')?.addEventListener('mouseleave', function() {
+            const checked = this.querySelector('input:checked');
+            const checkedVal = checked ? parseInt(checked.value) : 0;
+            document.querySelectorAll('.star-rating label').forEach(l => {
+                l.style.color = '';
+                l.classList.toggle('active', parseInt(l.dataset.value) <= checkedVal);
+            });
+        });
+    </script>
+}

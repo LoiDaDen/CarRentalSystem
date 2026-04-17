@@ -162,10 +162,10 @@
                     var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
                     var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
                     var carReviewCount = carReviews.Count;
-                    var p4h = car.PricePerDay * 0.4m;
-                    var p8h = car.PricePerDay * 0.7m;
+                    var p4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
+                    var p8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
+                    var p12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
                     var p24h = car.PricePerDay;
-                    var p12h = car.PricePerDay * 0.85m;
                     var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
                     <div class="col-md-6 col-xl-4">
                         <div class="card car-card h-100 bg-white shadow-sm">
@@ -230,23 +230,44 @@
                                         <div class="d-flex flex-column">
                                             <div class="small text-muted mb-1">Bảng giá tham khảo</div>
                                             <select class="form-select form-select-sm border-0 bg-success bg-opacity-10 text-success fw-bold" style="width: 155px; cursor: pointer;" onchange="document.getElementById('detail_car_@car.CarID').href='/Car/Details/@car.CarID?duration=' + this.value + '&startDate=@(Context.Request.Query["startDate"])&endDate=@(Context.Request.Query["endDate"])&contractId=@(ViewBag.ContractId)'">
+                                                @{
+                                                    decimal[] dp = new decimal[25];
+                                                    dp[0] = 0;
+                                                    var p4 = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
+                                                    var p8 = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
+                                                    var p12 = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
+                                                    var p24 = car.PricePerDay;
+                                                    decimal[] bCosts = new decimal[] { car.PricePerHour, p4, p8, p12, p24 };
+                                                    int[] bHours = new int[] { 1, 4, 8, 12, 24 };
+                                                    for(int i=1; i<=24; i++) {
+                                                        dp[i] = decimal.MaxValue;
+                                                        for(int j=0; j< bHours.Length; j++) {
+                                                            if(i >= bHours[j]) {
+                                                                dp[i] = Math.Min(dp[i], dp[i - bHours[j]] + bCosts[j]);
+                                                            }
+                                                        }
+                                                    }
+                                                    for (int i = 23; i >= 1; i--) {
+                                                        dp[i] = Math.Min(dp[i], dp[i + 1]);
+                                                    }
+                                                }
                                                 @for(int h=1; h<=24; h++) {
                                                     var bdBaseP = car.PricePerHour * h;
-                                                    decimal bdComboP = bdBaseP;
-                                                    if(h==4) bdComboP = car.PricePerDay * 0.4m;
-                                                    else if(h==8) bdComboP = car.PricePerDay * 0.7m;
-                                                    else if(h==12) bdComboP = car.PricePerDay * 0.85m;
-                                                    else if(h==24) bdComboP = car.PricePerDay;
+                                                    var optimalP = dp[h];
 
-                                                    if(h==4 || h==8 || h==12 || h==24) {
+                                                    if(bdBaseP > optimalP) {
                                                         var strP = string.Join("", (bdBaseP.ToString("N0")+"đ").Select(c => c + "\u0336"));
                                                         if(h == 24) {
-                                                            <option value="@h" selected>@(h)h: @strP @bdComboP.ToString("N0")đ</option>
+                                                            <option value="@h" selected>@(h)h: @strP @optimalP.ToString("N0")đ</option>
                                                         } else {
-                                                            <option value="@h">@(h)h: @strP @bdComboP.ToString("N0")đ</option>
+                                                            <option value="@h">@(h)h: @strP @optimalP.ToString("N0")đ</option>
                                                         }
                                                     } else {
-                                                        <option value="@h">@(h)h: @bdBaseP.ToString("N0")đ</option>
+                                                        if(h == 24) {
+                                                            <option value="@h" selected>@(h)h: @optimalP.ToString("N0")đ</option>
+                                                        } else {
+                                                            <option value="@h">@(h)h: @optimalP.ToString("N0")đ</option>
+                                                        }
                                                     }
                                                 }
                                             </select>

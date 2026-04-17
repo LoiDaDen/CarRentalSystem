@@ -65,5 +65,6 @@ namespace CarRentalSystem.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         
         public ICollection<DriverBooking>? DriverBookings { get; set; } = new List<DriverBooking>();
+        public ICollection<DriverReview>? DriverReviews { get; set; } = new List<DriverReview>();
     }
 }

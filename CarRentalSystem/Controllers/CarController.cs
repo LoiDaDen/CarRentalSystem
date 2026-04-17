@@ -146,6 +146,16 @@ namespace CarRentalSystem.Controllers
             ViewBag.ContractId = contractId;
             ViewBag.Contract = contractId.HasValue ? await _context.ContractTypes.FindAsync(contractId.Value) : null;
 
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int userId))
+                {
+                    var currentUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
+                    ViewBag.MembershipTier = currentUser?.MembershipTier;
+                }
+            }
+
             var viewModel = new CarDetailsViewModel
             {
                 Car = car,
@@ -176,9 +186,9 @@ namespace CarRentalSystem.Controllers
                 },
                 Pricing = new PricingPackages
                 {
-                    Price4h = car.PricePerDay * 0.4m,
-                    Price8h = car.PricePerDay * 0.7m,
-                    Price12h = car.PricePerDay * 0.85m,
+                    Price4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m,
+                    Price8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m,
+                    Price12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m,
                     Price24h = car.PricePerDay,
                     DiscountPercent = 17,
                     DepositAmount = 500000,
@@ -271,7 +281,8 @@ namespace CarRentalSystem.Controllers
             {
                 // Check if user has actually rented and completed the rental for this car
                 bool hasCompletedBooking = await _context.Bookings
-                    .AnyAsync(b => b.UserID == userId && b.CarID == carId && b.BookingStatus.Name == "Completed");
+                    .Include(b => b.BookingStatus)
+                    .AnyAsync(b => b.UserID == userId && b.CarID == carId && b.BookingStatus != null && b.BookingStatus.Name == BookingStatusConstants.Completed);
 
                 if (!hasCompletedBooking)
                 {
@@ -299,7 +310,12 @@ namespace CarRentalSystem.Controllers
         public IActionResult BusyDates(int carId)
         {
             var bookings = _context.Bookings
-                .Where(b => b.CarID == carId && (b.BookingStatus.Name == "Confirmed" || b.BookingStatus.Name == "Pending"))
+                .Include(b => b.BookingStatus)
+                .Where(b => b.CarID == carId &&
+                    (b.BookingStatus.Name == BookingStatusConstants.Confirmed ||
+                     b.BookingStatus.Name == BookingStatusConstants.Pending ||
+                     b.BookingStatus.Name == BookingStatusConstants.Active ||
+                     b.BookingStatus.Name == BookingStatusConstants.Draft))
                 .Select(b => new { b.StartDate, b.EndDate })
                 .ToList();
 
@@ -360,6 +376,126 @@ namespace CarRentalSystem.Controllers
             ViewBag.Amenities = new List<string> { "Bluetooth", "GPS", "Camera lùi", "Cửa sổ trời", "Số tự động", "Bản đồ" };
             ViewBag.CarsJson = System.Text.Json.JsonSerializer.Serialize(cars);
             return View();
+        }
+
+        // === TÍNH PHÍ SHIP XE - API Endpoint ===
+        // GET /Car/CalculateDelivery?carId=X&customerLat=Y&customerLng=Z
+        [HttpGet]
+        public async Task<IActionResult> CalculateDelivery(int carId, double customerLat, double customerLng)
+        {
+            var car = await _context.Cars
+                .Include(c => c.Location)
+                .FirstOrDefaultAsync(c => c.CarID == carId);
+
+            if (car == null)
+                return Json(new { success = false, message = "Không tìm thấy xe" });
+
+            // Lấy tọa độ xe (ưu tiên Latitude/Longitude của xe, fallback về Location)
+            var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
+            var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
+
+            // Tính delivery
+            var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
+            var deliveryInfo = await deliveryService!.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
+
+            return Json(new {
+                success = true,
+                distanceKm = deliveryInfo.DistanceKm,
+                durationMinutes = deliveryInfo.DurationMinutes,
+                shippingFee = deliveryInfo.ShippingFee,
+                earliestPickupTime = deliveryInfo.EarliestPickupTime.ToString("yyyy-MM-ddTHH:mm"),
+                formattedDistance = deliveryInfo.FormattedDistance,
+                formattedDuration = deliveryInfo.FormattedDuration,
+                formattedFee = deliveryInfo.FormattedFee
+            });
+        }
+
+        // === LẤY THÔNG TIN TẤT CẢ XE VỚI KHOẢNG CÁCH - API Endpoint ===
+        // GET /Car/GetAllCarsWithDistance?customerLat=X&customerLng=Y&startDate=...&endDate=...
+        [HttpGet]
+        public async Task<IActionResult> GetAllCarsWithDistance(
+            double customerLat, 
+            double customerLng,
+            DateTime? startDate = null,
+            DateTime? endDate = null)
+        {
+            var carsQuery = _context.Cars
+                .Include(c => c.CarType)
+                .Include(c => c.Location)
+                .Include(c => c.CarImages)
+                .Include(c => c.CarStatus)
+                .Include(c => c.CarBrand)
+                .Include(c => c.Reviews)
+                .Include(c => c.Bookings)
+                .Where(c => c.CarStatus!.Name == "Available")
+                .AsQueryable();
+
+            // KHÔNG giới hạn khu vực - hiển thị tất cả xe toàn quốc
+            // Bỏ cookie RegionID filter
+
+            // Filter busy dates nếu có start/end date
+            if (startDate.HasValue && endDate.HasValue && startDate.Value < endDate.Value)
+            {
+                carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b => 
+                    b.BookingStatusID != 4 &&
+                    ((startDate.Value >= b.StartDate && startDate.Value < b.EndDate) ||
+                     (endDate.Value > b.StartDate && endDate.Value <= b.EndDate) ||
+                     (startDate.Value <= b.StartDate && endDate.Value >= b.EndDate))
+                ));
+            }
+
+            var cars = await carsQuery.ToListAsync();
+            var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
+
+            // Tính khoảng cách cho từng xe (song song)
+            var carDeliveryTasks = cars.Select(async car => {
+                var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
+                var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
+                var deliveryInfo = await deliveryService!.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
+                
+                var reviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<Review>();
+                var avgRating = reviews.Any() ? reviews.Average(r => r.Rating) : 5.0;
+
+                return new {
+                    carId = car.CarID,
+                    carName = car.CarName,
+                    brand = car.CarBrand?.Name ?? "Chưa rõ",
+                    type = car.CarType?.Name ?? "Khác",
+                    transmission = car.Transmission,
+                    seats = car.Seats,
+                    fuelType = car.FuelType,
+                    pricePerDay = car.PricePerDay,
+                    pricePerHour = car.PricePerHour,
+                    image = car.CarImages?.FirstOrDefault()?.ImageUrl ?? "",
+                    isPremium = car.IsPremium,
+                    // Vị trí xe
+                    carAddress = car.CarAddress ?? car.Location?.Name ?? "Chưa cập nhật",
+                    carLat = carLat,
+                    carLng = carLng,
+                    // Thông tin giao hàng
+                    distanceKm = deliveryInfo.DistanceKm,
+                    formattedDistance = deliveryInfo.FormattedDistance,
+                    shippingFee = deliveryInfo.ShippingFee,
+                    formattedShippingFee = deliveryInfo.FormattedFee,
+                    durationMinutes = deliveryInfo.DurationMinutes,
+                    formattedDuration = deliveryInfo.FormattedDuration,
+                    earliestPickupTime = deliveryInfo.EarliestPickupTime.ToString("yyyy-MM-ddTHH:mm"),
+                    // Đánh giá
+                    rating = avgRating,
+                    reviewCount = reviews.Count,
+                    // Tổng chi phí ước tính (1 ngày + ship)
+                    totalEstimate = car.PricePerDay + deliveryInfo.ShippingFee
+                };
+            });
+
+            var results = await Task.WhenAll(carDeliveryTasks);
+
+            // Sắp xếp theo khoảng cách (gần nhất trước) hoặc theo tổng chi phí
+            var sortedResults = results
+                .OrderBy(r => r.distanceKm)
+                .ToList();
+
+            return Json(new { success = true, cars = sortedResults });
         }
     }
 }

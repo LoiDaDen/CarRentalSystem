@@ -61,7 +61,7 @@ namespace CarRentalSystem.Controllers
                 FuelLevel = FuelLevel
             };
 
-            string uploadPath = Path.Combine(_env.WebRootPath, "uploads", "handovers");
+            string uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "Handovers");
             if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
 
             async Task<string?> SaveFile(IFormFile? file)
@@ -70,7 +70,7 @@ namespace CarRentalSystem.Controllers
                 string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
                 string filePath = Path.Combine(uploadPath, fileName);
                 using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
-                return "/uploads/handovers/" + fileName;
+                return $"/SecureFile/GetSecureImage?folder=Handovers&fileName={fileName}";
             }
 
             record.FrontImgUrl = await SaveFile(imgFront);
@@ -86,7 +86,7 @@ namespace CarRentalSystem.Controllers
                 string signFileName = Guid.NewGuid().ToString() + "_sig.png";
                 string signPath = Path.Combine(uploadPath, signFileName);
                 await System.IO.File.WriteAllBytesAsync(signPath, bytes);
-                record.SignatureUrl = "/uploads/handovers/" + signFileName;
+                record.SignatureUrl = $"/SecureFile/GetSecureImage?folder=Handovers&fileName={signFileName}";
             }
 
             _context.HandoverRecords.Add(record);

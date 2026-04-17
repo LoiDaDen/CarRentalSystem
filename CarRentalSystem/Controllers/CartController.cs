@@ -51,17 +51,26 @@ namespace CarRentalSystem.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            var currentUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
+            ViewBag.MembershipTier = currentUser?.MembershipTier;
+
             ViewBag.ContractTypes = await _context.ContractTypes
                 .Where(c => c.IsActive 
                     && c.Name.ToLower() != "ngày chẵn" 
                     && c.Name.ToLower() != "ngày lẻ" 
-                    && c.Name.ToLower() != "cuối tuần")
+                    && c.Name.ToLower() != "cuối tuần"
+                    && c.Name.ToLower() != "ngày tùy chỉnh")
                 .OrderBy(c => c.MinDurationDays)
                 .ToListAsync();
 
             ViewBag.Drivers = await _context.Drivers
                 .Where(d => d.IsAvailable && d.IsApproved)
                 .OrderByDescending(d => d.Rating)
+                .ToListAsync();
+
+            ViewBag.AddOns = await _context.AddOns
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.PricePerDay)
                 .ToListAsync();
 
             return View(cart);
@@ -186,8 +195,59 @@ namespace CarRentalSystem.Controllers
 
                 return Json(new { success = true, withDriver = item.WithDriver, driverName = driver?.FullName, dailyRate = driver?.DailyRate ?? 0 });
             }
-
             return Json(new { success = false });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateCartItemPackage(int cartItemId, int packageId)
+        {
+            var userId = GetUserId();
+            var item = await _context.CartItems
+                .Include(ci => ci.Cart)
+                .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
+
+            if (item != null)
+            {
+                var package = await _context.ContractTypes.FindAsync(packageId);
+                if (package != null)
+                {
+                    item.ContractTypeID = packageId;
+                    _context.CartItems.Update(item);
+                    await _context.SaveChangesAsync();
+                    return Json(new { success = true, packageName = package.Name, discount = package.DiscountPercent });
+                }
+            }
+            return Json(new { success = false });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleAddon(int cartItemId, int addonId, bool selected)
+        {
+            var userId = GetUserId();
+            var item = await _context.CartItems
+                .Include(ci => ci.Cart)
+                .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
+
+            if (item == null)
+                return Json(new { success = false, message = "Không tìm thấy sản phẩm" });
+
+            var currentAddOns = item.AddOnIDs;
+            
+            if (selected)
+            {
+                if (!currentAddOns.Contains(addonId))
+                    currentAddOns.Add(addonId);
+            }
+            else
+            {
+                currentAddOns.Remove(addonId);
+            }
+            
+            item.AddOnIDs = currentAddOns;
+            _context.CartItems.Update(item);
+            await _context.SaveChangesAsync();
+            
+            return Json(new { success = true });
         }
 
         [HttpPost]
@@ -210,20 +270,26 @@ namespace CarRentalSystem.Controllers
             }
 
             // 1. Transaction
-            decimal totalAmount = cart.CartItems.Sum(ci => ci.EstimatedPrice);
+            var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
+            if (user == null) return RedirectToAction("Login", "Auth");
+
+            decimal baseTotalAmount = cart.CartItems.Sum(ci => ci.EstimatedPrice);
+            decimal memDiscountPct = user?.MembershipTier?.DiscountPercent ?? 0;
+            decimal totalDiscountAmount = baseTotalAmount * (memDiscountPct / 100m);
+            decimal totalAmount = baseTotalAmount - totalDiscountAmount;
+
             var transaction = new BookingTransaction
             {
                 UserID = userId,
                 TotalAmount = totalAmount,
-                Status = "Draft",
+                Status = BookingStatusConstants.Draft,
                 CreatedAt = DateTime.Now
             };
             _context.BookingTransactions.Add(transaction);
             await _context.SaveChangesAsync();
 
-            var user = await _context.Users.FindAsync(userId);
-            var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == "Pending") ?? 
-                              new BookingStatus { Name = "Pending" };
+            var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending) ??
+                              new BookingStatus { Name = BookingStatusConstants.Pending };
             if (pendingStatus.BookingStatusID == 0)
             {
                 _context.BookingStatuses.Add(pendingStatus);
@@ -233,30 +299,55 @@ namespace CarRentalSystem.Controllers
             // 2. Bookings
             foreach (var item in cart.CartItems)
             {
+                decimal itemDiscount = item.EstimatedPrice * (memDiscountPct / 100m);
                 var booking = new Booking
                 {
                     UserID = userId,
                     CarID = item.CarID,
                     StartDate = item.StartDate,
                     EndDate = item.EndDate,
-                    TotalPrice = item.EstimatedPrice,
+                    TotalPrice = item.EstimatedPrice - itemDiscount,
+                    DiscountAmount = itemDiscount,
                     TotalHours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours),
                     BookingStatusID = pendingStatus.BookingStatusID,
                     DepositAmount = item.Car?.DefaultDeposit ?? 0,
-                    DepositStatus = "Holding",
+                    DepositStatus = DepositStatusConstants.Holding,
                     TransactionID = transaction.TransactionID,
                     PickupLocationID = item.Car?.LocationID ?? 1,
                     ReturnLocationID = item.Car?.LocationID ?? 1
                 };
                 _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+                
+                // Thêm BookingAddOns nếu có
+                if (!string.IsNullOrEmpty(item.SelectedAddOns))
+                {
+                    var addonIds = item.AddOnIDs;
+                    foreach (var addonId in addonIds)
+                    {
+                        var addon = await _context.AddOns.FindAsync(addonId);
+                        if (addon != null)
+                        {
+                            _context.BookingAddOns.Add(new BookingAddOn
+                            {
+                                BookingID = booking.BookingID,
+                                AddOnID = addonId,
+                                Quantity = 1,
+                                TotalPrice = addon.PricePerDay
+                            });
+                        }
+                    }
+                    await _context.SaveChangesAsync();
+                }
             }
             await _context.SaveChangesAsync();
 
             // 3. Master Digital Contract
+            const int MaxFieldLength = 1000;
             var carPlates = string.Join(", ", cart.CartItems.Select(ci => ci.Car?.LicensePlate ?? "Chưa rõ"));
-            if (carPlates.Length > 900) carPlates = carPlates.Substring(0, 900) + "...";
+            if (carPlates.Length > MaxFieldLength) carPlates = carPlates[..MaxFieldLength] + "...";
             var carModels = string.Join(" | ", cart.CartItems.Select(ci => $"{ci.Car?.CarBrand?.Name} {ci.Car?.CarName}"));
-            if (carModels.Length > 900) carModels = carModels.Substring(0, 900) + "...";
+            if (carModels.Length > MaxFieldLength) carModels = carModels[..MaxFieldLength] + "...";
             var minStartDate = cart.CartItems.Min(ci => ci.StartDate);
             var maxEndDate = cart.CartItems.Max(ci => ci.EndDate);
 
@@ -286,7 +377,8 @@ namespace CarRentalSystem.Controllers
 {termsCarsStr}
 
 ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG, PHƯƠNG THỨC THANH TOÁN
-- Tổng cộng tiền thuê xe: {totalAmount.ToString("N0")} VNĐ.
+- Tổng tiền thuê xe nền tảng: {baseTotalAmount.ToString("N0")} VNĐ.
+{(memDiscountPct > 0 ? $"- Ưu đãi hạng thẻ thành viên {user?.MembershipTier?.Name} (Giảm {memDiscountPct}%): -{totalDiscountAmount.ToString("N0")} VNĐ.\n" : "")}- Tổng cộng tiền thuê phải thanh toán: {totalAmount.ToString("N0")} VNĐ.
 - Tiền cọc tổng (Giữ chỗ): {(cart.CartItems.Sum(ci => ci.Car?.DefaultDeposit) ?? 0).ToString("N0")} VNĐ.
 - Bên B thanh toán đầy đủ phí thuê và tiền cọc cho Bên A ngay khi hợp đồng có hiệu lực.
 

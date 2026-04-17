@@ -13,6 +13,6 @@ namespace CarRentalSystem.Models
         public required string ImageUrl { get; set; }
 
         [ForeignKey("CarID")]
-        public Car Car { get; set; } = null!;
+        public Car? Car { get; set; }
     }
 }

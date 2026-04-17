@@ -16,7 +16,7 @@ namespace CarRentalSystem.Models
         public decimal FinalPrice { get; set; }
 
         [ForeignKey("BookingID")]
-        public Booking Booking { get; set; }
+        public Booking? Booking { get; set; }
 
         public void CalculateFees(int totalDays)
         {

@@ -36,16 +36,185 @@ namespace CarRentalSystem.Controllers
             return View(drivers);
         }
 
-        // Public: Driver profile
+        // Public: Driver profile with reviews
         public async Task<IActionResult> Profile(int id)
         {
             var driver = await _context.Drivers
                 .Include(d => d.Location)
                 .Include(d => d.User)
+                .Include(d => d.DriverReviews!)
+                    .ThenInclude(r => r.User)
                 .FirstOrDefaultAsync(d => d.DriverID == id);
 
             if (driver == null) return NotFound();
+
+            // Check if current user has rented this driver (for review permission)
+            var canReview = false;
+            var hasReviewed = false;
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (int.TryParse(userIdStr, out int userId))
+                {
+                    canReview = await _context.DriverBookings
+                        .AnyAsync(db => db.DriverID == id
+                            && db.Booking != null
+                            && db.Booking.UserID == userId
+                            && (db.Status == "Completed" || db.Status == "Active"));
+
+                    hasReviewed = await _context.DriverReviews
+                        .AnyAsync(r => r.DriverID == id && r.UserID == userId);
+                }
+            }
+
+            ViewBag.CanReview = canReview && !hasReviewed;
+            ViewBag.HasReviewed = hasReviewed;
+
+            // Rating distribution
+            var reviews = driver.DriverReviews?.ToList() ?? new List<DriverReview>();
+            ViewBag.RatingDistribution = Enumerable.Range(1, 5)
+                .ToDictionary(star => star, star => reviews.Count(r => r.Rating == star));
+            ViewBag.TotalReviews = reviews.Count;
+            ViewBag.AverageRating = reviews.Any() ? reviews.Average(r => r.Rating) : (double)driver.Rating;
+
             return View(driver);
+        }
+
+        // API: Get all available drivers with their reviews summary (for Cart popup)
+        [HttpGet]
+        public async Task<IActionResult> GetDriversList()
+        {
+            var drivers = await _context.Drivers
+                .Include(d => d.Location)
+                .Include(d => d.DriverReviews)
+                .Where(d => d.IsAvailable && d.IsApproved)
+                .OrderByDescending(d => d.Rating)
+                .ThenByDescending(d => d.TotalTrips)
+                .Select(d => new
+                {
+                    d.DriverID,
+                    d.FullName,
+                    d.AvatarUrl,
+                    d.Rating,
+                    d.TotalTrips,
+                    d.ExperienceYears,
+                    d.LicenseType,
+                    d.DailyRate,
+                    d.HourlyRate,
+                    d.Description,
+                    Location = d.Location != null ? d.Location.Name : "Toàn quốc",
+                    ReviewCount = d.DriverReviews != null ? d.DriverReviews.Count : 0
+                })
+                .ToListAsync();
+
+            return Json(drivers);
+        }
+
+        // API: Get single driver detail with recent reviews (for Cart popup detail)
+        [HttpGet]
+        public async Task<IActionResult> GetDriverDetail(int id)
+        {
+            var driver = await _context.Drivers
+                .Include(d => d.Location)
+                .Include(d => d.DriverReviews!)
+                    .ThenInclude(r => r.User)
+                .FirstOrDefaultAsync(d => d.DriverID == id);
+
+            if (driver == null) return Json(new { success = false });
+
+            var reviews = driver.DriverReviews?
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(5)
+                .Select(r => new
+                {
+                    r.Rating,
+                    r.Comment,
+                    UserName = r.User?.Name ?? "Ẩn danh",
+                    Date = r.CreatedAt.ToString("dd/MM/yyyy")
+                }).ToList();
+
+            return Json(new
+            {
+                success = true,
+                driver = new
+                {
+                    driver.DriverID,
+                    driver.FullName,
+                    driver.AvatarUrl,
+                    driver.Rating,
+                    driver.TotalTrips,
+                    driver.ExperienceYears,
+                    driver.LicenseType,
+                    driver.DailyRate,
+                    driver.HourlyRate,
+                    driver.Description,
+                    Location = driver.Location?.Name ?? "Toàn quốc",
+                    ReviewCount = driver.DriverReviews?.Count ?? 0,
+                    AverageRating = driver.DriverReviews?.Any() == true
+                        ? Math.Round(driver.DriverReviews.Average(r => r.Rating), 1)
+                        : (double)driver.Rating
+                },
+                reviews
+            });
+        }
+
+        // POST: Create driver review (only for users who have rented this driver)
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> CreateReview(int driverId, int rating, string? comment)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            // Check user actually used this driver
+            var hasUsedDriver = await _context.DriverBookings
+                .AnyAsync(db => db.DriverID == driverId
+                    && db.Booking != null
+                    && db.Booking.UserID == userId
+                    && (db.Status == "Completed" || db.Status == "Active"));
+
+            if (!hasUsedDriver)
+            {
+                TempData["Error"] = "Bạn chỉ có thể đánh giá tài xế mà bạn đã thuê.";
+                return RedirectToAction(nameof(Profile), new { id = driverId });
+            }
+
+            // Check if already reviewed
+            var alreadyReviewed = await _context.DriverReviews
+                .AnyAsync(r => r.DriverID == driverId && r.UserID == userId);
+
+            if (alreadyReviewed)
+            {
+                TempData["Error"] = "Bạn đã đánh giá tài xế này rồi.";
+                return RedirectToAction(nameof(Profile), new { id = driverId });
+            }
+
+            var review = new DriverReview
+            {
+                DriverID = driverId,
+                UserID = userId,
+                Rating = Math.Clamp(rating, 1, 5),
+                Comment = comment,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.DriverReviews.Add(review);
+            await _context.SaveChangesAsync();
+
+            // Update driver's average rating
+            var avgRating = await _context.DriverReviews
+                .Where(r => r.DriverID == driverId)
+                .AverageAsync(r => (decimal)r.Rating);
+
+            var driver = await _context.Drivers.FindAsync(driverId);
+            if (driver != null)
+            {
+                driver.Rating = Math.Round(avgRating, 1);
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["Success"] = "Cảm ơn bạn đã đánh giá tài xế!";
+            return RedirectToAction(nameof(Profile), new { id = driverId });
         }
 
         // Driver Registration page
@@ -117,7 +286,99 @@ namespace CarRentalSystem.Controllers
             if (driver == null)
                 return RedirectToAction(nameof(Register));
 
+            // Load pending/active contracts for this driver
+            ViewBag.DriverContracts = await _context.DriverContracts
+                .Where(dc => dc.DriverID == driver.DriverID)
+                .OrderByDescending(dc => dc.CreatedAt)
+                .ToListAsync();
+
             return View(driver);
+        }
+
+        // GET: Driver/MyContract/5
+        [Authorize]
+        public async Task<IActionResult> MyContract(int id)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
+            if (driver == null) return NotFound();
+
+            var contract = await _context.DriverContracts
+                .Include(dc => dc.Driver)
+                .FirstOrDefaultAsync(dc => dc.DriverContractID == id && dc.DriverID == driver.DriverID);
+
+            if (contract == null) return NotFound();
+            return View(contract);
+        }
+
+        // POST: Driver/SignContract/5
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> SignContract(int id)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
+            if (driver == null) return NotFound();
+
+            var contract = await _context.DriverContracts
+                .FirstOrDefaultAsync(dc => dc.DriverContractID == id && dc.DriverID == driver.DriverID);
+
+            if (contract == null) return NotFound();
+
+            if (contract.Status != "Pending")
+            {
+                TempData["Error"] = "Hợp đồng này không ở trạng thái chờ ký.";
+                return RedirectToAction(nameof(MyProfile));
+            }
+
+            if (DateTime.Now > contract.ExpiresAt)
+            {
+                TempData["Error"] = "Hợp đồng đã quá hạn ký (7 ngày). Vui lòng liên hệ Admin.";
+                return RedirectToAction(nameof(MyProfile));
+            }
+
+            contract.SignedByPartyB = true;
+            contract.PartyBSignDate = DateTime.Now;
+            contract.Status = "Active";
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã ký xác nhận hợp đồng #{contract.ContractNo} thành công! Hợp đồng đã có hiệu lực.";
+            return RedirectToAction(nameof(MyProfile));
+        }
+
+        // POST: Driver/CancelContract/5
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> CancelContract(int id, string? reason)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
+            if (driver == null) return NotFound();
+
+            var contract = await _context.DriverContracts
+                .FirstOrDefaultAsync(dc => dc.DriverContractID == id && dc.DriverID == driver.DriverID);
+
+            if (contract == null) return NotFound();
+
+            if (contract.Status != "Active")
+            {
+                TempData["Error"] = "Chỉ có thể hủy hợp đồng đang có hiệu lực.";
+                return RedirectToAction(nameof(MyProfile));
+            }
+
+            contract.Status = "Cancelled";
+            contract.CancelledAt = DateTime.Now;
+            contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã hủy hợp đồng #{contract.ContractNo}.";
+            return RedirectToAction(nameof(MyProfile));
         }
     }
 }

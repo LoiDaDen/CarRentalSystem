@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CarRentalSystem.Models
 {
@@ -8,7 +9,8 @@ namespace CarRentalSystem.Models
         [Key]
         public int LogID { get; set; }
         public int CarID { get; set; }
-        public Car Car { get; set; }
+        [ForeignKey("CarID")]
+        public Car? Car { get; set; }
         
         [Required]
         public DateTime ServiceDate { get; set; }

@@ -14,9 +14,9 @@ namespace CarRentalSystem.Models
         public DateTime AlertTime { get; set; } = DateTime.Now;
         [Required, MaxLength(20)]
         public string Status { get; set; }
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [ForeignKey("CarID")]
-        public Car Car { get; set; }
+        public Car? Car { get; set; }
     }
 }

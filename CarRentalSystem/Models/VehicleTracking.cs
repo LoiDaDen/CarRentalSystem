@@ -26,6 +26,6 @@ namespace CarRentalSystem.Models
         public DateTime Timestamp { get; set; } = DateTime.Now;
 
         [ForeignKey("CarID")]
-        public Car Car { get; set; }
+        public Car? Car { get; set; }
     }
 }

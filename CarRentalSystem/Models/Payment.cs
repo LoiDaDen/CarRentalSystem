@@ -17,6 +17,6 @@ namespace CarRentalSystem.Models
         public string PaymentStatus { get; set; } // Paid, Pending, Failed
 
         [ForeignKey("BookingID")]
-        public Booking Booking { get; set; }
+        public Booking? Booking { get; set; }
     }
 }

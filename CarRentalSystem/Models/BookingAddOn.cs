@@ -4,13 +4,14 @@ namespace CarRentalSystem.Models
 {
     public class BookingAddOn
     {
+        // Composite Key: BookingID + AddOnID
         public int BookingID { get; set; }
         [ForeignKey("BookingID")]
-        public Booking Booking { get; set; }
+        public Booking? Booking { get; set; }
 
         public int AddOnID { get; set; }
         [ForeignKey("AddOnID")]
-        public AddOn AddOn { get; set; }
+        public AddOn? AddOn { get; set; }
 
         public int Quantity { get; set; }
         

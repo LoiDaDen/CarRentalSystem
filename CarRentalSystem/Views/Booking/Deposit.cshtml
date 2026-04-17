@@ -103,7 +103,8 @@
                 <h5 class="fw-bold mb-4 text-center">Thông tin đơn thuê</h5>
                 
                 <div class="mb-4 rounded-3 overflow-hidden border">
-                    <img src="/images/cars/placeholder.png" alt="Car" class="w-100" style="height: 180px; object-fit: cover;" />
+                    <img src="@(Model.Car?.ImageURL ?? "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=300&fit=crop")" alt="@Model.Car?.CarName" class="w-100" style="height: 180px; object-fit: cover;"
+                         onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=300&fit=crop'" />
                 </div>
                 
                 <ul class="info-list">

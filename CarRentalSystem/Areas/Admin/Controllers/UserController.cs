@@ -73,9 +73,86 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             {
                 user.IsVerified = !user.IsVerified;
                 await _context.SaveChangesAsync();
-                TempData["Success"] = $"Đã cập nhật trạng thái eKYC của {user.Name}.";
+
+                // ═══ Tự động tạo HĐ Đối tác khi verify Partner ═══
+                if (user.IsVerified && user.Role == "Partner")
+                {
+                    // Kiểm tra đã có HĐ Active chưa
+                    var existingContract = await _context.PartnerContracts
+                        .AnyAsync(pc => pc.PartnerUserID == user.UserID && (pc.Status == "Pending" || pc.Status == "Active"));
+
+                    if (!existingContract)
+                    {
+                        var contractCount = await _context.PartnerContracts.CountAsync() + 1;
+                        var contractNo = $"{contractCount:D4}/{DateTime.Now.Year}/HĐHT-XT";
+                        var now = DateTime.Now;
+
+                        var contract = new PartnerContract
+                        {
+                            ContractNo = contractNo,
+                            PartnerUserID = user.UserID,
+                            PartyAName = "Công ty TNHH Cho Thuê Xe CarRental",
+                            PartyAAddress = "TP. Hồ Chí Minh, Việt Nam",
+                            PartyBFullName = user.Name,
+                            PartyBCCCD = user.CitizenId ?? "",
+                            PartyBRevenuePercent = 80.00m,
+                            PartyARevenuePercent = 20.00m,
+                            PaymentDay = 5,
+                            PaymentCycle = "Hàng tháng",
+                            ContractDurationMonths = 0, // Vĩnh viễn
+                            NoticePeriodDays = 15,
+                            Status = "Pending",
+                            CreatedAt = now,
+                            ExpiresAt = now.AddDays(7),
+                            SignedByPartyA = true,
+                            PartyASignDate = now,
+                            TermsContent = GeneratePartnerContractTerms(user)
+                        };
+
+                        _context.PartnerContracts.Add(contract);
+                        await _context.SaveChangesAsync();
+
+                        TempData["Success"] = $"Đã xác minh {user.Name} và tạo hợp đồng #{contractNo}. Đối tác có 7 ngày để ký xác nhận.";
+                    }
+                    else
+                    {
+                        TempData["Success"] = $"Đã cập nhật trạng thái eKYC của {user.Name}. Hợp đồng đã tồn tại.";
+                    }
+                }
+                else
+                {
+                    TempData["Success"] = $"Đã cập nhật trạng thái eKYC của {user.Name}.";
+                }
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        private string GeneratePartnerContractTerms(User user)
+        {
+            return @"ĐIỀU 1: NỘI DUNG HỢP TÁC
+1.1. Bên B đồng ý ký gửi xe ô tô cho Bên A để thực hiện dịch vụ cho thuê xe tự lái.
+1.2. Bên A có trách nhiệm tìm kiếm khách hàng, thực hiện quy trình cho thuê, quản lý tài sản và thu tiền từ khách hàng.
+
+ĐIỀU 2: PHÂN CHIA DOANH THU (80/20)
+2.1. Tỷ lệ phân chia: Doanh thu thực tế từ việc cho thuê xe (sau khi trừ các mã giảm giá nếu có) sẽ được chia như sau:
+- Bên B (Chủ xe): Nhận 80% doanh thu.
+- Bên A (Vận hành): Nhận 20% doanh thu (Phí quản lý, tìm khách và vận hành).
+2.2. Kỳ thanh toán: Bên A tổng kết và chuyển thanh toán cho Bên B vào ngày 05 hàng tháng.
+
+ĐIỀU 3: CHI PHÍ VẬN HÀNH
+3.1. Bên B chịu trách nhiệm: Phí bảo hiểm vật chất xe, phí đường bộ, đăng kiểm, và các hư hỏng do hao mòn tự nhiên hoặc lỗi kỹ thuật của xe.
+3.2. Bên A chịu trách nhiệm: Chi phí marketing, nhân sự giao nhận xe, vệ sinh xe cơ bản sau mỗi lượt thuê.
+
+ĐIỀU 4: TRÁCH NHIỆM BẢO VỆ TÀI SẢN
+4.1. Bên A có trách nhiệm kiểm tra kỹ hồ sơ khách thuê (CCCD, GPLX, tài sản thế chấp) để giảm thiểu rủi ro.
+4.2. Trong trường hợp khách thuê gây ra va chạm/tai nạn:
+- Bên A hỗ trợ làm việc với bảo hiểm và khách thuê để bồi thường cho Bên B.
+- Nếu không có bảo hiểm, Bên A có trách nhiệm yêu cầu khách thuê đền bù trực tiếp cho Bên B theo giá trị thiệt hại thực tế.
+4.3. Phạt nguội: Bên A có trách nhiệm truy thu tiền phạt từ khách thuê nếu phát sinh vi phạm trong thời gian thuê.
+
+ĐIỀU 5: THỜI HẠN VÀ CHẤM DỨT
+5.1. Thời hạn hợp đồng: Vĩnh viễn kể từ ngày ký.
+5.2. Nếu một trong hai bên muốn chấm dứt hợp đồng, phải báo trước cho bên kia ít nhất 15 ngày.";
         }
 
         [HttpPost]

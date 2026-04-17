@@ -26,16 +26,30 @@
         
         <div class="gallery-grid">
             <div class="gallery-main">
-                <img src="@(Model.Car.CarImages?.OrderBy(i => i.ImageID).Select(i => i.ImageUrl).FirstOrDefault() ?? Model.Car.ImageURL ?? "/images/cars/placeholder.png")" alt="@Model.Car.CarName">
+                <img src="@(Model.Car.CarImages?.OrderBy(i => i.ImageID).Select(i => i.ImageUrl).FirstOrDefault() ?? Model.Car.ImageURL ?? "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&h=500&fit=crop")" alt="@Model.Car.CarName"
+                     onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&h=500&fit=crop'">
             </div>
             <div class="gallery-thumbs">
-                @foreach (var img in Model.Car.CarImages?.OrderBy(i => i.ImageID).Skip(1).Take(4) ?? Enumerable.Empty<CarRentalSystem.Models.CarImage>())
-                {
-                    <img src="@img.ImageUrl" alt="@Model.Car.CarName">
+                @{
+                    var allImages = Model.Car.CarImages?.OrderBy(i => i.ImageID).Select(i => i.ImageUrl).ToList() ?? new List<string>();
+                    var mainImg = allImages.FirstOrDefault() ?? Model.Car.ImageURL ?? "";
+                    var thumbs = allImages.Skip(1).Take(4).ToList();
+                    var extraImgs = new[] {
+                        "https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=400&h=250&fit=crop",
+                        "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=250&fit=crop",
+                        "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=250&fit=crop",
+                        "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=250&fit=crop"
+                    };
+                    // Fill missing thumbs with extra car images
+                    for (int i = thumbs.Count; i < 4; i++)
+                    {
+                        thumbs.Add(extraImgs[i % extraImgs.Length]);
+                    }
                 }
-                @for (int i = (Model.Car.CarImages?.Count ?? 0) - 1; i < 3; i++)
+                @foreach (var thumbUrl in thumbs)
                 {
-                    <img src="/images/cars/placeholder.png" alt="Placeholder">
+                    <img src="@thumbUrl" alt="@Model.Car.CarName"
+                         onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=250&fit=crop'">
                 }
             </div>
         </div>
@@ -423,7 +437,6 @@
                                     <div class="w-100">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div class="fw-bold mb-1 text-dark">@Model.OwnerName giao & nhận xe</div>
-                                            <span class="badge bg-primary bg-opacity-10 text-primary">+50.000đ</span>
                                         </div>
                                         <div class="text-muted small d-flex align-items-center"><i class="bi bi-geo-alt me-1"></i> Chọn địa điểm</div>
                                     </div>
@@ -432,6 +445,19 @@
                             
                             <!-- Detailed address input shown only when locOwner is selected -->
                             <div id="ownerDeliverySection" style="display: none;">
+                                <!-- Delivery Info Banner -->
+                                <div id="deliveryInfoBanner" class="alert alert-info mb-3 py-2 px-3" style="border-radius: 10px;">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <i class="bi bi-truck me-2"></i>
+                                            <span class="fw-bold">Khoảng cách giao:</span>
+                                            <span id="deliveryDistanceDisplay">Đang tính...</span>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-success">Thời gian giao: <span id="deliveryTimeDisplay">-</span></span>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="input-group input-group-sm mb-2 shadow-sm">
                                     <input type="text" id="pickupCoords" class="form-control bg-light border-0" placeholder="Chọn trên bản đồ / gửi vị trí" value="10.7816, 106.6994" readonly>
                                     <button class="btn btn-primary" type="button" id="getCurrentPoint" title="Vị trí của tôi">
@@ -449,9 +475,8 @@
                                 <span class="fw-bold" id="baseRentAmount">@Model.Car.PricePerDay.ToString("N0") đ</span>
                             </div>
                             
-                            @if (ViewBag.Contract != null)
+                            @if (ViewBag.Contract is CarRentalSystem.Models.ContractType ct)
                             {
-                                var ct = ViewBag.Contract as CarRentalSystem.Models.ContractType;
                                 <input type="hidden" id="contractDiscount" value="@ct.DiscountPercent" />
                                 <div class="alert alert-success py-2 mb-3 small fw-bold">
                                     <i class="bi bi-tag-fill me-1"></i> Áp dụng: @ct.Name (Giảm @ct.DiscountPercent%)
@@ -464,6 +489,22 @@
                             else
                             {
                                 <input type="hidden" id="contractDiscount" value="0" />
+                            }
+
+                            @if(ViewBag.MembershipTier != null && ViewBag.MembershipTier.DiscountPercent > 0)
+                            {
+                                <input type="hidden" id="membershipDiscount" value="@ViewBag.MembershipTier.DiscountPercent" />
+                                <div class="alert alert-warning py-2 mb-3 small fw-bold" style="background-color: #fffbeb; border-color: #fef08a; color: #b45309;">
+                                    🥇 Hạng thành viên @ViewBag.MembershipTier.Name: Giảm @ViewBag.MembershipTier.DiscountPercent%
+                                </div>
+                                <div class="d-flex justify-content-between mb-3 small fw-bold" style="color: #ea580c;" id="memDiscountRow">
+                                    <span>Tiết kiệm hạng thành viên</span>
+                                    <span id="memDiscountAmount">-0 đ</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <input type="hidden" id="membershipDiscount" value="0" />
                             }
 
                             <div class="d-flex justify-content-between mb-3 small">
@@ -484,7 +525,7 @@
                                 <span class="fw-800 fs-4 text-success" id="finalTotalAmount">@((Model.Car.PricePerDay + 200000m).ToString("N0")) đ</span>
                             </div>
                             
-                            @if(User.Identity.IsAuthenticated)
+                            @if(User?.Identity?.IsAuthenticated == true)
                             {
                                 <div class="row g-2">
                                     <div class="col-9">

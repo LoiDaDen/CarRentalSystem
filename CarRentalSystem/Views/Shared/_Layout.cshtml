@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
     <style>
         .hover-white:hover { color: white !important; }
         .hover-primary:hover { border-color: #0d6efd !important; color: #0d6efd !important; }
@@ -280,6 +282,26 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="~/js/smartrental-map.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('input[type="datetime-local"]').forEach(function(el) {
+                var currentVal = el.value;
+                flatpickr(el, {
+                    enableTime: true,
+                    time_24hr: true,
+                    dateFormat: 'Y-m-d\\TH:i',
+                    altInput: true,
+                    altFormat: 'd/m/Y - H:i',
+                    locale: 'vn',
+                    defaultDate: currentVal || null,
+                    allowInput: true,
+                    disableMobile: true
+                });
+            });
+        });
+    </script>
     <!-- AI Chatbot Widget -->
     <div id="chatbot-widget" style="position:fixed;bottom:90px;right:20px;width:370px;max-height:500px;z-index:9999;display:none;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.2);">
         <div style="background:linear-gradient(135deg,#0f172a,#1e40af);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
