@@ -70,6 +70,8 @@ builder.Services.AddHangfireServer();
 // Đăng ký Background Job classes vào DI
 builder.Services.AddScoped<EmailBackgroundJob>();
 builder.Services.AddScoped<ContractExpirationJob>();
+builder.Services.AddScoped<MaintenanceAlertJob>();
+builder.Services.AddScoped<DepositRefundJob>();
 
 builder.Services.AddAuthentication("Cookies")
     .AddCookie("Cookies", options =>
@@ -167,6 +169,16 @@ RecurringJob.AddOrUpdate<ContractExpirationJob>(
     "contract-expiration-check",
     job => job.Execute(),
     Cron.Hourly); // Chạy mỗi giờ
+
+RecurringJob.AddOrUpdate<MaintenanceAlertJob>(
+    "maintenance-alert-check",
+    job => job.Execute(),
+    Cron.Daily(8)); // Mỗi ngày lúc 8:00 AM
+
+RecurringJob.AddOrUpdate<DepositRefundJob>(
+    "deposit-refund-process",
+    job => job.Execute(),
+    Cron.Daily(9)); // Mỗi ngày lúc 9:00 AM
 
 app.MapStaticAssets();
 
