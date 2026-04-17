@@ -27,10 +27,7 @@ namespace CarRentalSystem.Tests.IntegrationTests
 
             var carRepo = new Repository<Car>(_context);
             var reviewRepo = new Repository<Review>(_context);
-            var mockCache = new Mock<ICacheService>();
-            mockCache.Setup(c => c.GetAsync<It.IsAnyType>(It.IsAny<string>()))
-                     .ReturnsAsync(default(It.IsAnyType));
-            _carService = new CarService(carRepo, reviewRepo, _context, mockCache.Object);
+            _carService = new CarService(carRepo, reviewRepo, _context, new Helpers.NullCacheService());
         }
 
         // =============================================
