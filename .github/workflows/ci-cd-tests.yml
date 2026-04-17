@@ -9,6 +9,9 @@ on:
 env:
   DOTNET_VERSION: '10.0.x'
   TEST_PROJECT_PATH: 'CarRentalSystem.Tests'
+  MSBuildEnableWorkloadResolver: false
+  DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: true
+  DOTNET_NOLOGO: true
 
 jobs:
   build-and-test:
