@@ -240,9 +240,7 @@ jobs:
         node-version: 20
 
     - name: "📦 Install Cypress"
-      run: |
-        cd UITests
-        npm ci
+      run: npm ci
       working-directory: .
 
     - name: "🚀 Start .NET App (Background)"
