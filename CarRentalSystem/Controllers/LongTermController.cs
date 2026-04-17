@@ -102,8 +102,9 @@ namespace CarRentalSystem.Controllers
             var car = await _context.Cars.Include(c => c.CarBrand).FirstOrDefaultAsync(c => c.CarID == carId);
             var contract = await _context.ContractTypes.FindAsync(contractId);
             
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == int.Parse(userIdStr));
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int currentUserId)) return Unauthorized();
+            var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == currentUserId);
 
             if (car == null || contract == null) return NotFound();
 
@@ -143,7 +144,7 @@ namespace CarRentalSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> ConfirmAndDeposit(int carId, int contractId, string duration, string customerName, string customerPhone, string startDateStr, string selectedDates)
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int userId)) return Unauthorized();
             var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
             var car = await _context.Cars.FindAsync(carId);
             var cType = await _context.ContractTypes.FindAsync(contractId);

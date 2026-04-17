@@ -297,8 +297,25 @@ namespace CarRentalSystem.Controllers
             }
 
             // 2. Bookings
+            var skippedCars = new List<string>();
             foreach (var item in cart.CartItems)
             {
+                // 🔒 Overlap check cho từng xe trong giỏ hàng
+                bool isOverlapped = await _context.Bookings
+                    .Include(b => b.BookingStatus)
+                    .AnyAsync(b => b.CarID == item.CarID &&
+                        b.BookingStatus != null &&
+                        b.BookingStatus.Name != "Cancelled" && b.BookingStatus.Name != "Completed" &&
+                        ((item.StartDate >= b.StartDate && item.StartDate < b.EndDate) ||
+                         (item.EndDate > b.StartDate && item.EndDate <= b.EndDate) ||
+                         (item.StartDate <= b.StartDate && item.EndDate >= b.EndDate)));
+
+                if (isOverlapped)
+                {
+                    skippedCars.Add(item.Car?.CarName ?? $"Xe #{item.CarID}");
+                    continue; // Skip xe bị trùng, không tạo booking
+                }
+
                 decimal itemDiscount = item.EstimatedPrice * (memDiscountPct / 100m);
                 var booking = new Booking
                 {
@@ -402,6 +419,10 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Đã khởi tạo đơn hàng từ giỏ thành công! Vui lòng ký hợp đồng và thanh toán.";
+            if (skippedCars.Any())
+            {
+                TempData["Warning"] = $"Lưu ý: {skippedCars.Count} xe đã bị bỏ qua do trùng lịch: {string.Join(", ", skippedCars)}";
+            }
             return RedirectToAction("TransactionContract", "Booking", new { id = transaction.TransactionID });
         }
 

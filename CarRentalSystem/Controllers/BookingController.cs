@@ -64,12 +64,15 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Car", new { id = CarID });
             }
 
-            var existingBookings = await _bookingService.GetAllBookingsAsync();
-            bool isOverlapped = existingBookings.Any(b => b.CarID == CarID && 
-                b.BookingStatus?.Name != "Cancelled" && b.BookingStatus?.Name != "Completed" && 
-                ((StartDate >= b.StartDate && StartDate < b.EndDate) ||
-                 (EndDate > b.StartDate && EndDate <= b.EndDate) ||
-                 (StartDate <= b.StartDate && EndDate >= b.EndDate)));
+            // 🔒 DB-level overlap check (không load toàn bộ bookings vào RAM)
+            bool isOverlapped = await _context.Bookings
+                .Include(b => b.BookingStatus)
+                .AnyAsync(b => b.CarID == CarID &&
+                    b.BookingStatus != null &&
+                    b.BookingStatus.Name != "Cancelled" && b.BookingStatus.Name != "Completed" &&
+                    ((StartDate >= b.StartDate && StartDate < b.EndDate) ||
+                     (EndDate > b.StartDate && EndDate <= b.EndDate) ||
+                     (StartDate <= b.StartDate && EndDate >= b.EndDate)));
 
             if (isOverlapped)
             {
@@ -227,124 +230,144 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
-            var existingBookings = await _bookingService.GetAllBookingsAsync();
-            bool isOverlapped = existingBookings.Any(b => b.CarID == booking.CarID &&
-                b.BookingStatus?.Name != "Cancelled" && b.BookingStatus?.Name != "Completed" &&
-                ((booking.StartDate >= b.StartDate && booking.StartDate < b.EndDate) ||
-                 (booking.EndDate > b.StartDate && booking.EndDate <= b.EndDate) ||
-                 (booking.StartDate <= b.StartDate && booking.EndDate >= b.EndDate)));
-
-            if (isOverlapped)
+            // ═══════════════════════════════════════════════════
+            // 🔒 DB TRANSACTION — Atomic booking creation
+            // Chống race condition (double booking) + data consistency
+            // ═══════════════════════════════════════════════════
+            using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
             {
-                TempData["BookingError"] = "Rất tiếc, xe này đã được đặt trong khoảng thời gian bạn chọn. Vui lòng chọn xe khác hoặc đổi ngày.";
+                // 🔒 OVERLAP CHECK INSIDE TRANSACTION (DB-level lock)
+                bool isOverlapped = await _context.Bookings
+                    .Include(b => b.BookingStatus)
+                    .AnyAsync(b => b.CarID == booking.CarID &&
+                        b.BookingStatus != null &&
+                        b.BookingStatus.Name != "Cancelled" && b.BookingStatus.Name != "Completed" &&
+                        ((booking.StartDate >= b.StartDate && booking.StartDate < b.EndDate) ||
+                         (booking.EndDate > b.StartDate && booking.EndDate <= b.EndDate) ||
+                         (booking.StartDate <= b.StartDate && booking.EndDate >= b.EndDate)));
+
+                if (isOverlapped)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["BookingError"] = "Rất tiếc, xe này đã được đặt trong khoảng thời gian bạn chọn. Vui lòng chọn xe khác hoặc đổi ngày.";
+                    return RedirectToAction("Details", "Car", new { id = booking.CarID });
+                }
+
+                var diffTime = booking.EndDate - booking.StartDate;
+                int totalHours = (int)Math.Ceiling(diffTime.TotalHours);
+                if (totalHours <= 0) totalHours = 1;
+
+                Func<int, decimal> calcPrice = (int hrs) =>
+                {
+                    decimal p4 = car.PricePerDay * 0.4m > 0 ? car.PricePerDay * 0.4m : 4 * car.PricePerHour;
+                    decimal p8 = car.PricePerDay * 0.7m > 0 ? car.PricePerDay * 0.7m : 8 * car.PricePerHour;
+                    decimal p12 = car.PricePerDay * 0.85m > 0 ? car.PricePerDay * 0.85m : 12 * car.PricePerHour;
+                    decimal p24 = car.PricePerDay > 0 ? car.PricePerDay : 24 * car.PricePerHour;
+
+                    if (hrs <= 0) return 0;
+                    if (hrs <= 4) return Math.Min(hrs * car.PricePerHour, p4);
+                    if (hrs <= 8) return Math.Min(p4 + (hrs - 4) * car.PricePerHour, p8);
+                    if (hrs <= 12) return Math.Min(p8 + (hrs - 8) * car.PricePerHour, p12);
+                    if (hrs <= 24) return Math.Min(p12 + (hrs - 12) * car.PricePerHour, p24);
+                    
+                    int fullDays = hrs / 24;
+                    int rem = hrs % 24;
+                    decimal remP = 0;
+                    if (rem > 0)
+                    {
+                        if (rem <= 4) remP = Math.Min(rem * car.PricePerHour, p4);
+                        else if (rem <= 8) remP = Math.Min(p4 + (rem - 4) * car.PricePerHour, p8);
+                        else if (rem <= 12) remP = Math.Min(p8 + (rem - 8) * car.PricePerHour, p12);
+                        else remP = Math.Min(p12 + (rem - 12) * car.PricePerHour, p24);
+                    }
+                    return (fullDays * p24) + remP;
+                };
+
+                decimal basePrice = calcPrice(totalHours);
+                
+                int days = totalHours / 24;
+                
+                decimal dailyInsurance = 0;
+                switch (booking.InsuranceTier)
+                {
+                    case "Premium": dailyInsurance = 150000; break;
+                    case "Full Cover": dailyInsurance = 300000; break;
+                    default: dailyInsurance = 0; break;
+                }
+                int insuranceDays = days > 0 ? days : 1;
+                
+                // Phụ phí VAT & Service (Cố định 150k cho demo)
+                decimal serviceFee = 150000;
+                
+                booking.TotalPrice = basePrice + (insuranceDays * dailyInsurance) + serviceFee + booking.DeliveryFee + booking.AddOnFee + DriverFee;
+                
+                var mUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == booking.UserID);
+                if (mUser?.MembershipTier != null && mUser.MembershipTier.DiscountPercent > 0)
+                {
+                    decimal memDiscount = booking.TotalPrice * (mUser.MembershipTier.DiscountPercent / 100m);
+                    booking.DiscountAmount += memDiscount;
+                    booking.TotalPrice -= memDiscount;
+                }
+
+                // Voucher / Promotion logic
+                if (booking.PromotionID.HasValue)
+                {
+                    var promo = await _context.Promotions.FindAsync(booking.PromotionID.Value);
+                    if (promo != null && promo.IsActive && promo.ValidFrom <= DateTime.Now && promo.ValidUntil >= DateTime.Now && promo.UsedCount < promo.UsageLimit)
+                    {
+                        decimal discount = booking.TotalPrice * promo.DiscountPercent / 100m;
+                        if (promo.MaxDiscountAmount.HasValue && discount > promo.MaxDiscountAmount.Value)
+                            discount = promo.MaxDiscountAmount.Value;
+                        
+                        booking.DiscountAmount += discount;
+                        booking.TotalPrice -= discount;
+                        
+                        promo.UsedCount++;
+                        _context.Promotions.Update(promo);
+                    }
+                }
+
+                if (booking.TotalPrice < 0) booking.TotalPrice = 0;
+                
+                booking.TotalHours = (int)Math.Ceiling(diffTime.TotalHours);
+                if (booking.TotalHours == 0) booking.TotalHours = 1;
+
+                booking.DepositAmount = car.DefaultDeposit;
+                booking.DepositStatus = "Holding";
+                
+                booking.PickupLocationID = car.LocationID;
+                booking.ReturnLocationID = car.LocationID;
+                
+                await _bookingService.CreateBookingAsync(booking);
+
+                if (SelectedDriverID.HasValue)
+                {
+                    var driverBooking = new DriverBooking
+                    {
+                        BookingID = booking.BookingID,
+                        DriverID = SelectedDriverID.Value,
+                        DriverFee = DriverFee,
+                        Status = "Pending"
+                    };
+                    _context.DriverBookings.Add(driverBooking);
+                    await _context.SaveChangesAsync();
+
+                    booking.DriverBookingID = driverBooking.DriverBookingID;
+                    _bookingService.UpdateBooking(booking);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return RedirectToAction(nameof(Deposit), new { id = booking.BookingID });
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["BookingError"] = "Đã xảy ra lỗi khi xử lý đặt xe. Vui lòng thử lại.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
-
-            var diffTime = booking.EndDate - booking.StartDate;
-            int totalHours = (int)Math.Ceiling(diffTime.TotalHours);
-            if (totalHours <= 0) totalHours = 1;
-
-            Func<int, decimal> calcPrice = (int hrs) =>
-            {
-                decimal p4 = car.PricePerDay * 0.4m > 0 ? car.PricePerDay * 0.4m : 4 * car.PricePerHour;
-                decimal p8 = car.PricePerDay * 0.7m > 0 ? car.PricePerDay * 0.7m : 8 * car.PricePerHour;
-                decimal p12 = car.PricePerDay * 0.85m > 0 ? car.PricePerDay * 0.85m : 12 * car.PricePerHour;
-                decimal p24 = car.PricePerDay > 0 ? car.PricePerDay : 24 * car.PricePerHour;
-
-                if (hrs <= 0) return 0;
-                if (hrs <= 4) return Math.Min(hrs * car.PricePerHour, p4);
-                if (hrs <= 8) return Math.Min(p4 + (hrs - 4) * car.PricePerHour, p8);
-                if (hrs <= 12) return Math.Min(p8 + (hrs - 8) * car.PricePerHour, p12);
-                if (hrs <= 24) return Math.Min(p12 + (hrs - 12) * car.PricePerHour, p24);
-                
-                int fullDays = hrs / 24;
-                int rem = hrs % 24;
-                decimal remP = 0;
-                if (rem > 0)
-                {
-                    if (rem <= 4) remP = Math.Min(rem * car.PricePerHour, p4);
-                    else if (rem <= 8) remP = Math.Min(p4 + (rem - 4) * car.PricePerHour, p8);
-                    else if (rem <= 12) remP = Math.Min(p8 + (rem - 8) * car.PricePerHour, p12);
-                    else remP = Math.Min(p12 + (rem - 12) * car.PricePerHour, p24);
-                }
-                return (fullDays * p24) + remP;
-            };
-
-            decimal basePrice = calcPrice(totalHours);
-            
-            int days = totalHours / 24;
-            
-            decimal dailyInsurance = 0;
-            switch (booking.InsuranceTier)
-            {
-                case "Premium": dailyInsurance = 150000; break;
-                case "Full Cover": dailyInsurance = 300000; break;
-                default: dailyInsurance = 0; break;
-            }
-            int insuranceDays = days > 0 ? days : 1;
-            
-            // Phụ phí VAT & Service (Cố định 150k cho demo)
-            decimal serviceFee = 150000;
-            
-            booking.TotalPrice = basePrice + (insuranceDays * dailyInsurance) + serviceFee + booking.DeliveryFee + booking.AddOnFee + DriverFee;
-            
-            var mUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == booking.UserID);
-            if (mUser?.MembershipTier != null && mUser.MembershipTier.DiscountPercent > 0)
-            {
-                decimal memDiscount = booking.TotalPrice * (mUser.MembershipTier.DiscountPercent / 100m);
-                booking.DiscountAmount += memDiscount;
-                booking.TotalPrice -= memDiscount;
-            }
-
-            // Voucher / Promotion logic
-            if (booking.PromotionID.HasValue)
-            {
-                var promo = await _context.Promotions.FindAsync(booking.PromotionID.Value);
-                if (promo != null && promo.IsActive && promo.ValidFrom <= DateTime.Now && promo.ValidUntil >= DateTime.Now && promo.UsedCount < promo.UsageLimit)
-                {
-                    decimal discount = booking.TotalPrice * promo.DiscountPercent / 100m;
-                    if (promo.MaxDiscountAmount.HasValue && discount > promo.MaxDiscountAmount.Value)
-                        discount = promo.MaxDiscountAmount.Value;
-                    
-                    booking.DiscountAmount = discount;
-                    booking.TotalPrice -= discount;
-                    
-                    promo.UsedCount++;
-                    _context.Promotions.Update(promo);
-                }
-            }
-
-            if (booking.TotalPrice < 0) booking.TotalPrice = 0;
-            
-            booking.TotalHours = (int)Math.Ceiling(diffTime.TotalHours);
-            if (booking.TotalHours == 0) booking.TotalHours = 1;
-
-            booking.DepositAmount = car.DefaultDeposit;
-            booking.DepositStatus = "Holding";
-            
-            booking.PickupLocationID = car.LocationID;
-            booking.ReturnLocationID = car.LocationID;
-            
-            await _bookingService.CreateBookingAsync(booking);
-
-            if (SelectedDriverID.HasValue)
-            {
-                var driverBooking = new DriverBooking
-                {
-                    BookingID = booking.BookingID,
-                    DriverID = SelectedDriverID.Value,
-                    DriverFee = DriverFee,
-                    Status = "Pending"
-                };
-                _context.DriverBookings.Add(driverBooking);
-                await _context.SaveChangesAsync();
-
-                booking.DriverBookingID = driverBooking.DriverBookingID;
-                _bookingService.UpdateBooking(booking);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Deposit), new { id = booking.BookingID });
         }
 
         public async Task<IActionResult> MyBookings()
@@ -495,14 +518,55 @@ namespace CarRentalSystem.Controllers
             // 2. Update status
             await _bookingService.UpdateBookingStatusAsync(id, "Completed");
 
-            // 3. Calculate Mileage & Fees
-            if (booking.RentalContract != null)
+            // ═══════════════════════════════════════════════════
+            // 💰 TÍNH PHÍ TRỄ HẠN — OverTimeFee * số giờ trễ
+            // ═══════════════════════════════════════════════════
+            string msg = "Bạn đã trả xe thành công!";
+            bool hasViolation = false;
+
+            if (booking.ActualReturnDate > booking.EndDate)
             {
-                var totalDays = (int)Math.Ceiling((booking.EndDate - booking.StartDate).TotalDays);
-                if (totalDays <= 0) totalDays = 1;
-                booking.RentalContract.CalculateFees(totalDays);
+                var lateSpan = booking.ActualReturnDate.Value - booking.EndDate;
+                int lateHours = (int)Math.Ceiling(lateSpan.TotalHours);
+
+                // Grace period: miễn phí 30 phút đầu
+                if (lateSpan.TotalMinutes > 30 && booking.Car != null)
+                {
+                    booking.LateFeeAmount = lateHours * booking.Car.OverTimeFee;
+                    booking.TotalPrice += booking.LateFeeAmount;
+                    msg += $" ⚠️ Trả xe trễ {lateHours} giờ. Phụ phí: {booking.LateFeeAmount:N0}đ ({booking.Car.OverTimeFee:N0}đ/giờ).";
+                    hasViolation = true;
+                }
+                else
+                {
+                    msg += $" (Trễ {(int)lateSpan.TotalMinutes} phút — trong thời gian miễn phí 30 phút)";
+                }
             }
 
+            // ═══════════════════════════════════════════════════
+            // 📊 CẬP NHẬT ODOMETER TỪ HANDOVER RECORD
+            // ═══════════════════════════════════════════════════
+            var checkoutRecord = await _context.HandoverRecords
+                .Where(h => h.BookingID == id && h.Type == "CheckOut")
+                .OrderByDescending(h => h.RecordDate)
+                .FirstOrDefaultAsync();
+            
+            if (checkoutRecord != null && booking.Car != null)
+            {
+                booking.Car.CurrentOdometer = checkoutRecord.Odo;
+            }
+
+            // 3. Calculate Mileage & Fees in RentalContract
+            if (booking.RentalContract != null)
+            {
+                if (checkoutRecord != null)
+                    booking.RentalContract.EndKm = checkoutRecord.Odo;
+                
+                booking.RentalContract.TotalKm = booking.RentalContract.EndKm - booking.RentalContract.StartKm;
+                booking.RentalContract.FinalPrice = booking.TotalPrice;
+            }
+
+            // 4. Reset car status → Available
             if (booking.Car != null)
             {
                 var availableStatus = await _context.CarStatuses.FirstOrDefaultAsync(s => s.Name == "Available");
@@ -513,19 +577,23 @@ namespace CarRentalSystem.Controllers
                 _context.Cars.Update(booking.Car);
             }
 
-            await _context.SaveChangesAsync();
-
-            // 5. Build Notification Message
-            string msg = "Bạn đã trả xe thành công!";
-            bool hasViolation = false;
-
-            // Check Late Return
-            if (booking.ActualReturnDate > booking.EndDate)
+            // ═══════════════════════════════════════════════════
+            // 💰 DEPOSIT REFUND LOGIC — Giữ 15 ngày rồi hoàn trả
+            // ═══════════════════════════════════════════════════
+            if (!hasViolation && booking.LateFeeAmount == 0)
             {
-                var lateSpan = booking.ActualReturnDate.Value - booking.EndDate;
-                msg += $" Cảnh báo: Bạn đã trả xe trễ {(int)lateSpan.TotalHours} giờ {(int)lateSpan.Minutes} phút.";
-                hasViolation = true;
+                // Không vi phạm → lên lịch hoàn cọc sau 15 ngày (chờ kiểm tra phạt nguồi)
+                booking.DepositStatus = "PendingRefund";
+                msg += " Tiền cọc sẽ được hoàn trả sau 15 ngày kiểm tra phạt nguội.";
             }
+            else
+            {
+                // Có vi phạm → Admin sẽ xử lý cọc thủ công
+                booking.DepositStatus = "UnderReview";
+                msg += " Tiền cọc đang được xem xét do phát sinh phí.";
+            }
+
+            await _context.SaveChangesAsync();
 
             if (hasViolation)
             {

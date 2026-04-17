@@ -18,9 +18,19 @@ namespace CarRentalSystem.Models
         [ForeignKey("BookingID")]
         public Booking? Booking { get; set; }
 
+        /// <summary>
+        /// Tính phí cuối cùng của hợp đồng cho thuê:
+        /// - TotalKm = EndKm - StartKm
+        /// - FinalPrice = TotalPrice (đã cộng late fee ở controller)
+        /// </summary>
         public void CalculateFees(int totalDays)
         {
-            FinalPrice = Booking?.TotalPrice ?? 0;
+            // 1. Tính quãng đường thực tế
+            TotalKm = EndKm - StartKm;
+            if (TotalKm < 0) TotalKm = 0;
+
+            // 2. FinalPrice = booking's TotalPrice (đã bao gồm late fee nếu có)
+            FinalPrice = Booking?.TotalPrice ?? BasePrice;
         }
     }
 }

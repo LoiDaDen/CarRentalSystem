@@ -74,6 +74,7 @@ namespace CarRentalSystem.Controllers
 
         [AllowAnonymous]
         [HttpPost]
+        [IgnoreAntiforgeryToken] // PayOS gửi POST webhook, không có CSRF token
         public async Task<IActionResult> Webhook([FromBody] Webhook webhookData)
         {
             if (webhookData == null) return BadRequest();
