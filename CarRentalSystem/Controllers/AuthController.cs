@@ -415,6 +415,7 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [Authorize]
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> SetPiiPin([FromBody] SetPinRequest request)
         {
             if (string.IsNullOrEmpty(request?.Pin) || !System.Text.RegularExpressions.Regex.IsMatch(request.Pin, @"^\d{6}$"))
@@ -445,6 +446,7 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [Authorize]
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> VerifyPiiPin([FromBody] VerifyPinRequest request)
         {
             if (string.IsNullOrEmpty(request?.Pin))
