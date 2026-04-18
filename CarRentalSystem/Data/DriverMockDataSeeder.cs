@@ -20,6 +20,7 @@ namespace CarRentalSystem.Data
 
             var drivers = EnsureDrivers(context);
             EnsureDriverHistory(context, drivers);
+            EnsureDriverReviews(context, drivers);
         }
 
         private static void EnsureSeedCustomers(ApplicationDbContext context)
@@ -396,6 +397,48 @@ namespace CarRentalSystem.Data
                 context.Bookings.Update(existingBooking);
                 context.SaveChanges();
             }
+        }
+
+        private static void EnsureDriverReviews(ApplicationDbContext context, Dictionary<string, Driver> drivers)
+        {
+            if (drivers.Count == 0 || !context.Users.Any())
+            {
+                return;
+            }
+
+            var customers = context.Users.Where(u => u.Role == "Customer").ToList();
+            if (customers.Count == 0) return;
+
+            var reviews = new[]
+            {
+                new { Email = "tai.driver@seed.local", Rating = 5, Comment = "Tài xế rất lịch sự, lái xe an toàn. Xe lúc nào cũng sạch sẽ và thơm tho. Tôi rất hài lòng về chuyến đi!" },
+                new { Email = "tai.driver@seed.local", Rating = 5, Comment = "Anh Tài hỗ trợ bốc xếp hành lý nhiệt tình. Đón đúng giờ, đường đông nhưng xử lý rất êm." },
+                new { Email = "khang.driver@seed.local", Rating = 4, Comment = "Lái xe cẩn thận, biết đường nhưng thỉnh thoảng hơi ít nói. Nhìn chung là ổn." },
+                new { Email = "bao.driver@seed.local", Rating = 5, Comment = "Chuyến đi công tác dài ngày rất thoải mái. Tài xế rành đường các tỉnh." },
+                new { Email = "huy.driver@seed.local", Rating = 5, Comment = "Chuyên nghiệp như tài xế riêng! Mặc vest lịch sự, phong thái đĩnh đạc." },
+                new { Email = "huy.driver@seed.local", Rating = 4, Comment = "Chất lượng dịch vụ xuất sắc, điểm trừ nhỏ là xe chạy hơi nhanh ở cao tốc." },
+                new { Email = "duc.driver@seed.local", Rating = 4, Comment = "Đi chuyến gần nội thành, giá tốt, bác tài vui vẻ." }
+            };
+
+            foreach (var r in reviews)
+            {
+                if (!drivers.ContainsKey(r.Email)) continue;
+
+                var driverId = drivers[r.Email].DriverID;
+                // Check if similar review already seeded
+                if (!context.DriverReviews.Any(dr => dr.DriverID == driverId && dr.Comment == r.Comment))
+                {
+                    context.DriverReviews.Add(new DriverReview
+                    {
+                        DriverID = driverId,
+                        UserID = customers[new Random().Next(customers.Count)].UserID,
+                        Rating = r.Rating,
+                        Comment = r.Comment,
+                        CreatedAt = DateTime.UtcNow.AddDays(-new Random().Next(1, 60))
+                    });
+                }
+            }
+            context.SaveChanges();
         }
     }
 }
