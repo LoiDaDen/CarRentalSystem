@@ -55,6 +55,13 @@ namespace CarRentalSystem.Controllers
                 .ToListAsync();
 
             ViewBag.ContractTypes = contracts;
+            ViewBag.Locations = await _context.Locations.ToListAsync();
+            
+            var regionCookie = Request.Cookies["RegionID"];
+            if (!string.IsNullOrEmpty(regionCookie) && int.TryParse(regionCookie, out int regionId))
+            {
+                ViewBag.CurrentRegionID = regionId;
+            }
             
             var selectedContract = contracts.FirstOrDefault(c => c.ContractTypeID == contractId);
             ViewBag.SelectedContract = selectedContract;

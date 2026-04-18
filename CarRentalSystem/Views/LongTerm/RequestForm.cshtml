@@ -19,9 +19,21 @@
                             <div class="col-md-3">
                                 <label class="small text-muted fw-bold mb-2">Địa điểm muốn thuê</label>
                                 <select name="Location" id="locationSelect" class="form-select bg-light border-0 shadow-none" onchange="updateCarSuggestions()">
-                                    <option value="Hồ Chí Minh">Hồ Chí Minh</option>
-                                    <option value="Hà Nội">Hà Nội</option>
-                                    <option value="Đà Nẵng">Đà Nẵng</option>
+                                    @if (ViewBag.Locations != null)
+                                    {
+                                        foreach (var loc in ViewBag.Locations)
+                                        {
+                                            var isSelected = (ViewBag.CurrentRegionID != null && ViewBag.CurrentRegionID == loc.LocationID) ? "selected" : "";
+                                            if (ViewBag.CurrentRegionID == null && loc.Name == "Hồ Chí Minh") { isSelected = "selected"; } // Default HCM
+                                            <!option value="@loc.Name" @isSelected>@loc.Name</!option>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+                                        <option value="Hà Nội">Hà Nội</option>
+                                        <option value="Đà Nẵng">Đà Nẵng</option>
+                                    }
                                 </select>
                             </div>
                             <div class="col-md-3">
