@@ -1,0 +1,407 @@
+@model CarRentalSystem.Models.Booking
+@{
+    ViewData["Title"] = "Chi tiết Đơn đặt xe";
+    Layout = "_AdminLayout";
+    var booking = Model;
+}
+
+<div class="page-admin-bookingdetails">
+    <!-- Breadcrumb & Actions -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Booking" asp-action="Index">Đơn đặt xe</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Chi tiết #@booking.BookingID</li>
+                </ol>
+            </nav>
+            <h2 class="fw-800 ls-neg-1 mb-1">
+                <i class="bi bi-receipt text-primary me-2"></i>Đơn đặt xe #@booking.BookingID
+            </h2>
+            <p class="text-muted mb-0">
+                <span class="me-3"><i class="bi bi-calendar me-1"></i>@booking.StartDate.ToString("dd/MM/yyyy") - @booking.EndDate.ToString("dd/MM/yyyy")</span>
+                <span><i class="bi bi-person me-1"></i>@booking.User?.Name</span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-area="Admin" asp-controller="Booking" asp-action="Index" class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-bold">
+                <i class="bi bi-arrow-left me-2"></i>Quay lại
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Main Info -->
+        <div class="col-lg-8">
+            <!-- Booking Status Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="fw-700 mb-3"><i class="bi bi-info-circle me-2"></i>Thông tin đặt xe</h5>
+                            <div class="mb-2">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Mã đơn</label>
+                                <div class="fw-600">#@booking.BookingID</div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Ngày tạo</label>
+                                <div>@booking.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Thời gian thuê</label>
+                                <div>
+                                    <i class="bi bi-calendar-check me-1 text-primary"></i>@booking.StartDate.ToString("dd/MM/yyyy") 
+                                    <i class="bi bi-arrow-return-right mx-2 text-muted"></i> 
+                                    @booking.EndDate.ToString("dd/MM/yyyy")
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Tổng thời gian</label>
+                                <div>
+                                    @{
+                                        var days = (booking.EndDate - booking.StartDate).Days;
+                                        var hours = (booking.EndDate - booking.StartDate).Hours;
+                                    }
+                                    @if(days > 0) { <span>@days ngày</span> }
+                                    @if(hours > 0) { <span class="ms-2">@hours giờ</span> }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="fw-700 mb-3"><i class="bi bi-gear me-2"></i>Trạng thái</h5>
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Trạng thái hiện tại</label>
+                                <div>
+                                    @{
+                                        var status = booking.BookingStatus?.Name ?? "";
+                                        var statusBadge = status switch {
+                                            "Pending" => "bg-warning text-dark",
+                                            "Confirmed" => "bg-info text-white",
+                                            "Active" => "bg-primary text-white",
+                                            "Completed" => "bg-success text-white",
+                                            "Cancelled" => "bg-danger text-white",
+                                            _ => "bg-secondary text-white"
+                                        };
+                                    }
+                                    <span class="badge fs-6 py-2 px-3 @statusBadge">@status</span>
+                                </div>
+                            </div>
+                            @if(!string.IsNullOrEmpty(booking.CancelReason))
+                            {
+                                <div class="mb-2">
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Lý do hủy</label>
+                                    <div class="text-danger">@booking.CancelReason</div>
+                                </div>
+                            }
+                            @if(!string.IsNullOrEmpty(booking.AdminNotes))
+                            {
+                                <div>
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Ghi chú Admin</label>
+                                    <div>@booking.AdminNotes</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Car Info Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-0 py-3 px-4">
+                    <h5 class="fw-700 mb-0"><i class="bi bi-car-front-fill me-2"></i>Thông tin xe</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            @if(booking.Car?.CarImages?.Any() == true)
+                            {
+                                <img src="@booking.Car.CarImages.First().ImageUrl" class="img-fluid rounded-3 mb-3" alt="@booking.Car.CarName" style="max-height: 150px; object-fit: cover; width: 100%;">
+                            }
+                            else
+                            {
+                                <div class="bg-light rounded-3 d-flex align-items-center justify-content-center mb-3" style="height: 150px;">
+                                    <i class="bi bi-car-front text-muted" style="font-size: 3rem;"></i>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-8">
+                            <h4 class="fw-800">@booking.Car?.CarBrand?.Name @booking.Car?.CarName</h4>
+                            <p class="text-muted mb-2">@booking.Car?.LicensePlate</p>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <small class="text-muted">Loại xe:</small><br>
+                                    <span class="fw-600">@booking.Car?.CarType?.Name</span>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Nhiên liệu:</small><br>
+                                    <span class="fw-600">@booking.Car?.FuelType</span>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Số chỗ:</small><br>
+                                    <span class="fw-600">@booking.Car?.Seats</span>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Hộp số:</small><br>
+                                    <span class="fw-600">@booking.Car?.Transmission</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Info Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body">
+                    <h5 class="fw-700 mb-3"><i class="bi bi-person-badge me-2"></i>Thông tin khách hàng</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Họ tên</label>
+                                <div class="fw-600">@booking.User?.Name</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Email</label>
+                                <div>@booking.User?.Email</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Số điện thoại</label>
+                                <div>@booking.User?.Phone</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Địa chỉ</label>
+                                <div>@booking.User?.Address</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contract & Insurance Card -->
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-header bg-white border-0 py-3 px-4">
+                            <h5 class="fw-700 mb-0"><i class="bi bi-file-earmark-text me-2"></i>Hợp đồng</h5>
+                        </div>
+                        <div class="card-body">
+                            @if(booking.DigitalContract != null)
+                            {
+                                <div class="mb-3">
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Số hợp đồng</label>
+                                    <div class="fw-600">@booking.DigitalContract.ContractNo</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Ngày ký</label>
+                                    <div>@booking.DigitalContract.CustomerSignDate?.ToString("dd/MM/yyyy")</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Trạng thái</label>
+                                    <div>
+                                        @if(booking.DigitalContract.IsSignedByCustomer == true && booking.DigitalContract.IsSignedByOwner == true)
+                                        {
+                                            <span class="badge bg-success">Đã ký đầy đủ</span>
+                                        }
+                                        else if(booking.DigitalContract.IsSignedByCustomer == true)
+                                        {
+                                            <span class="badge bg-warning text-dark">Chờ chủ xe ký</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Chưa ký</span>
+                                        }
+                                    </div>
+                                </div>
+                                <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Details" asp-route-id="@booking.DigitalContract.DigitalContractID" class="btn btn-outline-primary btn-sm rounded-pill">
+                                    <i class="bi bi-eye me-1"></i>Xem chi tiết hợp đồng
+                                </a>
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0">Chưa có hợp đồng kỹ thuật số</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card-header bg-white border-0 py-3 px-4">
+                            <h5 class="fw-700 mb-0"><i class="bi bi-shield-check me-2"></i>Bảo hiểm</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="text-muted small fw-bold text-uppercase mb-1">Gói bảo hiểm</label>
+                                <div>
+                                    @{
+                                        var tier = booking.InsuranceTier ?? "Standard";
+                                        var tierBadge = tier switch {
+                                            "Premium" => "bg-primary text-white",
+                                            "Full Cover" => "bg-success text-white",
+                                            _ => "bg-secondary text-white"
+                                        };
+                                    }
+                                    <span class="badge fs-6 @tierBadge">@tier</span>
+                                </div>
+                            </div>
+                            @if(booking.ContractType != null)
+                            {
+                                <div class="mb-3">
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Gói thuê</label>
+                                    <div class="badge bg-opacity-25 bg-info text-info fw-bold border border-info">@booking.ContractType.Name</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Giảm giá</label>
+                                    <div class="text-success">@(booking.ContractType.DiscountPercent)%</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="text-muted small fw-bold text-uppercase mb-1">Bảo trì miễn phí</label>
+                                    <div>@booking.ContractType.FreeMaintenanceCount lần</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">Không có gói thuê đặc biệt</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Pricing & Actions -->
+        <div class="col-lg-4">
+            <!-- Pricing Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body">
+                    <h5 class="fw-700 mb-3"><i class="bi bi-cash-stack me-2"></i>Thanh toán</h5>
+
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Giá thuê xe</span>
+                            <span class="fw-600">@booking.TotalPrice.ToString("N0") đ</span>
+                        </div>
+                    </div>
+
+                    @if(booking.DeliveryFee > 0)
+                    {
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Phí giao xe</span>
+                                <span class="fw-600">@booking.DeliveryFee.ToString("N0") đ</span>
+                            </div>
+                        </div>
+                    }
+
+                    @if(booking.AddOnFee > 0)
+                    {
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Phí dịch vụ</span>
+                                <span class="fw-600">@booking.AddOnFee.ToString("N0") đ</span>
+                            </div>
+                        </div>
+                    }
+
+                    @if(booking.DiscountAmount > 0)
+                    {
+                        <div class="border-bottom pb-2 mb-2 text-success">
+                            <div class="d-flex justify-content-between">
+                                <span><i class="bi bi-tag-fill me-1"></i>Giảm giá</span>
+                                <span class="fw-600">-@booking.DiscountAmount.ToString("N0") đ</span>
+                            </div>
+                        </div>
+                    }
+
+                    @if(booking.LateFeeAmount > 0)
+                    {
+                        <div class="border-bottom pb-2 mb-2 text-danger">
+                            <div class="d-flex justify-content-between">
+                                <span><i class="bi bi-clock-history me-1"></i>Phí trễ</span>
+                                <span class="fw-600">@booking.LateFeeAmount.ToString("N0") đ</span>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="bg-light rounded-3 p-3 mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-700">Tổng cộng</span>
+                            <span class="fw-800 text-primary fs-5">@booking.TotalPrice.ToString("N0") đ</span>
+                        </div>
+                    </div>
+
+                    @if(booking.DepositAmount > 0)
+                    {
+                        <div class="mt-3">
+                            <label class="text-muted small">Đặt cọc</label>
+                            <div class="fw-600">@booking.DepositAmount.ToString("N0") đ</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body">
+                    <h5 class="fw-700 mb-3"><i class="bi bi-lightning me-2"></i>Thao tác</h5>
+
+                    <div class="d-grid gap-2">
+                        @if(booking.BookingStatus?.Name == "Pending")
+                        {
+                            <form asp-action="UpdateStatus" method="post">
+                                <input type="hidden" name="id" value="@booking.BookingID" />
+                                <input type="hidden" name="status" value="Confirmed" />
+                                <button type="submit" class="btn btn-success w-100 mb-2 rounded-3 fw-bold"
+                                        onclick="return confirm('Xác nhận đơn đặt xe này?')">
+                                    <i class="bi bi-check-circle me-2"></i>Xác nhận
+                                </button>
+                            </form>
+                            <form asp-action="Cancel" method="post" onsubmit="return confirmCancel('@booking.BookingID')">
+                                <input type="hidden" name="id" value="@booking.BookingID" />
+                                <input type="hidden" name="reason" id="reason-@booking.BookingID" />
+                                <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">
+                                    <i class="bi bi-x-circle me-2"></i>Hủy đơn
+                                </button>
+                            </form>
+                        }
+                        else if(booking.BookingStatus?.Name == "Confirmed")
+                        {
+                            <form asp-action="ConfirmPickup" method="post">
+                                <input type="hidden" name="id" value="@booking.BookingID" />
+                                <button type="submit" class="btn btn-primary w-100 mb-2 rounded-3 fw-bold"
+                                        onclick="return confirm('Xác nhận khách đã nhận xe?')">
+                                    <i class="bi bi-key me-2"></i>Xác nhận nhận xe
+                                </button>
+                            </form>
+                            <form asp-action="CompleteReturn" method="post">
+                                <input type="hidden" name="bookingId" value="@booking.BookingID" />
+                                <button type="submit" class="btn btn-success w-100 mb-2 rounded-3 fw-bold"
+                                        onclick="return confirm('Hoàn thành trả xe?')">
+                                    <i class="bi bi-flag-checkered me-2"></i>Hoàn thành trả xe
+                                </button>
+                            </form>
+                        }
+                        <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Create" asp-route-bookingId="@booking.BookingID"
+                           class="btn btn-outline-primary w-100 rounded-3 fw-bold">
+                            <i class="bi bi-file-earmark-text me-2"></i>Tạo hợp đồng
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmCancel(bookingId) {
+            const reason = prompt("Vui lòng nhập lý do hủy đơn:");
+            if (reason) {
+                document.getElementById(`reason-${bookingId}`).value = reason;
+                return true;
+            }
+            return false;
+        }
+    </script>
+}

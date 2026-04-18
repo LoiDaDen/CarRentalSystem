@@ -76,7 +76,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         {
             var allBookings = await _bookingService.GetAllBookingsAsync();
             var since = DateTime.UtcNow.AddHours(-24);
-            
+
             var notifications = allBookings
                 .Where(b => b.CreatedAt >= since && b.BookingStatus?.Name != BookingStatusConstants.Draft)
                 .OrderByDescending(b => b.CreatedAt)
@@ -103,6 +103,27 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .ToList();
 
             return Json(new { count = notifications.Count, items = notifications });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Details(int id)
+        {
+            var allBookings = await _bookingService.GetAllBookingsAsync();
+            var booking = allBookings.FirstOrDefault(b => b.BookingID == id);
+
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            // Eager load related data if not already loaded
+            if (booking.Car != null && booking.Car.CarBrand == null)
+            {
+                // Car details might need to be loaded separately if not included
+                // For now, we rely on the service to include all necessary data
+            }
+
+            return View(booking);
         }
     }
 }
