@@ -115,6 +115,17 @@ namespace CarRentalSystem.Controllers
                 return View(user);
             }
 
+            // 🔒 Validate GPLX = đúng 12 chữ số
+            if (!System.Text.RegularExpressions.Regex.IsMatch(user.DrivingLicenseNumber.Trim(), @"^\d{12}$"))
+            {
+                ViewBag.Error = "Số Giấy Phép Lái Xe phải đúng 12 chữ số.";
+                return View(user);
+            }
+
+            // 🔒 Encrypt PII at rest trước khi lưu
+            user.CitizenId = _piiEncryption.EncryptIfNotEmpty(user.CitizenId);
+            user.DrivingLicenseNumber = _piiEncryption.EncryptIfNotEmpty(user.DrivingLicenseNumber);
+
             user.Role = "Customer"; // Default role
             user.IsEmailVerified = false;
             user.EmailVerificationToken = System.Guid.NewGuid().ToString();
@@ -214,9 +225,22 @@ namespace CarRentalSystem.Controllers
                 var user = await _authService.GetUserByIdAsync(userId);
                 if (user != null)
                 {
-                    // 🔓 Decrypt PII cho hiển thị
-                    user.CitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
-                    user.DrivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
+                    // 🔓 Decrypt PII — chỉ hiện đầy đủ cho Admin
+                    var decryptedCitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
+                    var decryptedGplx = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
+
+                    if (User.IsInRole("Admin"))
+                    {
+                        // Admin: xem đầy đủ
+                        user.CitizenId = decryptedCitizenId;
+                        user.DrivingLicenseNumber = decryptedGplx;
+                    }
+                    else
+                    {
+                        // User thường: che bớt, chỉ hiện 4 số cuối
+                        user.CitizenId = MaskPii(decryptedCitizenId);
+                        user.DrivingLicenseNumber = MaskPii(decryptedGplx);
+                    }
                     return View(user);
                 }
             }
@@ -245,6 +269,18 @@ namespace CarRentalSystem.Controllers
 
                     user.Name = updatedUser.Name;
                     user.Phone = updatedUser.Phone;
+
+                    // 🔒 Validate GPLX = 12 chữ số
+                    if (!string.IsNullOrEmpty(updatedUser.DrivingLicenseNumber))
+                    {
+                        var gplxClean = updatedUser.DrivingLicenseNumber.Trim();
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(gplxClean, @"^\d{12}$"))
+                        {
+                            TempData["ErrorMessage"] = "Số Giấy Phép Lái Xe phải đúng 12 chữ số.";
+                            return RedirectToAction("Profile");
+                        }
+                    }
+
                     // 🔒 Encrypt PII at rest
                     user.CitizenId = _piiEncryption.EncryptIfNotEmpty(updatedUser.CitizenId);
                     user.DrivingLicenseNumber = _piiEncryption.EncryptIfNotEmpty(updatedUser.DrivingLicenseNumber);
@@ -344,6 +380,17 @@ namespace CarRentalSystem.Controllers
         public IActionResult AccessDenied()
         {
             return View();
+        }
+
+        /// <summary>
+        /// Che bớt thông tin PII — chỉ hiện 4 ký tự cuối.
+        /// Ví dụ: "079123456789" → "********6789"
+        /// </summary>
+        private static string? MaskPii(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+            if (value.Length <= 4) return new string('*', value.Length);
+            return new string('*', value.Length - 4) + value[^4..];
         }
     }
 }

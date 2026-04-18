@@ -67,11 +67,12 @@
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số Giấy phép lái xe (GPLX)</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số Giấy phép lái xe (GPLX) <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-card-heading text-muted"></i></span>
-                            <input asp-for="DrivingLicenseNumber" class="form-control bg-transparent border-0 py-2" placeholder="Nhập số hạng GPLX của bạn" required />
+                            <input asp-for="DrivingLicenseNumber" class="form-control bg-transparent border-0 py-2" placeholder="Nhập đúng 12 chữ số" maxlength="12" pattern="\d{12}" title="Số GPLX phải đúng 12 chữ số" required />
                         </div>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Bắt buộc đúng 12 chữ số (VD: 079123456789)</small>
                     </div>
 
                     <div class="col-md-6">

@@ -1,5 +1,6 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
+using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     public class UserController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPiiEncryptionService _piiEncryption;
 
-        public UserController(ApplicationDbContext context)
+        public UserController(ApplicationDbContext context, IPiiEncryptionService piiEncryption)
         {
             _context = context;
+            _piiEncryption = piiEncryption;
         }
 
         public async Task<IActionResult> Index(string? search, string? role)
@@ -40,6 +43,14 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 users = users.Where(u => u.Role == role);
 
             var list = await users.OrderByDescending(u => u.CreatedAt).ToListAsync();
+
+            // 🔓 Admin: decrypt PII để xem đầy đủ
+            foreach (var user in list)
+            {
+                user.CitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
+                user.DrivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
+            }
+
             return View(list);
         }
 

@@ -17,7 +17,7 @@ namespace CarRentalSystem.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.3")
+                .HasAnnotation("ProductVersion", "10.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -1891,8 +1891,8 @@ namespace CarRentalSystem.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("CitizenId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -1901,8 +1901,8 @@ namespace CarRentalSystem.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DrivingLicenseNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("DrivingLicenseUrl")
                         .HasMaxLength(255)

@@ -62,12 +62,29 @@
 
                     <div class="row g-4 mb-4">
                         <div class="col-md-6">
-                            <label asp-for="CitizenId" class="form-label fw-bold">Số CMND / CCCD</label>
-                            <input asp-for="CitizenId" class="form-label form-control-lg form-control bg-light" placeholder="Nhập số thẻ" />
+                            <label asp-for="CitizenId" class="form-label fw-bold"><i class="bi bi-shield-lock text-warning me-1"></i>Số CMND / CCCD</label>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <input asp-for="CitizenId" class="form-label form-control-lg form-control bg-light" placeholder="Nhập số thẻ" />
+                            }
+                            else
+                            {
+                                <input asp-for="CitizenId" class="form-label form-control-lg form-control bg-light text-muted" readonly />
+                                <small class="text-muted"><i class="bi bi-lock me-1"></i>Dữ liệu được mã hóa — chỉ Admin xem đầy đủ.</small>
+                            }
                         </div>
                         <div class="col-md-6">
-                            <label asp-for="DrivingLicenseNumber" class="form-label fw-bold">Số Giấy Phép Lái Xe</label>
-                            <input asp-for="DrivingLicenseNumber" class="form-label form-control-lg form-control bg-light" placeholder="Nhập hạng / số GPLX" />
+                            <label asp-for="DrivingLicenseNumber" class="form-label fw-bold"><i class="bi bi-shield-lock text-warning me-1"></i>Số Giấy Phép Lái Xe</label>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <input asp-for="DrivingLicenseNumber" class="form-label form-control-lg form-control bg-light" placeholder="Nhập đúng 12 chữ số" maxlength="12" pattern="\d{12}" />
+                                <small class="text-muted">Bắt buộc đúng 12 chữ số.</small>
+                            }
+                            else
+                            {
+                                <input asp-for="DrivingLicenseNumber" class="form-label form-control-lg form-control bg-light text-muted" readonly />
+                                <small class="text-muted"><i class="bi bi-lock me-1"></i>Dữ liệu được mã hóa — chỉ Admin xem đầy đủ.</small>
+                            }
                         </div>
                     </div>
 

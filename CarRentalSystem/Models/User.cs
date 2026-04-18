@@ -35,7 +35,8 @@ namespace CarRentalSystem.Models
         public string? IdCardBackUrl { get; set; }
         [MaxLength(255)]
         public string? DrivingLicenseUrl { get; set; }
-        [MaxLength(50)]
+        // 🔒 Giới hạn 12 số — validated in Controller, encrypted at rest (MaxLength lớn vì ciphertext dài)
+        [MaxLength(500)]
         public string? DrivingLicenseNumber { get; set; }
         
         // Email Verification
@@ -49,8 +50,8 @@ namespace CarRentalSystem.Models
         [MaxLength(500)]
         public string? BlacklistReason { get; set; }
 
-        // Mở rộng thông tin người dùng từ QR CCCD
-        [MaxLength(20)]
+        // 🔒 Mã hóa PII at rest — MaxLength lớn vì ciphertext dài
+        [MaxLength(500)]
         public string? CitizenId { get; set; }
         
         [MaxLength(200)]
