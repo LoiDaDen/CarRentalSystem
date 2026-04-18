@@ -2,78 +2,34 @@
 @{ ViewData["Title"] = "CarRental - Thuê Xe Tự Lái 24/7"; }
 
 <style>
-    .hero-banner {
-        background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop') no-repeat center center;
-        background-size: cover;
-        padding: 120px 0 100px;
-    }
-    .search-box {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        margin-top: 40px;
-    }
-    .custom-input {
-        border: none;
-        border-bottom: 2px solid #eee;
-        border-radius: 0;
-        padding-left: 0;
-        font-weight: 500;
-        box-shadow: none !important;
-    }
-    .custom-input:focus {
-        border-bottom-color: #0d6efd;
-    }
-    .form-label {
-        font-size: 0.85rem;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 2px;
-    }
-    .car-card {
-        border-radius: 16px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: 1px solid #f0f0f0;
-    }
-    .car-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-    }
-    .btn-search {
-        border-radius: 12px;
-        font-weight: bold;
-        letter-spacing: 1px;
-    }
-    .badges-top {
-        position: absolute;
-        top: 15px;
-        left: 15px;
-        z-index: 2;
-    }
-    .price-tag {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: #0d6efd;
-    }
+    .home-hero { background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop') no-repeat center center; background-size: cover; padding: 120px 0 100px; }
+    .home-search { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 40px; }
+    .home-input { border: none; border-bottom: 2px solid #eee; border-radius: 0; padding-left: 0; font-weight: 500; box-shadow: none !important; }
+    .home-input:focus { border-bottom-color: #0d6efd; }
+    .home-label { font-size: 0.85rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .home-car-card { border-radius: 16px; transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid #f0f0f0; }
+    .home-car-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
+    .home-btn-search { border-radius: 12px; font-weight: 700; letter-spacing: 1px; }
+    .badges-top { position: absolute; top: 15px; left: 15px; z-index: 2; }
+    .price-tag { font-size: 1.25rem; font-weight: 800; color: #0d6efd; }
 </style>
 
-<section class="hero-banner text-white mb-5">
+<div class="page-home">
+<section class="home-hero text-white mb-5 ui-hero-banner">
     <div class="container text-center">
         <h1 class="display-3 fw-bolder mb-3">Ứng dụng đặt xe thông minh 24/7</h1>
         <p class="lead mb-4">Giá chỉ từ 400K. Thuê xe linh hoạt 4h, 8h, 24h. Cam kết xe đời mới, sạch sẽ.</p>
-        
-        <div class="search-box text-start mx-auto" style="max-width: 1000px;">
+
+        <div class="home-search text-start mx-auto ui-search-panel home-search-panel">
             <!-- Tabs -->
             <ul class="nav nav-pills mb-3 justify-content-center gap-2" id="rentalTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold" id="self-drive-tab" data-bs-toggle="tab" data-bs-target="#selfDrivePane" type="button" role="tab" style="background:#10b981;color:#fff;border:none;">
+                    <button class="nav-link active d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold tab-btn-primary" id="self-drive-tab" data-bs-toggle="tab" data-bs-target="#selfDrivePane" type="button" role="tab">
                         <i class="bi bi-car-front-fill"></i> Thuê xe tự lái
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthlyPane" type="button" role="tab" style="background:transparent;color:#333;border:1px solid #ddd;">
+                    <button class="nav-link d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold tab-btn-secondary" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthlyPane" type="button" role="tab">
                         <i class="bi bi-calendar-month"></i> Thuê xe theo tháng
                     </button>
                 </li>
@@ -84,8 +40,8 @@
                 <div class="tab-pane fade show active" id="selfDrivePane" role="tabpanel">
                     <form asp-controller="Car" asp-action="Index" method="get" class="row g-3 align-items-end">
                         <div class="col-md-3">
-                            <label class="form-label fw-bold"><i class="bi bi-geo-alt-fill text-primary"></i> Địa điểm nhận xe</label>
-                            <select class="form-select custom-input" name="location">
+                            <label class="home-label fw-bold"><i class="bi bi-geo-alt-fill text-primary"></i> Địa điểm nhận xe</label>
+                            <select class="form-select home-input" name="location">
                                 <option value="">Tất cả khu vực</option>
                                 @if (ViewBag.Locations != null) {
                                     foreach (var loc in ViewBag.Locations) {
@@ -95,15 +51,15 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold"><i class="bi bi-calendar-event text-primary"></i> Ngày giờ nhận</label>
-                            <input type="datetime-local" class="form-control custom-input" name="startDate" id="heroStartDate" required>
+                            <label class="home-label fw-bold"><i class="bi bi-calendar-event text-primary"></i> Ngày giờ nhận</label>
+                            <input type="datetime-local" class="form-control home-input" name="startDate" id="heroStartDate" required>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold"><i class="bi bi-calendar-check text-primary"></i> Ngày giờ trả</label>
-                            <input type="datetime-local" class="form-control custom-input" name="endDate" id="heroEndDate" required>
+                            <label class="home-label fw-bold"><i class="bi bi-calendar-check text-primary"></i> Ngày giờ trả</label>
+                            <input type="datetime-local" class="form-control home-input" name="endDate" id="heroEndDate" required>
                         </div>
                         <div class="col-md-3">
-                            <button type="submit" class="btn btn-success w-100 btn-search py-3 fs-5">TÌM XE</button>
+                            <button type="submit" class="btn btn-success w-100 home-btn-search py-3 fs-5">TÌM XE</button>
                         </div>
                     </form>
                 </div>
@@ -113,8 +69,8 @@
                     <form asp-controller="Car" asp-action="Index" method="get" class="row g-3 align-items-end">
                         <input type="hidden" name="rentalType" value="monthly" />
                         <div class="col-md-3">
-                            <label class="form-label fw-bold"><i class="bi bi-geo-alt-fill text-primary"></i> Địa điểm nhận xe</label>
-                            <select class="form-select custom-input" name="location">
+                            <label class="home-label fw-bold"><i class="bi bi-geo-alt-fill text-primary"></i> Địa điểm nhận xe</label>
+                            <select class="form-select home-input" name="location">
                                 @if (ViewBag.Locations != null) {
                                     foreach (var loc in ViewBag.Locations) {
                                         <option value="@loc.Name">@loc.Name</option>
@@ -123,23 +79,23 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold"><i class="bi bi-box text-primary"></i> Gói thuê</label>
-                            <select class="form-select custom-input" name="monthlyPackage">
+                            <label class="home-label fw-bold"><i class="bi bi-box text-primary"></i> Gói thuê</label>
+                            <select class="form-select home-input" name="monthlyPackage">
                                 <option value="1">1 tháng</option>
                                 <option value="3">3 tháng</option>
                                 <option value="6">6 tháng</option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold"><i class="bi bi-clock text-primary"></i> Thời gian nhận xe</label>
-                            <select class="form-select custom-input" name="pickupTimeframe">
+                            <label class="home-label fw-bold"><i class="bi bi-clock text-primary"></i> Thời gian nhận xe</label>
+                            <select class="form-select home-input" name="pickupTimeframe">
                                 <option value="7">7 ngày tới</option>
                                 <option value="14">14 ngày tới</option>
                                 <option value="30">1 tháng tới</option>
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <button type="submit" class="btn btn-success w-100 btn-search py-3 fs-5">XÁC NHẬN</button>
+                            <button type="submit" class="btn btn-success w-100 home-btn-search py-3 fs-5">XÁC NHẬN</button>
                         </div>
                         <div class="col-12 text-center">
                             <span class="badge bg-danger bg-opacity-75 px-3 py-2 rounded-pill">
@@ -155,33 +111,19 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Smart time suggestion: start = now + 2h (rounded to 30min), end = start + 1 day
-    var now = new Date();
-    var start = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    var now = new Date(); var start = new Date(now.getTime() + 2 * 60 * 60 * 1000);
     var mins = start.getMinutes();
     if (mins > 0 && mins <= 30) start.setMinutes(30, 0, 0);
     else if (mins > 30) { start.setHours(start.getHours() + 1); start.setMinutes(0, 0, 0); }
     else start.setMinutes(0, 0, 0);
-
     var end = new Date(start.getTime() + 4 * 60 * 60 * 1000);
-
-    function fmtDT(d) {
-        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
-            + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-    }
-
-    var s = document.getElementById('heroStartDate');
-    var e = document.getElementById('heroEndDate');
-    if (s) s.value = fmtDT(start);
-    if (e) e.value = fmtDT(end);
-
-    // Tab styling
+    function fmtDT(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+    var s = document.getElementById('heroStartDate'); var e = document.getElementById('heroEndDate');
+    if (s) s.value = fmtDT(start); if (e) e.value = fmtDT(end);
     document.querySelectorAll('#rentalTabs .nav-link').forEach(function(tab) {
         tab.addEventListener('click', function() {
-            document.querySelectorAll('#rentalTabs .nav-link').forEach(function(t) {
-                t.style.background = 'transparent'; t.style.color = '#333'; t.style.border = '1px solid #ddd';
-            });
-            this.style.background = '#10b981'; this.style.color = '#fff'; this.style.border = 'none';
+            document.querySelectorAll('#rentalTabs .nav-link').forEach(function(t) { t.classList.remove('tab-btn-primary'); t.classList.add('tab-btn-secondary'); });
+            this.classList.remove('tab-btn-secondary'); this.classList.add('tab-btn-primary');
         });
     });
 });
@@ -196,18 +138,18 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <a asp-controller="Car" asp-action="Index" class="text-primary fw-bold text-decoration-none">Xem thêm <i class="bi bi-arrow-right"></i></a>
     </div>
-    
+
     <div class="row g-4">
         @if (ViewBag.AvailableCars != null)
         {
             foreach (var car in ViewBag.AvailableCars as IEnumerable<CarRentalSystem.Models.Car>)
             {
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <div class="card car-card h-100 position-relative">
+                    <div class="card home-car-card h-100 position-relative ui-elevated-card">
                         <div class="badges-top">
                             <span class="badge bg-success shadow-sm px-3 py-2 rounded-pill">Sẵn sàng</span>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600" class="card-img-top" style="height: 180px; object-fit: cover; border-radius: 16px 16px 0 0;" alt="@car.CarName">
+                        <img src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600" class="card-img-top car-card-img" alt="@car.CarName">
                         <div class="card-body p-4">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="text-muted small fw-bold text-uppercase">@car.CarBrand?.Name</span>
@@ -223,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="d-flex justify-content-between align-items-center mt-3">
                                 <div class="d-flex flex-column">
                                     <div class="small text-muted mb-1">Tham khảo</div>
-                                        <select class="form-select form-select-sm border-0 bg-success bg-opacity-10 text-success fw-bold" style="width: 155px; cursor: pointer;" onchange="document.getElementById('detail_home_@car.CarID').href='/Car/Details/@car.CarID?duration=' + this.value">
+                                        <select class="form-select form-select-sm border-0 bg-success bg-opacity-10 text-success fw-bold price-select" onchange="document.getElementById('detail_home_@car.CarID').href='/Car/Details/@car.CarID?duration=' + this.value">
                                             @for(int h=1; h<=24; h++) {
                                                 var bdBaseP = car.PricePerHour * h;
                                                 decimal bdComboP = bdBaseP;
@@ -231,7 +173,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 else if(h==8) bdComboP = car.PricePerDay * 0.7m;
                                                 else if(h==12) bdComboP = car.PricePerDay * 0.85m;
                                                 else if(h==24) bdComboP = car.PricePerDay;
-
                                                 if(h==4 || h==8 || h==12 || h==24) {
                                                     var strP = string.Join("", (bdBaseP.ToString("N0")+"đ").Select(c => c + "\u0336"));
                                                     if(h == 24) {
@@ -264,18 +205,18 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <a asp-controller="Car" asp-action="Index" asp-route-isPremium="true" class="text-primary fw-bold text-decoration-none">Xem thêm <i class="bi bi-arrow-right"></i></a>
     </div>
-    
+
     <div class="row g-4">
         @if (Model != null)
         {
             foreach (var car in Model)
             {
                 <div class="col-lg-4 col-md-6">
-                    <div class="card car-card h-100 position-relative">
+                    <div class="card home-car-card h-100 position-relative ui-elevated-card">
                         <div class="badges-top">
                             <span class="badge bg-dark shadow-sm px-3 py-2 rounded-pill"><i class="bi bi-gem text-warning"></i> Premium</span>
                         </div>
-                        <img src="https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?auto=format&fit=crop&q=80&w=800" class="card-img-top" style="height: 220px; object-fit: cover; border-radius: 16px 16px 0 0;" alt="@car.CarName">
+                        <img src="https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?auto=format&fit=crop&q=80&w=800" class="card-img-top car-card-img" alt="@car.CarName">
                         <div class="card-body p-4">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="text-muted small fw-bold text-uppercase">@car.CarBrand?.Name</span>
@@ -303,14 +244,14 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- How It Works Section -->
-<section class="py-5" style="background-color: #f8f9fa;">
+<section class="py-5 home-how-it-works">
     <div class="container py-4 text-center">
         <h2 class="fw-bolder mb-2 text-dark">3 Bước Đặt Xe Dễ Dàng</h2>
         <p class="text-muted mb-5">Nhanh chóng, minh bạch và an toàn.</p>
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="p-4">
-                    <div class="mx-auto mb-4 bg-white text-primary shadow-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 2rem;">
+                    <div class="mx-auto mb-4 bg-white text-primary shadow-sm rounded-circle d-flex align-items-center justify-content-center step-icon">
                         <i class="bi bi-search"></i>
                     </div>
                     <h5 class="fw-bold mb-3">1. Tìm Xe</h5>
@@ -319,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="col-md-4">
                 <div class="p-4">
-                    <div class="mx-auto mb-4 bg-white text-primary shadow-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 2rem;">
+                    <div class="mx-auto mb-4 bg-white text-primary shadow-sm rounded-circle d-flex align-items-center justify-content-center step-icon">
                         <i class="bi bi-calendar2-check"></i>
                     </div>
                     <h5 class="fw-bold mb-3">2. Đặt Lịch & Cọc</h5>
@@ -328,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="col-md-4">
                 <div class="p-4">
-                    <div class="mx-auto mb-4 bg-primary text-white shadow-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 2rem;">
+                    <div class="mx-auto mb-4 bg-primary text-white shadow-sm rounded-circle d-flex align-items-center justify-content-center step-icon">
                         <i class="bi bi-key"></i>
                     </div>
                     <h5 class="fw-bold mb-3">3. Nhận Xe Bắt Đầu</h5>
@@ -338,3 +279,4 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </section>
+</div>

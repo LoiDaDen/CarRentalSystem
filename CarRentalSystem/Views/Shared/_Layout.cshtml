@@ -33,12 +33,12 @@
     </style>
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body>
+<body class="theme-carrental theme-public">
     <header>
-        <nav class="navbar navbar-expand-xl navbar-dark sticky-top text-nowrap" style="z-index: 1050;">
+        <nav class="navbar navbar-expand-xl navbar-dark sticky-top text-nowrap app-navbar" style="z-index: 1050;">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
-                    <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 40px;" />
+                    <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-main" />
                     <span class="fw-bold">CarRental</span>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -95,11 +95,11 @@
                             <a class="nav-link dropdown-toggle text-warning fw-bold d-flex align-items-center" href="#" id="regionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-geo-alt-fill me-1 fs-5"></i>
                                 <div class="d-none d-lg-block text-start ms-1">
-                                    <span class="d-block text-white-50" style="font-size:0.65rem;line-height:1;">Khu vực hiển thị</span>
-                                    <span style="font-size:0.85rem;line-height:1;">@currentRegionName</span>
+                                    <span class="d-block text-white-50 text-region-label">Khu vực hiển thị</span>
+                                    <span class="text-region-name">@currentRegionName</span>
                                 </div>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-dark shadow-lg border-0" aria-labelledby="regionDropdown" style="min-width: 200px;">
+                            <ul class="dropdown-menu dropdown-menu-dark shadow-lg border-0 dropdown-region" aria-labelledby="regionDropdown">
                                 <li>
                                     <form asp-controller="Home" asp-action="SetRegion" method="post" class="m-0">
                                         <input type="hidden" name="locationId" value="" />
@@ -128,22 +128,22 @@
                             <li class="nav-item px-2 border-end border-secondary border-opacity-25 me-2">
                                 <a class="nav-link position-relative d-flex align-items-center py-1" asp-controller="Cart" asp-action="Index" id="cartLink" title="Giỏ hàng của tôi">
                                     <i class="bi bi-cart3 fs-4 text-white"></i>
-                                    <span id="cartBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none; font-size: 0.65rem; margin-top: 5px; margin-left: -5px;">0</span>
+                                    <span id="cartBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">0</span>
                                 </a>
                             </li>
                             <li class="nav-item dropdown px-3">
                                 <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="text-end me-2 d-none d-lg-block">
-                                        <span class="text-white-50 small d-block" style="font-size: 0.7rem; line-height: 1;">Xin chào,</span>
+                                        <span class="text-white-50 small d-block text-greeting">Xin chào,</span>
                                         <span class="text-white fw-bold">@User.Identity.Name</span>
                                     </div>
-                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
+                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center avatar-sm">
                                         <i class="bi bi-person-fill text-white"></i>
                                     </div>
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark animate slideIn shadow-lg border-0" aria-labelledby="userDropdown" style="min-width: 250px;">
+                                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark animate slideIn shadow-lg border-0 dropdown-user" aria-labelledby="userDropdown">
                                     <li class="px-3 py-3 text-center border-bottom border-light border-opacity-10 mb-2">
-                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 50px; height: 50px;">
+                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 avatar-md">
                                             <i class="bi bi-person-fill text-white fs-4"></i>
                                         </div>
                                         <h6 class="mb-0 text-white fw-bold">@User.Identity.Name</h6>
@@ -178,7 +178,7 @@
                                     @if (User.IsInRole("Admin"))
                                     {
                                         <li>
-                                            <h6 class="dropdown-header text-warning fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">Admin Panel</h6>
+                                            <h6 class="dropdown-header text-warning fw-bold text-uppercase admin-panel-label">Admin Panel</h6>
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2 d-flex align-items-center text-white" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
@@ -214,25 +214,25 @@
             </div>
         </nav>
     </header>
-    <div class="container mt-4">
+    <div class="container mt-4 app-main-shell">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="bg-dark text-white pt-5 mt-5 border-top border-secondary border-opacity-25">
+    <footer class="bg-dark text-white pt-5 mt-5 border-top border-secondary border-opacity-25 app-footer">
         <div class="container py-4">
             <div class="row g-4">
                 <div class="col-lg-4 mb-4 mb-lg-0">
                     <a class="navbar-brand d-inline-block mb-3 text-white text-decoration-none fs-4 fw-bold" asp-area="" asp-controller="Home" asp-action="Index">
-                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 35px;" />
+                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-footer" />
                         CarRental
                     </a>
                     <p class="text-white-50 small mb-4">Dịch vụ cho thuê xe tự lái cao cấp, tích hợp định vị trực tuyến, mang lại chuyến đi an toàn và minh bạch.</p>
                     <div class="d-flex gap-2">
-                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent" style="width: 38px; height: 38px;"><i class="bi bi-facebook"></i></a>
-                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent" style="width: 38px; height: 38px;"><i class="bi bi-twitter"></i></a>
-                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent" style="width: 38px; height: 38px;"><i class="bi bi-instagram"></i></a>
+                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent social-btn"><i class="bi bi-facebook"></i></a>
+                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent social-btn"><i class="bi bi-twitter"></i></a>
+                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent social-btn"><i class="bi bi-instagram"></i></a>
                     </div>
                 </div>
                 <div class="col-lg-2 col-md-4 mb-4 mb-md-0">

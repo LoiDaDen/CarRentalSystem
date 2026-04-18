@@ -3,94 +3,37 @@
 @{ ViewData["Title"] = "CarRental - Tìm Xe Của Bạn"; }
 
 <style>
-    body { background-color: #f4f6f8; }
+    .car-index-body { background-color: #f4f6f8; }
     .sidebar-filter {
-        background: white;
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        position: sticky;
-        top: 20px;
+        background: white; border-radius: 16px; padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: sticky; top: 20px;
     }
-    .filter-title {
-        font-weight: 800;
-        font-size: 1.1rem;
-        margin-bottom: 16px;
-        color: #1a1c20;
-    }
+    .filter-title { font-weight: 800; font-size: 1.1rem; margin-bottom: 16px; color: #1a1c20; }
     .form-check-label { font-weight: 500; color: #444; }
-    .car-card {
-        border-radius: 16px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: none;
-        overflow: hidden;
-    }
-    .car-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-    }
-    .price-tag {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: #0d6efd;
-    }
+    .car-card { border-radius: 16px; transition: transform 0.3s ease, box-shadow 0.3s ease; border: none; overflow: hidden; }
+    .car-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
+    .price-tag { font-size: 1.25rem; font-weight: 800; color: #0d6efd; }
     .btn-brand-filter {
-        border-radius: 12px;
-        border: 1px solid #dee2e6;
-        padding: 6px 16px;
-        font-weight: 600;
-        color: #555;
-        background: white;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        white-space: nowrap;
-        height: 45px;
+        border-radius: 12px; border: 1px solid #dee2e6; padding: 6px 16px;
+        font-weight: 600; color: #555; background: white; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; height: 45px;
     }
-    .btn-brand-filter img {
-        height: 24px;
-        object-fit: contain;
-    }
+    .btn-brand-filter img { height: 24px; object-fit: contain; }
     .btn-brand-filter:hover, .btn-brand-filter.active {
-        background: #f8f9fa;
-        color: #0d6efd;
-        border-color: #0d6efd;
+        background: #f8f9fa; color: #0d6efd; border-color: #0d6efd;
         box-shadow: 0 4px 12px rgba(13,110,253,0.15);
     }
-    .btn-brand-filter.active {
-        background: #0d6efd;
-        color: white;
-    }
-    .page-header {
-        background: white;
-        padding: 30px 0;
-        margin-bottom: 30px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-    }
-
-    /* Auto-scrolling Marquee */
-    .marquee-container {
-        overflow: hidden;
-        white-space: nowrap;
-        width: 100%;
-        position: relative;
-        /* Blur edges */
+    .btn-brand-filter.active { background: #0d6efd; color: white; }
+    .page-header-carlist { background: white; padding: 30px 0; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+    .marquee-container { overflow: hidden; white-space: nowrap; width: 100%; position: relative;
         mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
         -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
     }
-    .marquee-content {
-        display: inline-flex;
-        gap: 12px;
-        animation: scrollMarquee 35s linear infinite;
-    }
-    .marquee-container:hover .marquee-content {
-        animation-play-state: paused;
-    }
-    @@keyframes scrollMarquee {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); } /* Scrolls half-way through the duplicated content */
-    }
+    .marquee-content { display: inline-flex; gap: 12px; animation: scrollMarquee 35s linear infinite; }
+    .marquee-container:hover .marquee-content { animation-play-state: paused; }
+    @@keyframes scrollMarquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    .car-card-img { height: 200px; object-fit: cover; border-radius: 16px 16px 0 0; }
+    .step-icon { width: 80px; height: 80px; font-size: 2rem; }
 </style>
 
 @functions {
@@ -107,11 +50,12 @@
         if (n.Contains("volvo")) return "volvo.com";
         if (n.Contains("suzuki")) return "globalsuzuki.com";
         if (n.Contains("nissan")) return "nissan-global.com";
-        return n + ".com"; 
+        return n + ".com";
     }
 }
 
-<div class="page-header">
+<div class="page-car-index">
+<div class="page-header-carlist ui-page-header">
     <div class="container">
         <h2 class="fw-bolder mb-0">Hơn @Model.Count() xe sẵn sàng phục vụ</h2>
         <p class="text-muted mt-1 mb-0">Lựa chọn chiếc xe lý tưởng cho chuyến đi của bạn.</p>
@@ -125,9 +69,9 @@
             <div class="sidebar-filter">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h5 class="fw-bolder mb-0"><i class="bi bi-funnel"></i> Bộ Lọc</h5>
-                    <a href="@Url.Action("Index")" class="text-danger small fw-bold text-decoration-none">Xóa lọn</a>
+                    <a href="@Url.Action("Index")" class="text-danger small fw-bold text-decoration-none">Xóa lọc</a>
                 </div>
-                
+
                 <div class="mb-4">
                     <div class="filter-title">Địa điểm</div>
                     <select class="form-select form-select-sm fw-bold border-1" name="location" onchange="document.getElementById('filterForm').submit()">
@@ -190,7 +134,7 @@
         <div class="col-lg-9">
             <!-- Top Brands & Sort -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="marquee-container" style="flex: 1; max-width: 75%;">
+                <div class="marquee-container flex-grow-1" style="max-width: 75%;">
                     <div class="marquee-content">
                         <!-- First Set -->
                         <button type="submit" name="brandId" value="" class="btn-brand-filter @(string.IsNullOrEmpty(Context.Request.Query["brandId"]) ? "active" : "")">
@@ -248,7 +192,7 @@
                     var p24h = car.PricePerDay;
                     var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
                     <div class="col-md-6 col-xl-4">
-                        <div class="card car-card h-100 bg-white shadow-sm">
+                        <div class="card car-card h-100 bg-white shadow-sm ui-elevated-card">
                             <div class="position-relative">
                                 @if (car.IsPremium)
                                 {
@@ -256,14 +200,16 @@
                                 }
                                 @if (isElectric)
                                 {
-                                    <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm" style="background: linear-gradient(135deg, #10b981, #06b6d4);"><i class="bi bi-lightning-charge-fill"></i> Xe Điện</span>
+                                    <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-pill z-2 shadow-sm badge-electric">
+                                        <i class="bi bi-lightning-charge-fill"></i> Xe Điện
+                                    </span>
                                 }
-                                <img src="@(car.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800")" class="card-img-top object-fit-cover" style="height: 200px;" alt="@car.CarName">
+                                <img src="@(car.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800")" class="card-img-top car-card-img" alt="@car.CarName">
                             </div>
                             <div class="card-body p-4">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted small fw-bold text-uppercase">@car.CarBrand?.Name</span>
-                                    <div class="d-flex align-items-center gap-1 px-2 py-1 rounded-pill" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                                    <div class="d-flex align-items-center gap-1 px-2 py-1 rounded-pill rating-badge">
                                         @for (int s = 1; s <= 5; s++)
                                         {
                                             <i class="bi @(s <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.7rem;"></i>
@@ -279,11 +225,11 @@
                                     <h5 class="fw-bolder mb-0 text-dark">@car.CarName</h5>
                                     @if(car.OwnerID == null)
                                     {
-                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size: 0.65rem;"><i class="bi bi-building"></i> Xe Hệ Thống</span>
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 badge-owner"><i class="bi bi-building"></i> Xe Hệ Thống</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" style="font-size: 0.65rem;"><i class="bi bi-person-badge"></i> Xe Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
+                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 badge-owner"><i class="bi bi-person-badge"></i> Xe Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
                                     }
                                 </div>
                                 <div class="d-flex flex-wrap gap-2 mb-2 text-muted small fw-500">
@@ -300,54 +246,34 @@
                                 </div>
 
                                 <div class="d-flex gap-1 mb-2">
-                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 fw-bold" style="font-size: 0.7rem;">4h: @((p4h/1000).ToString("N0"))K</span>
-                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-bold" style="font-size: 0.7rem;">8h: @((p8h/1000).ToString("N0"))K</span>
-                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 fw-bold" style="font-size: 0.7rem;">12h: @((p12h/1000).ToString("N0"))K</span>
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 fw-bold" style="font-size: 0.7rem;">24h: @((p24h/1000).ToString("N0"))K</span>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 fw-bold badge-price">4h: @((p4h/1000).ToString("N0"))K</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-bold badge-price">8h: @((p8h/1000).ToString("N0"))K</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 fw-bold badge-price">12h: @((p12h/1000).ToString("N0"))K</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 fw-bold badge-price">24h: @((p24h/1000).ToString("N0"))K</span>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     @if(ViewBag.Contract == null) {
                                         <div class="d-flex flex-column">
                                             <div class="small text-muted mb-1">Bảng giá tham khảo</div>
-                                            <select class="form-select form-select-sm border-0 bg-success bg-opacity-10 text-success fw-bold" style="width: 155px; cursor: pointer;" onchange="document.getElementById('detail_car_@car.CarID').href='/Car/Details/@car.CarID?duration=' + this.value + '&startDate=@(Context.Request.Query["startDate"])&endDate=@(Context.Request.Query["endDate"])&contractId=@(ViewBag.ContractId)'">
+                                            <select class="form-select form-select-sm border-0 bg-success bg-opacity-10 text-success fw-bold price-select" onchange="document.getElementById('detail_car_@car.CarID').href='/Car/Details/@car.CarID?duration=' + this.value + '&startDate=@(Context.Request.Query["startDate"])&endDate=@(Context.Request.Query["endDate"])&contractId=@(ViewBag.ContractId)'">
                                                 @{
-                                                    decimal[] dp = new decimal[25];
-                                                    dp[0] = 0;
+                                                    decimal[] dp = new decimal[25]; dp[0] = 0;
                                                     var p4 = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
                                                     var p8 = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
                                                     var p12 = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
                                                     var p24 = car.PricePerDay;
                                                     decimal[] bCosts = new decimal[] { car.PricePerHour, p4, p8, p12, p24 };
                                                     int[] bHours = new int[] { 1, 4, 8, 12, 24 };
-                                                    for(int i=1; i<=24; i++) {
-                                                        dp[i] = decimal.MaxValue;
-                                                        for(int j=0; j< bHours.Length; j++) {
-                                                            if(i >= bHours[j]) {
-                                                                dp[i] = Math.Min(dp[i], dp[i - bHours[j]] + bCosts[j]);
-                                                            }
-                                                        }
-                                                    }
-                                                    for (int i = 23; i >= 1; i--) {
-                                                        dp[i] = Math.Min(dp[i], dp[i + 1]);
-                                                    }
+                                                    for(int i=1; i<=24; i++) { dp[i] = decimal.MaxValue; for(int j=0; j< bHours.Length; j++) { if(i >= bHours[j]) { dp[i] = Math.Min(dp[i], dp[i - bHours[j]] + bCosts[j]); } } }
+                                                    for (int i = 23; i >= 1; i--) { dp[i] = Math.Min(dp[i], dp[i + 1]); }
                                                 }
                                                 @for(int h=1; h<=24; h++) {
-                                                    var bdBaseP = car.PricePerHour * h;
-                                                    var optimalP = dp[h];
-
+                                                    var bdBaseP = car.PricePerHour * h; var optimalP = dp[h];
                                                     if(bdBaseP > optimalP) {
                                                         var strP = string.Join("", (bdBaseP.ToString("N0")+"đ").Select(c => c + "\u0336"));
-                                                        if(h == 24) {
-                                                            <option value="@h" selected>@(h)h: @strP @optimalP.ToString("N0")đ</option>
-                                                        } else {
-                                                            <option value="@h">@(h)h: @strP @optimalP.ToString("N0")đ</option>
-                                                        }
+                                                        if(h == 24) { <option value="@h" selected>@(h)h: @strP @optimalP.ToString("N0")đ</option> } else { <option value="@h">@(h)h: @strP @optimalP.ToString("N0")đ</option> }
                                                     } else {
-                                                        if(h == 24) {
-                                                            <option value="@h" selected>@(h)h: @optimalP.ToString("N0")đ</option>
-                                                        } else {
-                                                            <option value="@h">@(h)h: @optimalP.ToString("N0")đ</option>
-                                                        }
+                                                        if(h == 24) { <option value="@h" selected>@(h)h: @optimalP.ToString("N0")đ</option> } else { <option value="@h">@(h)h: @optimalP.ToString("N0")đ</option> }
                                                     }
                                                 }
                                             </select>
@@ -381,11 +307,12 @@
             @if (Model.Any())
             {
                 <div class="text-center mt-5">
-                    <button type="button" class="btn btn-outline-primary fw-bold px-5 py-2 rounded-pill shadow-sm" style="border-width: 2px;">
+                    <button type="button" class="btn btn-outline-primary fw-bold px-5 py-2 rounded-pill shadow-sm btn-outline-loadmore">
                         <i class="bi bi-arrow-clockwise me-2"></i>Xem thêm...
                     </button>
                 </div>
             }
         </div>
     </form>
+</div>
 </div>

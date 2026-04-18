@@ -188,3 +188,430 @@ body {
 .slideIn {
     animation-name: slideIn;
 }
+
+/* =========================================================
+   Enterprise UI System - CarRental
+   ========================================================= */
+.theme-carrental {
+    --cr-primary: #2563eb;
+    --cr-primary-600: #1d4ed8;
+    --cr-primary-700: #1e40af;
+    --cr-accent: #0ea5e9;
+    --cr-success: #10b981;
+    --cr-warning: #f59e0b;
+    --cr-danger: #ef4444;
+    --cr-bg: #f3f6fb;
+    --cr-surface: #ffffff;
+    --cr-surface-2: #f8fafc;
+    --cr-text: #0f172a;
+    --cr-text-muted: #64748b;
+    --cr-border: #e2e8f0;
+    --cr-shadow-sm: 0 3px 10px rgba(15, 23, 42, 0.06);
+    --cr-shadow-md: 0 12px 32px rgba(15, 23, 42, 0.1);
+}
+
+.theme-carrental body,
+body.theme-carrental {
+    background: var(--cr-bg);
+    color: var(--cr-text);
+}
+
+.theme-carrental .app-navbar {
+    background: linear-gradient(90deg, #0f172a 0%, #1e293b 45%, #1e40af 100%) !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.theme-carrental .app-main-shell {
+    min-height: calc(100vh - 220px);
+}
+
+.theme-carrental .app-footer {
+    background: linear-gradient(180deg, #111827 0%, #020617 100%) !important;
+}
+
+.theme-carrental .card,
+.theme-carrental .table,
+.theme-carrental .modal-content,
+.theme-carrental .offcanvas,
+.theme-carrental .dropdown-menu {
+    border-radius: 16px;
+    border-color: var(--cr-border);
+    box-shadow: var(--cr-shadow-sm);
+}
+
+.theme-carrental .card {
+    background: var(--cr-surface);
+}
+
+.theme-carrental .card .card-header {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-bottom: 1px solid var(--cr-border);
+    font-weight: 700;
+}
+
+.theme-carrental .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+}
+
+.theme-carrental .btn-primary {
+    background: linear-gradient(135deg, var(--cr-primary), var(--cr-primary-700));
+    border: none;
+}
+
+.theme-carrental .btn-primary:hover,
+.theme-carrental .btn-primary:focus {
+    background: linear-gradient(135deg, var(--cr-primary-600), #1e3a8a);
+    transform: translateY(-1px);
+}
+
+.theme-carrental .btn-outline-primary {
+    border-color: var(--cr-primary);
+    color: var(--cr-primary);
+}
+
+.theme-carrental .btn-outline-primary:hover {
+    background: var(--cr-primary);
+    color: #fff;
+}
+
+.theme-carrental .form-control,
+.theme-carrental .form-select {
+    border-radius: 10px;
+    border: 1px solid #dbe4ef;
+    background: #fff;
+    min-height: 42px;
+}
+
+.theme-carrental .form-control:focus,
+.theme-carrental .form-select:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.12);
+}
+
+.theme-carrental .table {
+    overflow: hidden;
+    background: #fff;
+}
+
+.theme-carrental .table thead th {
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.83rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom-width: 1px;
+}
+
+.theme-carrental .table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.theme-carrental .table tbody tr:hover {
+    background-color: #f8fbff;
+}
+
+.theme-carrental .badge {
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.45em 0.7em;
+}
+
+.theme-carrental .shadow-sm {
+    box-shadow: var(--cr-shadow-sm) !important;
+}
+
+.theme-carrental .shadow {
+    box-shadow: var(--cr-shadow-md) !important;
+}
+
+.theme-carrental h1,
+.theme-carrental h2,
+.theme-carrental h3,
+.theme-carrental h4,
+.theme-carrental h5 {
+    color: #0b1324;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+}
+
+.theme-admin .admin-sidebar {
+    background: linear-gradient(180deg, #0b1222 0%, #0f172a 100%);
+}
+
+.theme-admin .admin-link.active {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.theme-partner .partner-sidebar {
+    background: linear-gradient(180deg, #0b1222 0%, #111827 100%);
+}
+
+.theme-partner .partner-topbar {
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 991.98px) {
+    .theme-carrental .app-main-shell {
+        min-height: auto;
+    }
+}
+
+/* Key pages refinement */
+.theme-carrental .ui-page-header {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border: 1px solid #e9eef5;
+    border-radius: 18px;
+}
+
+.theme-carrental .ui-elevated-card {
+    border: 1px solid #e7edf6 !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08) !important;
+}
+
+.theme-carrental .ui-hero-banner {
+    position: relative;
+}
+
+.theme-carrental .ui-hero-banner::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 120px;
+    background: linear-gradient(180deg, rgba(243, 246, 251, 0) 0%, rgba(243, 246, 251, 0.95) 100%);
+    pointer-events: none;
+}
+
+.theme-carrental .ui-search-panel {
+    border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.theme-carrental .page-home h2,
+.theme-carrental .page-car-index h2,
+.theme-carrental .page-checkout h3,
+.theme-carrental .page-admin-dashboard h2,
+.theme-carrental .page-partner-dashboard h4 {
+    letter-spacing: -0.02em;
+}
+
+.theme-carrental .page-checkout .checkout-card {
+    border-radius: 14px;
+    border-color: #e5ebf4;
+}
+
+.theme-carrental .page-checkout .step-badge {
+    box-shadow: 0 6px 14px rgba(16, 185, 129, 0.24);
+}
+
+.theme-carrental .page-admin-dashboard .card,
+.theme-carrental .page-partner-dashboard .card {
+    border: 1px solid #e8edf5;
+}
+
+.theme-carrental .page-car-details .section-card,
+.theme-carrental .page-profile .card,
+.theme-carrental .page-bookings .card {
+    border: 1px solid #e7edf6;
+    border-radius: 18px;
+    box-shadow: var(--cr-shadow-sm);
+}
+
+.theme-carrental .page-car-details .booking-sidebar {
+    position: sticky;
+    top: 96px;
+}
+
+.theme-carrental .page-car-details .gallery-main img,
+.theme-carrental .page-car-details .gallery-thumbs img {
+    border-radius: 14px;
+}
+
+.theme-carrental .page-car-details .characteristic-item,
+.theme-carrental .page-car-details .amenity-item {
+    border-radius: 12px;
+}
+
+.theme-carrental .page-bookings .booking-card .status-badge {
+    letter-spacing: 0.04em;
+}
+
+.theme-carrental .page-profile .list-group-item {
+    border: none;
+    border-radius: 12px !important;
+    margin: 4px 10px;
+}
+
+.theme-carrental .page-profile .form-control-lg,
+.theme-carrental .page-profile .form-select-lg {
+    min-height: 48px;
+    border-radius: 12px;
+}
+
+/* Shared layout utilities */
+.theme-carrental .logo-main { height: 40px; }
+.theme-carrental .logo-footer { height: 35px; }
+.theme-carrental .logo-admin-mobile { height: 30px; filter: brightness(0) invert(1); }
+.theme-carrental .logo-admin-offcanvas { height: 25px; filter: brightness(0) invert(1); }
+.theme-carrental .logo-admin-desktop { height: 32px; filter: brightness(0) invert(1); }
+.theme-carrental .logo-partner-main { height: 30px; }
+.theme-carrental .text-region-label { font-size: 0.65rem; line-height: 1; }
+.theme-carrental .text-region-name { font-size: 0.85rem; line-height: 1; }
+.theme-carrental .dropdown-region { min-width: 200px; }
+.theme-carrental .dropdown-user { min-width: 250px; }
+.theme-carrental .cart-badge {
+    display: none;
+    font-size: 0.65rem;
+    margin-top: 5px;
+    margin-left: -5px;
+}
+.theme-carrental .text-greeting { font-size: 0.7rem; line-height: 1; }
+.theme-carrental .avatar-sm { width: 35px; height: 35px; }
+.theme-carrental .avatar-md { width: 50px; height: 50px; }
+.theme-carrental .admin-panel-label { font-size: 0.7rem; letter-spacing: 1px; }
+.theme-carrental .social-btn { width: 38px; height: 38px; }
+.theme-carrental .text-control-center { font-size: 0.65rem; }
+.theme-carrental .notif-bell-btn { width: 40px; height: 40px; }
+.theme-carrental .partner-portal-label {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.theme-carrental .partner-avatar {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+.theme-carrental .partner-account-label {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.7rem;
+}
+.theme-carrental .partner-avatar-sm {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+
+/* Admin / Partner Dashboard utilities */
+.theme-carrental .page-admin-dashboard .stat-card {
+    border-radius: 24px;
+    border: none;
+    overflow: hidden;
+    position: relative;
+}
+.theme-carrental .page-admin-dashboard .stat-card .stat-icon {
+    font-size: 6rem;
+    right: -1rem;
+    bottom: -1rem;
+}
+.theme-carrental .page-admin-dashboard .stat-card-deposit {
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+}
+.theme-carrental .page-admin-dashboard .stat-card-deposit .stat-icon-lg {
+    font-size: 8rem;
+    right: 2rem;
+    top: -1rem;
+}
+.theme-carrental .page-admin-dashboard .chart-card,
+.theme-carrental .page-admin-dashboard .top-cars-card {
+    border-radius: 28px;
+}
+.theme-carrental .page-admin-dashboard .top-car-item {
+    border-radius: 16px;
+}
+.theme-carrental .page-partner-dashboard .stat-card {
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+}
+.theme-carrental .sys-time-box {
+    border-radius: 20px;
+}
+.theme-carrental .car-avatar-admin {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    object-fit: cover;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.theme-carrental .badge-system-car {
+    font-size: 0.65rem;
+}
+.theme-carrental .badge-partner-car {
+    font-size: 0.65rem;
+}
+.theme-carrental .status-badge-admin {
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+}
+.theme-carrental .driver-avatar-admin {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+}
+.theme-carrental .page-partner-mycars .car-card-partner .car-img-partner,
+.theme-carrental .page-partner-mycars .car-img-placeholder-partner {
+    height: 200px;
+}
+.theme-carrental .page-partner-mycars .car-stat-box {
+    font-size: 0.75rem;
+}
+.theme-carrental .page-partner-mycars .status-badge-partner {
+    font-size: 0.72rem;
+}
+.theme-carrental .page-partner-bookings .status-badge-partner {
+    font-size: 0.72rem;
+}
+.theme-carrental .page-partner-bookings .stat-partner-card {
+    border-radius: 16px;
+}
+
+/* Admin / Partner Dashboard utilities */
+.theme-carrental .page-admin-dashboard .stat-card {
+    border-radius: 24px;
+    border: none;
+    overflow: hidden;
+    position: relative;
+}
+.theme-carrental .page-admin-dashboard .stat-card .stat-icon {
+    font-size: 6rem;
+    right: -1rem;
+    bottom: -1rem;
+}
+.theme-carrental .page-admin-dashboard .stat-card-deposit {
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+}
+.theme-carrental .page-admin-dashboard .stat-card-deposit .stat-icon-lg {
+    font-size: 8rem;
+    right: 2rem;
+    top: -1rem;
+}
+.theme-carrental .page-admin-dashboard .chart-card,
+.theme-carrental .page-admin-dashboard .top-cars-card {
+    border-radius: 28px;
+}
+.theme-carrental .page-admin-dashboard .top-car-item {
+    border-radius: 16px;
+}
+.theme-carrental .page-partner-dashboard .stat-card {
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+}
+.theme-carrental .sys-time-box {
+    border-radius: 20px;
+}

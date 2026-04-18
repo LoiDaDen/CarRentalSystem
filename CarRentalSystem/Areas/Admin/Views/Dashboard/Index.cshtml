@@ -5,13 +5,14 @@
     Layout = "_AdminLayout";
 }
 
+<div class="page-admin-dashboard">
 <div class="d-flex justify-content-between align-items-center mb-5">
     <div>
         <h2 class="fw-800 ls-neg-1 mb-1">Tổng quan Hệ thống</h2>
         <p class="text-muted mb-0">Hiệu suất vận hành thời gian thực của đội xe và doanh thu.</p>
     </div>
     <div class="d-flex gap-3">
-        <div class="bg-white px-3 py-2 rounded-4 shadow-sm border border-light d-flex align-items-center">
+        <div class="bg-white px-3 py-2 rounded-4 shadow-sm border border-light d-flex align-items-center sys-time-box">
             <div class="me-3 bg-primary bg-opacity-10 p-2 rounded-3 text-primary">
                 <i class="bi bi-clock-fill"></i>
             </div>
@@ -25,55 +26,55 @@
 
 <div class="row g-4 mb-5">
     <div class="col-md-3">
-        <div class="card border-0 shadow-lg p-4 overflow-hidden position-relative h-100" style="border-radius: 24px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
+        <div class="card stat-card stat-revenue h-100">
             <div class="position-relative z-1 text-white">
-                <small class="text-white text-opacity-75 text-uppercase fw-800 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Tổng Doanh thu</small>
+                <small class="text-white text-opacity-75 text-uppercase fw-700 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Tổng Doanh thu</small>
                 <h2 class="fw-800 mb-0 ls-neg-1">@Model.TotalRevenue.ToString("N0") <small class="fs-6 fw-light">đ</small></h2>
                 <div class="mt-3 fs-6 p-2 rounded-pill bg-white bg-opacity-10 d-inline-flex align-items-center" style="font-size: 0.75rem !important;">
                     <i class="bi bi-graph-up-arrow me-1"></i> Tăng trưởng ổn định
                 </div>
             </div>
-            <i class="bi bi-currency-dollar position-absolute text-white opacity-10" style="font-size: 6rem; right: -1rem; bottom: -1rem;"></i>
+            <i class="bi bi-currency-dollar position-absolute text-white opacity-10 stat-icon"></i>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm p-4 bg-white overflow-hidden position-relative h-100" style="border-radius: 24px;">
+        <div class="card stat-card stat-bookings h-100">
             <div class="position-relative z-1">
-                <small class="text-muted text-uppercase fw-800 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Tổng số chuyến xe</small>
+                <small class="text-muted text-uppercase fw-700 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Tổng số chuyến xe</small>
                 <h2 class="fw-800 mb-0 ls-neg-1">@Model.TotalBookings</h2>
                 <div class="mt-3 fs-6 p-2 rounded-pill bg-success bg-opacity-10 d-inline-flex align-items-center text-success" style="font-size: 0.75rem !important;">
                     <i class="bi bi-bag-check-fill me-1"></i> Đang xử lý tốt
                 </div>
             </div>
-            <i class="bi bi-calendar-check position-absolute text-primary opacity-5" style="font-size: 6rem; right: -1rem; bottom: -1rem;"></i>
+            <i class="bi bi-calendar-check position-absolute text-primary opacity-5 stat-icon"></i>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm p-4 bg-white overflow-hidden position-relative h-100" style="border-radius: 24px;">
+        <div class="card stat-card stat-fleet h-100">
             <div class="position-relative z-1">
-                <small class="text-muted text-uppercase fw-800 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Tình trạng Đội xe</small>
+                <small class="text-muted text-uppercase fw-700 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Tình trạng Đội xe</small>
                 <h2 class="fw-800 mb-0 ls-neg-1">@((Model.RentedCars * 100 / (Model.TotalCars > 0 ? Model.TotalCars : 1)))%</h2>
                 <div class="mt-3 fs-6 p-2 rounded-pill bg-warning bg-opacity-10 d-inline-flex align-items-center text-warning" style="font-size: 0.75rem !important;">
                     <i class="bi bi-car-front-fill me-1"></i> @Model.RentedCars xe đang thuê
                 </div>
             </div>
-            <i class="bi bi-truck position-absolute text-warning opacity-5" style="font-size: 6rem; right: -1rem; bottom: -1rem;"></i>
+            <i class="bi bi-truck position-absolute text-warning opacity-5 stat-icon"></i>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm p-4 bg-white overflow-hidden position-relative h-100" style="border-radius: 24px;">
+        <div class="card stat-card stat-available h-100">
             <div class="position-relative z-1">
-                <small class="text-muted text-uppercase fw-800 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Khả năng đáp ứng</small>
+                <small class="text-muted text-uppercase fw-700 ls-1 mb-2 d-block" style="font-size: 0.65rem;">Khả năng đáp ứng</small>
                 <h2 class="fw-800 mb-0 ls-neg-1">@Model.AvailableCars</h2>
                 <div class="mt-3 fs-6 p-2 rounded-pill bg-info bg-opacity-10 d-inline-flex align-items-center text-info" style="font-size: 0.75rem !important;">
                     <i class="bi bi-check2-circle me-1"></i> Xe sẵn sàng
                 </div>
             </div>
-            <i class="bi bi-box-seam position-absolute text-info opacity-5" style="font-size: 6rem; right: -1rem; bottom: -1rem;"></i>
+            <i class="bi bi-box-seam position-absolute text-info opacity-5 stat-icon"></i>
         </div>
     </div>
     <div class="col-md-12 mt-4">
-        <div class="card border-0 shadow-lg p-4 overflow-hidden position-relative" style="border-radius: 24px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+        <div class="card stat-card-deposit h-100">
             <div class="position-relative z-1 text-white d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="fw-800 text-warning d-flex align-items-center mb-2"><i class="bi bi-shield-lock-fill me-2 fs-4"></i> Tài sản Cọc Đang Giữ chờ Phạt Nguội</h5>
@@ -83,7 +84,7 @@
                     <h2 class="fw-800 mb-0 text-white ls-neg-1">@Model.TotalHeldDepositsAmount.ToString("N0") <small class="fs-6 fw-light text-white-50">đ</small></h2>
                 </div>
             </div>
-            <i class="bi bi-safe2 position-absolute text-white opacity-5" style="font-size: 8rem; right: 2rem; top: -1rem;"></i>
+            <i class="bi bi-safe2 position-absolute text-white opacity-5 stat-icon-lg"></i>
         </div>
     </div>
 </div>
@@ -91,7 +92,7 @@
 <div class="row g-4 mb-5">
     <!-- Chart Section -->
     <div class="col-lg-8">
-        <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 28px;">
+        <div class="card border-0 shadow-sm p-4 h-100 chart-card">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h5 class="fw-800 ls-neg-1 mb-0">Phân tích Doanh thu</h5>
@@ -110,15 +111,15 @@
 
     <!-- Top Performing Vehicles -->
     <div class="col-lg-4">
-        <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 28px;">
+        <div class="card border-0 shadow-sm p-4 h-100 top-cars-card">
             <h5 class="fw-800 ls-neg-1 mb-4">Xe Hiệu suất Cao</h5>
             <div class="d-flex flex-column gap-4">
                 @foreach (var topCar in Model.TopCars)
                 {
-                    <div class="d-flex align-items-center p-3 rounded-4 bg-light bg-opacity-50 transition-all hover-translate-y">
+                    <div class="d-flex align-items-center p-3 rounded-4 bg-light bg-opacity-50 transition-all hover-translate-y top-car-item">
                         <div class="position-relative me-3">
-                            <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary shadow-sm" style="font-size: 0.6rem;">#@Model.TopCars.IndexOf(topCar) + 1</span>
-                            <div class="rounded-circle bg-white shadow-sm p-2" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                            <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary shadow-sm" style="font-size: 0.6rem;">#@(Model.TopCars.IndexOf(topCar) + 1)</span>
+                            <div class="rounded-circle bg-white shadow-sm p-2 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
                                 <i class="bi bi-car-front text-primary fs-4"></i>
                             </div>
                         </div>
@@ -136,183 +137,6 @@
                     <div class="text-center py-4 text-muted opacity-50">Chưa có dữ liệu thuê xe.</div>
                 }
             </div>
-            
-            <div class="mt-auto pt-4 border-top">
-                <a asp-area="Admin" asp-controller="Car" asp-action="Manage" class="btn btn-light w-100 rounded-3 fw-700 py-2">
-                    Xem Đội xe <i class="bi bi-arrow-right ms-2"></i>
-                </a>
-            </div>
         </div>
     </div>
 </div>
-
-<div class="row">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm p-4" style="border-radius: 28px;">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="fw-800 ls-neg-1 mb-0">Lịch sử Đơn thuê Gần đây</h5>
-                <a asp-area="Admin" asp-controller="Booking" asp-action="Index" class="btn btn-link text-decoration-none fw-bold fs-7">
-                    Tất cả <i class="bi bi-chevron-right ms-1"></i>
-                </a>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light text-muted small text-uppercase">
-                        <tr>
-                            <th class="ps-4 border-0">Khách hàng</th>
-                            <th class="border-0">Gói thuê</th>
-                            <th class="border-0">Hợp đồng</th>
-                            <th class="border-0">Phương tiện</th>
-                            <th class="border-0">Ngày đặt</th>
-                            <th class="border-0">Trạng thái</th>
-                            <th class="text-end pe-4 border-0">Tổng tiền</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var booking in Model.RecentBookings)
-                        {
-                            <tr>
-                                <td class="ps-4 border-0">
-                                    <div class="fw-800 text-dark">@booking.User.Name</div>
-                                    <small class="text-muted">@booking.User.Email</small>
-                                </td>
-                                <td class="border-0">
-                                    @if(booking.ContractType != null) {
-                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2">@booking.ContractType.Name</span>
-                                    } else {
-                                        <span class="text-muted small">Tự lái</span>
-                                    }
-                                </td>
-                                <td class="border-0">
-                                    @if(booking.DigitalContract != null) {
-                                        <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Details" asp-route-id="@booking.DigitalContract.DigitalContractID" class="text-decoration-none fw-bold small">
-                                            <i class="bi bi-file-earmark-text me-1"></i>@booking.DigitalContract.ContractNo
-                                        </a>
-                                    } else {
-                                        <span class="text-muted small">-</span>
-                                    }
-                                </td>
-                                <td class="border-0">
-                                    <div class="fw-bold small text-muted">@booking.Car.CarBrand?.Name @booking.Car.CarName</div>
-                                </td>
-                                <td class="small border-0">@booking.CreatedAt.ToString("HH:mm - dd/MM")</td>
-                                <td class="border-0">
-                                    @{
-                                        var statusClass = booking.BookingStatus?.Name switch {
-                                            "Pending" => "bg-warning text-dark",
-                                            "Confirmed" => "bg-primary",
-                                            "Completed" => "bg-success",
-                                            _ => "bg-secondary"
-                                        };
-                                        var statusText = booking.BookingStatus?.Name switch {
-                                            "Pending" => "Chờ duyệt",
-                                            "Confirmed" => "Đã duyệt",
-                                            "Completed" => "Đã hoàn thành",
-                                            "Cancelled" => "Đã hủy",
-                                            _ => booking.BookingStatus?.Name
-                                        };
-                                    }
-                                    <span class="badge @statusClass bg-opacity-10 text-@statusClass.Replace("bg-", "").Replace(" text-dark", "") rounded-pill px-3" style="font-size: 0.7rem;">@statusText</span>
-                                </td>
-                                <td class="text-end pe-4 border-0 fw-800">@booking.TotalPrice.ToString("N0") <small class="fw-normal">đ</small></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ctxRev = document.getElementById('revenueChart').getContext('2d');
-            const revGradient = ctxRev.createLinearGradient(0, 0, 0, 320);
-            revGradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
-            revGradient.addColorStop(1, 'rgba(37, 99, 235, 0.00)');
-
-            const labels = @Html.Raw(Json.Serialize(Model.RevenueLabels));
-            const data = @Html.Raw(Json.Serialize(Model.RevenueData));
-
-            new Chart(ctxRev, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Doanh thu (Triệu)',
-                        data: data,
-                        borderColor: '#2563eb',
-                        backgroundColor: revGradient,
-                        fill: true,
-                        tension: 0.45,
-                        borderWidth: 4,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        pointHoverBackgroundColor: '#2563eb',
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1e293b',
-                            titleFont: { size: 12, weight: 'bold' },
-                            bodyFont: { size: 12 },
-                            padding: 12,
-                            borderRadius: 12,
-                            displayColors: false
-                        }
-                    },
-                    interaction: { intersect: false, mode: 'index' },
-                    scales: {
-                        y: { 
-                            beginAtZero: true, 
-                            grid: { borderDash: [5, 5], drawBorder: false, color: '#f1f5f9' },
-                            ticks: { 
-                                font: { size: 10, weight: '500' },
-                                callback: value => value + ' tr'
-                            }
-                        },
-                        x: { 
-                            grid: { display: false },
-                            ticks: { font: { size: 10, weight: '500' } }
-                        }
-                    }
-                }
-            });
-
-            setInterval(() => {
-                const now = new Date();
-                const day = now.getDate().toString().padStart(2, '0');
-                const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                const year = now.getFullYear();
-                const hours = now.getHours().toString().padStart(2, '0');
-                const minutes = now.getMinutes().toString().padStart(2, '0');
-                document.getElementById('liveTime').innerText = `${hours}:${minutes} - ${day}/${month}/${year}`;
-            }, 30000);
-        });
-    </script>
-}
-
-<style>
-    .hover-translate-y:hover { transform: translateY(-4px); }
-    .transition-all { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .ls-neg-1 { letter-spacing: -1px; }
-    .ls-1 { letter-spacing: 1px; }
-    .fw-800 { font-weight: 800; }
-    .fw-700 { font-weight: 700; }
-    .fs-7 { font-size: 0.85rem; }
-    .badge.bg-primary { background-color: #2563eb !important; }
-    .badge.bg-success { background-color: #10b981 !important; }
-    .badge.bg-warning { background-color: #f59e0b !important; }
-    .text-primary { color: #2563eb !important; }
-    .bg-primary { background-color: #2563eb !important; }
-    .card { transition: box-shadow 0.3s ease; }
-    .card:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important; }
-</style>

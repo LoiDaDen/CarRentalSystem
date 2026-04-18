@@ -1,8 +1,10 @@
 @model List<CarRentalSystem.Models.Driver>
 @{
     ViewData["Title"] = "Quản lý Tài xế";
+    Layout = "_AdminLayout";
 }
 
+<div class="page-admin-driver">
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1"><i class="bi bi-person-badge me-2"></i>Quản lý Tài xế</h4>
@@ -73,7 +75,7 @@ else
                         <tr>
                             <td class="ps-4">
                                 <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; min-width: 40px;">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center driver-avatar-admin">
                                         <i class="bi bi-person-fill text-primary"></i>
                                     </div>
                                     <div class="ms-3">
@@ -118,32 +120,17 @@ else
                                     @if (!d.IsApproved)
                                     {
                                         <form asp-action="Approve" asp-route-id="@d.DriverID" method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-success btn-sm me-1" title="Duyệt">
-                                                <i class="bi bi-check-lg"></i>
-                                            </button>
-                                        </form>
-                                        <form asp-action="Reject" asp-route-id="@d.DriverID" method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-danger btn-sm me-1" title="Từ chối">
-                                                <i class="bi bi-x-lg"></i>
+                                            <button type="submit" class="btn btn-success rounded-pill px-3" title="Duyệt">
+                                                <i class="bi bi-check-lg me-1"></i>Duyệt
                                             </button>
                                         </form>
                                     }
-                                    else
-                                    {
-                                        <form asp-action="ToggleAvailability" asp-route-id="@d.DriverID" method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm me-1" title="@(d.IsAvailable ? "Tạm nghỉ" : "Bật hoạt động")">
-                                                <i class="bi @(d.IsAvailable ? "bi-pause-circle" : "bi-play-circle")"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                    <a asp-action="Details" asp-route-id="@d.DriverID" class="btn btn-outline-primary btn-sm me-1" title="Chi tiết">
+                                    <a asp-action="Details" asp-route-id="@d.DriverID" class="btn btn-outline-info rounded-pill px-3" title="Chi tiết">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <form asp-action="Delete" asp-route-id="@d.DriverID" method="post" class="d-inline" onsubmit="return confirm('Xác nhận xóa tài xế này?')">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Xóa">
-                                            <i class="bi bi-trash3"></i>
-                                        </button>
-                                    </form>
+                                    <a asp-action="Edit" asp-route-id="@d.DriverID" class="btn btn-outline-primary rounded-pill px-3" title="Sửa">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
                                 </div>
                             </td>
                         </tr>

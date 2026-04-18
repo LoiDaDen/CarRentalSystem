@@ -233,11 +233,16 @@
                                                 <i class="bi bi-trash3 me-1"></i>Xóa
                                             </button>
                                         </div>
-                                        <form asp-action="ToggleVerify" asp-route-id="@user.UserID" method="post" class="d-inline mb-0">
-                                            <button type="submit" class="btn @(user.IsVerified ? "btn-outline-danger" : "btn-success") px-4 fw-bold rounded-pill h-100">
-                                                @(user.IsVerified ? "Hủy Duyệt eKYC" : "Xác Nhận Hợp Lệ")
-                                            </button>
-                                        </form>
+                                        <div class="d-inline mb-0">
+                                            @if (user.IsVerified)
+                                            {
+                                                <span class="btn btn-light text-success px-4 fw-bold rounded-pill h-100 border border-success"><i class="bi bi-robot me-1"></i>Đã được AI xác thực</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="btn btn-light text-muted px-4 fw-bold rounded-pill h-100 border"><i class="bi bi-hourglass-split me-1"></i>Chờ AI xác thực</span>
+                                            }
+                                        </div>
                                     </div>
                                 </div>
                             </div>

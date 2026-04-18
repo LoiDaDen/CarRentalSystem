@@ -139,82 +139,29 @@
                                     _ => "text-muted"
                                 };
                             }
-                            <small class="@tierColor fw-bold"><i class="bi bi-shield-check me-1"></i>@booking.InsuranceTier</small>
+                            <span class="badge bg-light border @tierColor fw-bold">@booking.InsuranceTier</span>
                         </td>
-                        <td class="fw-800 text-primary">@booking.TotalPrice.ToString("N0")<small class="fw-normal text-muted"> đ</small></td>
+                        <td>
+                            <span class="fw-bold text-primary">@booking.TotalPrice.ToString("N0") đ</span>
+                        </td>
                         <td class="text-center">
                             @{
-                                var (bgCls, txtCls, txt) = booking.BookingStatus?.Name switch {
-                                    "Pending"   => ("bg-warning", "text-warning", "Chờ duyệt"),
-                                    "Confirmed" => ("bg-info", "text-info", "Đã xác nhận"),
-                                    "Active"    => ("bg-primary", "text-primary", "Đang thuê"),
-                                    "Completed" => ("bg-success", "text-success", "Hoàn thành"),
-                                    "Cancelled" => ("bg-danger", "text-danger", "Đã hủy"),
-                                    _           => ("bg-secondary", "text-secondary", booking.BookingStatus?.Name ?? "Unknown")
+                                var statusName = booking.BookingStatus?.Name ?? "";
+                                var statusClass = statusName switch {
+                                    "Pending" => "bg-warning text-dark",
+                                    "Confirmed" => "bg-info text-white",
+                                    "Active" => "bg-success text-white",
+                                    "Completed" => "bg-secondary text-white",
+                                    "Cancelled" => "bg-danger text-white",
+                                    _ => "bg-light text-dark"
                                 };
                             }
-                            <span class="badge @bgCls bg-opacity-15 @txtCls rounded-pill px-3 py-2 fw-bold" style="font-size:0.77rem;">@txt</span>
+                            <span class="badge @statusClass rounded-pill px-3">@statusName</span>
                         </td>
-                        <td class="pe-4 text-end">
-                            <div class="d-flex justify-content-end align-items-center gap-2">
-                                @if (booking.BookingStatus?.Name == "Pending")
-                                {
-                                    <form asp-action="UpdateStatus" asp-route-id="@booking.BookingID" asp-route-status="Confirmed" method="post" class="m-0 p-0">
-                                        <button type="submit" class="btn btn-info text-white btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Xác nhận đơn">
-                                            <i class="bi bi-check-lg" style="stroke-width: 2px;"></i>
-                                        </button>
-                                    </form>
-                                }
-
-
-
-                                @if (booking.BookingStatus?.Name == "Pending" || booking.BookingStatus?.Name == "Confirmed")
-                                {
-                                    <button type="button" class="btn btn-outline-danger bg-white btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#cancelModal-@booking.BookingID" style="width: 36px; height: 36px;" title="Hủy đơn">
-                                        <i class="bi bi-x-lg" style="stroke-width: 2px;"></i>
-                                    </button>
-                                }
-
-                                @if (booking.DigitalContract != null)
-                                {
-                                    <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Details" asp-route-id="@booking.DigitalContract.DigitalContractID" class="btn btn-outline-info bg-white btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Xem hợp đồng số">
-                                        <i class="bi bi-file-earmark-medical" style="stroke-width: 2px;"></i>
-                                    </a>
-                                }
-                            </div>
-
-                            <!-- Cancel Modal -->
-                            <div class="modal fade text-start" id="cancelModal-@booking.BookingID" tabindex="-1">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content border-0 shadow-lg rounded-4">
-                                        <form asp-action="Cancel" method="post">
-                                            <input type="hidden" name="id" value="@booking.BookingID" />
-                                            <div class="modal-header border-0 p-4 pb-0">
-                                                <h5 class="fw-800 mb-0"><i class="bi bi-x-circle me-2 text-danger"></i>Hủy đơn đặt xe</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="modal-body p-4">
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-bold small text-muted">Lý do hủy đơn <span class="text-danger">*</span></label>
-                                                    <textarea name="reason" class="form-control bg-light border-0 py-3 rounded-3" rows="3" required placeholder="Nhập lý do khách hủy hoặc hệ thống hủy..."></textarea>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer border-0 p-4 pt-0">
-                                                <button type="submit" class="btn btn-danger w-100 py-3 rounded-3 shadow-sm fw-bold">Xác nhận hủy đơn</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                }
-                @if (!Model.Any())
-                {
-                    <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
-                            <i class="bi bi-calendar-x display-4 opacity-10 d-block mb-3"></i>
-                            <p class="fw-bold opacity-50">Không tìm thấy đơn đặt nào</p>
+                        <td class="text-end pe-4">
+                            <a asp-action="Details" asp-route-id="@booking.BookingID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
+                                <i class="bi bi-eye me-1"></i>Chi tiết
+                            </a>
                         </td>
                     </tr>
                 }

@@ -48,12 +48,12 @@
         }
     </style>
 </head>
-<body>
+<body class="theme-carrental theme-admin">
     <div class="container-fluid p-0">
         <!-- Mobile Header -->
         <div class="d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center shadow-sm sticky-top z-3">
             <a class="navbar-brand d-flex align-items-center fs-5 m-0" href="/">
-                <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 30px; filter: brightness(0) invert(1);" />
+                <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-admin-mobile" />
                 CarRental
             </a>
             <button class="btn btn-outline-light border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar" aria-controls="adminSidebar">
@@ -66,7 +66,7 @@
             <div class="col-12 col-md-2 admin-sidebar offcanvas-md offcanvas-start d-flex flex-column z-index-master" tabindex="-1" id="adminSidebar" aria-labelledby="adminSidebarLabel" style="height: 100vh; overflow-y: auto; position: sticky; top: 0;">
                 <div class="offcanvas-header d-md-none border-bottom border-light border-opacity-10 mt-2">
                     <span class="offcanvas-title text-white fs-5 fw-bold" id="adminSidebarLabel">
-                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 25px; filter: brightness(0) invert(1);" />
+                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-admin-offcanvas" />
                         CarRental
                     </span>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#adminSidebar" aria-label="Close"></button>
@@ -74,10 +74,10 @@
                 
                 <div class="px-3 py-4 mb-2 d-none d-md-block">
                     <a class="navbar-brand d-flex align-items-center mb-1 fs-4" href="/">
-                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2" style="height: 32px; filter: brightness(0) invert(1);" />
+                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-admin-desktop" />
                         CarRental
                     </a>
-                    <span class="text-white-50 small text-uppercase fw-bold opacity-50 ls-1" style="font-size: 0.65rem;">Trung tâm Điều hành</span>
+                    <span class="text-white-50 small text-uppercase fw-bold opacity-50 ls-1 text-control-center">Trung tâm Điều hành</span>
                 </div>
                 
                 <nav class="nav flex-column px-2 pb-4 flex-grow-1">
@@ -182,7 +182,7 @@
             </div>
 
             <!-- Main content -->
-            <main class="col-12 col-md-10 ms-sm-auto px-md-4 py-4 admin-main-content" style="min-height: 100vh; overflow-x: hidden; background-color: #f8f9fa;">
+            <main class="col-12 col-md-10 ms-sm-auto px-md-4 py-4 admin-main-content app-main-shell" style="min-height: 100vh; overflow-x: hidden; background-color: #f8f9fa;">
                 <!-- Desktop Top Navbar -->
                 <div class="d-none d-md-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border border-light">
                     <div class="d-flex align-items-center">
@@ -190,7 +190,7 @@
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <div class="dropdown">
-                            <button class="btn btn-light rounded-circle position-relative" data-bs-toggle="dropdown" aria-expanded="false" style="width: 40px; height: 40px;" id="notifBellBtn">
+                            <button class="btn btn-light rounded-circle position-relative notif-bell-btn" data-bs-toggle="dropdown" aria-expanded="false" id="notifBellBtn">
                                 <i class="bi bi-bell-fill text-secondary"></i>
                                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display:none; font-size:0.6rem;">
                                     0

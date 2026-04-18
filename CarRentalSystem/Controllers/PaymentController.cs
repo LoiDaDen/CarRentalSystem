@@ -19,9 +19,17 @@ namespace CarRentalSystem.Controllers
         public PaymentController(IBookingService bookingService, IConfiguration configuration)
         {
             _bookingService = bookingService;
-            string clientId = configuration["PayOS:ClientId"] ?? "PLACEHOLDER";
-            string apiKey = configuration["PayOS:ApiKey"] ?? "PLACEHOLDER";
-            string checksumKey = configuration["PayOS:ChecksumKey"] ?? "PLACEHOLDER";
+            string clientId = configuration["PayOS:ClientId"] ?? "";
+            string apiKey = configuration["PayOS:ApiKey"] ?? "";
+            string checksumKey = configuration["PayOS:ChecksumKey"] ?? "";
+
+            if (string.IsNullOrWhiteSpace(clientId) ||
+                string.IsNullOrWhiteSpace(apiKey) ||
+                string.IsNullOrWhiteSpace(checksumKey))
+            {
+                throw new InvalidOperationException(
+                    "Thiếu cấu hình PayOS. Vui lòng thiết lập PayOS:ClientId, PayOS:ApiKey, PayOS:ChecksumKey trong biến môi trường hoặc secret store.");
+            }
             
             var options = new PayOSOptions
             {

@@ -4,22 +4,7 @@
     Layout = "_AdminLayout";
 }
 
-<style>
-    .fw-800 { font-weight: 800; }
-    .table-car td { padding: 1rem 1.25rem; vertical-align: middle; }
-    .car-avatar { width: 52px; height: 52px; border-radius: 14px; object-fit: cover; background: #f1f5f9; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-</style>
-
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-3" role="alert">
-        <i class="bi bi-check-circle-fill text-success"></i>
-        <span>@TempData["Success"]</span>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-    </div>
-}
-
+<div class="page-admin-carmanage">
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Đội xe</h2>
@@ -89,7 +74,7 @@
                     <tr>
                         <td class="ps-4">
                             <div class="d-flex align-items-center gap-3">
-                                <div class="car-avatar">
+                                <div class="car-avatar-admin">
                                     @if (car.CarImages?.Any() == true)
                                     {
                                         <img src="@car.CarImages.First().ImageUrl" alt="@car.CarName" style="width:100%;height:100%;object-fit:cover;">
@@ -104,11 +89,11 @@
                                         <span>@car.CarBrand?.Name @car.CarName</span>
                                         @if(car.OwnerID == null)
                                         {
-                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size: 0.65rem;"><i class="bi bi-building"></i> Hệ Thống</span>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 badge-system-car" style="font-size: 0.65rem;"><i class="bi bi-building"></i> Hệ Thống</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" style="font-size: 0.65rem;"><i class="bi bi-person-badge"></i> Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 badge-partner-car" style="font-size: 0.65rem;"><i class="bi bi-person-badge"></i> Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
                                         }
                                     </div>
                                     <small class="text-muted"><i class="bi bi-people me-1"></i>@car.Seats chỗ · @car.Transmission</small>
@@ -119,73 +104,40 @@
                             <span class="badge bg-white text-dark border border-2 px-3 py-1 d-block mb-1" style="font-family: monospace; border-radius: 8px; max-width: 130px;">
                                 <i class="bi bi-card-text me-1 text-primary"></i>@car.LicensePlate
                             </span>
-                            <span class="text-muted" style="font-size: 0.72rem; font-family: monospace;">
-                                <i class="bi bi-hash me-1"></i>@(car.VIN?.Substring(0, Math.Min(8, car.VIN?.Length ?? 0)))...
-                            </span>
+                            @if (!string.IsNullOrEmpty(car.VIN))
+                            {
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">VIN: @car.VIN</small>
+                            }
                         </td>
                         <td>
-                            <div class="fw-600 small">@car.CarType?.Name</div>
-                            <small class="text-muted"><i class="bi bi-fuel-pump me-1"></i>@car.FuelType</small>
+                            <span class="badge bg-light text-dark border fw-bold" style="font-size: 0.75rem; border-radius: 8px;">@car.CarType?.Name</span>
+                            <br>
+                            <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">
+                                <i class="bi bi-fuel-pump me-1"></i>@car.FuelType
+                            </small>
                         </td>
-                        <td class="fw-800 text-primary">@car.PricePerDay.ToString("N0")<small class="fw-normal text-muted"> đ</small></td>
+                        <td>
+                            <span class="fw-bold text-primary">@car.PricePerDay.ToString("N0")<small class="text-muted fw-normal">đ/ngày</small></span>
+                        </td>
                         <td>
                             @{
-                                var (statusBg, statusText, dotColor) = car.CarStatus?.Name switch {
-                                    "Available"   => ("bg-success bg-opacity-10 text-success", "Sẵn sàng", "#10b981"),
-                                    "Rented"      => ("bg-warning bg-opacity-10 text-warning", "Đang thuê", "#f59e0b"),
-                                    "Maintenance" => ("bg-danger bg-opacity-10 text-danger", "Bảo trì", "#ef4444"),
-                                    _             => ("bg-secondary bg-opacity-10 text-secondary", car.CarStatus?.Name ?? "Unknown", "#6b7280")
+                                var statusName = car.CarStatus?.Name ?? "Unknown";
+                                var statusClass = statusName.ToLower() switch {
+                                    "available" => "bg-success",
+                                    "rented" => "bg-warning text-dark",
+                                    "maintenance" => "bg-danger",
+                                    _ => "bg-secondary"
                                 };
                             }
-                            <span class="badge @statusBg px-3 py-2 rounded-pill fw-600" style="font-size: 0.77rem;">
-                                <span class="status-dot" style="background: @dotColor;"></span>@statusText
-                            </span>
+                            <span class="badge @statusClass px-3 py-1 rounded-pill status-badge-admin">@statusName</span>
                         </td>
                         <td class="text-end pe-4">
-                            <div class="d-flex gap-2 justify-content-end">
-                                <a asp-area="Admin" asp-controller="Car" asp-action="Edit" asp-route-id="@car.CarID"
-                                   class="btn btn-sm btn-light rounded-3 shadow-sm px-3" title="Chỉnh sửa">
-                                    <i class="bi bi-pencil-square me-1"></i>Sửa
-                                </a>
-                                <button type="button" class="btn btn-sm btn-light text-danger rounded-3 shadow-sm px-3"
-                                        data-bs-toggle="modal" data-bs-target="#deleteModal-@car.CarID" title="Xóa">
-                                    <i class="bi bi-trash3"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- Delete Confirm Modal -->
-                    <div class="modal fade" id="deleteModal-@car.CarID" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-                            <div class="modal-content border-0 shadow-lg rounded-4">
-                                <div class="modal-body p-4 text-center">
-                                    <div class="mb-3">
-                                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style="width:64px;height:64px;">
-                                            <i class="bi bi-trash3-fill text-danger fs-3"></i>
-                                        </span>
-                                    </div>
-                                    <h6 class="fw-800 mb-1">Xóa xe này?</h6>
-                                    <p class="text-muted small mb-4">@car.CarBrand?.Name @car.CarName sẽ bị xóa vĩnh viễn khỏi hệ thống.</p>
-                                    <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-light flex-grow-1 rounded-3" data-bs-dismiss="modal">Hủy</button>
-                                        <form asp-area="Admin" asp-controller="Car" asp-action="Delete" asp-route-id="@car.CarID" method="post" class="flex-grow-1">
-                                            <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">Xóa</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-
-                @if (!Model.Any())
-                {
-                    <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
-                            <i class="bi bi-car-front display-4 opacity-10 d-block mb-3"></i>
-                            <p class="fw-bold opacity-50 mb-2">Chưa có xe nào trong hệ thống</p>
-                            <a asp-area="Admin" asp-controller="Car" asp-action="Create" class="btn btn-primary rounded-3 px-4 btn-sm">Thêm xe đầu tiên</a>
+                            <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-outline-primary btn-sm rounded-pill px-3" title="Chỉnh sửa">
+                                <i class="bi bi-pencil me-1"></i>Sửa
+                            </a>
+                            <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
+                                <i class="bi bi-eye me-1"></i>Chi tiết
+                            </a>
                         </td>
                     </tr>
                 }
