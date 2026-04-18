@@ -53,6 +53,10 @@ namespace CarRentalSystem.Models
         // 🔒 Mã hóa PII at rest — MaxLength lớn vì ciphertext dài
         [MaxLength(500)]
         public string? CitizenId { get; set; }
+
+        // 🔐 Mã PIN 6 số để xem thông tin PII (BCrypt hash)
+        [MaxLength(200)]
+        public string? PiiPinHash { get; set; }
         
         [MaxLength(200)]
         public string? Address { get; set; }

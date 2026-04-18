@@ -392,5 +392,99 @@ namespace CarRentalSystem.Controllers
             if (value.Length <= 4) return new string('*', value.Length);
             return new string('*', value.Length - 4) + value[^4..];
         }
+
+        // ═══════════════════════════════════════════════
+        // 🔐 PII PIN — Mã PIN 6 số để xem CCCD/GPLX
+        // ═══════════════════════════════════════════════
+
+        /// <summary>
+        /// Kiểm tra user đã đặt mã PIN chưa.
+        /// </summary>
+        [Authorize]
+        [HttpGet]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> HasPiiPin()
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _authService.GetUserByIdAsync(userId);
+            return Json(new { hasPin = !string.IsNullOrEmpty(user?.PiiPinHash) });
+        }
+
+        /// <summary>
+        /// Đặt/Đổi mã PIN 6 số.
+        /// </summary>
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> SetPiiPin([FromBody] SetPinRequest request)
+        {
+            if (string.IsNullOrEmpty(request?.Pin) || !System.Text.RegularExpressions.Regex.IsMatch(request.Pin, @"^\d{6}$"))
+            {
+                return Json(new { success = false, message = "Mã PIN phải đúng 6 chữ số." });
+            }
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _authService.GetUserByIdAsync(userId);
+            if (user == null) return Json(new { success = false, message = "Không tìm thấy tài khoản." });
+
+            // Nếu đã có PIN cũ, yêu cầu xác nhận PIN cũ trước
+            if (!string.IsNullOrEmpty(user.PiiPinHash))
+            {
+                if (string.IsNullOrEmpty(request.OldPin) || !BCrypt.Net.BCrypt.Verify(request.OldPin, user.PiiPinHash))
+                {
+                    return Json(new { success = false, message = "Mã PIN cũ không đúng." });
+                }
+            }
+
+            user.PiiPinHash = BCrypt.Net.BCrypt.HashPassword(request.Pin);
+            await _authService.UpdateUserAsync(user);
+            return Json(new { success = true, message = "Đã đặt mã PIN thành công!" });
+        }
+
+        /// <summary>
+        /// Xác thực mã PIN → trả về CCCD/GPLX đã giải mã.
+        /// </summary>
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> VerifyPiiPin([FromBody] VerifyPinRequest request)
+        {
+            if (string.IsNullOrEmpty(request?.Pin))
+            {
+                return Json(new { success = false, message = "Vui lòng nhập mã PIN." });
+            }
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _authService.GetUserByIdAsync(userId);
+            if (user == null) return Json(new { success = false, message = "Không tìm thấy tài khoản." });
+
+            if (string.IsNullOrEmpty(user.PiiPinHash))
+            {
+                return Json(new { success = false, message = "Bạn chưa đặt mã PIN. Vui lòng đặt mã PIN trước." });
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Pin, user.PiiPinHash))
+            {
+                return Json(new { success = false, message = "Mã PIN không đúng." });
+            }
+
+            // ✅ PIN đúng → trả về PII đã giải mã
+            return Json(new
+            {
+                success = true,
+                citizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId) ?? "",
+                drivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber) ?? ""
+            });
+        }
+    }
+
+    // DTO cho API
+    public class SetPinRequest
+    {
+        public string? Pin { get; set; }
+        public string? OldPin { get; set; }
+    }
+
+    public class VerifyPinRequest
+    {
+        public string? Pin { get; set; }
     }
 }

@@ -37,6 +37,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-4" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>@TempData["ErrorMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
 
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
@@ -60,38 +67,58 @@
                         </div>
                     </div>
 
+                    @* ═══ CCCD / GPLX — Mã hóa + PIN bảo mật ═══ *@
                     <div class="row g-4 mb-4">
                         <div class="col-md-6">
                             <label asp-for="CitizenId" class="form-label fw-bold"><i class="bi bi-shield-lock text-warning me-1"></i>Số CMND / CCCD</label>
                             @if (User.IsInRole("Admin"))
                             {
-                                <input asp-for="CitizenId" class="form-label form-control-lg form-control bg-light" placeholder="Nhập số thẻ" />
+                                <input asp-for="CitizenId" class="form-control form-control-lg bg-light" placeholder="Nhập số thẻ" />
                             }
                             else
                             {
-                                <input asp-for="CitizenId" class="form-label form-control-lg form-control bg-light text-muted" readonly />
-                                <small class="text-muted"><i class="bi bi-lock me-1"></i>Dữ liệu được mã hóa — chỉ Admin xem đầy đủ.</small>
+                                <div class="input-group">
+                                    <input id="citizenIdDisplay" asp-for="CitizenId" class="form-control form-control-lg bg-light text-muted" readonly />
+                                    <button type="button" class="btn btn-outline-primary rounded-end" id="btnToggleCccd" onclick="togglePii()" title="Nhấn để xem đầy đủ">
+                                        <i class="bi bi-eye" id="cccdEyeIcon"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted"><i class="bi bi-lock me-1"></i>Nhấn <i class="bi bi-eye"></i> và nhập mã PIN 6 số để xem.</small>
                             }
                         </div>
                         <div class="col-md-6">
-                            <label asp-for="DrivingLicenseNumber" class="form-label fw-bold"><i class="bi bi-shield-lock text-warning me-1"></i>Số Giấy Phép Lái Xe</label>
+                            <label asp-for="DrivingLicenseNumber" class="form-label fw-bold"><i class="bi bi-shield-lock text-warning me-1"></i>Số GPLX (12 số)</label>
                             @if (User.IsInRole("Admin"))
                             {
-                                <input asp-for="DrivingLicenseNumber" class="form-label form-control-lg form-control bg-light" placeholder="Nhập đúng 12 chữ số" maxlength="12" pattern="\d{12}" />
+                                <input asp-for="DrivingLicenseNumber" class="form-control form-control-lg bg-light" placeholder="Nhập đúng 12 chữ số" maxlength="12" pattern="\d{12}" />
                                 <small class="text-muted">Bắt buộc đúng 12 chữ số.</small>
                             }
                             else
                             {
-                                <input asp-for="DrivingLicenseNumber" class="form-label form-control-lg form-control bg-light text-muted" readonly />
-                                <small class="text-muted"><i class="bi bi-lock me-1"></i>Dữ liệu được mã hóa — chỉ Admin xem đầy đủ.</small>
+                                <div class="input-group">
+                                    <input id="gplxDisplay" asp-for="DrivingLicenseNumber" class="form-control form-control-lg bg-light text-muted" readonly />
+                                    <button type="button" class="btn btn-outline-primary rounded-end" onclick="togglePii()" title="Nhấn để xem đầy đủ">
+                                        <i class="bi bi-eye" id="gplxEyeIcon"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted"><i class="bi bi-lock me-1"></i>Nhấn <i class="bi bi-eye"></i> và nhập mã PIN 6 số để xem.</small>
                             }
                         </div>
                     </div>
 
+                    @if (!User.IsInRole("Admin"))
+                    {
+                        <div class="mb-4">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="showSetPinModal()">
+                                <i class="bi bi-key me-1"></i>Đặt / Đổi mã PIN bảo mật
+                            </button>
+                        </div>
+                    }
+
                     <div class="row g-4 mb-4">
                         <div class="col-md-6">
                             <label asp-for="DateOfBirth" class="form-label fw-bold">Ngày sinh</label>
-                            <input type="date" asp-for="DateOfBirth" class="form-label form-control-lg form-control bg-light" />
+                            <input type="date" asp-for="DateOfBirth" class="form-control form-control-lg bg-light" />
                         </div>
                         <div class="col-md-6">
                             <label asp-for="Gender" class="form-label fw-bold">Giới tính</label>
@@ -106,7 +133,7 @@
                     <div class="row g-4 mb-4">
                         <div class="col-12">
                             <label asp-for="Address" class="form-label fw-bold">Địa chỉ thường trú</label>
-                            <input asp-for="Address" class="form-label form-control-lg form-control bg-light" placeholder="Nhập địa chỉ của bạn" />
+                            <input asp-for="Address" class="form-control form-control-lg bg-light" placeholder="Nhập địa chỉ" />
                         </div>
                     </div>
 
@@ -116,9 +143,9 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
                                 <input type="email" class="form-control form-control-lg bg-light text-muted border-start-0 border-end-0" value="@Model.Email" readonly disabled />
-                                <span class="input-group-text bg-light text-success border-start-0" title="Đã xác thực email"><i class="bi bi-check-circle-fill"></i></span>
+                                <span class="input-group-text bg-light text-success border-start-0" title="Đã xác thực"><i class="bi bi-check-circle-fill"></i></span>
                             </div>
-                            <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i> Email không thể thay đổi sau khi đăng ký.</small>
+                            <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Email không thể thay đổi.</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Mật khẩu</label>
@@ -131,15 +158,15 @@
 
                     <hr class="my-5 opacity-10" />
                     <h5 class="fw-bold mb-3"><i class="bi bi-person-badge text-primary me-2"></i> Xác thực danh tính (eKYC)</h5>
-                    <p class="text-muted small mb-4">Để đảm bảo an toàn cho các giao dịch thuê xe, bạn cần cung cấp ảnh CCCD và Giấy Phép Lái Xe. Thông tin này sẽ được bảo mật tuyệt đối.</p>
+                    <p class="text-muted small mb-4">Upload ảnh CCCD và GPLX để xác minh danh tính.</p>
                     
                     @if(Model.IsVerified)
                     {
                         <div class="alert alert-success d-flex align-items-center mb-4 rounded-3">
                             <i class="bi bi-patch-check-fill fs-3 me-3"></i>
                             <div>
-                                <h6 class="mb-0 fw-bold">Đã xác thực danh tính (Tích Xanh ✅)</h6>
-                                <div class="small">Tài khoản của bạn đã qua kiểm tra eKYC. Bạn có thể đặt xe mọi lúc mà không cần nộp thêm giấy tờ.</div>
+                                <h6 class="mb-0 fw-bold">Đã xác thực danh tính ✅</h6>
+                                <div class="small">Tài khoản đã qua kiểm tra eKYC.</div>
                             </div>
                         </div>
                     }
@@ -148,8 +175,8 @@
                         <div class="alert alert-warning d-flex align-items-center mb-4 rounded-3">
                             <i class="bi bi-hourglass-split fs-3 me-3"></i>
                             <div>
-                                <h6 class="mb-0 fw-bold">Đang chờ xét duyệt (⏳)</h6>
-                                <div class="small">Bạn đã nộp đủ hồ sơ. Đội ngũ Admin sẽ duyệt trong vòng 24 giờ.</div>
+                                <h6 class="mb-0 fw-bold">Đang chờ xét duyệt ⏳</h6>
+                                <div class="small">Admin sẽ duyệt trong 24 giờ.</div>
                             </div>
                         </div>
                     }
@@ -159,7 +186,7 @@
                             <i class="bi bi-person-x fs-3 me-3 text-muted"></i>
                             <div>
                                 <h6 class="mb-0 fw-bold">Chưa xác thực danh tính</h6>
-                                <div class="small">Vui lòng upload ảnh CCCD (2 mặt) và GPLX ở dưới để gửi yêu cầu xác minh.</div>
+                                <div class="small">Upload ảnh CCCD (2 mặt) và GPLX bên dưới.</div>
                             </div>
                         </div>
                     }
@@ -167,21 +194,21 @@
                     <div class="row g-4">
                         <div class="col-md-4">
                             <div class="border rounded-3 p-3 bg-light text-center h-100">
-                                <div class="mb-2 fw-bold small text-dark">CCCD (Mặt trước)</div>
+                                <div class="mb-2 fw-bold small">CCCD (Mặt trước)</div>
                                 @if(!string.IsNullOrEmpty(Model.IdCardFrontUrl)) { <img src="@Model.IdCardFrontUrl" class="img-fluid rounded mb-2 shadow-sm" style="max-height:100px;object-fit:cover;" /> }
                                 <input type="file" name="uploadIdFront" class="form-control form-control-sm" accept="image/*" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="border rounded-3 p-3 bg-light text-center h-100">
-                                <div class="mb-2 fw-bold small text-dark">CCCD (Mặt sau)</div>
+                                <div class="mb-2 fw-bold small">CCCD (Mặt sau)</div>
                                 @if(!string.IsNullOrEmpty(Model.IdCardBackUrl)) { <img src="@Model.IdCardBackUrl" class="img-fluid rounded mb-2 shadow-sm" style="max-height:100px;object-fit:cover;" /> }
                                 <input type="file" name="uploadIdBack" class="form-control form-control-sm" accept="image/*" />
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="border rounded-3 p-3 bg-light text-center h-100">
-                                <div class="mb-2 fw-bold small text-dark">Giấy Phép Lái Xe</div>
+                                <div class="mb-2 fw-bold small">Giấy Phép Lái Xe</div>
                                 @if(!string.IsNullOrEmpty(Model.DrivingLicenseUrl)) { <img src="@Model.DrivingLicenseUrl" class="img-fluid rounded mb-2 shadow-sm" style="max-height:100px;object-fit:cover;" /> }
                                 <input type="file" name="uploadLicense" class="form-control form-control-sm" accept="image/*" />
                             </div>
@@ -196,3 +223,213 @@
         </div>
     </div>
 </div>
+
+@* ═══════════════════════════════════════════════ *@
+@* 🔐 MODAL: Nhập mã PIN để xem CCCD / GPLX     *@
+@* ═══════════════════════════════════════════════ *@
+<div class="modal fade" id="verifyPinModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 bg-primary bg-opacity-10 rounded-top-4">
+                <h6 class="modal-title fw-bold"><i class="bi bi-shield-lock me-2"></i>Xác thực mã PIN</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="text-muted small mb-3">Nhập mã PIN 6 số để xem thông tin CCCD / GPLX</p>
+                <div class="d-flex justify-content-center gap-1 mb-3" id="pinInputGroup">
+                    <input type="password" class="form-control text-center fw-bold fs-4 pin-digit" maxlength="1" inputmode="numeric" style="width:45px;height:55px;border-radius:12px;" />
+                    <input type="password" class="form-control text-center fw-bold fs-4 pin-digit" maxlength="1" inputmode="numeric" style="width:45px;height:55px;border-radius:12px;" />
+                    <input type="password" class="form-control text-center fw-bold fs-4 pin-digit" maxlength="1" inputmode="numeric" style="width:45px;height:55px;border-radius:12px;" />
+                    <input type="password" class="form-control text-center fw-bold fs-4 pin-digit" maxlength="1" inputmode="numeric" style="width:45px;height:55px;border-radius:12px;" />
+                    <input type="password" class="form-control text-center fw-bold fs-4 pin-digit" maxlength="1" inputmode="numeric" style="width:45px;height:55px;border-radius:12px;" />
+                    <input type="password" class="form-control text-center fw-bold fs-4 pin-digit" maxlength="1" inputmode="numeric" style="width:45px;height:55px;border-radius:12px;" />
+                </div>
+                <div id="pinError" class="text-danger small mb-2" style="display:none;"></div>
+                <button type="button" class="btn btn-primary w-100 rounded-pill fw-bold" onclick="verifyPin()">
+                    <i class="bi bi-unlock me-1"></i>Xác nhận
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════════════════════════════════════ *@
+@* 🔑 MODAL: Đặt / Đổi mã PIN bảo mật           *@
+@* ═══════════════════════════════════════════════ *@
+<div class="modal fade" id="setPinModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 bg-warning bg-opacity-10 rounded-top-4">
+                <h6 class="modal-title fw-bold"><i class="bi bi-key me-2"></i>Đặt mã PIN bảo mật</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div id="oldPinSection" style="display:none;" class="mb-3">
+                    <label class="form-label small fw-bold">Mã PIN cũ</label>
+                    <input type="password" id="oldPinInput" class="form-control form-control-lg text-center" maxlength="6" inputmode="numeric" placeholder="••••••" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Mã PIN mới (6 chữ số)</label>
+                    <input type="password" id="newPinInput" class="form-control form-control-lg text-center" maxlength="6" inputmode="numeric" placeholder="••••••" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Xác nhận mã PIN mới</label>
+                    <input type="password" id="confirmPinInput" class="form-control form-control-lg text-center" maxlength="6" inputmode="numeric" placeholder="••••••" />
+                </div>
+                <div id="setPinError" class="text-danger small mb-2" style="display:none;"></div>
+                <div id="setPinSuccess" class="text-success small mb-2" style="display:none;"></div>
+                <button type="button" class="btn btn-warning w-100 rounded-pill fw-bold" onclick="setPin()">
+                    <i class="bi bi-check-lg me-1"></i>Lưu mã PIN
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ═══ Auto-focus giữa các ô PIN digit ═══
+    document.querySelectorAll('.pin-digit').forEach((input, idx, inputs) => {
+        input.addEventListener('input', e => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            if (e.target.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+        });
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Backspace' && !e.target.value && idx > 0) inputs[idx - 1].focus();
+        });
+        input.addEventListener('paste', e => {
+            e.preventDefault();
+            const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+            paste.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
+            if (paste.length > 0) inputs[Math.min(paste.length, inputs.length) - 1].focus();
+        });
+    });
+
+    let piiRevealed = false;
+    const maskedCccd = document.getElementById('citizenIdDisplay')?.value || '';
+    const maskedGplx = document.getElementById('gplxDisplay')?.value || '';
+
+    // ═══ Toggle hiện/ẩn PII ═══
+    function togglePii() {
+        if (piiRevealed) {
+            // Ẩn lại
+            document.getElementById('citizenIdDisplay').value = maskedCccd;
+            document.getElementById('gplxDisplay').value = maskedGplx;
+            document.getElementById('cccdEyeIcon').className = 'bi bi-eye';
+            document.getElementById('gplxEyeIcon').className = 'bi bi-eye';
+            piiRevealed = false;
+            return;
+        }
+        // Kiểm tra đã đặt PIN chưa
+        fetch('/Auth/HasPiiPin')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.hasPin) {
+                    alert('⚠️ Bạn chưa đặt mã PIN bảo mật.\nVui lòng đặt mã PIN trước khi xem thông tin.');
+                    showSetPinModal();
+                } else {
+                    // Mở modal nhập PIN
+                    document.querySelectorAll('.pin-digit').forEach(i => i.value = '');
+                    document.getElementById('pinError').style.display = 'none';
+                    new bootstrap.Modal(document.getElementById('verifyPinModal')).show();
+                    setTimeout(() => document.querySelector('.pin-digit').focus(), 300);
+                }
+            });
+    }
+
+    // ═══ Xác thực PIN → hiện PII ═══
+    function verifyPin() {
+        const digits = [...document.querySelectorAll('.pin-digit')].map(i => i.value).join('');
+        if (digits.length !== 6) {
+            document.getElementById('pinError').textContent = 'Vui lòng nhập đủ 6 số.';
+            document.getElementById('pinError').style.display = 'block';
+            return;
+        }
+
+        fetch('/Auth/VerifyPiiPin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: digits })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('verifyPinModal')).hide();
+                document.getElementById('citizenIdDisplay').value = data.citizenId;
+                document.getElementById('gplxDisplay').value = data.drivingLicenseNumber;
+                document.getElementById('cccdEyeIcon').className = 'bi bi-eye-slash';
+                document.getElementById('gplxEyeIcon').className = 'bi bi-eye-slash';
+                piiRevealed = true;
+
+                // ⏱️ Tự động ẩn lại sau 30 giây
+                setTimeout(() => {
+                    if (piiRevealed) {
+                        document.getElementById('citizenIdDisplay').value = maskedCccd;
+                        document.getElementById('gplxDisplay').value = maskedGplx;
+                        document.getElementById('cccdEyeIcon').className = 'bi bi-eye';
+                        document.getElementById('gplxEyeIcon').className = 'bi bi-eye';
+                        piiRevealed = false;
+                    }
+                }, 30000);
+            } else {
+                document.getElementById('pinError').textContent = data.message;
+                document.getElementById('pinError').style.display = 'block';
+                document.querySelectorAll('.pin-digit').forEach(i => i.value = '');
+                document.querySelector('.pin-digit').focus();
+            }
+        });
+    }
+
+    // ═══ Mở modal đặt PIN ═══
+    async function showSetPinModal() {
+        const res = await fetch('/Auth/HasPiiPin');
+        const data = await res.json();
+        document.getElementById('oldPinSection').style.display = data.hasPin ? 'block' : 'none';
+        document.getElementById('oldPinInput').value = '';
+        document.getElementById('newPinInput').value = '';
+        document.getElementById('confirmPinInput').value = '';
+        document.getElementById('setPinError').style.display = 'none';
+        document.getElementById('setPinSuccess').style.display = 'none';
+        new bootstrap.Modal(document.getElementById('setPinModal')).show();
+    }
+
+    // ═══ Lưu PIN ═══
+    function setPin() {
+        const oldPin = document.getElementById('oldPinInput').value;
+        const newPin = document.getElementById('newPinInput').value;
+        const confirmPin = document.getElementById('confirmPinInput').value;
+        const errEl = document.getElementById('setPinError');
+        const sucEl = document.getElementById('setPinSuccess');
+        errEl.style.display = 'none';
+        sucEl.style.display = 'none';
+
+        if (!/^\d{6}$/.test(newPin)) {
+            errEl.textContent = 'Mã PIN mới phải đúng 6 chữ số.';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (newPin !== confirmPin) {
+            errEl.textContent = 'Xác nhận mã PIN không khớp.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        fetch('/Auth/SetPiiPin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: newPin, oldPin: oldPin || null })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                sucEl.textContent = data.message;
+                sucEl.style.display = 'block';
+                setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('setPinModal')).hide(), 1500);
+            } else {
+                errEl.textContent = data.message;
+                errEl.style.display = 'block';
+            }
+        });
+    }
+</script>
+}
