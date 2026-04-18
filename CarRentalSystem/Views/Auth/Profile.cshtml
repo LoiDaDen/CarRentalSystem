@@ -77,9 +77,9 @@
                             }
                             else
                             {
-                                <div class="input-group">
-                                    <input id="citizenIdDisplay" asp-for="CitizenId" class="form-control form-control-lg bg-light text-muted" readonly />
-                                    <button type="button" class="btn btn-outline-primary btn-lg rounded-end" id="btnToggleCccd" onclick="togglePii()" title="Nhấn để xem đầy đủ">
+                                <div class="input-group input-group-lg">
+                                    <input id="citizenIdDisplay" asp-for="CitizenId" class="form-control bg-light text-muted" readonly />
+                                    <button type="button" class="btn btn-outline-primary rounded-end" id="btnToggleCccd" onclick="togglePii()" title="Nhấn để xem đầy đủ">
                                         <i class="bi bi-eye" id="cccdEyeIcon"></i>
                                     </button>
                                 </div>
@@ -95,9 +95,9 @@
                             }
                             else
                             {
-                                <div class="input-group">
-                                    <input id="gplxDisplay" asp-for="DrivingLicenseNumber" class="form-control form-control-lg bg-light text-muted" readonly />
-                                    <button type="button" class="btn btn-outline-primary btn-lg rounded-end" onclick="togglePii()" title="Nhấn để xem đầy đủ">
+                                <div class="input-group input-group-lg">
+                                    <input id="gplxDisplay" asp-for="DrivingLicenseNumber" class="form-control bg-light text-muted" readonly />
+                                    <button type="button" class="btn btn-outline-primary rounded-end" onclick="togglePii()" title="Nhấn để xem đầy đủ">
                                         <i class="bi bi-eye" id="gplxEyeIcon"></i>
                                     </button>
                                 </div>
@@ -140,18 +140,18 @@
                     <div class="row g-4 mb-4">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Email</label>
-                            <div class="input-group">
+                            <div class="input-group input-group-lg">
                                 <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
-                                <input type="email" class="form-control form-control-lg bg-light text-muted border-start-0 border-end-0" value="@Model.Email" readonly disabled />
+                                <input type="email" class="form-control bg-light text-muted border-start-0 border-end-0" value="@Model.Email" readonly disabled />
                                 <span class="input-group-text bg-light text-success border-start-0" title="Đã xác thực"><i class="bi bi-check-circle-fill"></i></span>
                             </div>
                             <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Email không thể thay đổi.</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Mật khẩu</label>
-                            <div class="input-group">
+                            <div class="input-group input-group-lg">
                                 <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-lock"></i></span>
-                                <input type="password" class="form-control form-control-lg bg-light text-muted border-start-0" value="********" readonly disabled />
+                                <input type="password" class="form-control bg-light text-muted border-start-0" value="********" readonly disabled />
                             </div>
                         </div>
                     </div>
