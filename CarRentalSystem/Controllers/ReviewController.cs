@@ -37,7 +37,7 @@ namespace CarRentalSystem.Controllers
                 UserID = userId,
                 Rating = Math.Clamp(Rating, 1, 5),
                 Comment = Comment,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             _db.Reviews.Add(review);

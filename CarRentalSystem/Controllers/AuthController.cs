@@ -19,12 +19,14 @@ namespace CarRentalSystem.Controllers
         private readonly IAuthService _authService;
         private readonly IWebHostEnvironment _env;
         private readonly IEmailService _emailService;
+        private readonly IPiiEncryptionService _piiEncryption;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption)
         {
             _authService = authService;
             _env = env;
             _emailService = emailService;
+            _piiEncryption = piiEncryption;
         }
 
         [HttpGet]
@@ -212,6 +214,9 @@ namespace CarRentalSystem.Controllers
                 var user = await _authService.GetUserByIdAsync(userId);
                 if (user != null)
                 {
+                    // 🔓 Decrypt PII cho hiển thị
+                    user.CitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
+                    user.DrivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
                     return View(user);
                 }
             }
@@ -240,8 +245,9 @@ namespace CarRentalSystem.Controllers
 
                     user.Name = updatedUser.Name;
                     user.Phone = updatedUser.Phone;
-                    user.CitizenId = updatedUser.CitizenId;
-                    user.DrivingLicenseNumber = updatedUser.DrivingLicenseNumber;
+                    // 🔒 Encrypt PII at rest
+                    user.CitizenId = _piiEncryption.EncryptIfNotEmpty(updatedUser.CitizenId);
+                    user.DrivingLicenseNumber = _piiEncryption.EncryptIfNotEmpty(updatedUser.DrivingLicenseNumber);
                     user.DateOfBirth = updatedUser.DateOfBirth;
                     user.Gender = updatedUser.Gender;
                     user.Address = updatedUser.Address;

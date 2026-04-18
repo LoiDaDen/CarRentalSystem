@@ -22,6 +22,6 @@ namespace CarRentalSystem.Models
         [MaxLength(30)]
         public string Status { get; set; } = "Pending"; // Pending, Confirmed, Active, Completed, Cancelled
         
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

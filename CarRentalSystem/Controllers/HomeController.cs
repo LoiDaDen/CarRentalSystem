@@ -60,7 +60,7 @@ namespace CarRentalSystem.Controllers
         {
             if (locationId.HasValue)
             {
-                Response.Cookies.Append("RegionID", locationId.Value.ToString(), new CookieOptions { Expires = DateTime.Now.AddDays(30) });
+                Response.Cookies.Append("RegionID", locationId.Value.ToString(), new CookieOptions { Expires = DateTime.UtcNow.AddDays(30) });
             }
             else
             {
@@ -93,7 +93,7 @@ namespace CarRentalSystem.Controllers
 
             if (closest != null)
             {
-                Response.Cookies.Append("RegionID", closest.LocationID.ToString(), new CookieOptions { Expires = DateTime.Now.AddDays(30) });
+                Response.Cookies.Append("RegionID", closest.LocationID.ToString(), new CookieOptions { Expires = DateTime.UtcNow.AddDays(30) });
             }
             return LocalRedirect(returnUrl ?? "/");
         }

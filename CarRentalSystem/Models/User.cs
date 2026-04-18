@@ -19,7 +19,7 @@ namespace CarRentalSystem.Models
         public required string PasswordHash { get; set; }
         [MaxLength(20)]
         public string Role { get; set; } = "Customer"; // Admin, Customer, Staff, Partner
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Booking>? Bookings { get; set; } = new List<Booking>();
         public ICollection<Review>? Reviews { get; set; } = new List<Review>();

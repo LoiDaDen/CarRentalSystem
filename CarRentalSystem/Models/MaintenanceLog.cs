@@ -25,6 +25,6 @@ namespace CarRentalSystem.Models
         [StringLength(100)]
         public string ServiceCenter { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

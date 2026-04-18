@@ -23,7 +23,7 @@ namespace CarRentalSystem.Models
         [StringLength(20)]
         public string EngineStatus { get; set; } = "Off"; // On, Off, Blocked
         
-        public DateTime Timestamp { get; set; } = DateTime.Now;
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
         [ForeignKey("CarID")]
         public Car? Car { get; set; }

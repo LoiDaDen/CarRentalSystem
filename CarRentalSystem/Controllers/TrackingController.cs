@@ -39,7 +39,7 @@ namespace CarRentalSystem.Controllers
         {
             if (tracking == null || tracking.CarID == 0) return BadRequest("Dữ liệu không hợp lệ");
 
-            tracking.Timestamp = DateTime.Now;
+            tracking.Timestamp = DateTime.UtcNow;
             await _trackingService.AddTrackingAsync(tracking);
             
             // Tự động kiểm tra cảnh báo (Off-route, Suspicious Stop)

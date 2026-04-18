@@ -30,7 +30,7 @@ namespace CarRentalSystem.BackgroundJobs
         public async Task Execute()
         {
             _logger.LogInformation("⏰ [Hangfire] Bắt đầu kiểm tra hợp đồng hết hạn...");
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             // ═══ Expire Driver Contracts ═══
             var expiredDriverContracts = await _db.DriverContracts

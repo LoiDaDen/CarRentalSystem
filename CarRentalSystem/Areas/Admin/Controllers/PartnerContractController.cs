@@ -97,7 +97,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (contract == null) return NotFound();
 
             contract.Status = "Cancelled";
-            contract.CancelledAt = DateTime.Now;
+            contract.CancelledAt = DateTime.UtcNow;
             contract.CancelReason = reason ?? "Hủy bởi Admin";
             await _context.SaveChangesAsync();
 
@@ -113,7 +113,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (contract == null) return NotFound();
 
             contract.Status = "Cancelled";
-            contract.CancelledAt = DateTime.Now;
+            contract.CancelledAt = DateTime.UtcNow;
             contract.CancelReason = reason ?? "Hủy bởi Admin";
             await _context.SaveChangesAsync();
 

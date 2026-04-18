@@ -39,7 +39,7 @@ namespace CarRentalSystem.Services
         {
             var result = new DeliveryInfo
             {
-                EarliestPickupTime = DateTime.Now.AddHours(PrepTimeHours)
+                EarliestPickupTime = DateTime.UtcNow.AddHours(PrepTimeHours)
             };
 
             try
@@ -71,7 +71,7 @@ namespace CarRentalSystem.Services
 
             // Tính thời gian giao xe tối thiểu (thời gian chạy + 1h chuẩn bị)
             var totalHoursNeeded = PrepTimeHours + (result.DurationMinutes / 60.0);
-            result.EarliestPickupTime = DateTime.Now.AddHours(totalHoursNeeded);
+            result.EarliestPickupTime = DateTime.UtcNow.AddHours(totalHoursNeeded);
 
             // Tính phí ship: 3k/km, làm tròn lên
             result.ShippingFee = (decimal)Math.Ceiling(result.DistanceKm) * FeePerKm;

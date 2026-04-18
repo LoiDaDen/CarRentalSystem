@@ -51,6 +51,18 @@ else
 builder.Services.AddScoped<ICacheService, CacheService>();
 
 // ═══════════════════════════════════════════════════
+// 🔒 PII ENCRYPTION — Mã hóa CCCD/GPLX at rest
+// ═══════════════════════════════════════════════════
+builder.Services.AddDataProtection();
+builder.Services.AddScoped<IPiiEncryptionService, PiiEncryptionService>();
+
+// ═══════════════════════════════════════════════════
+// 🏥 HEALTH CHECKS — Monitoring endpoint /health
+// ═══════════════════════════════════════════════════
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("database");
+
+// ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE — Background Job Processing
 // ═══════════════════════════════════════════════════
 builder.Services.AddHangfire(config => config
@@ -179,6 +191,11 @@ RecurringJob.AddOrUpdate<DepositRefundJob>(
     "deposit-refund-process",
     job => job.Execute(),
     Cron.Daily(9)); // Mỗi ngày lúc 9:00 AM
+
+// ═══════════════════════════════════════════════════
+// 🏥 HEALTH CHECK ENDPOINT — /health
+// ═══════════════════════════════════════════════════
+app.MapHealthChecks("/health");
 
 app.MapStaticAssets();
 

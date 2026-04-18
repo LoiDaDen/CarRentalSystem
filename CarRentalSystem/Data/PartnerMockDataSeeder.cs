@@ -36,7 +36,7 @@ namespace CarRentalSystem.Data
                     IsEmailVerified = true,
                     IsVerified = true,
                     PartnerAddress = "Quận 3, TP. Hồ Chí Minh",
-                    CreatedAt = DateTime.Now.AddMonths(-12)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-12)
                 },
                 new User
                 {
@@ -48,7 +48,7 @@ namespace CarRentalSystem.Data
                     IsEmailVerified = true,
                     IsVerified = true,
                     PartnerAddress = "Quận Cầu Giấy, Hà Nội",
-                    CreatedAt = DateTime.Now.AddMonths(-10)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-10)
                 },
                 new User
                 {
@@ -60,7 +60,7 @@ namespace CarRentalSystem.Data
                     IsEmailVerified = true,
                     IsVerified = true,
                     PartnerAddress = "Quận Hải Châu, Đà Nẵng",
-                    CreatedAt = DateTime.Now.AddMonths(-8)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-8)
                 }
             };
 

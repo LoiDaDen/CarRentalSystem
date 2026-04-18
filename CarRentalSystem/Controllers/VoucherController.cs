@@ -21,8 +21,8 @@ namespace CarRentalSystem.Controllers
             var promo = await _db.Promotions.FirstOrDefaultAsync(p =>
                 p.PromoCode == code.Trim().ToUpper() &&
                 p.IsActive &&
-                p.ValidFrom <= DateTime.Now &&
-                p.ValidUntil >= DateTime.Now &&
+                p.ValidFrom <= DateTime.UtcNow &&
+                p.ValidUntil >= DateTime.UtcNow &&
                 p.UsedCount < p.UsageLimit);
 
             if (promo == null)

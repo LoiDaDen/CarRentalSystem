@@ -22,6 +22,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IAuthService> _mockAuthService;
         private readonly Mock<IWebHostEnvironment> _mockEnv;
         private readonly Mock<IEmailService> _mockEmailService;
+        private readonly Mock<IPiiEncryptionService> _mockPiiEncryption;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
@@ -29,8 +30,9 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockAuthService = new Mock<IAuthService>();
             _mockEnv = new Mock<IWebHostEnvironment>();
             _mockEmailService = new Mock<IEmailService>();
+            _mockPiiEncryption = new Mock<IPiiEncryptionService>();
 
-            _controller = new AuthController(_mockAuthService.Object, _mockEnv.Object, _mockEmailService.Object);
+            _controller = new AuthController(_mockAuthService.Object, _mockEnv.Object, _mockEmailService.Object, _mockPiiEncryption.Object);
             _controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()

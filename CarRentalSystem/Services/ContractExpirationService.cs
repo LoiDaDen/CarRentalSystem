@@ -47,7 +47,7 @@ namespace CarRentalSystem.Services
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             // ═══ Expire Driver Contracts ═══
             var expiredDriverContracts = await db.DriverContracts

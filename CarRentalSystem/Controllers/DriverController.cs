@@ -195,7 +195,7 @@ namespace CarRentalSystem.Controllers
                 UserID = userId,
                 Rating = Math.Clamp(rating, 1, 5),
                 Comment = comment,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.DriverReviews.Add(review);
@@ -262,7 +262,7 @@ namespace CarRentalSystem.Controllers
             driver.IsAvailable = false;
             driver.Rating = 5.0m;
             driver.TotalTrips = 0;
-            driver.CreatedAt = DateTime.Now;
+            driver.CreatedAt = DateTime.UtcNow;
 
             _context.Drivers.Add(driver);
             await _context.SaveChangesAsync();
@@ -335,14 +335,14 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(MyProfile));
             }
 
-            if (DateTime.Now > contract.ExpiresAt)
+            if (DateTime.UtcNow > contract.ExpiresAt)
             {
                 TempData["Error"] = "Hợp đồng đã quá hạn ký (7 ngày). Vui lòng liên hệ Admin.";
                 return RedirectToAction(nameof(MyProfile));
             }
 
             contract.SignedByPartyB = true;
-            contract.PartyBSignDate = DateTime.Now;
+            contract.PartyBSignDate = DateTime.UtcNow;
             contract.Status = "Active";
             await _context.SaveChangesAsync();
 
@@ -373,7 +373,7 @@ namespace CarRentalSystem.Controllers
             }
 
             contract.Status = "Cancelled";
-            contract.CancelledAt = DateTime.Now;
+            contract.CancelledAt = DateTime.UtcNow;
             contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
             await _context.SaveChangesAsync();
 

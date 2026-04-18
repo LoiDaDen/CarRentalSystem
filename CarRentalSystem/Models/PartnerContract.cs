@@ -68,7 +68,7 @@ namespace CarRentalSystem.Models
         [Required, MaxLength(20)]
         public string Status { get; set; } = "Pending"; // Pending, Active, Expired, Cancelled
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime ExpiresAt { get; set; } // Hạn ký = CreatedAt + 7 ngày
 
         // Ký bên A (Admin/Platform)

@@ -23,7 +23,7 @@ namespace CarRentalSystem.BackgroundJobs
         public async Task Execute()
         {
             _logger.LogInformation("🔔 [Hangfire] Bắt đầu kiểm tra bảo dưỡng & đăng kiểm...");
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var warningThreshold = now.AddDays(7); // Cảnh báo trước 7 ngày
             int alertsCreated = 0;
 

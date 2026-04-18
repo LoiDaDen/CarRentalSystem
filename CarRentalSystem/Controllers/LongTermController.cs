@@ -5,15 +5,19 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
+using CarRentalSystem.Services;
+
 namespace CarRentalSystem.Controllers
 {
     public class LongTermController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPiiEncryptionService _piiEncryption;
 
-        public LongTermController(ApplicationDbContext context)
+        public LongTermController(ApplicationDbContext context, IPiiEncryptionService piiEncryption)
         {
             _context = context;
+            _piiEncryption = piiEncryption;
         }
 
         // GET: LongTerm
@@ -149,7 +153,7 @@ namespace CarRentalSystem.Controllers
             var car = await _context.Cars.FindAsync(carId);
             var cType = await _context.ContractTypes.FindAsync(contractId);
 
-            DateTime startDate = string.IsNullOrEmpty(startDateStr) ? DateTime.Now : DateTime.Parse(startDateStr);
+            DateTime startDate = string.IsNullOrEmpty(startDateStr) ? DateTime.UtcNow : DateTime.Parse(startDateStr);
             DateTime endDate = startDate;
             int totalDays = 1;
             string selectedDatesDisplay = "";
@@ -221,10 +225,10 @@ namespace CarRentalSystem.Controllers
             // Create standard Digital Contract
             var contract = new DigitalContract
             {
-                ContractNo = "HD-BIZ-" + DateTime.Now.ToString("yyMMdd") + booking.BookingID,
+                ContractNo = "HD-BIZ-" + DateTime.UtcNow.ToString("yyMMdd") + booking.BookingID,
                 BookingID = booking.BookingID,
                 CustomerName = customerName ?? user.Name,
-                CustomerIdentityCard = user.CitizenId ?? "000000000000",
+                CustomerIdentityCard = _piiEncryption.DecryptIfNotEmpty(user.CitizenId) ?? "000000000000",
                 CustomerPhone = customerPhone ?? user.Phone,
                 CustomerAddress = user.Address ?? "Văn phòng công ty",
                 CarLicensePlate = car.LicensePlate,

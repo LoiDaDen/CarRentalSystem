@@ -44,7 +44,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             // Monthly Revenue (Last 6 months)
             var last6Months = Enumerable.Range(0, 6)
-                .Select(i => DateTime.Now.AddMonths(-i))
+                .Select(i => DateTime.UtcNow.AddMonths(-i))
                 .OrderBy(d => d)
                 .ToList();
 

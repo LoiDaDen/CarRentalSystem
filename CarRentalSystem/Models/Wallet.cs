@@ -19,6 +19,6 @@ namespace CarRentalSystem.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal LockedBalance { get; set; } = 0m; // Holds deposits
         
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }

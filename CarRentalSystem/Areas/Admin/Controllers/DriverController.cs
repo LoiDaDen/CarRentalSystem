@@ -56,8 +56,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             // ═══ Tự động tạo Hợp đồng Đối tác Tài xế ═══
             var contractCount = await _context.DriverContracts.CountAsync() + 1;
-            var contractNo = $"{contractCount:D4}/{DateTime.Now.Year}/HĐ-TXL";
-            var now = DateTime.Now;
+            var contractNo = $"{contractCount:D4}/{DateTime.UtcNow.Year}/HĐ-TXL";
+            var now = DateTime.UtcNow;
 
             var contract = new DriverContract
             {

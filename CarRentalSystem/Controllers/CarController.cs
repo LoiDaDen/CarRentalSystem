@@ -303,7 +303,7 @@ namespace CarRentalSystem.Controllers
                     UserID = userId,
                     Rating = rating,
                     Comment = comment,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTime.UtcNow
                 };
                 await _carService.AddReviewAsync(review);
                 TempData["SuccessMessage"] = "Ảm ơn bạn đã để lại đánh giá!";

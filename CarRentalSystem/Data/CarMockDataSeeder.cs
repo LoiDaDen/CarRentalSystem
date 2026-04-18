@@ -132,7 +132,7 @@ namespace CarRentalSystem.Data
                         CarStatusID = statusAvailable.CarStatusID,
                         Description = $"Xe {tmpl.Name} tại {loc.Name}, đời mới, sạch sẽ.",
                         CurrentOdometer = random.Next(1000, 50000),
-                        CreatedAt = DateTime.Now.AddDays(-random.Next(1, 100)),
+                        CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 100)),
                         CarTypeID = tId,
                         FuelType = tmpl.FuelType,
                         Transmission = tmpl.Transmission,

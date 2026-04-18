@@ -24,7 +24,7 @@ namespace CarRentalSystem.Data
                         Phone = "0900000000",
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
                         Role = "Admin",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.UtcNow
                     },
                     new User
                     {
@@ -33,7 +33,7 @@ namespace CarRentalSystem.Data
                         Phone = "0901111111",
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
                         Role = "Customer",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.UtcNow
                     },
                     new User
                     {
@@ -42,7 +42,7 @@ namespace CarRentalSystem.Data
                         Phone = "0902222222",
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
                         Role = "Customer",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.UtcNow
                     },
                     new User
                     {
@@ -51,7 +51,7 @@ namespace CarRentalSystem.Data
                         Phone = "0903333333",
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("Customer@123"),
                         Role = "Customer",
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.UtcNow
                     }
                 };
                 context.Users.AddRange(users);
@@ -140,29 +140,29 @@ namespace CarRentalSystem.Data
             var cars = new List<Car>
             {
                 // Sedan 5 chỗ (Xăng & Điện)
-                new Car { CarName = "Vios G", BrandID = brands[0].BrandID, Seats = 5, LicensePlate = "51A-12345", VIN = "TOYOTA12345678901", PricePerDay = 800000, PricePerHour = 100000, CarStatusID = statuses[0].CarStatusID, Description = "Xe phổ thông đi phố.", CurrentOdometer = 12500, CreatedAt = DateTime.Now, CarTypeID = carTypes[0].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[0].LocationID, IsPremium = false, ImageURL = "https://images.toyota.com.vn/toyota/vios/exterior/vios_exterior_1.jpg" },
-                new Car { CarName = "City RS", BrandID = brands[1].BrandID, Seats = 5, LicensePlate = "51G-67890", VIN = "HONDA123456789012", PricePerDay = 900000, PricePerHour = 110000, CarStatusID = statuses[0].CarStatusID, Description = "Thể thao, tiết kiệm.", CurrentOdometer = 8000, CreatedAt = DateTime.Now, CarTypeID = carTypes[0].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[4].LocationID, IsPremium = false, ImageURL = "https://www.honda.com.vn/o-to/san-pham/honda-city/images/pc/img-city-color-5.png" },
-                new Car { CarName = "Accent MT", BrandID = brands[2].BrandID, Seats = 5, LicensePlate = "51D-11111", VIN = "HYUN123456789012", PricePerDay = 600000, PricePerHour = 80000, CarStatusID = statuses[0].CarStatusID, Description = "Xe gia đình.", CurrentOdometer = 20000, CreatedAt = DateTime.Now.AddDays(-2), CarTypeID = carTypes[0].CarTypeID, FuelType = "Xăng", Transmission = "Số sàn", LocationID = locations[8].LocationID, IsPremium = false, DiscountPrice = 500000, ImageURL = "https://hyundai-vietnam.vn/wp-content/uploads/2021/04/hyundai-accent-trang.png" },
-                new Car { CarName = "VF5 Plus", BrandID = brands[3].BrandID, Seats = 5, LicensePlate = "51E-22222", VIN = "VFE1234567890123", PricePerDay = 750000, PricePerHour = 90000, CarStatusID = statuses[0].CarStatusID, Description = "Xe điện cỡ nhỏ.", CurrentOdometer = 5000, CreatedAt = DateTime.Now, CarTypeID = carTypes[0].CarTypeID, FuelType = "Điện", Transmission = "Tự động", LocationID = locations[1].LocationID, IsPremium = false, ImageURL = "https://shop.vinfastauto.com/on/demandware.static/-/Sites-app_vinfast_vn-Library/default/dw1062b9a7/images/VF5/VF5-Plus-Cam.png" },
+                new Car { CarName = "Vios G", BrandID = brands[0].BrandID, Seats = 5, LicensePlate = "51A-12345", VIN = "TOYOTA12345678901", PricePerDay = 800000, PricePerHour = 100000, CarStatusID = statuses[0].CarStatusID, Description = "Xe phổ thông đi phố.", CurrentOdometer = 12500, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[0].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[0].LocationID, IsPremium = false, ImageURL = "https://images.toyota.com.vn/toyota/vios/exterior/vios_exterior_1.jpg" },
+                new Car { CarName = "City RS", BrandID = brands[1].BrandID, Seats = 5, LicensePlate = "51G-67890", VIN = "HONDA123456789012", PricePerDay = 900000, PricePerHour = 110000, CarStatusID = statuses[0].CarStatusID, Description = "Thể thao, tiết kiệm.", CurrentOdometer = 8000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[0].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[4].LocationID, IsPremium = false, ImageURL = "https://www.honda.com.vn/o-to/san-pham/honda-city/images/pc/img-city-color-5.png" },
+                new Car { CarName = "Accent MT", BrandID = brands[2].BrandID, Seats = 5, LicensePlate = "51D-11111", VIN = "HYUN123456789012", PricePerDay = 600000, PricePerHour = 80000, CarStatusID = statuses[0].CarStatusID, Description = "Xe gia đình.", CurrentOdometer = 20000, CreatedAt = DateTime.UtcNow.AddDays(-2), CarTypeID = carTypes[0].CarTypeID, FuelType = "Xăng", Transmission = "Số sàn", LocationID = locations[8].LocationID, IsPremium = false, DiscountPrice = 500000, ImageURL = "https://hyundai-vietnam.vn/wp-content/uploads/2021/04/hyundai-accent-trang.png" },
+                new Car { CarName = "VF5 Plus", BrandID = brands[3].BrandID, Seats = 5, LicensePlate = "51E-22222", VIN = "VFE1234567890123", PricePerDay = 750000, PricePerHour = 90000, CarStatusID = statuses[0].CarStatusID, Description = "Xe điện cỡ nhỏ.", CurrentOdometer = 5000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[0].CarTypeID, FuelType = "Điện", Transmission = "Tự động", LocationID = locations[1].LocationID, IsPremium = false, ImageURL = "https://shop.vinfastauto.com/on/demandware.static/-/Sites-app_vinfast_vn-Library/default/dw1062b9a7/images/VF5/VF5-Plus-Cam.png" },
 
                 // SUV 5 chỗ & 7 chỗ
-                new Car { CarName = "CX-5 Signature", BrandID = brands[4].BrandID, Seats = 5, LicensePlate = "51H-99887", VIN = "MAZDA123456789012", PricePerDay = 1500000, PricePerHour = 180000, CarStatusID = statuses[0].CarStatusID, Description = "Premium SUV.", CurrentOdometer = 15000, CreatedAt = DateTime.Now, CarTypeID = carTypes[1].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[2].LocationID, IsPremium = true, ImageURL = "https://mazdamotors.vn/media/m3ojj3p1/mazda-cx-5-v8_exterior-360-10.jpg" },
-                new Car { CarName = "Everest Titanium", BrandID = brands[5].BrandID, Seats = 7, LicensePlate = "51F-33333", VIN = "FORD123456789012X", PricePerDay = 1800000, PricePerHour = 200000, CarStatusID = statuses[0].CarStatusID, Description = "SUV 7 chỗ cỡ lớn.", CurrentOdometer = 10000, CreatedAt = DateTime.Now.AddDays(-5), CarTypeID = carTypes[2].CarTypeID, FuelType = "Dầu", Transmission = "Tự động", LocationID = locations[6].LocationID, IsPremium = true, ImageURL = "https://www.ford.com.vn/content/dam/Ford/website/VNM/home/car-cuv-suv/everest/2023/gallery/gallery-next-gen-everest-1.jpg" },
-                new Car { CarName = "Santa Fe Premium", BrandID = brands[2].BrandID, Seats = 7, LicensePlate = "51K-44444", VIN = "HYUN723456789012", PricePerDay = 1700000, PricePerHour = 190000, CarStatusID = statuses[0].CarStatusID, Description = "Sang trọng, đẳng cấp.", CurrentOdometer = 8500, CreatedAt = DateTime.Now, CarTypeID = carTypes[2].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[0].LocationID, IsPremium = true, DiscountPrice = 1600000, ImageURL = "https://hyundai-vietnam.vn/wp-content/uploads/2021/05/santafe-trang.png" },
-                new Car { CarName = "VF8 Eco", BrandID = brands[3].BrandID, Seats = 5, LicensePlate = "51V-55555", VIN = "VFE8234567890123", PricePerDay = 1600000, PricePerHour = 180000, CarStatusID = statuses[0].CarStatusID, Description = "SUV điện mạnh mẽ.", CurrentOdometer = 3000, CreatedAt = DateTime.Now, CarTypeID = carTypes[1].CarTypeID, FuelType = "Điện", Transmission = "Tự động", LocationID = locations[11].LocationID, IsPremium = true, ImageURL = "https://shop.vinfastauto.com/on/demandware.static/-/Sites-app_vinfast_vn-Library/default/dw1062b9a7/images/VF8/VF8-Eco-Xanh.png" },
+                new Car { CarName = "CX-5 Signature", BrandID = brands[4].BrandID, Seats = 5, LicensePlate = "51H-99887", VIN = "MAZDA123456789012", PricePerDay = 1500000, PricePerHour = 180000, CarStatusID = statuses[0].CarStatusID, Description = "Premium SUV.", CurrentOdometer = 15000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[1].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[2].LocationID, IsPremium = true, ImageURL = "https://mazdamotors.vn/media/m3ojj3p1/mazda-cx-5-v8_exterior-360-10.jpg" },
+                new Car { CarName = "Everest Titanium", BrandID = brands[5].BrandID, Seats = 7, LicensePlate = "51F-33333", VIN = "FORD123456789012X", PricePerDay = 1800000, PricePerHour = 200000, CarStatusID = statuses[0].CarStatusID, Description = "SUV 7 chỗ cỡ lớn.", CurrentOdometer = 10000, CreatedAt = DateTime.UtcNow.AddDays(-5), CarTypeID = carTypes[2].CarTypeID, FuelType = "Dầu", Transmission = "Tự động", LocationID = locations[6].LocationID, IsPremium = true, ImageURL = "https://www.ford.com.vn/content/dam/Ford/website/VNM/home/car-cuv-suv/everest/2023/gallery/gallery-next-gen-everest-1.jpg" },
+                new Car { CarName = "Santa Fe Premium", BrandID = brands[2].BrandID, Seats = 7, LicensePlate = "51K-44444", VIN = "HYUN723456789012", PricePerDay = 1700000, PricePerHour = 190000, CarStatusID = statuses[0].CarStatusID, Description = "Sang trọng, đẳng cấp.", CurrentOdometer = 8500, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[2].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[0].LocationID, IsPremium = true, DiscountPrice = 1600000, ImageURL = "https://hyundai-vietnam.vn/wp-content/uploads/2021/05/santafe-trang.png" },
+                new Car { CarName = "VF8 Eco", BrandID = brands[3].BrandID, Seats = 5, LicensePlate = "51V-55555", VIN = "VFE8234567890123", PricePerDay = 1600000, PricePerHour = 180000, CarStatusID = statuses[0].CarStatusID, Description = "SUV điện mạnh mẽ.", CurrentOdometer = 3000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[1].CarTypeID, FuelType = "Điện", Transmission = "Tự động", LocationID = locations[11].LocationID, IsPremium = true, ImageURL = "https://shop.vinfastauto.com/on/demandware.static/-/Sites-app_vinfast_vn-Library/default/dw1062b9a7/images/VF8/VF8-Eco-Xanh.png" },
 
                 // MPV 7 chỗ
-                new Car { CarName = "Xpander AT", BrandID = brands[6].BrandID, Seats = 7, LicensePlate = "51L-66666", VIN = "MITSU12345678901", PricePerDay = 950000, PricePerHour = 120000, CarStatusID = statuses[0].CarStatusID, Description = "MPV Quốc dân.", CurrentOdometer = 18000, CreatedAt = DateTime.Now, CarTypeID = carTypes[3].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[7].LocationID, IsPremium = false, ImageURL = "https://www.mitsubishi-motors.com.vn/storage/xpander/xpander-trang.png" },
-                new Car { CarName = "Carnival Signature", BrandID = brands[7].BrandID, Seats = 7, LicensePlate = "51C-77777", VIN = "KIA1234567890123", PricePerDay = 2200000, PricePerHour = 250000, CarStatusID = statuses[0].CarStatusID, Description = "MPV VIP Rộng rãi.", CurrentOdometer = 5000, CreatedAt = DateTime.Now.AddDays(-10), CarTypeID = carTypes[3].CarTypeID, FuelType = "Dầu", Transmission = "Tự động", LocationID = locations[0].LocationID, IsPremium = true, ImageURL = "https://kia-vietnam.com.vn/storage/carnival/carnival-trang.png" },
-                new Car { CarName = "Innova Cross", BrandID = brands[0].BrandID, Seats = 7, LicensePlate = "51I-88888", VIN = "TOYOI12345678901", PricePerDay = 1200000, PricePerHour = 150000, CarStatusID = statuses[0].CarStatusID, Description = "Bền bỉ rộng rãi.", CurrentOdometer = 2000, CreatedAt = DateTime.Now, CarTypeID = carTypes[3].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[5].LocationID, IsPremium = false, ImageURL = "https://toyota-vietnam.vn/wp-content/uploads/2023/10/innova-cross-trang.png" },
+                new Car { CarName = "Xpander AT", BrandID = brands[6].BrandID, Seats = 7, LicensePlate = "51L-66666", VIN = "MITSU12345678901", PricePerDay = 950000, PricePerHour = 120000, CarStatusID = statuses[0].CarStatusID, Description = "MPV Quốc dân.", CurrentOdometer = 18000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[3].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[7].LocationID, IsPremium = false, ImageURL = "https://www.mitsubishi-motors.com.vn/storage/xpander/xpander-trang.png" },
+                new Car { CarName = "Carnival Signature", BrandID = brands[7].BrandID, Seats = 7, LicensePlate = "51C-77777", VIN = "KIA1234567890123", PricePerDay = 2200000, PricePerHour = 250000, CarStatusID = statuses[0].CarStatusID, Description = "MPV VIP Rộng rãi.", CurrentOdometer = 5000, CreatedAt = DateTime.UtcNow.AddDays(-10), CarTypeID = carTypes[3].CarTypeID, FuelType = "Dầu", Transmission = "Tự động", LocationID = locations[0].LocationID, IsPremium = true, ImageURL = "https://kia-vietnam.com.vn/storage/carnival/carnival-trang.png" },
+                new Car { CarName = "Innova Cross", BrandID = brands[0].BrandID, Seats = 7, LicensePlate = "51I-88888", VIN = "TOYOI12345678901", PricePerDay = 1200000, PricePerHour = 150000, CarStatusID = statuses[0].CarStatusID, Description = "Bền bỉ rộng rãi.", CurrentOdometer = 2000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[3].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[5].LocationID, IsPremium = false, ImageURL = "https://toyota-vietnam.vn/wp-content/uploads/2023/10/innova-cross-trang.png" },
 
                 // Bán Tải (Pickup)
-                new Car { CarName = "Ranger Raptor", BrandID = brands[5].BrandID, Seats = 5, LicensePlate = "51C-11223", VIN = "FORDR12345678901", PricePerDay = 2500000, PricePerHour = 300000, CarStatusID = statuses[0].CarStatusID, Description = "Siêu bán tải.", CurrentOdometer = 5400, CreatedAt = DateTime.Now, CarTypeID = carTypes[4].CarTypeID, FuelType = "Dầu", Transmission = "Tự động", LocationID = locations[1].LocationID, IsPremium = true, ImageURL = "https://www.ford.com.vn/content/dam/Ford/website/VNM/home/car-trucks/ranger-raptor/raptor-gallery-1.jpg" },
-                new Car { CarName = "Hilux Adventure", BrandID = brands[0].BrandID, Seats = 5, LicensePlate = "51C-99999", VIN = "TOYOH12345678901", PricePerDay = 1300000, PricePerHour = 160000, CarStatusID = statuses[0].CarStatusID, Description = "Bán tải bền bỉ.", CurrentOdometer = 25000, CreatedAt = DateTime.Now, CarTypeID = carTypes[4].CarTypeID, FuelType = "Dầu", Transmission = "Số tự động", LocationID = locations[9].LocationID, IsPremium = false, DiscountPrice = 1100000, ImageURL = "https://toyota-vietnam.vn/wp-content/uploads/2023/03/toyota-hilux-trang.png" },
+                new Car { CarName = "Ranger Raptor", BrandID = brands[5].BrandID, Seats = 5, LicensePlate = "51C-11223", VIN = "FORDR12345678901", PricePerDay = 2500000, PricePerHour = 300000, CarStatusID = statuses[0].CarStatusID, Description = "Siêu bán tải.", CurrentOdometer = 5400, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[4].CarTypeID, FuelType = "Dầu", Transmission = "Tự động", LocationID = locations[1].LocationID, IsPremium = true, ImageURL = "https://www.ford.com.vn/content/dam/Ford/website/VNM/home/car-trucks/ranger-raptor/raptor-gallery-1.jpg" },
+                new Car { CarName = "Hilux Adventure", BrandID = brands[0].BrandID, Seats = 5, LicensePlate = "51C-99999", VIN = "TOYOH12345678901", PricePerDay = 1300000, PricePerHour = 160000, CarStatusID = statuses[0].CarStatusID, Description = "Bán tải bền bỉ.", CurrentOdometer = 25000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[4].CarTypeID, FuelType = "Dầu", Transmission = "Số tự động", LocationID = locations[9].LocationID, IsPremium = false, DiscountPrice = 1100000, ImageURL = "https://toyota-vietnam.vn/wp-content/uploads/2023/03/toyota-hilux-trang.png" },
 
                 // Hatchback
-                new Car { CarName = "Morning MT", BrandID = brands[7].BrandID, Seats = 5, LicensePlate = "51H-10101", VIN = "KIAM123456789012", PricePerDay = 450000, PricePerHour = 60000, CarStatusID = statuses[0].CarStatusID, Description = "Xe cỡ nhỏ di chuyển hẻm.", CurrentOdometer = 35000, CreatedAt = DateTime.Now.AddDays(-1), CarTypeID = carTypes[5].CarTypeID, FuelType = "Xăng", Transmission = "Số sàn", LocationID = locations[3].LocationID, IsPremium = false, ImageURL = "https://kia-vietnam.com.vn/storage/morning/morning-trang.png" },
-                new Car { CarName = "Grand i10", BrandID = brands[2].BrandID, Seats = 5, LicensePlate = "51H-20202", VIN = "HYUNI12345678901", PricePerDay = 550000, PricePerHour = 70000, CarStatusID = statuses[0].CarStatusID, Description = "Thiết kế mới, rộng hàng đầu phân khúc nhỏ.", CurrentOdometer = 12000, CreatedAt = DateTime.Now, CarTypeID = carTypes[5].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[10].LocationID, IsPremium = false, ImageURL = "https://hyundai-vietnam.vn/wp-content/uploads/2021/08/i10-trang.png" }
+                new Car { CarName = "Morning MT", BrandID = brands[7].BrandID, Seats = 5, LicensePlate = "51H-10101", VIN = "KIAM123456789012", PricePerDay = 450000, PricePerHour = 60000, CarStatusID = statuses[0].CarStatusID, Description = "Xe cỡ nhỏ di chuyển hẻm.", CurrentOdometer = 35000, CreatedAt = DateTime.UtcNow.AddDays(-1), CarTypeID = carTypes[5].CarTypeID, FuelType = "Xăng", Transmission = "Số sàn", LocationID = locations[3].LocationID, IsPremium = false, ImageURL = "https://kia-vietnam.com.vn/storage/morning/morning-trang.png" },
+                new Car { CarName = "Grand i10", BrandID = brands[2].BrandID, Seats = 5, LicensePlate = "51H-20202", VIN = "HYUNI12345678901", PricePerDay = 550000, PricePerHour = 70000, CarStatusID = statuses[0].CarStatusID, Description = "Thiết kế mới, rộng hàng đầu phân khúc nhỏ.", CurrentOdometer = 12000, CreatedAt = DateTime.UtcNow, CarTypeID = carTypes[5].CarTypeID, FuelType = "Xăng", Transmission = "Tự động", LocationID = locations[10].LocationID, IsPremium = false, ImageURL = "https://hyundai-vietnam.vn/wp-content/uploads/2021/08/i10-trang.png" }
             };
             
             context.Cars.AddRange(cars);
@@ -173,8 +173,8 @@ namespace CarRentalSystem.Data
             var user = context.Users.FirstOrDefault(u => u.Role == "Customer");
             if (car1 != null && user != null)
             {
-                context.Reviews.Add(new Review { CarID = car1.CarID, UserID = user.UserID, Rating = 5, Comment = "Rất sạch sẽ và chạy bốc!", CreatedAt = DateTime.Now.AddDays(-5) });
-                context.MaintenanceLogs.Add(new MaintenanceLog { CarID = car1.CarID, ServiceDate = DateTime.Now.AddMonths(-1), Description = "Bảo trì định kì", Cost = 1500000, OdometerAtService = 12000, ServiceCenter = "Toyota Official Service" });
+                context.Reviews.Add(new Review { CarID = car1.CarID, UserID = user.UserID, Rating = 5, Comment = "Rất sạch sẽ và chạy bốc!", CreatedAt = DateTime.UtcNow.AddDays(-5) });
+                context.MaintenanceLogs.Add(new MaintenanceLog { CarID = car1.CarID, ServiceDate = DateTime.UtcNow.AddMonths(-1), Description = "Bảo trì định kì", Cost = 1500000, OdometerAtService = 12000, ServiceCenter = "Toyota Official Service" });
                 context.SaveChanges();
             }
 
@@ -199,9 +199,9 @@ namespace CarRentalSystem.Data
             {
                 context.Promotions.AddRange(new List<Promotion>
                 {
-                    new Promotion { PromoCode = "WELCOME10", DiscountPercent = 10, MaxDiscountAmount = 200000, ValidFrom = DateTime.Now.AddDays(-30), ValidUntil = DateTime.Now.AddDays(90), UsageLimit = 100, IsActive = true },
-                    new Promotion { PromoCode = "SUMMER20", DiscountPercent = 20, MaxDiscountAmount = 500000, ValidFrom = DateTime.Now.AddDays(-10), ValidUntil = DateTime.Now.AddDays(60), UsageLimit = 50, IsActive = true },
-                    new Promotion { PromoCode = "VIP30", DiscountPercent = 30, MaxDiscountAmount = 1000000, ValidFrom = DateTime.Now, ValidUntil = DateTime.Now.AddDays(30), UsageLimit = 10, IsActive = true }
+                    new Promotion { PromoCode = "WELCOME10", DiscountPercent = 10, MaxDiscountAmount = 200000, ValidFrom = DateTime.UtcNow.AddDays(-30), ValidUntil = DateTime.UtcNow.AddDays(90), UsageLimit = 100, IsActive = true },
+                    new Promotion { PromoCode = "SUMMER20", DiscountPercent = 20, MaxDiscountAmount = 500000, ValidFrom = DateTime.UtcNow.AddDays(-10), ValidUntil = DateTime.UtcNow.AddDays(60), UsageLimit = 50, IsActive = true },
+                    new Promotion { PromoCode = "VIP30", DiscountPercent = 30, MaxDiscountAmount = 1000000, ValidFrom = DateTime.UtcNow, ValidUntil = DateTime.UtcNow.AddDays(30), UsageLimit = 10, IsActive = true }
                 });
                 context.SaveChanges();
             }
@@ -245,8 +245,8 @@ namespace CarRentalSystem.Data
                     {
                         EntityID = car1.CarID,
                         EntityType = "Car",
-                        StartTime = DateTime.Now.AddDays(1),
-                        EndTime = DateTime.Now.AddDays(3),
+                        StartTime = DateTime.UtcNow.AddDays(1),
+                        EndTime = DateTime.UtcNow.AddDays(3),
                         Status = "Booked" // This car is unavailable for the next 1-3 days
                     });
                     context.SaveChanges();

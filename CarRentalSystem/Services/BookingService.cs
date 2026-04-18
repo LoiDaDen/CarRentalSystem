@@ -82,12 +82,12 @@ namespace CarRentalSystem.Services
             foreach (var b in bookings)
             {
                 if ((b.BookingStatus?.Name == BookingStatusConstants.Draft || b.BookingStatus?.Name == BookingStatusConstants.Pending) &&
-                    b.StartDate.AddHours(1) < DateTime.Now)
+                    b.StartDate.AddHours(1) < DateTime.UtcNow)
                 {
                     b.BookingStatusID = cancelStatus.BookingStatusID;
                     b.BookingStatus = cancelStatus;
                     b.AdminNotes = (string.IsNullOrEmpty(b.AdminNotes) ? "" : b.AdminNotes + "\n") +
-                                   $"Hệ thống tự động hủy đơn lúc {DateTime.Now:dd/MM/yyyy HH:mm} do quá giờ nhận xe 1 tiếng mà chưa được xác nhận.";
+                                   $"Hệ thống tự động hủy đơn lúc {DateTime.UtcNow:dd/MM/yyyy HH:mm} do quá giờ nhận xe 1 tiếng mà chưa được xác nhận.";
                     _bookingRepo.Update(b);
                     hasChanges = true;
                 }

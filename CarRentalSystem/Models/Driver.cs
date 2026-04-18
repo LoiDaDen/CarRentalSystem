@@ -62,7 +62,7 @@ namespace CarRentalSystem.Models
         [ForeignKey("LocationID")]
         public Location? Location { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         public ICollection<DriverBooking>? DriverBookings { get; set; } = new List<DriverBooking>();
         public ICollection<DriverReview>? DriverReviews { get; set; } = new List<DriverReview>();

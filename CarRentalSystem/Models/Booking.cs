@@ -30,7 +30,7 @@ namespace CarRentalSystem.Models
         [StringLength(20)]
         public string InsuranceTier { get; set; } = "Basic"; // Basic, Premium, Full Cover
         
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [ForeignKey("UserID")]
         public User? User { get; set; }

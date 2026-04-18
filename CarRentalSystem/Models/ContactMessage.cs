@@ -24,7 +24,7 @@ namespace CarRentalSystem.Models
         [Required(ErrorMessage = "Nội dung là bắt buộc")]
         public string Message { get; set; } = null!;
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public bool IsResolved { get; set; } = false;
 

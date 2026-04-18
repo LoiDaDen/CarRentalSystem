@@ -18,7 +18,7 @@ namespace CarRentalSystem.Models
         [Required, MaxLength(20)]
         public string Type { get; set; } = "CheckIn"; // "CheckIn" or "CheckOut"
 
-        public DateTime RecordDate { get; set; } = DateTime.Now;
+        public DateTime RecordDate { get; set; } = DateTime.UtcNow;
 
         [Required]
         public int Odo { get; set; }

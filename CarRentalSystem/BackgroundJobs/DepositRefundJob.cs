@@ -23,7 +23,7 @@ namespace CarRentalSystem.BackgroundJobs
         public async Task Execute()
         {
             _logger.LogInformation("💰 [Hangfire] Bắt đầu xử lý hoàn cọc...");
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var refundThreshold = now.AddDays(-15); // 15 ngày holding period
 
             // Tìm các booking đã trả xe >= 15 ngày với DepositStatus = "PendingRefund"

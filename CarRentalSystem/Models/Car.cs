@@ -31,7 +31,7 @@ namespace CarRentalSystem.Models
         public CarStatus? CarStatus { get; set; }
         
         public string? Description { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Professional Filtering & Enterprise Features
         [MaxLength(50)]

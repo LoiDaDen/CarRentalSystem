@@ -145,7 +145,7 @@ namespace CarRentalSystem.Controllers
                 {
                     var t = carTemplates[(carIdx + i) % carTemplates.Length];
                     string plate = $"{plates[rng.Next(plates.Length)]}-{rng.Next(100, 999)}.{rng.Next(10, 99)}";
-                    string vin = $"VN{DateTime.Now.Year % 100}{carIdx + i:D3}{rng.Next(10000, 99999)}";
+                    string vin = $"VN{DateTime.UtcNow.Year % 100}{carIdx + i:D3}{rng.Next(10000, 99999)}";
                     double lat = Math.Round(gps.bLat + (rng.NextDouble() * 2 - 1) * gps.sp, 6);
                     double lng = Math.Round(gps.bLng + (rng.NextDouble() * 2 - 1) * gps.sp, 6);
                     bool isEV = t.Fuel == "Dien";
@@ -176,7 +176,7 @@ namespace CarRentalSystem.Controllers
                         RangePerCharge = isEV ? 250 + rng.Next(0, 150) : null,
                         CurrentOdometer = rng.Next(5000, 80000),
                         Description = $"Xe {t.Brand} {t.Model} {t.Seats} cho, {t.Fuel}, {t.Trans}. Khu vuc {loc.Key}.",
-                        CreatedAt = DateTime.Now.AddDays(-rng.Next(30, 365)),
+                        CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)),
                     });
                     totalSeeded++;
                 }

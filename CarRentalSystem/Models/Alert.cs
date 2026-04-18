@@ -11,7 +11,7 @@ namespace CarRentalSystem.Models
         public int CarID { get; set; }
         [Required, MaxLength(50)]
         public string AlertType { get; set; } // OffRoute, Overdue, GpsLost, SuspiciousStop, TheftRisk
-        public DateTime AlertTime { get; set; } = DateTime.Now;
+        public DateTime AlertTime { get; set; } = DateTime.UtcNow;
         [Required, MaxLength(20)]
         public string Status { get; set; }
         public string? Description { get; set; }

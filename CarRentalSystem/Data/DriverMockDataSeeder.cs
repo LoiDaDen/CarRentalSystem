@@ -47,7 +47,7 @@ namespace CarRentalSystem.Data
                     Role = "Customer",
                     IsEmailVerified = true,
                     IsVerified = true,
-                    CreatedAt = DateTime.Now.AddMonths(-2)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-2)
                 });
             }
 
@@ -80,7 +80,7 @@ namespace CarRentalSystem.Data
                     TotalTrips = 182,
                     Description = "Tai xe premium cho sedan va SUV 5 cho, rating cao va ty le hoan thanh tot.",
                     LocationID = locations[0].LocationID,
-                    CreatedAt = DateTime.Now.AddMonths(-18)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-18)
                 },
                 new Driver
                 {
@@ -98,7 +98,7 @@ namespace CarRentalSystem.Data
                     TotalTrips = 97,
                     Description = "Tai xe dang co chuyen active, phu hop test truong hop khong the match.",
                     LocationID = locations[Math.Min(1, locations.Count - 1)].LocationID,
-                    CreatedAt = DateTime.Now.AddMonths(-12)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-12)
                 },
                 new Driver
                 {
@@ -116,7 +116,7 @@ namespace CarRentalSystem.Data
                     TotalTrips = 54,
                     Description = "Tai xe cho xe 7 cho va xe cong tac, co lich su completed va cancelled.",
                     LocationID = locations[Math.Min(2, locations.Count - 1)].LocationID,
-                    CreatedAt = DateTime.Now.AddMonths(-9)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-9)
                 },
                 new Driver
                 {
@@ -134,7 +134,7 @@ namespace CarRentalSystem.Data
                     TotalTrips = 211,
                     Description = "Tai xe hang cao, kinh nghiem nhieu, phu hop test scoring theo chat luong va gia.",
                     LocationID = locations[Math.Min(3, locations.Count - 1)].LocationID,
-                    CreatedAt = DateTime.Now.AddMonths(-24)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-24)
                 },
                 new Driver
                 {
@@ -152,7 +152,7 @@ namespace CarRentalSystem.Data
                     TotalTrips = 8,
                     Description = "Tai xe moi onboard, chua duoc duyet, dung de test filter IsApproved.",
                     LocationID = locations[0].LocationID,
-                    CreatedAt = DateTime.Now.AddDays(-20)
+                    CreatedAt = DateTime.UtcNow.AddDays(-20)
                 },
                 new Driver
                 {
@@ -170,7 +170,7 @@ namespace CarRentalSystem.Data
                     TotalTrips = 39,
                     Description = "Tai xe tam tat de mo phong time-off hoac tam dung nhan chuyen.",
                     LocationID = locations[Math.Min(1, locations.Count - 1)].LocationID,
-                    CreatedAt = DateTime.Now.AddMonths(-6)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-6)
                 },
                 new Driver
                 {
@@ -188,7 +188,7 @@ namespace CarRentalSystem.Data
                     TotalTrips = 26,
                     Description = "Tai xe gia tot, rating trung binh, phu hop test trade-off ETA va chi phi.",
                     LocationID = locations[0].LocationID,
-                    CreatedAt = DateTime.Now.AddMonths(-5)
+                    CreatedAt = DateTime.UtcNow.AddMonths(-5)
                 }
             };
 
@@ -254,8 +254,8 @@ namespace CarRentalSystem.Data
                     DriverEmail = "tai.driver@seed.local",
                     CustomerIndex = 0,
                     CarIndex = 0,
-                    StartAt = DateTime.Now.AddDays(-18).AddHours(8),
-                    EndAt = DateTime.Now.AddDays(-18).AddHours(14),
+                    StartAt = DateTime.UtcNow.AddDays(-18).AddHours(8),
+                    EndAt = DateTime.UtcNow.AddDays(-18).AddHours(14),
                     BookingStatus = "Completed",
                     DriverBookingStatus = "Completed",
                     DriverFee = 720000m,
@@ -267,8 +267,8 @@ namespace CarRentalSystem.Data
                     DriverEmail = "tai.driver@seed.local",
                     CustomerIndex = 1,
                     CarIndex = 4,
-                    StartAt = DateTime.Now.AddDays(-7).AddHours(7),
-                    EndAt = DateTime.Now.AddDays(-5).AddHours(19),
+                    StartAt = DateTime.UtcNow.AddDays(-7).AddHours(7),
+                    EndAt = DateTime.UtcNow.AddDays(-5).AddHours(19),
                     BookingStatus = "Completed",
                     DriverBookingStatus = "Completed",
                     DriverFee = 1800000m,
@@ -280,8 +280,8 @@ namespace CarRentalSystem.Data
                     DriverEmail = "bao.driver@seed.local",
                     CustomerIndex = 2,
                     CarIndex = 7,
-                    StartAt = DateTime.Now.AddDays(-10).AddHours(9),
-                    EndAt = DateTime.Now.AddDays(-9).AddHours(18),
+                    StartAt = DateTime.UtcNow.AddDays(-10).AddHours(9),
+                    EndAt = DateTime.UtcNow.AddDays(-9).AddHours(18),
                     BookingStatus = "Cancelled",
                     DriverBookingStatus = "Cancelled",
                     DriverFee = 860000m,
@@ -293,8 +293,8 @@ namespace CarRentalSystem.Data
                     DriverEmail = "khang.driver@seed.local",
                     CustomerIndex = 0,
                     CarIndex = 5,
-                    StartAt = DateTime.Now.AddHours(-2),
-                    EndAt = DateTime.Now.AddHours(6),
+                    StartAt = DateTime.UtcNow.AddHours(-2),
+                    EndAt = DateTime.UtcNow.AddHours(6),
                     BookingStatus = "Active",
                     DriverBookingStatus = "Active",
                     DriverFee = 800000m,
@@ -306,8 +306,8 @@ namespace CarRentalSystem.Data
                     DriverEmail = "duc.driver@seed.local",
                     CustomerIndex = 1,
                     CarIndex = 9,
-                    StartAt = DateTime.Now.AddDays(2).Date.AddHours(6),
-                    EndAt = DateTime.Now.AddDays(2).Date.AddHours(12),
+                    StartAt = DateTime.UtcNow.AddDays(2).Date.AddHours(6),
+                    EndAt = DateTime.UtcNow.AddDays(2).Date.AddHours(12),
                     BookingStatus = "Pending",
                     DriverBookingStatus = "Pending",
                     DriverFee = 540000m,
@@ -319,8 +319,8 @@ namespace CarRentalSystem.Data
                     DriverEmail = "huy.driver@seed.local",
                     CustomerIndex = 2,
                     CarIndex = 10,
-                    StartAt = DateTime.Now.AddDays(4).Date.AddHours(8),
-                    EndAt = DateTime.Now.AddDays(7).Date.AddHours(18),
+                    StartAt = DateTime.UtcNow.AddDays(4).Date.AddHours(8),
+                    EndAt = DateTime.UtcNow.AddDays(7).Date.AddHours(18),
                     BookingStatus = "Confirmed",
                     DriverBookingStatus = "Confirmed",
                     DriverFee = 3600000m,

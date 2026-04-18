@@ -14,7 +14,7 @@ namespace CarRentalSystem.Models
         [ForeignKey("UserID")]
         public User? User { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime ExpiresAt { get; set; } // e.g., 15 mins hold time
         
         public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();

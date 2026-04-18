@@ -20,7 +20,7 @@ namespace CarRentalSystem.Models
         [StringLength(50)]
         public string Status { get; set; } = "Pending"; // Pending, Paid, Failed
         
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? CompletedAt { get; set; }
         
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();

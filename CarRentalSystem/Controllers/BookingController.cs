@@ -52,7 +52,7 @@ namespace CarRentalSystem.Controllers
             if (car == null) return NotFound();
 
             // Phase 3: Maintenance blocking
-            if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value < DateTime.Now)
+            if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value < DateTime.UtcNow)
             {
                 TempData["BookingError"] = "Xe này đang tạm ngưng cho thuê do quá hạn Đăng Kiểm. Vui lòng chọn xe khác.";
                 return RedirectToAction("Details", "Car", new { id = CarID });
@@ -158,7 +158,7 @@ namespace CarRentalSystem.Controllers
             }
 
             // Generate a temporary booking code for display
-            ViewBag.TempBookingCode = DateTime.Now.Ticks.ToString();
+            ViewBag.TempBookingCode = DateTime.UtcNow.Ticks.ToString();
 
             // Fetch available drivers for selection
             ViewBag.Drivers = await _context.Drivers
@@ -314,7 +314,7 @@ namespace CarRentalSystem.Controllers
                 if (booking.PromotionID.HasValue)
                 {
                     var promo = await _context.Promotions.FindAsync(booking.PromotionID.Value);
-                    if (promo != null && promo.IsActive && promo.ValidFrom <= DateTime.Now && promo.ValidUntil >= DateTime.Now && promo.UsedCount < promo.UsageLimit)
+                    if (promo != null && promo.IsActive && promo.ValidFrom <= DateTime.UtcNow && promo.ValidUntil >= DateTime.UtcNow && promo.UsedCount < promo.UsageLimit)
                     {
                         decimal discount = booking.TotalPrice * promo.DiscountPercent / 100m;
                         if (promo.MaxDiscountAmount.HasValue && discount > promo.MaxDiscountAmount.Value)
@@ -438,7 +438,7 @@ namespace CarRentalSystem.Controllers
             }
 
             // 2. Start Trip
-            booking.ActualPickupDate = DateTime.Now;
+            booking.ActualPickupDate = DateTime.UtcNow;
             
             var activeStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == "Active" || s.Name.Contains("thuê") || s.Name.Contains("đi"));
             if (activeStatus == null)
@@ -513,7 +513,7 @@ namespace CarRentalSystem.Controllers
 
 
             // 1. Record Return Date
-            booking.ActualReturnDate = DateTime.Now;
+            booking.ActualReturnDate = DateTime.UtcNow;
             
             // 2. Update status
             await _bookingService.UpdateBookingStatusAsync(id, "Completed");
@@ -630,7 +630,7 @@ namespace CarRentalSystem.Controllers
                 var newContract = new DigitalContract
                 {
                     BookingID = booking.BookingID,
-                    ContractNo = $"HD-{booking.BookingID}-{DateTime.Now:MMddyy}",
+                    ContractNo = $"HD-{booking.BookingID}-{DateTime.UtcNow:MMddyy}",
                     CustomerName = user?.Name ?? "",
                     CustomerIdentityCard = "Chưa cập nhật",
                     CustomerPhone = user?.Phone ?? "",
@@ -677,7 +677,7 @@ namespace CarRentalSystem.Controllers
 - Hợp đồng điện tử này có giá trị pháp lý tương đương bản giấy.",
                     IsSignedByCustomer = false,
                     IsSignedByOwner = booking.BookingStatus?.Name == "Confirmed" || booking.BookingStatus?.Name == "Active",
-                    OwnerSignDate = (booking.BookingStatus?.Name == "Confirmed" || booking.BookingStatus?.Name == "Active") ? DateTime.Now : null
+                    OwnerSignDate = (booking.BookingStatus?.Name == "Confirmed" || booking.BookingStatus?.Name == "Active") ? DateTime.UtcNow : null
                 };
 
                 _context.DigitalContracts.Add(newContract);
@@ -687,7 +687,7 @@ namespace CarRentalSystem.Controllers
             else if (!booking.DigitalContract.IsSignedByOwner && (booking.BookingStatus?.Name == "Confirmed" || booking.BookingStatus?.Name == "Active"))
             {
                 booking.DigitalContract.IsSignedByOwner = true;
-                booking.DigitalContract.OwnerSignDate = DateTime.Now;
+                booking.DigitalContract.OwnerSignDate = DateTime.UtcNow;
                 _context.DigitalContracts.Update(booking.DigitalContract);
                 await _context.SaveChangesAsync();
             }
@@ -737,12 +737,12 @@ namespace CarRentalSystem.Controllers
                 contract.CustomerBankAccount = customerBankAccount;
 
                 contract.IsSignedByCustomer = true;
-                contract.CustomerSignDate = DateTime.Now;
+                contract.CustomerSignDate = DateTime.UtcNow;
                 
                 // Optional: Admin also auto-signs or wait for admin manual sign.
                 // Assuming "Hợp đồng được 2 bên đồng ý" when the customer signs it, Admin's system can mark it.
                 contract.IsSignedByOwner = true;
-                contract.OwnerSignDate = DateTime.Now;
+                contract.OwnerSignDate = DateTime.UtcNow;
 
                 _context.DigitalContracts.Update(contract);
                 await _context.SaveChangesAsync();
@@ -779,7 +779,7 @@ namespace CarRentalSystem.Controllers
                 Amount = booking.TotalPrice * 0.2m,
                 PaymentMethod = "Manual Transfer",
                 PaymentStatus = "Pending",
-                PaymentDate = DateTime.Now
+                PaymentDate = DateTime.UtcNow
             };
             await _bookingService.ProcessPaymentAsync(payment);
 

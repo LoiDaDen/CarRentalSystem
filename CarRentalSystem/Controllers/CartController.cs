@@ -5,16 +5,20 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
+using CarRentalSystem.Services;
+
 namespace CarRentalSystem.Controllers
 {
     [Authorize]
     public class CartController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPiiEncryptionService _piiEncryption;
 
-        public CartController(ApplicationDbContext context)
+        public CartController(ApplicationDbContext context, IPiiEncryptionService piiEncryption)
         {
             _context = context;
+            _piiEncryption = piiEncryption;
         }
 
         public async Task<IActionResult> Index()
@@ -283,7 +287,7 @@ namespace CarRentalSystem.Controllers
                 UserID = userId,
                 TotalAmount = totalAmount,
                 Status = BookingStatusConstants.Draft,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
             _context.BookingTransactions.Add(transaction);
             await _context.SaveChangesAsync();
@@ -374,9 +378,9 @@ namespace CarRentalSystem.Controllers
             var newContract = new DigitalContract
             {
                 TransactionID = transaction.TransactionID,
-                ContractNo = $"HD-Cart-{transaction.TransactionID}-{DateTime.Now:MMddyy}",
+                ContractNo = $"HD-Cart-{transaction.TransactionID}-{DateTime.UtcNow:MMddyy}",
                 CustomerName = user?.Name ?? "",
-                CustomerIdentityCard = user?.CitizenId ?? "Chưa cập nhật",
+                CustomerIdentityCard = _piiEncryption.DecryptIfNotEmpty(user?.CitizenId) ?? "Chưa cập nhật",
                 CustomerPhone = user?.Phone ?? "",
                 CustomerAddress = user?.Address ?? "Chưa cập nhật",
                 CarLicensePlate = carPlates,

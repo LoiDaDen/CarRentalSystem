@@ -28,7 +28,7 @@ namespace CarRentalSystem.Models
         public User? User { get; set; }
 
         /// <summary>Ngày xuất hóa đơn</summary>
-        public DateTime IssueDate { get; set; } = DateTime.Now;
+        public DateTime IssueDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>Hạn thanh toán</summary>
         public DateTime? DueDate { get; set; }
@@ -101,7 +101,7 @@ namespace CarRentalSystem.Models
         [MaxLength(100)]
         public string? CreatedBy { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? PaidAt { get; set; }
     }
 }

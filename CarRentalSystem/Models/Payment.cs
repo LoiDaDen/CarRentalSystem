@@ -12,7 +12,7 @@ namespace CarRentalSystem.Models
         public decimal Amount { get; set; }
         [Required, MaxLength(50)]
         public string PaymentMethod { get; set; } // Cash, Online
-        public DateTime PaymentDate { get; set; } = DateTime.Now;
+        public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
         [Required, MaxLength(20)]
         public string PaymentStatus { get; set; } // Paid, Pending, Failed
 

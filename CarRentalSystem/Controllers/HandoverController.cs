@@ -56,7 +56,7 @@ namespace CarRentalSystem.Controllers
             {
                 BookingID = BookingID,
                 Type = Type == "CheckOut" ? "CheckOut" : "CheckIn",
-                RecordDate = DateTime.Now,
+                RecordDate = DateTime.UtcNow,
                 Odo = Odo,
                 FuelLevel = FuelLevel
             };
@@ -107,7 +107,7 @@ namespace CarRentalSystem.Controllers
             
             if(record.Type == "CheckOut")
             {
-                booking.ActualReturnDate = DateTime.Now;
+                booking.ActualReturnDate = DateTime.UtcNow;
                 // Keep DepositStatus as "Holding" for 15 days, Admin will refund later.
             }
 

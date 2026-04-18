@@ -84,8 +84,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     if (!existingContract)
                     {
                         var contractCount = await _context.PartnerContracts.CountAsync() + 1;
-                        var contractNo = $"{contractCount:D4}/{DateTime.Now.Year}/HĐHT-XT";
-                        var now = DateTime.Now;
+                        var contractNo = $"{contractCount:D4}/{DateTime.UtcNow.Year}/HĐHT-XT";
+                        var now = DateTime.UtcNow;
 
                         var contract = new PartnerContract
                         {

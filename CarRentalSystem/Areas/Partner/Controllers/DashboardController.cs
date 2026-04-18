@@ -198,7 +198,7 @@ namespace CarRentalSystem.Areas.Partner.Controllers
 
             car.OwnerID = userId;
             car.CommissionRate = 20m;
-            car.CreatedAt = DateTime.Now;
+            car.CreatedAt = DateTime.UtcNow;
 
             if (car.PricePerHour == 0)
             {
@@ -367,14 +367,14 @@ namespace CarRentalSystem.Areas.Partner.Controllers
                 return RedirectToAction("Contract");
             }
 
-            if (DateTime.Now > contract.ExpiresAt)
+            if (DateTime.UtcNow > contract.ExpiresAt)
             {
                 TempData["Error"] = "Hợp đồng đã quá hạn ký (7 ngày). Vui lòng liên hệ Admin.";
                 return RedirectToAction("Contract");
             }
 
             contract.SignedByPartyB = true;
-            contract.PartyBSignDate = DateTime.Now;
+            contract.PartyBSignDate = DateTime.UtcNow;
             contract.Status = "Active";
             await _db.SaveChangesAsync();
 
@@ -401,7 +401,7 @@ namespace CarRentalSystem.Areas.Partner.Controllers
             }
 
             contract.Status = "Cancelled";
-            contract.CancelledAt = DateTime.Now;
+            contract.CancelledAt = DateTime.UtcNow;
             contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
             await _db.SaveChangesAsync();
 

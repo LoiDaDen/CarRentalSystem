@@ -73,7 +73,7 @@ namespace CarRentalSystem.Helpers
                 AlertType = alertType,
                 Description = description,
                 Status = "Active",
-                AlertTime = DateTime.Now
+                AlertTime = DateTime.UtcNow
             };
             await _trackingService.AddAlertAsync(alert);
         }

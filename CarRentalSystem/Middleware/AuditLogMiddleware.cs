@@ -71,7 +71,7 @@ namespace CarRentalSystem.Middleware
                     ? context.Request.Headers["User-Agent"].ToString()[..500]
                     : context.Request.Headers["User-Agent"].ToString(),
                 RequestUrl = $"{method} {path}",
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.UtcNow
             };
 
             db.AuditLogs.Add(log);

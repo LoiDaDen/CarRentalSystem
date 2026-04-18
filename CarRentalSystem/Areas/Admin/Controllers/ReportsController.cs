@@ -26,7 +26,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var startOfMonth = new DateTime(now.Year, now.Month, 1);
 
             var bookings = await _context.Bookings
@@ -184,7 +184,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> ExportExcel(string period = "month")
         {
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             DateTime startDate = period switch
             {
                 "week" => now.AddDays(-7),

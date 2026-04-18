@@ -26,7 +26,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [HttpPost]
         public async Task<IActionResult> ReceiveData([FromBody] VehicleTracking tracking)
         {
-            tracking.Timestamp = DateTime.Now;
+            tracking.Timestamp = DateTime.UtcNow;
             await _trackingService.AddTrackingAsync(tracking);
             
             // Trigger alert check

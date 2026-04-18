@@ -55,6 +55,6 @@ namespace CarRentalSystem.Models
         [MaxLength(500)]
         public string? RequestUrl { get; set; }
 
-        public DateTime Timestamp { get; set; } = DateTime.Now;
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }

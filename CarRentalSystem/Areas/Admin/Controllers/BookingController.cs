@@ -75,7 +75,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> GetRecentNotifications()
         {
             var allBookings = await _bookingService.GetAllBookingsAsync();
-            var since = DateTime.Now.AddHours(-24);
+            var since = DateTime.UtcNow.AddHours(-24);
             
             var notifications = allBookings
                 .Where(b => b.CreatedAt >= since && b.BookingStatus?.Name != BookingStatusConstants.Draft)
