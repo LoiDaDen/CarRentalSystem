@@ -81,6 +81,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> AddToCart(int carId, DateTime startDate, DateTime endDate, bool withDriver, decimal estimatedPrice)
         {
             var userId = GetUserId();
@@ -118,6 +119,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> RemoveFromCart(int id)
         {
             var userId = GetUserId();
@@ -154,6 +156,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UpdateCartItemDates(int cartItemId, DateTime startDate, DateTime endDate, decimal estimatedPrice)
         {
             var userId = GetUserId();
@@ -179,6 +182,7 @@ namespace CarRentalSystem.Controllers
             return Json(new { success = false, message = "Không tìm thấy xe trong giỏ hàng." });
         }
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UpdateCartItemDriver(int cartItemId, int? driverId)
         {
             var userId = GetUserId();
@@ -203,6 +207,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UpdateCartItemPackage(int cartItemId, int packageId)
         {
             var userId = GetUserId();
@@ -225,6 +230,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> ToggleAddon(int cartItemId, int addonId, bool selected)
         {
             var userId = GetUserId();
