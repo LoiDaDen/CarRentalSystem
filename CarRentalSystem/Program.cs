@@ -113,14 +113,27 @@ builder.WebHost.ConfigureKestrel(options =>
 
 var app = builder.Build();
 
-// Chỉ seed data khi KHÔNG phải môi trường Testing (Smoke Tests dùng InMemory DB)
+// ═══════════════════════════════════════════════════
+// 🗄️ DATABASE MIGRATION & SEED
+// Migration: luôn chạy để DB schema up-to-date
+// Seed: CHỈ chạy trong Development VÀ khi DB trống (lần đầu tiên)
+// Production: KHÔNG seed — dữ liệu phải import thẳng vào DB
+// ═══════════════════════════════════════════════════
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<ApplicationDbContext>();
-        DbSeeder.Seed(context);
+        
+        // Luôn chạy migration để DB schema đồng bộ code
+        context.Database.Migrate();
+        
+        // Chỉ seed dữ liệu mẫu trong Development VÀ khi DB trống
+        if (app.Environment.IsDevelopment() && !context.Users.Any())
+        {
+            DbSeeder.Seed(context);
+        }
     }
 }
 
