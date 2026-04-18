@@ -236,6 +236,31 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             return Json(new { success = false });
         }
 
+        [HttpGet]
+        public async Task<IActionResult> Details(int id)
+        {
+            var car = await _context.Cars
+                .Include(c => c.CarBrand)
+                .Include(c => c.Location)
+                .Include(c => c.CarType)
+                .Include(c => c.CarStatus)
+                .Include(c => c.CarImages)
+                .Include(c => c.Reviews)
+                .Include(c => c.Bookings)
+                .FirstOrDefaultAsync(c => c.CarID == id);
+
+            if (car == null)
+            {
+                return NotFound();
+            }
+
+            // Get booking statistics
+            ViewBag.TotalBookings = car.Bookings?.Count ?? 0;
+            ViewBag.ActiveBookings = car.Bookings?.Count(b => b.BookingStatusID == 1) ?? 0; // Assuming 1 = Confirmed/Pending
+
+            return View(car);
+        }
+
         private void DeletePhysicalFile(string imageUrl)
         {
             if (string.IsNullOrEmpty(imageUrl)) return;
