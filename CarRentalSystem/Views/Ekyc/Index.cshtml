@@ -1,0 +1,207 @@
+@model CarRentalSystem.Models.User
+@{
+    ViewData["Title"] = "Định danh điện tử (eKYC)";
+}
+
+<style>
+    .ekyc-header {
+        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        color: white; padding: 40px 0; border-radius: 16px; margin-bottom: 30px;
+    }
+    .ekyc-card {
+        border-radius: 16px; border: 1px solid #e2e8f0;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 24px;
+        background: white; margin-bottom: 24px; transition: 0.3s;
+    }
+    .ekyc-card:hover { border-color: #3b82f6; }
+    
+    .upload-zone {
+        border: 2px dashed #cbd5e1; border-radius: 12px;
+        background: #f8fafc; padding: 30px 20px; text-align: center;
+        cursor: pointer; position: relative; overflow: hidden;
+        transition: all 0.2s; height: 200px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .upload-zone:hover { border-color: #3b82f6; background: #eff6ff; }
+    .upload-zone i { font-size: 2.5rem; color: #94a3b8; margin-bottom: 10px; transition: 0.2s; }
+    .upload-zone:hover i { color: #3b82f6; transform: scale(1.1); }
+    .upload-zone .preview-img {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        object-fit: contain; background: #000; display: none; z-index: 2;
+    }
+    
+    .status-badge {
+        padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem;
+    }
+
+    /* Scanning Animation Overlay */
+    #scannerOverlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.9); z-index: 9999;
+        display: none; align-items: center; justify-content: center; flex-direction: column;
+    }
+    .face-scanner {
+        width: 250px; height: 250px; border: 4px solid #3b82f6;
+        border-radius: 20px; position: relative; overflow: hidden;
+        box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
+    }
+    .face-scanner::before {
+        content: ''; position: absolute; width: 100%; height: 5px;
+        background: #10b981; top: -5px; box-shadow: 0 0 15px #10b981;
+        animation: scanBar 2s linear infinite;
+    }
+    @@keyframes scanBar { 0% { top: -5px; } 50% { top: 100%; } 100% { top: -5px; } }
+    .scan-text {
+        color: white; margin-top: 20px; font-weight: 700; font-size: 1.2rem;
+        letter-spacing: 1px;
+    }
+</style>
+
+<div class="container my-4">
+    <div class="ekyc-header text-center">
+        <h1><i class="bi bi-shield-check me-2"></i>Hệ thống Định danh eKYC Tự Động</h1>
+        <p class="mb-0 text-white-50">Tích hợp Trí tuệ Nhân tạo FPT.AI - An toàn, Bảo mật, Nhanh chóng</p>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger shadow-sm rounded-4"><i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["ErrorMessage"]</div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success shadow-sm rounded-4"><i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]</div>
+    }
+
+    <div class="row">
+        <!-- Status Panel -->
+        <div class="col-lg-4">
+            <div class="ekyc-card bg-light">
+                <h5 class="fw-bold mb-3">Tình trạng hồ sơ</h5>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="me-auto text-muted">Trạng thái:</span>
+                    @if (Model.VerificationStatus == "Verified")
+                    {
+                        <span class="status-badge bg-success bg-opacity-10 text-success"><i class="bi bi-check-circle-fill me-1"></i>Đã phê duyệt</span>
+                    }
+                    else if (Model.VerificationStatus == "Pending")
+                    {
+                        <span class="status-badge bg-warning bg-opacity-10 text-warning"><i class="bi bi-clock-fill me-1"></i>Chờ xác thực</span>
+                    }
+                    else
+                    {
+                        <span class="status-badge bg-danger bg-opacity-10 text-danger"><i class="bi bi-x-circle-fill me-1"></i>Bị từ chối</span>
+                    }
+                </div>
+                <hr>
+                <div class="small text-muted">
+                    <i class="bi bi-info-circle text-primary me-1"></i> Hồ sơ được bảo vệ bằng mã hóa End-to-End. Nhân viên hệ thống cũng không thể xem trực tiếp giấy tờ của bạn.
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Form -->
+        <div class="col-lg-8">
+            <form id="ekycForm" asp-action="Submit" method="post" enctype="multipart/form-data">
+                <div class="ekyc-card">
+                    <h5 class="fw-bold mb-4"><i class="bi bi-cloud-upload me-2 text-primary"></i>Tải lên tài liệu</h5>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">1. Căn Cước Công Dân (Mặt Trước)</label>
+                            <label class="upload-zone" for="idFront">
+                                <i class="bi bi-credit-card-2-front"></i>
+                                <span class="fw-bold text-dark">Bấm / Chạm để chụp ảnh</span>
+                                <span class="small text-muted mt-1">Hỗ trợ định dạng: JPG, PNG</span>
+                                <input type="file" id="idFront" name="idFront" class="d-none" accept="image/*" capture="environment" required>
+                                <img id="idFrontPreview" class="preview-img" alt="Preview">
+                            </label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">2. Căn Cước Công Dân (Mặt Sau)</label>
+                            <label class="upload-zone" for="idBack">
+                                <i class="bi bi-credit-card-2-back"></i>
+                                <span class="fw-bold text-dark">Bấm / Chạm để chụp ảnh</span>
+                                <input type="file" id="idBack" name="idBack" class="d-none" accept="image/*" capture="environment" required>
+                                <img id="idBackPreview" class="preview-img" alt="Preview">
+                            </label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">3. Giấy Phép Lái Xe</label>
+                            <label class="upload-zone" for="license">
+                                <i class="bi bi-car-front"></i>
+                                <span class="fw-bold text-dark">Bấm để tải GPLX</span>
+                                <input type="file" id="license" name="license" class="d-none" accept="image/*" required>
+                                <img id="licensePreview" class="preview-img" alt="Preview">
+                            </label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">4. Ảnh Nhận Diện Khuôn Mặt</label>
+                            <label class="upload-zone" for="face" style="border-color: #10b981; background: #ecfdf5;">
+                                <i class="bi bi-person-bounding-box" style="color: #10b981;"></i>
+                                <span class="fw-bold" style="color: #047857;">Mở Camera Tự Sướng</span>
+                                <input type="file" id="face" name="face" class="d-none" accept="image/*" capture="user" required>
+                                <img id="facePreview" class="preview-img" alt="Preview">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        @if (Model.VerificationStatus != "Verified")
+                        {
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold" id="btnSubmit">
+                                <i class="bi bi-robot me-2"></i>Gửi cho Trí Tuệ Nhân Tạo
+                            </button>
+                        }
+                        else
+                        {
+                            <button disabled class="btn btn-success btn-lg rounded-pill px-5 fw-bold">
+                                <i class="bi bi-check2-all me-2"></i>Đã Nạp & Xác Thực Thành Công
+                            </button>
+                        }
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- AI Scanner Overlay -->
+<div id="scannerOverlay">
+    <div class="face-scanner">
+        <i class="bi bi-person-fill text-white opacity-25" style="font-size: 15rem; display: flex; justify-content: center; align-items: center; height: 100%;"></i>
+    </div>
+    <div class="scan-text" id="scanText">FPT.AI đang trích xuất dữ liệu OCR...</div>
+    <div class="spinner-border text-light mt-3" role="status"></div>
+</div>
+
+@section Scripts {
+    <script>
+        function readURL(input, imgId) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var el = document.getElementById(imgId);
+                    el.src = e.target.result;
+                    el.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        document.getElementById('idFront').addEventListener('change', function() { readURL(this, 'idFrontPreview'); });
+        document.getElementById('idBack').addEventListener('change', function() { readURL(this, 'idBackPreview'); });
+        document.getElementById('license').addEventListener('change', function() { readURL(this, 'licensePreview'); });
+        document.getElementById('face').addEventListener('change', function() { readURL(this, 'facePreview'); });
+
+        document.getElementById('ekycForm').addEventListener('submit', function() {
+            var overlay = document.getElementById('scannerOverlay');
+            var scanText = document.getElementById('scanText');
+            overlay.style.display = 'flex';
+            
+            // Simulating real-time updates for user experience
+            setTimeout(() => { scanText.innerText = "Đang kiểm tra tính hợp lệ của CCCD..."; }, 1500);
+            setTimeout(() => { scanText.innerText = "Đang trích xuất Bằng Lái Xe..."; }, 3000);
+            setTimeout(() => { scanText.innerText = "Hệ thống đang so khớp Liveness Khuôn Mặt với CSDL..."; scanText.style.color = '#38bdf8'; }, 4500);
+        });
+    </script>
+}

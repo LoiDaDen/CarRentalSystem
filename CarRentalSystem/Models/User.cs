@@ -35,6 +35,13 @@ namespace CarRentalSystem.Models
         public string? IdCardBackUrl { get; set; }
         [MaxLength(255)]
         public string? DrivingLicenseUrl { get; set; }
+        [MaxLength(255)]
+        public string? FaceUrl { get; set; }
+        
+        // Trạng thái eKYC: "Pending", "Verified", "Rejected"
+        [MaxLength(20)]
+        public string VerificationStatus { get; set; } = "Pending";
+        
         // 🔒 Giới hạn 12 số — validated in Controller, encrypted at rest (MaxLength lớn vì ciphertext dài)
         [MaxLength(500)]
         public string? DrivingLicenseNumber { get; set; }

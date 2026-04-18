@@ -56,6 +56,9 @@ builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<IPiiEncryptionService, PiiEncryptionService>();
 
+builder.Services.AddHttpClient<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>();
+builder.Services.AddScoped<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>();
+
 // ═══════════════════════════════════════════════════
 // 🏥 HEALTH CHECKS — Monitoring endpoint /health
 // ═══════════════════════════════════════════════════

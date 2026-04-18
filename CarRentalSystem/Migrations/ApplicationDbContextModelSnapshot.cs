@@ -1917,6 +1917,10 @@ namespace CarRentalSystem.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("FaceUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<string>("Gender")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
@@ -1978,6 +1982,11 @@ namespace CarRentalSystem.Migrations
 
                     b.Property<decimal>("TotalSpending")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("VerificationStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("UserID");
 
