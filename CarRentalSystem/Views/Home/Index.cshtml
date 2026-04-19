@@ -2,23 +2,77 @@
 @{ ViewData["Title"] = "CarRental - Thuê Xe Tự Lái 24/7"; }
 
 <style>
-    .home-hero { background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop') no-repeat center center; background-size: cover; padding: 120px 0 100px; }
-    .home-search { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 40px; }
-    .home-input { border: none; border-bottom: 2px solid #eee; border-radius: 0; padding-left: 0; font-weight: 500; box-shadow: none !important; }
-    .home-input:focus { border-bottom-color: #0d6efd; }
+    .home-hero {
+        background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.85) 100%),
+                    url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop')
+                    no-repeat center center;
+        background-size: cover;
+        padding: 100px 0 80px;
+        position: relative;
+    }
+    .home-hero h1 {
+        font-size: 2.8rem;
+        font-weight: 800;
+        text-shadow: 2px 2px 12px rgba(0,0,0,0.7);
+        letter-spacing: -0.5px;
+        color: #ffffff !important;
+    }
+    .home-hero .hero-subtitle {
+        font-size: 1.1rem;
+        color: rgba(255,255,255,0.95);
+        text-shadow: 1px 1px 6px rgba(0,0,0,0.6);
+        font-weight: 500;
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+    .home-hero .hero-subtitle strong {
+        color: #4ade80;
+        font-weight: 700;
+    }
+    .home-search {
+        background: rgba(255,255,255,0.98);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        margin-top: 30px;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    .home-input {
+        border: none;
+        border-bottom: 2px solid #e5e7eb;
+        border-radius: 0;
+        padding-left: 12px;
+        font-weight: 500;
+        box-shadow: none !important;
+        background: transparent;
+        font-size: 0.95rem;
+    }
+    .home-input:focus {
+        border-bottom-color: #10b981;
+        background: transparent;
+        box-shadow: none !important;
+    }
     .home-label { font-size: 0.85rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
     .home-car-card { border-radius: 16px; transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid #f0f0f0; }
     .home-car-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
     .home-btn-search { border-radius: 12px; font-weight: 700; letter-spacing: 1px; }
-    .badges-top { position: absolute; top: 15px; left: 15px; z-index: 2; }
+    .badges-top { position: absolute; top: 10px; left: 10px; z-index: 2; }
     .price-tag { font-size: 1.25rem; font-weight: 800; color: #0d6efd; }
+</style>
 </style>
 
 <div class="page-home">
 <section class="home-hero text-white mb-5 ui-hero-banner">
-    <div class="container text-center">
-        <h1 class="display-3 fw-bolder mb-3">Ứng dụng đặt xe thông minh 24/7</h1>
-        <p class="lead mb-4">Giá chỉ từ 400K. Thuê xe linh hoạt 4h, 8h, 24h. Cam kết xe đời mới, sạch sẽ.</p>
+    <div class="container text-center position-relative">
+        <div class="hero-banner-content">
+            <h1 class="display-3 fw-bolder mb-3 hero-title">Ứng dụng đặt xe thông minh 24/7</h1>
+            <p class="lead mb-4 hero-subtitle">
+                <strong>Giá chỉ từ 400K</strong>. Thuê xe linh hoạt 4h, 8h, 24h.
+                <br>Cam kết xe đời mới, sạch sẽ, an toàn.
+            </p>
+        </div>
 
         <div class="home-search text-start mx-auto ui-search-panel home-search-panel">
             <!-- Tabs -->
@@ -144,52 +198,79 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             foreach (var car in ViewBag.AvailableCars as IEnumerable<CarRentalSystem.Models.Car>)
             {
+                var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
+                var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
+                var carReviewCount = carReviews.Count;
+                var p4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
+                var p8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
+                var p12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
+                var p24h = car.PricePerDay;
+                var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <div class="card home-car-card h-100 position-relative ui-elevated-card">
-                        <div class="badges-top">
-                            <span class="badge bg-success shadow-sm px-3 py-2 rounded-pill">Sẵn sàng</span>
-                        </div>
-                        <img src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600" class="card-img-top car-card-img" alt="@car.CarName">
-                        <div class="card-body p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="text-muted small fw-bold text-uppercase">@car.CarBrand?.Name</span>
-                                <span class="text-warning small"><i class="bi bi-star-fill"></i> 5.0</span>
+                    <a id="home-car-@car.CarID" href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="text-decoration-none text-dark">
+                        <div class="card home-car-card h-100 position-relative ui-elevated-card" style="cursor: pointer;">
+                            <div class="badges-top">
+                                <span class="badge bg-success shadow-sm px-2 py-1 rounded-pill" style="font-size: 0.7rem;">Sẵn sàng</span>
                             </div>
-                            <h5 class="fw-bold mb-2">@car.CarName</h5>
-                            <div class="d-flex gap-2 mb-3 small text-muted">
-                                <span><i class="bi bi-gear"></i> @car.Transmission</span>
-                                <span>|</span>
-                                <span><i class="bi bi-fuel-pump"></i> @car.FuelType</span>
-                            </div>
-                            <hr class="opacity-10">
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <div class="d-flex flex-column">
-                                    <div class="small text-muted mb-1">Tham khảo</div>
-                                        <select class="form-select form-select-sm border-0 bg-success bg-opacity-10 text-success fw-bold price-select" onchange="document.getElementById('detail_home_@car.CarID').href='/Car/Details/@car.CarID?duration=' + this.value">
-                                            @for(int h=1; h<=24; h++) {
-                                                var bdBaseP = car.PricePerHour * h;
-                                                decimal bdComboP = bdBaseP;
-                                                if(h==4) bdComboP = car.PricePerDay * 0.4m;
-                                                else if(h==8) bdComboP = car.PricePerDay * 0.7m;
-                                                else if(h==12) bdComboP = car.PricePerDay * 0.85m;
-                                                else if(h==24) bdComboP = car.PricePerDay;
-                                                if(h==4 || h==8 || h==12 || h==24) {
-                                                    var strP = string.Join("", (bdBaseP.ToString("N0")+"đ").Select(c => c + "\u0336"));
-                                                    if(h == 24) {
-                                                        <option value="@h" selected>@(h)h: @strP @bdComboP.ToString("N0")đ</option>
-                                                    } else {
-                                                        <option value="@h">@(h)h: @strP @bdComboP.ToString("N0")đ</option>
-                                                    }
-                                                } else {
-                                                    <option value="@h">@(h)h: @bdBaseP.ToString("N0")đ</option>
-                                                }
-                                            }
-                                        </select>
+                            <img src="@(car.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600")" class="card-img-top car-card-img" alt="@car.CarName" style="height: 140px; object-fit: cover;">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">@car.CarBrand?.Name</span>
+                                    <div class="d-flex align-items-center gap-1 px-1 py-0 rounded-pill rating-badge" style="font-size: 0.65rem;">
+                                        @for (int s = 1; s <= 5; s++)
+                                        {
+                                            <i class="bi @(s <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.55rem;"></i>
+                                        }
+                                        <span class="fw-800 ms-1" style="color: #92400e; font-size: 0.6rem;">@carAvgRating.ToString("0.0")</span>
+                                        @if (carReviewCount > 0)
+                                        {
+                                            <span class="text-muted" style="font-size: 0.5rem;">(@carReviewCount)</span>
+                                        }
+                                    </div>
                                 </div>
-                                <a id="detail_home_@car.CarID" asp-controller="Car" asp-action="Details" asp-route-id="@car.CarID" asp-route-duration="24" class="btn btn-outline-primary btn-sm px-3 rounded-pill fw-bold">Chi tiết</a>
+                                <h5 class="fw-bold mb-1" style="font-size: 0.95rem;">@car.CarName</h5>
+                                <div class="d-flex gap-2 mb-2 small text-muted" style="font-size: 0.75rem;">
+                                    <span><i class="bi bi-gear"></i> @car.Transmission</span>
+                                    <span><i class="bi bi-person"></i> @car.Seats</span>
+                                    @if (isElectric)
+                                    {
+                                        <span><i class="bi bi-lightning-charge text-success"></i> Điện</span>
+                                    }
+                                    else
+                                    {
+                                        <span><i class="bi bi-fuel-pump"></i> @car.FuelType</span>
+                                    }
+                                </div>
+                                <hr class="opacity-10 my-2">
+
+                                <!-- Bảng giá tham khảo -->
+                                <div class="mb-2">
+                                    <div class="small text-muted mb-1"><i class="bi bi-tags-fill me-1"></i>Bảng giá</div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0 text-center">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">4h</th>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">8h</th>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">12h</th>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">24h</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="py-1 px-2 fw-bold text-success" style="font-size: 0.8rem;">@((p4h/1000).ToString("N0"))K</td>
+                                                    <td class="py-1 px-2 fw-bold text-primary" style="font-size: 0.8rem;">@((p8h/1000).ToString("N0"))K</td>
+                                                    <td class="py-1 px-2 fw-bold text-warning" style="font-size: 0.8rem;">@((p12h/1000).ToString("N0"))K</td>
+                                                    <td class="py-1 px-2 fw-bold text-danger" style="font-size: 0.8rem;">@((p24h/1000).ToString("N0"))K</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             }
         }
@@ -211,32 +292,72 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             foreach (var car in Model)
             {
+                var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
+                var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
+                var carReviewCount = carReviews.Count;
+                var p4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
+                var p8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
+                var p12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
+                var p24h = car.PricePerDay;
+                var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
                 <div class="col-lg-4 col-md-6">
-                    <div class="card home-car-card h-100 position-relative ui-elevated-card">
-                        <div class="badges-top">
-                            <span class="badge bg-dark shadow-sm px-3 py-2 rounded-pill"><i class="bi bi-gem text-warning"></i> Premium</span>
-                        </div>
-                        <img src="https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?auto=format&fit=crop&q=80&w=800" class="card-img-top car-card-img" alt="@car.CarName">
-                        <div class="card-body p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="text-muted small fw-bold text-uppercase">@car.CarBrand?.Name</span>
-                                <span class="text-warning small"><i class="bi bi-star-fill"></i> 5.0</span>
+                    <a id="home-premium-@car.CarID" href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="text-decoration-none text-dark">
+                        <div class="card home-car-card h-100 position-relative ui-elevated-card" style="cursor: pointer;">
+                            <div class="badges-top">
+                                <span class="badge bg-dark shadow-sm px-2 py-1 rounded-pill" style="font-size: 0.7rem;"><i class="bi bi-gem text-warning"></i> Premium</span>
                             </div>
-                            <h4 class="fw-bold mb-2">@car.CarName</h4>
-                            <div class="d-flex gap-3 mb-3 small text-muted">
-                                <span><i class="bi bi-person"></i> @car.Seats chỗ</span>
-                                <span><i class="bi bi-gear"></i> @car.Transmission</span>
-                                <span><i class="bi bi-geo-alt"></i> @car.Location?.Name</span>
-                            </div>
-                            <hr class="opacity-10">
-                            <div class="d-flex justify-content-between align-items-end mt-3">
-                                <div>
-                                    <div class="price-tag text-dark">@car.PricePerDay.ToString("N0")<span class="fs-6 text-muted fw-normal">đ/ngày</span></div>
+                            <img src="https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?auto=format&fit=crop&q=80&w=800" class="card-img-top car-card-img" alt="@car.CarName" style="height: 140px; object-fit: cover;">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">@car.CarBrand?.Name</span>
+                                    <div class="d-flex align-items-center gap-1 px-1 py-0 rounded-pill rating-badge" style="font-size: 0.65rem;">
+                                        @for (int s = 1; s <= 5; s++)
+                                        {
+                                            <i class="bi @(s <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.55rem;"></i>
+                                        }
+                                        <span class="fw-800 ms-1" style="color: #92400e; font-size: 0.6rem;">@carAvgRating.ToString("0.0")</span>
+                                        @if (carReviewCount > 0)
+                                        {
+                                            <span class="text-muted" style="font-size: 0.5rem;">(@carReviewCount)</span>
+                                        }
+                                    </div>
                                 </div>
-                                <a asp-controller="Car" asp-action="Details" asp-route-id="@car.CarID" class="btn btn-dark btn-sm px-4 rounded-pill fw-bold">Thuê ngay</a>
+                                <h4 class="fw-bold mb-1" style="font-size: 1rem;">@car.CarName</h4>
+                                <div class="d-flex gap-2 mb-2 small text-muted" style="font-size: 0.75rem;">
+                                    <span><i class="bi bi-person"></i> @car.Seats chỗ</span>
+                                    <span><i class="bi bi-gear"></i> @car.Transmission</span>
+                                    <span><i class="bi bi-geo-alt"></i> @car.Location?.Name</span>
+                                </div>
+                                <hr class="opacity-10 my-2">
+
+                                <!-- Bảng giá tham khảo -->
+                                <div class="mb-2">
+                                    <div class="small text-muted mb-1"><i class="bi bi-tags-fill me-1"></i>Bảng giá</div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0 text-center">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">4h</th>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">8h</th>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">12h</th>
+                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">24h</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="py-1 px-2 fw-bold text-success" style="font-size: 0.8rem;">@((p4h/1000).ToString("N0"))K</td>
+                                                    <td class="py-1 px-2 fw-bold text-primary" style="font-size: 0.8rem;">@((p8h/1000).ToString("N0"))K</td>
+                                                    <td class="py-1 px-2 fw-bold text-warning" style="font-size: 0.8rem;">@((p12h/1000).ToString("N0"))K</td>
+                                                    <td class="py-1 px-2 fw-bold text-danger" style="font-size: 0.8rem;">@((p24h/1000).ToString("N0"))K</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             }
         }

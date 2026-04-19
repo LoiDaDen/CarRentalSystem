@@ -69,33 +69,10 @@ namespace CarRentalSystem.Controllers
             return LocalRedirect(returnUrl ?? "/");
         }
 
-        [HttpPost]
-        public async Task<IActionResult> AutoDetectRegion(double lat, double lng, string returnUrl)
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
         {
-            var locations = await _context.Locations.ToListAsync();
-            Models.Location closest = null;
-            double minDistance = double.MaxValue;
-
-            foreach (var loc in locations)
-            {
-                var dLat = (lat - loc.Latitude) * Math.PI / 180.0;
-                var dLon = (lng - loc.Longitude) * Math.PI / 180.0;
-                var a = Math.Sin(dLat/2)*Math.Sin(dLat/2) + Math.Cos(loc.Latitude*Math.PI/180.0)*Math.Cos(lat*Math.PI/180.0)*Math.Sin(dLon/2)*Math.Sin(dLon/2);
-                var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1-a));
-                var distance = 6371 * c; // in km
-
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    closest = loc;
-                }
-            }
-
-            if (closest != null)
-            {
-                Response.Cookies.Append("RegionID", closest.LocationID.ToString(), new CookieOptions { Expires = DateTime.UtcNow.AddDays(30) });
-            }
-            return LocalRedirect(returnUrl ?? "/");
+            return View();
         }
     }
 }

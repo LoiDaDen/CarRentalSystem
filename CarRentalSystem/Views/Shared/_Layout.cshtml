@@ -377,48 +377,6 @@
             <text>document.addEventListener('DOMContentLoaded', updateCartBadge);</text>
         }
     </script>
-    @if(string.IsNullOrEmpty(Context.Request.Cookies["RegionID"]))
-    {
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                if (navigator.geolocation && !sessionStorage.getItem('geoPrompted')) {
-                    sessionStorage.setItem('geoPrompted', 'true');
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        var lat = position.coords.latitude;
-                        var lng = position.coords.longitude;
-                        
-                        var form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = '/Home/AutoDetectRegion';
-                        form.style.display = 'none';
-                        
-                        var inputLat = document.createElement('input');
-                        inputLat.type = 'hidden';
-                        inputLat.name = 'lat';
-                        inputLat.value = lat;
-                        
-                        var inputLng = document.createElement('input');
-                        inputLng.type = 'hidden';
-                        inputLng.name = 'lng';
-                        inputLng.value = lng;
-
-                        var inputUrl = document.createElement('input');
-                        inputUrl.type = 'hidden';
-                        inputUrl.name = 'returnUrl';
-                        inputUrl.value = window.location.pathname + window.location.search;
-
-                        form.appendChild(inputLat);
-                        form.appendChild(inputLng);
-                        form.appendChild(inputUrl);
-                        document.body.appendChild(form);
-                        form.submit();
-                    }, function(error) {
-                        console.log("Geolocation error: ", error);
-                    });
-                }
-            });
-        </script>
-    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

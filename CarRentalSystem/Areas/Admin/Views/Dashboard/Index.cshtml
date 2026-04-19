@@ -5,6 +5,18 @@
     Layout = "_AdminLayout";
 }
 
+<!-- Pass server data to JavaScript safely -->
+<script>
+    window.dashboardData = {
+        revenueLabels: @Html.Raw(Json.Serialize(Model.RevenueLabels)),
+        revenueData: @Html.Raw(Json.Serialize(Model.RevenueData)),
+        bookingLabels: @Html.Raw(Json.Serialize(Model.BookingLabels)),
+        bookingData: @Html.Raw(Json.Serialize(Model.BookingData)),
+        carLabels: @Html.Raw(Json.Serialize(Model.CarLabels)),
+        carData: @Html.Raw(Json.Serialize(Model.CarData))
+    };
+</script>
+
 <div class="page-admin-dashboard">
 <div class="d-flex justify-content-between align-items-center mb-5">
     <div>
@@ -73,18 +85,53 @@
             <i class="bi bi-box-seam position-absolute text-info opacity-5 stat-icon"></i>
         </div>
     </div>
-    <div class="col-md-12 mt-4">
-        <div class="card stat-card-deposit h-100">
-            <div class="position-relative z-1 text-white d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="fw-800 text-warning d-flex align-items-center mb-2"><i class="bi bi-shield-lock-fill me-2 fs-4"></i> Tài sản Cọc Đang Giữ chờ Phạt Nguội</h5>
-                    <p class="text-white-50 mb-0 small">Hệ thống đang tạm giam <strong>@Model.TotalHeldDepositsCount</strong> khoản cọc chưa hoàn trả (Tối đa 15 ngày).</p>
-                </div>
-                <div class="text-end">
-                    <h2 class="fw-800 mb-0 text-white ls-neg-1">@Model.TotalHeldDepositsAmount.ToString("N0") <small class="fs-6 fw-light text-white-50">đ</small></h2>
+    <div class="col-md-12 mt-3">
+        <div class="card border-0 shadow-sm h-100 stat-card-deposit position-relative overflow-hidden">
+            <div class="card-body position-relative z-2">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-3 shadow-sm">
+                                <i class="bi bi-shield-lock-fill text-warning fs-3"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-800 mb-1 text-dark">Tài sản Cọc Đang Giữ</h5>
+                                <p class="text-muted mb-0 small">Hệ thống đang tạm giam <span class="fw-bold text-danger">@Model.TotalHeldDepositsCount</span> khoản cọc chưa hoàn trả (Tối đa 15 ngày).</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-4">
+                            <div class="px-3 py-2 bg-light rounded-3">
+                                <small class="text-muted d-block fw-600" style="font-size: 0.75rem;">Tổng số khoản cọc</small>
+                                <span class="fw-800 text-dark fs-5">@Model.TotalHeldDepositsCount</span>
+                            </div>
+                            <div class="px-3 py-2 bg-light rounded-3">
+                                <small class="text-muted d-block fw-600" style="font-size: 0.75rem;">Tổng giá trị</small>
+                                <span class="fw-800 text-primary fs-5">@Model.TotalHeldDepositsAmount.ToString("N0") <small class="fs-6 fw-light text-muted">đ</small></span>
+                            </div>
+                            <div class="px-3 py-2 bg-light rounded-3">
+                                <small class="text-muted d-block fw-600" style="font-size: 0.75rem;">Trung bình/khoản</small>
+                                <span class="fw-800 text-success fs-5">@(Model.TotalHeldDepositsCount > 0 ? ((Model.TotalHeldDepositsAmount / Model.TotalHeldDepositsCount).ToString("N0")) : "0") <small class="fs-6 fw-light text-muted">đ</small></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="position-relative">
+                            <div class="bg-warning bg-opacity-10 rounded-4 p-4 d-inline-flex flex-column align-items-center justify-content-center" style="min-width: 180px;">
+                                <i class="bi bi-safe2 text-warning fs-1 mb-2 opacity-50"></i>
+                                <span class="fw-800 text-dark display-6">@Model.TotalHeldDepositsAmount.ToString("N0")</span>
+                                <small class="text-muted fw-bold">VNĐ</small>
+                            </div>
+                            <div class="position-absolute top-50 start-100 translate-middle-y ms-3">
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 fw-bold px-3 py-2 rounded-pill">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> Chưa hoàn trả
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <i class="bi bi-safe2 position-absolute text-white opacity-5 stat-icon-lg"></i>
+            <i class="bi bi-shield-lock-fill position-absolute top-0 end-0 text-warning opacity-10 me-3 mt-3 fs-1"></i>
+            <div class="position-absolute bottom-0 start-0 w-100 h-1 bg-warning"></div>
         </div>
     </div>
 </div>
@@ -113,18 +160,18 @@
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm p-4 h-100 top-cars-card">
             <h5 class="fw-800 ls-neg-1 mb-4">Xe Hiệu suất Cao</h5>
-            <div class="d-flex flex-column gap-4">
+            <div class="d-flex flex-column gap-3">
                 @foreach (var topCar in Model.TopCars)
                 {
-                    <div class="d-flex align-items-center p-3 rounded-4 bg-light bg-opacity-50 transition-all hover-translate-y top-car-item">
+                    <div class="d-flex align-items-center p-2 rounded-3 bg-light bg-opacity-50">
                         <div class="position-relative me-3">
                             <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary shadow-sm" style="font-size: 0.6rem;">#@(Model.TopCars.IndexOf(topCar) + 1)</span>
-                            <div class="rounded-circle bg-white shadow-sm p-2 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                            <div class="rounded-circle bg-white shadow-sm p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                 <i class="bi bi-car-front text-primary fs-4"></i>
                             </div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="fw-800 mb-0 small">@topCar.Car.CarBrand?.Name @topCar.Car.CarName</h6>
+                            <h6 class="fw-800 mb-0 small">@(topCar.Car?.CarBrand?.Name ?? "Unknown") @(topCar.Car?.CarName ?? "Unknown Car")</h6>
                             <small class="text-muted d-block">@topCar.RentalCount lượt thuê</small>
                         </div>
                         <div class="text-end">
@@ -140,3 +187,141 @@
         </div>
     </div>
 </div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-5">
+    <!-- Revenue Chart -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-800 ls-neg-1 mb-0">Phân tích Doanh thu</h5>
+                    <small class="text-muted">Đơn vị: Triệu VNĐ</small>
+                </div>
+            </div>
+            <div class="position-relative" style="height: 320px;">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Chart -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm p-4 h-100">
+            <h5 class="fw-800 ls-neg-1 mb-3">Phân bổ trạng thái Đơn đặt</h5>
+            <div class="position-relative" style="height: 280px;">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tables Row -->
+<div class="row g-4">
+    <!-- Top 5 Cars -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm p-4">
+            <h5 class="fw-800 ls-neg-1 mb-3">Top 5 Xe Hiệu Suất Cao</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <tbody>
+                        @foreach (var item in Model.TopCars)
+                        {
+                            <tr>
+                                <td style="width:50px;">
+                                    <div class="rounded-3 bg-light overflow-hidden" style="width:40px;height:40px;">
+                                        @if (item.Car.CarImages?.Any() == true) {
+                                            <img src="@item.Car.CarImages.First().ImageUrl" class="w-100 h-100 object-fit-cover">
+                                        } else {
+                                            <i class="bi bi-car-front fs-5 text-muted p-2 d-block"></i>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold small">@item.Car.CarBrand?.Name @item.Car.CarName</div>
+                                    <small class="text-muted">@item.Car.LicensePlate</small>
+                                </td>
+                                <td class="text-end">
+                                    <div class="fw-bold small">@item.RentalCount lượt</div>
+                                    <small class="text-primary fw-bold" style="font-size: 0.7rem;">@item.TotalRevenue.ToString("N0") đ</small>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Summary -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm p-4" style="border-left: 4px solid #ef4444 !important;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-800 ls-1 text-uppercase text-muted mb-0" style="font-size:0.85rem;">Nhật ký bảo trì gần đây</h5>
+                <span class="badge bg-danger rounded-pill px-3 py-1 fw-bold">Chi phí năm: @(((decimal)ViewBag.MaintenanceCostYear).ToString("N0")) đ</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <tbody>
+                        @foreach (var log in ViewBag.MaintenanceLogs as List<CarRentalSystem.Models.MaintenanceLog>)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold small">@log.Car?.CarBrand?.Name @log.Car?.CarName</div>
+                                    <small class="text-muted">@log.Description</small>
+                                </td>
+                                <td class="text-end">
+                                    <div class="small fw-500">@log.ServiceDate.ToString("dd/MM/yyyy")</div>
+                                    <small class="text-danger fw-bold">@log.Cost.ToString("N0") đ</small>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Customers -->
+<div class="row g-4">
+    <div class="col-lg-12">
+        <div class="card border-0 shadow-sm p-4">
+            <h5 class="fw-800 ls-neg-1 mb-3">Khách hàng VIP (Doanh thu cao nhất)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr class="small fw-bold text-muted">
+                            <th class="ps-3">Khách hàng</th>
+                            <th class="text-center">Số đơn</th>
+                            <th class="text-end pe-3">Tổng chi tiêu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in ViewBag.TopCustomers as List<CarRentalSystem.Areas.Admin.Models.TopCustomerViewModel>)
+                        {
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(item.User?.Name ?? "?")&background=random" width="30" height="30" class="rounded-circle">
+                                        <div>
+                                            <div class="fw-bold small">@item.User?.Name</div>
+                                            <small class="text-muted" style="font-size:0.7rem;">@item.User?.Email</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center fw-bold">@item.BookingCount</td>
+                                <td class="text-end pe-3 fw-800 text-success">@item.TotalSpent.ToString("N0") đ</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/chart.min.js"></script>
+    <script src="~/js/admin/dashboard.js"></script>
+}

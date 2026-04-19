@@ -114,7 +114,7 @@ namespace CarRentalSystem.Controllers
                 TempData["SuccessMessage"] = "Quá trình định danh eKYC điện tử thành công! Tài khoản của bạn đã được xác thực hoàn toàn.";
                 return RedirectToAction("Index");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 TempData["ErrorMessage"] = "Quá trình xác thực gặp lỗi máy chủ. Hãy thử lại.";
                 return RedirectToAction("Index");

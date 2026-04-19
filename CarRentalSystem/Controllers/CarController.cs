@@ -26,10 +26,10 @@ namespace CarRentalSystem.Controllers
 
         // Customer view: List all available cars with advanced filtering
         public async Task<IActionResult> Index(
-            int? brandId, 
-            int? carTypeId, 
-            int? seats, 
-            decimal? minPrice, 
+            int? brandId,
+            int? carTypeId,
+            int? seats,
+            decimal? minPrice,
             decimal? maxPrice,
             string location,
             string fuelType,
@@ -40,8 +40,10 @@ namespace CarRentalSystem.Controllers
             DateTime? startDate,
             DateTime? endDate,
             string sort,
-            int? contractId)
+            int? contractId,
+            int page = 1)
         {
+            const int pageSize = 12;
             var carsQuery = _context.Cars
                 .Include(c => c.CarType)
                 .Include(c => c.Location)
@@ -49,7 +51,7 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarBrand)
                 .Include(c => c.Reviews)
-                .Include(c => c.Bookings) // include bookings for availability check
+                .Include(c => c.Bookings)
                 .Where(c => c.CarStatus!.Name == "Available")
                 .AsQueryable();
 
@@ -63,12 +65,12 @@ namespace CarRentalSystem.Controllers
             {
                 carsQuery = carsQuery.Where(c => c.BrandID == brandId.Value);
             }
-            
+
             if (carTypeId.HasValue)
             {
                 carsQuery = carsQuery.Where(c => c.CarTypeID == carTypeId.Value);
             }
-            
+
             if (seats.HasValue)
                 carsQuery = carsQuery.Where(c => c.Seats == seats.Value);
 
@@ -99,9 +101,9 @@ namespace CarRentalSystem.Controllers
             // Filter out cars that are booked in this period
             if (startDate.HasValue && endDate.HasValue && startDate.Value < endDate.Value)
             {
-                carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b => 
-                    b.BookingStatusID != 4 && // 4 could be Cancelled, or we can check by Name if we include BookingStatus
-                    ( 
+                carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b =>
+                    b.BookingStatusID != 4 &&
+                    (
                       (startDate.Value >= b.StartDate && startDate.Value < b.EndDate) ||
                       (endDate.Value > b.StartDate && endDate.Value <= b.EndDate) ||
                       (startDate.Value <= b.StartDate && endDate.Value >= b.EndDate)
@@ -118,7 +120,13 @@ namespace CarRentalSystem.Controllers
                 _ => carsQuery.OrderByDescending(c => c.IsPremium).ThenByDescending(c => c.CreatedAt)
             };
 
-            var cars = await carsQuery.ToListAsync();
+            var totalCars = await carsQuery.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCars / (double)pageSize);
+
+            var cars = await carsQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             var carTypes = await _context.CarTypes.ToListAsync();
             var brands = await _context.CarBrands.ToListAsync();
@@ -131,6 +139,10 @@ namespace CarRentalSystem.Controllers
             ViewBag.CurrentSeats = seats;
             ViewBag.ContractId = contractId;
             ViewBag.Contract = contractId.HasValue ? await _context.ContractTypes.FindAsync(contractId.Value) : null;
+            ViewBag.TotalCars = totalCars;
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = totalPages;
+            ViewBag.PageSize = pageSize;
 
             return View(cars);
         }
@@ -417,15 +429,20 @@ namespace CarRentalSystem.Controllers
             });
         }
 
-        // === LẤY THÔNG TIN TẤT CẢ XE VỚI KHOẢNG CÁCH - API Endpoint ===
-        // GET /Car/GetAllCarsWithDistance?customerLat=X&customerLng=Y&startDate=...&endDate=...
+        // API: Load more cars (JSON)
         [HttpGet]
-        public async Task<IActionResult> GetAllCarsWithDistance(
-            double customerLat, 
-            double customerLng,
-            DateTime? startDate = null,
-            DateTime? endDate = null)
+        public async Task<IActionResult> LoadMoreCars(
+            int? brandId,
+            string category,
+            string location,
+            string startDate,
+            string endDate,
+            string sort,
+            bool? isPremium,
+            int? contractId,
+            int page = 2)
         {
+            const int pageSize = 12;
             var carsQuery = _context.Cars
                 .Include(c => c.CarType)
                 .Include(c => c.Location)
@@ -437,72 +454,76 @@ namespace CarRentalSystem.Controllers
                 .Where(c => c.CarStatus!.Name == "Available")
                 .AsQueryable();
 
-            // KHÔNG giới hạn khu vực - hiển thị tất cả xe toàn quốc
-            // Bỏ cookie RegionID filter
-
-            // Filter busy dates nếu có start/end date
-            if (startDate.HasValue && endDate.HasValue && startDate.Value < endDate.Value)
+            var regionCookie = HttpContext.Request.Cookies["RegionID"];
+            if (!string.IsNullOrEmpty(regionCookie) && int.TryParse(regionCookie, out int parsedRegionId))
             {
-                carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b => 
+                carsQuery = carsQuery.Where(c => c.LocationID == parsedRegionId);
+            }
+
+            if (brandId.HasValue)
+                carsQuery = carsQuery.Where(c => c.BrandID == brandId.Value);
+
+            if (!string.IsNullOrEmpty(category))
+                carsQuery = carsQuery.Where(c => c.CarType != null && c.CarType.Name == category);
+
+            if (!string.IsNullOrEmpty(location))
+                carsQuery = carsQuery.Where(c => c.Location != null && c.Location.Name != null && c.Location.Name.Contains(location));
+
+            if (startDate != null && endDate != null && DateTime.TryParse(startDate, out var sDate) && DateTime.TryParse(endDate, out var eDate) && sDate < eDate)
+            {
+                carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b =>
                     b.BookingStatusID != 4 &&
-                    ((startDate.Value >= b.StartDate && startDate.Value < b.EndDate) ||
-                     (endDate.Value > b.StartDate && endDate.Value <= b.EndDate) ||
-                     (startDate.Value <= b.StartDate && endDate.Value >= b.EndDate))
+                    ((sDate >= b.StartDate && sDate < b.EndDate) ||
+                     (eDate > b.StartDate && eDate <= b.EndDate) ||
+                     (sDate <= b.StartDate && eDate >= b.EndDate))
                 ));
             }
 
-            var cars = await carsQuery.ToListAsync();
-            var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
+            carsQuery = sort switch
+            {
+                "price_asc" => carsQuery.OrderBy(c => c.PricePerDay),
+                "price_desc" => carsQuery.OrderByDescending(c => c.PricePerDay),
+                "newest" => carsQuery.OrderByDescending(c => c.CreatedAt),
+                _ => carsQuery.OrderByDescending(c => c.IsPremium).ThenByDescending(c => c.CreatedAt)
+            };
 
-            // Tính khoảng cách cho từng xe (song song)
-            var carDeliveryTasks = cars.Select(async car => {
-                var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
-                var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
-                var deliveryInfo = await deliveryService!.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
-                
-                var reviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<Review>();
-                var avgRating = reviews.Any() ? reviews.Average(r => r.Rating) : 5.0;
+            if (isPremium == true)
+                carsQuery = carsQuery.Where(c => c.IsPremium);
 
-                return new {
-                    carId = car.CarID,
-                    carName = car.CarName,
-                    brand = car.CarBrand?.Name ?? "Chưa rõ",
-                    type = car.CarType?.Name ?? "Khác",
-                    transmission = car.Transmission,
-                    seats = car.Seats,
-                    fuelType = car.FuelType,
-                    pricePerDay = car.PricePerDay,
-                    pricePerHour = car.PricePerHour,
-                    image = car.CarImages?.FirstOrDefault()?.ImageUrl ?? "",
-                    isPremium = car.IsPremium,
-                    // Vị trí xe
-                    carAddress = car.CarAddress ?? car.Location?.Name ?? "Chưa cập nhật",
-                    carLat = carLat,
-                    carLng = carLng,
-                    // Thông tin giao hàng
-                    distanceKm = deliveryInfo.DistanceKm,
-                    formattedDistance = deliveryInfo.FormattedDistance,
-                    shippingFee = deliveryInfo.ShippingFee,
-                    formattedShippingFee = deliveryInfo.FormattedFee,
-                    durationMinutes = deliveryInfo.DurationMinutes,
-                    formattedDuration = deliveryInfo.FormattedDuration,
-                    earliestPickupTime = deliveryInfo.EarliestPickupTime.ToString("yyyy-MM-ddTHH:mm"),
-                    // Đánh giá
-                    rating = avgRating,
-                    reviewCount = reviews.Count,
-                    // Tổng chi phí ước tính (1 ngày + ship)
-                    totalEstimate = car.PricePerDay + deliveryInfo.ShippingFee
-                };
+            var totalCars = await carsQuery.CountAsync();
+            var cars = await carsQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var result = cars.Select(c => new {
+                c.CarID,
+                c.CarName,
+                brandName = c.CarBrand?.Name ?? "",
+                c.Transmission,
+                c.Seats,
+                c.FuelType,
+                c.PricePerDay,
+                c.PricePerHour,
+                c.IsPremium,
+                isSystem = c.OwnerID == null,
+                isElectric = c.FuelType != null && (c.FuelType.Contains("Điện") || c.FuelType.Contains("Electric")),
+                imageUrl = c.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800",
+                avgRating = c.Reviews != null && c.Reviews.Any() ? c.Reviews.Where(r => r.IsApproved).Average(r => r.Rating) : 5.0,
+                reviewCount = c.Reviews?.Count(r => r.IsApproved) ?? 0,
+                p4h = Math.Round(c.PricePerDay * 0.25m / 10000m) * 10000m,
+                p8h = Math.Round(c.PricePerDay * 0.40m / 10000m) * 10000m,
+                p12h = Math.Round(c.PricePerDay * 0.55m / 10000m) * 10000m,
+                p24h = c.PricePerDay
+            }).ToList();
+
+            return Json(new {
+                cars = result,
+                currentPage = page,
+                totalCars = totalCars,
+                hasMore = page * pageSize < totalCars,
+                remaining = Math.Max(0, totalCars - page * pageSize)
             });
-
-            var results = await Task.WhenAll(carDeliveryTasks);
-
-            // Sắp xếp theo khoảng cách (gần nhất trước) hoặc theo tổng chi phí
-            var sortedResults = results
-                .OrderBy(r => r.distanceKm)
-                .ToList();
-
-            return Json(new { success = true, cars = sortedResults });
         }
     }
 }

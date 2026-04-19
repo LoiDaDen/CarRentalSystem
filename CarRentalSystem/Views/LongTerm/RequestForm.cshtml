@@ -4,6 +4,18 @@
     var contracts = ViewBag.ContractTypes as List<CarRentalSystem.Models.ContractType>;
     var selectedContract = ViewBag.SelectedContract as CarRentalSystem.Models.ContractType;
     var isLongTerm = selectedContract != null && selectedContract.MinDurationDays >= 30;
+    
+    // Serialize contracts for JavaScript
+    var contractsJson = contracts != null ? System.Text.Json.JsonSerializer.Serialize(
+        contracts.Select(c => new {
+            c.ContractTypeID,
+            c.Name,
+            c.MinDurationDays,
+            c.MaxDurationDays,
+            c.DiscountPercent,
+            c.Description
+        })
+    ) : "[]";
 }
 
 <div class="container py-5 mt-5">
@@ -13,53 +25,59 @@
             <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-5">
                 <div class="card-body p-4 p-md-5 bg-white">
                     <h5 class="fw-bolder mb-4 text-dark text-uppercase" style="letter-spacing: 0.5px;">NHU CẦU THUÊ CỦA BẠN</h5>
-                    <form asp-action="SubmitRequest" method="post">
-                        <!-- Section 1 -->
+                    <form asp-action="SubmitRequest" method="post" id="rentalForm">
+                        <!-- Section 1: Thông tin cơ bản -->
                         <div class="row g-4 mb-5">
                             <div class="col-md-3">
                                 <label class="small text-muted fw-bold mb-2">Địa điểm muốn thuê</label>
-                                <select name="Location" id="locationSelect" class="form-select bg-light border-0 shadow-none" onchange="updateCarSuggestions()">
+                                <select name="Location" id="locationSelect" class="form-select bg-light border-0 shadow-none" onchange="onLocationOrContractChange()">
                                     @if (ViewBag.Locations != null)
                                     {
                                         foreach (var loc in ViewBag.Locations)
                                         {
                                             var isSelected = (ViewBag.CurrentRegionID != null && ViewBag.CurrentRegionID == loc.LocationID) ? "selected" : "";
-                                            if (ViewBag.CurrentRegionID == null && loc.Name == "Hồ Chí Minh") { isSelected = "selected"; } // Default HCM
-                                            <!option value="@loc.Name" @isSelected>@loc.Name</!option>
+                                            if (ViewBag.CurrentRegionID == null && loc.Name == "Hồ Chí Minh") { isSelected = "selected"; }
+                                            <option value="@loc.Name" data-location-id="@loc.LocationID" selected="@(isSelected == "selected")">@loc.Name</option>
                                         }
                                     }
                                     else
                                     {
-                                        <option value="Hồ Chí Minh">Hồ Chí Minh</option>
-                                        <option value="Hà Nội">Hà Nội</option>
-                                        <option value="Đà Nẵng">Đà Nẵng</option>
+                                        <option value="Hồ Chí Minh" data-location-id="1">Hồ Chí Minh</option>
+                                        <option value="Hà Nội" data-location-id="2">Hà Nội</option>
+                                        <option value="Đà Nẵng" data-location-id="3">Đà Nẵng</option>
                                     }
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="small text-muted fw-bold mb-2">Ngày hẹn lấy xe</label>
-                                <input type="datetime-local" name="StartDate" id="startDateInput" class="form-control bg-light border-0 shadow-none" required min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                                <input type="datetime-local" name="StartDate" id="startDateInput" class="form-control bg-light border-0 shadow-none" required min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" onchange="onLocationOrContractChange()" />
                             </div>
                             <div class="col-md-3">
-                                <label class="small text-muted fw-bold mb-2">Gói thuê</label>
-                                <select name="ContractTypeID" id="contractSelect" class="form-select bg-light border-0 shadow-none" onchange="toggleFormFields(this)">
+                                <label class="small text-muted fw-bold mb-2">Gói thuê <span class="text-danger">*</span></label>
+                                <select name="ContractTypeID" id="contractSelect" class="form-select bg-light border-0 shadow-none" required onchange="onContractChange(this)">
                                     @if (contracts != null)
                                     {
-                                        foreach (var c in contracts)
-                                        {
-                                            var isSelected = (selectedContract != null && c.ContractTypeID == selectedContract.ContractTypeID) ? "selected" : "";
-                                            <!option value="@c.ContractTypeID" data-days="@c.MinDurationDays" data-name="@c.Name" @isSelected>@c.Name</!option>
-                                        }
+                                    foreach (var c in contracts)
+                                    {
+                                        var isSelected = (selectedContract != null && c.ContractTypeID == selectedContract.ContractTypeID);
+                                        <option value="@c.ContractTypeID" 
+                                                data-name="@c.Name"
+                                                data-min-days="@c.MinDurationDays" 
+                                                data-max-days="@c.MaxDurationDays"
+                                                data-discount="@c.DiscountPercent"
+                                                selected="@isSelected">@c.Name</option>
+                                    }
                                     }
                                 </select>
                             </div>
                             <div class="col-md-3" id="durationSection">
-                                <label class="small text-muted fw-bold mb-2">Thời gian thuê</label>
-                                <select name="RentDuration" id="durationSelect" class="form-select bg-light border-0 shadow-none">
-                                    <!-- Populated dynamically by JS -->
+                                <label class="small text-muted fw-bold mb-2">Thời gian thuê <span class="text-danger">*</span></label>
+                                <select name="RentDuration" id="durationSelect" class="form-select bg-light border-0 shadow-none" required onchange="updatePriceEstimate()">
+                                    <!-- Populated dynamically by JS based on contract type -->
                                 </select>
                             </div>
                         </div>
+
                         <!-- Ngày tùy chỉnh: Lịch chọn nhiều ngày -->
                         <div class="mb-4" id="customEndDateSection" style="display: none;">
                             <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
@@ -91,40 +109,153 @@
                             <input type="hidden" name="SelectedDates" id="selectedDatesInput" />
                         </div>
 
-                        <h5 class="fw-bolder mb-4 text-dark text-uppercase" style="letter-spacing: 0.5px;">YÊU CẦU VỀ XE</h5>
-                        
-                        <!-- Budget -->
-                        <div class="mb-4" id="budgetSection">
-                            <label class="small text-muted fw-bold mb-3" id="budgetLabel">Chi phí bạn có thể trả 1 tháng</label>
-                            <div class="d-flex align-items-center gap-3">
-                                <input type="text" id="budgetMin" name="BudgetMin" class="form-control text-center fw-bold bg-light border-0 shadow-none" value="7.000.000" readonly>
-                                <span class="text-muted">-</span>
-                                <input type="text" id="budgetMax" class="form-control text-center fw-bold bg-light border-0 shadow-none" value="40.000.000" readonly>
+                        <!-- Hiển thị thông tin gói đã chọn -->
+                        <div class="alert alert-info mb-4" id="contractInfoSection" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong id="contractInfoName"></strong>
+                                    <span class="text-muted ms-2" id="contractInfoDiscount"></span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success" id="contractInfoBenefits"></span>
+                                </div>
                             </div>
-                            <input type="range" class="form-range mt-3" min="0" max="100" step="1" value="0" id="priceRange" style="accent-color: #10b981;">
+                            <div class="mt-2 small text-muted" id="contractInfoDesc"></div>
                         </div>
 
-                        <!-- Car Suggestions based on budget -->
-                        <div class="mb-4" id="carSuggestionSection" style="display: none;">
-                            <label class="small text-muted fw-bold mb-2"><i class="bi bi-lightbulb text-warning me-1"></i>Đề xuất xe phù hợp ngân sách</label>
-                            <div id="carSuggestionList" class="row g-3 mt-1">
-                                <!-- Populated by JS -->
+                        <h5 class="fw-bolder mb-4 text-dark text-uppercase" style="letter-spacing: 0.5px;">YÊU CẦU VỀ XE</h5>
+
+                        <!-- Bộ lọc xe -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="small text-muted fw-bold mb-2">Hãng xe</label>
+                                <select id="brandFilter" class="form-select bg-light border-0 shadow-none" onchange="loadAvailableCars()">
+                                    <option value="">Tất cả hãng</option>
+                                    <option value="TOYOTA">Toyota</option>
+                                    <option value="HYUNDAI">Hyundai</option>
+                                    <option value="KIA">Kia</option>
+                                    <option value="MAZDA">Mazda</option>
+                                    <option value="HONDA">Honda</option>
+                                    <option value="FORD">Ford</option>
+                                    <option value="MERCEDES">Mercedes</option>
+                                    <option value="BMW">BMW</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small text-muted fw-bold mb-2">Số chỗ</label>
+                                <select id="seatsFilter" class="form-select bg-light border-0 shadow-none" onchange="loadAvailableCars()">
+                                    <option value="">Tất cả</option>
+                                    <option value="4">4 chỗ</option>
+                                    <option value="5">5 chỗ</option>
+                                    <option value="7">7 chỗ</option>
+                                    <option value="9">9 chỗ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small text-muted fw-bold mb-2">Loại xe</label>
+                                <select id="carTypeFilter" class="form-select bg-light border-0 shadow-none" onchange="loadAvailableCars()">
+                                    <option value="">Tất cả loại</option>
+                                    <option value="Sedan">Sedan</option>
+                                    <option value="SUV">SUV</option>
+                                    <option value="MPV">MPV</option>
+                                    <option value="Hatchback">Hatchback</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Loading indicator -->
+                        <div class="text-center py-4" id="carLoading" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Đang tải danh sách xe...</p>
+                        </div>
+
+                        <!-- Danh sách xe -->
+                        <div class="mb-4" id="carListSection">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="small text-muted fw-bold mb-0">
+                                    <i class="bi bi-car-front-fill text-primary me-1"></i>
+                                    Xe có sẵn cho thuê dài hạn
+                                    <span class="badge bg-primary ms-2" id="carCount">0</span>
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadAvailableCars()">
+                                    <i class="bi bi-arrow-clockwise"></i> Làm mới
+                                </button>
+                            </div>
+                            <div id="carList" class="row g-3">
+                                <!-- Cars loaded via AJAX -->
+                                <div class="col-12 text-center text-muted py-5">
+                                    <i class="bi bi-car-front fs-1 opacity-25"></i>
+                                    <p class="mt-2">Vui lòng chọn gói thuê và nhấn "Tải xe" để xem danh sách xe</p>
+                                    <button type="button" class="btn btn-primary" onclick="loadAvailableCars()">
+                                        <i class="bi bi-search me-1"></i> Tải danh sách xe
+                                    </button>
+                                </div>
                             </div>
                             <input type="hidden" name="Brand" id="selectedBrand" value="">
                             <input type="hidden" name="ModelStr" id="selectedModel" value="">
+                            <input type="hidden" name="CarID" id="selectedCarId" value="">
+                        </div>
+
+                        <!-- Ước tính giá -->
+                        <div class="card bg-light border-0 mb-4" id="priceEstimateSection" style="display: none;">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-dark mb-3">
+                                    <i class="bi bi-calculator text-primary me-2"></i>Ước tính chi phí
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr>
+                                                <td class="text-muted">Giá gốc:</td>
+                                                <td class="text-end fw-bold" id="estBasePrice">0 VNĐ</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Chiết khấu gói:</td>
+                                                <td class="text-end text-success" id="estContractDiscount">-0 VNĐ</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Chiết khấu thành viên:</td>
+                                                <td class="text-end text-success" id="estMembershipDiscount">-0 VNĐ</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr>
+                                                <td class="text-muted">Tổng cộng:</td>
+                                                <td class="text-end fw-bold text-primary fs-5" id="estTotalPrice">0 VNĐ</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Tiền cọc:</td>
+                                                <td class="text-end" id="estDeposit">0 VNĐ</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Thanh toán hàng tháng:</td>
+                                                <td class="text-end fw-bold text-success" id="estMonthlyRate">0 VNĐ</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Requirements -->
                         <div class="mb-4">
                             <label class="small text-muted fw-bold mb-2">Yêu cầu chi tiết về xe muốn thuê</label>
                             <textarea name="Note" id="noteField" class="form-control bg-light border-0 shadow-none" rows="4" 
-                                      placeholder="@(isLongTerm ? "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM. Giới hạn 1 tháng chạy 3.000 km, hợp đồng 1 năm. Ưu tiên dòng xe Sedona, Carnival." : "Ví dụ: Mong muốn xe rộng sạch sẽ, không mùi, cần xe gấp vào cuối tuần này.")"></textarea>
+                                      placeholder="Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM. Giới hạn 1 tháng chạy 3.000 km."></textarea>
                         </div>
                         
                         <!-- Actions -->
                         <div class="d-flex align-items-center justify-content-between gap-3 pt-3 border-top mt-2 pt-4">
                             <a href="/LongTerm" class="btn btn-outline-secondary fw-bold px-5 py-2 rounded-3 shadow-sm w-100">HỦY</a>
-                            <button type="submit" class="btn btn-success fw-bold px-5 py-2 rounded-3 shadow-sm w-100" style="background-color: #38bdf8; border: none; background: linear-gradient(135deg, #4ade80 0%, #10b981 100%);">TIẾP TỤC</button>
+                            <button type="submit" class="btn btn-success fw-bold px-5 py-2 rounded-3 shadow-sm w-100" 
+                                    style="background-color: #38bdf8; border: none; background: linear-gradient(135deg, #4ade80 0%, #10b981 100%);"
+                                    id="submitBtn">
+                                <i class="bi bi-arrow-right-circle me-1"></i> TIẾP TỤC
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -135,216 +266,376 @@
 
 @section Scripts {
     <script>
-        // Car suggestion data based on budget ranges
-        const carSuggestions = {
-            monthly: [
-                { minBudget: 7000000, maxBudget: 12000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 7000000, maxBudget: 15000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Đà Nẵng'] },
-                { minBudget: 10000000, maxBudget: 18000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 12000000, maxBudget: 22000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội'] },
-                { minBudget: 15000000, maxBudget: 25000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 18000000, maxBudget: 30000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 20000000, maxBudget: 35000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh'] },
-                { minBudget: 25000000, maxBudget: 40000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
-            ],
-            weekly: [
-                { minBudget: 2000000, maxBudget: 4000000, brand: 'HYUNDAI', model: 'ACCENT', label: 'Hyundai Accent', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 2000000, maxBudget: 5000000, brand: 'KIA', model: 'MORNING', label: 'Kia Morning', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Đà Nẵng'] },
-                { minBudget: 3000000, maxBudget: 6000000, brand: 'TOYOTA', model: 'VIOS', label: 'Toyota Vios', seats: '5 chỗ', img: 'bi-car-front', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 4000000, maxBudget: 7000000, brand: 'HYUNDAI', model: 'TUCSON', label: 'Hyundai Tucson', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội'] },
-                { minBudget: 5000000, maxBudget: 9000000, brand: 'MAZDA', model: 'CX-5', label: 'Mazda CX-5', seats: '5 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 6000000, maxBudget: 10000000, brand: 'TOYOTA', model: 'INNOVA', label: 'Toyota Innova', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'] },
-                { minBudget: 7000000, maxBudget: 12000000, brand: 'KIA', model: 'CARNIVAL', label: 'Kia Carnival', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hồ Chí Minh'] },
-                { minBudget: 8000000, maxBudget: 15000000, brand: 'KIA', model: 'SEDONA', label: 'Kia Sedona', seats: '7 chỗ', img: 'bi-car-front-fill', locations: ['Hà Nội', 'Đà Nẵng'] },
-            ]
-        };
+        // Contract types data from server
+        const contractTypes = @Html.Raw(contractsJson);
+        
+        // Current state
+        let selectedCarId = null;
+        let availableCars = [];
 
-        // Budget configurations per contract type
-        const budgetConfigs = {
-            'Theo năm':       { label: 'Chi phí bạn có thể trả 1 tháng', min: 7000000, max: 40000000, type: 'monthly' },
-            'Theo tháng':     { label: 'Chi phí bạn có thể trả 1 tháng', min: 7000000, max: 40000000, type: 'monthly' },
-            'Trong tuần':     { label: 'Chi phí bạn có thể trả 1 tuần',  min: 2000000, max: 15000000, type: 'weekly' },
-            'Ngày tùy chỉnh': { label: 'Ngân sách dự kiến',               min: 2000000, max: 40000000, type: 'monthly' },
-        };
-
+        // Format currency
         function formatCurrency(n) {
-            return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            if (n >= 1000000000) {
+                return (n / 1000000000).toFixed(1) + ' tỷ';
+            }
+            return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' VNĐ';
         }
 
+        // Initialize on page load
         document.addEventListener("DOMContentLoaded", function() {
-            var startSelect = document.getElementById('contractSelect');
-            if (startSelect) toggleFormFields(startSelect);
-
-            // Price range slider
-            var priceRange = document.getElementById('priceRange');
-            if (priceRange) {
-                priceRange.addEventListener('input', function() {
-                    updateBudgetDisplay();
-                    updateCarSuggestions();
-                });
+            var contractSelect = document.getElementById('contractSelect');
+            if (contractSelect) {
+                onContractChange(contractSelect);
             }
         });
 
-        function toggleFormFields(selectObj) {
+        // Handle contract type change
+        function onContractChange(selectObj) {
             const selectedOption = selectObj.options[selectObj.selectedIndex];
             const contractName = selectedOption.getAttribute('data-name') || '';
+            const minDays = parseInt(selectedOption.getAttribute('data-min-days')) || 0;
+            const maxDays = parseInt(selectedOption.getAttribute('data-max-days')) || 0;
+            const discount = parseFloat(selectedOption.getAttribute('data-discount')) || 0;
+
             const durationSelect = document.getElementById('durationSelect');
-            const noteField = document.getElementById('noteField');
-            const budgetLabel = document.getElementById('budgetLabel');
-            const priceRange = document.getElementById('priceRange');
-
-            durationSelect.innerHTML = "";
-            let optionsHTML = "";
-
             const durationSection = document.getElementById('durationSection');
             const customEndDateSection = document.getElementById('customEndDateSection');
+            const contractInfoSection = document.getElementById('contractInfoSection');
+            const noteField = document.getElementById('noteField');
 
-            // Duration options based on contract type name
-            if (contractName === 'Ngày tùy chỉnh') {
-                durationSection.style.display = 'none';
-                customEndDateSection.style.display = 'block';
-                durationSelect.innerHTML = '<option value="Tùy chỉnh">Tùy chỉnh</option>';
-                noteField.placeholder = "Ví dụ: Tôi chỉ cần xe vào các ngày T2, T3, T7, CN trong tháng này.";
-                renderCalendar();
-            } else {
+            // Show contract info
+            contractInfoSection.style.display = 'block';
+            document.getElementById('contractInfoName').textContent = contractName;
+            document.getElementById('contractInfoDiscount').textContent = `Giảm ${discount}%`;
+            
+            // Build benefits badge
+            let benefitsHtml = '';
+            if (discount > 0) benefitsHtml += `<span class="badge bg-success me-1">Giảm ${discount}%</span>`;
+            if (selectedOption.getAttribute('data-min-days') >= 30) {
+                benefitsHtml += '<span class="badge bg-info">Bảo dưỡng miễn phí</span>';
+            }
+            document.getElementById('contractInfoBenefits').innerHTML = benefitsHtml;
+            document.getElementById('contractInfoDesc').textContent = selectedOption.closest('option')?.textContent || '';
+
+            // Populate duration options based on contract type
+            durationSelect.innerHTML = '';
+            let optionsHTML = '';
+
+            // Duration options based on contract type name pattern
+            if (contractName.includes('Tuần') || minDays === 7) {
+                // Week-based contract: 1-4 weeks
                 durationSection.style.display = 'block';
                 customEndDateSection.style.display = 'none';
-
-                if (contractName === 'Theo năm') {
-                    for (let i = 1; i <= 20; i++) {
-                        optionsHTML += `<option value="${i} Năm">${i} Năm</option>`;
-                    }
-                    noteField.placeholder = "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM. Ưu tiên dòng xe Sedona, Carnival.";
-                } else if (contractName === 'Theo tháng') {
-                    for (let i = 1; i <= 12; i++) {
-                        optionsHTML += `<option value="${i} Tháng">${i} Tháng</option>`;
-                    }
-                    noteField.placeholder = "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM.";
-                } else if (contractName === 'Trong tuần') {
-                    for (let i = 2; i <= 5; i++) {
-                        optionsHTML += `<option value="${i} Ngày">${i} Ngày</option>`;
-                    }
-                    noteField.placeholder = "Ví dụ: Mong muốn xe rộng sạch sẽ, không mùi, cần xe trong tuần tới.";
-                } else {
-                    optionsHTML = '<option value="1 Tháng">1 Tháng</option>';
+                for (let i = 1; i <= 4; i++) {
+                    const selected = i === 1 ? 'selected' : '';
+                    optionsHTML += `<option value="${i} Tuần" ${selected}>${i} Tuần (${i * 7} ngày)</option>`;
+                }
+                noteField.placeholder = "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, ưu tiên biển trắng.";
+            }
+            else if (contractName.includes('Tháng') && !contractName.includes('3') && !contractName.includes('6')) {
+                // Single month: 1-12 months
+                durationSection.style.display = 'block';
+                customEndDateSection.style.display = 'none';
+                for (let i = 1; i <= 12; i++) {
+                    const selected = i === 1 ? 'selected' : '';
+                    optionsHTML += `<option value="${i} Tháng" ${selected}>${i} Tháng</option>`;
+                }
+                noteField.placeholder = "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển HCM.";
+            }
+            else if (contractName.includes('3 Tháng')) {
+                // 3 months package
+                durationSection.style.display = 'block';
+                customEndDateSection.style.display = 'none';
+                optionsHTML = '<option value="3 Tháng" selected>3 Tháng (90 ngày)</option>';
+                noteField.placeholder = "Ví dụ: Xe 7 chỗ gầm cao, đời từ 2021 trở lên, ưu tiên xe mới.";
+            }
+            else if (contractName.includes('6 Tháng')) {
+                // 6 months package
+                durationSection.style.display = 'block';
+                customEndDateSection.style.display = 'none';
+                optionsHTML = '<option value="6 Tháng" selected>6 Tháng (180 ngày)</option>';
+                noteField.placeholder = "Ví dụ: Xe đời mới, bảo dưỡng đều, ưu tiên xe có camera.";
+            }
+            else if (contractName.includes('Năm')) {
+                // Year package: 1-3 years
+                durationSection.style.display = 'block';
+                customEndDateSection.style.display = 'none';
+                for (let i = 1; i <= 3; i++) {
+                    const selected = i === 1 ? 'selected' : '';
+                    optionsHTML += `<option value="${i} Năm" ${selected}>${i} Năm</option>`;
+                }
+                noteField.placeholder = "Ví dụ: Xe 7 chỗ đời mới nhất, bảo dưỡng định kỳ, ưu tiên xe mới dưới 2 năm.";
+            }
+            else {
+                // Default: show as months
+                durationSection.style.display = 'block';
+                customEndDateSection.style.display = 'none';
+                for (let i = 1; i <= 12; i++) {
+                    const selected = i === 1 ? 'selected' : '';
+                    optionsHTML += `<option value="${i} Tháng" ${selected}>${i} Tháng</option>`;
                 }
             }
 
             durationSelect.innerHTML = optionsHTML;
 
-            // Update budget section
-            const config = budgetConfigs[contractName];
-            if (config) {
-                budgetLabel.textContent = config.label;
-                document.getElementById('budgetMax').value = formatCurrency(config.max);
-                // Reset slider
-                priceRange.value = 0;
-                updateBudgetDisplay();
-                updateCarSuggestions();
+            // Load cars with new contract
+            loadAvailableCars();
+            updatePriceEstimate();
+        }
+
+        // Handle location or contract change
+        function onLocationOrContractChange() {
+            loadAvailableCars();
+        }
+
+        // Load available cars from API
+        async function loadAvailableCars() {
+            const locationSelect = document.getElementById('locationSelect');
+            const contractSelect = document.getElementById('contractSelect');
+            const brandFilter = document.getElementById('brandFilter');
+            const seatsFilter = document.getElementById('seatsFilter');
+            const carTypeFilter = document.getElementById('carTypeFilter');
+            const startDateInput = document.getElementById('startDateInput');
+
+            const locationId = locationSelect?.options[locationSelect.selectedIndex]?.getAttribute('data-location-id') || 1;
+            const contractTypeId = contractSelect?.value || 0;
+            const brand = brandFilter?.value || '';
+            const seats = seatsFilter?.value || '';
+            const carType = carTypeFilter?.value || '';
+            const startDate = startDateInput?.value || '';
+
+            // Show loading
+            document.getElementById('carLoading').style.display = 'block';
+            document.getElementById('carListSection').querySelector('.row').innerHTML = `
+                <div class="col-12 text-center text-muted py-5">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p>Đang tải danh sách xe...</p>
+                </div>
+            `;
+
+            try {
+                // Build URL with query params
+                let url = '/LongTerm/GetCarsForSelection?locationId=' + locationId;
+                if (brand) url += '&brand=' + encodeURIComponent(brand);
+                if (seats) url += '&minSeats=' + seats;
+                if (carType) url += '&carType=' + encodeURIComponent(carType);
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success && data.cars && data.cars.length > 0) {
+                    availableCars = data.cars;
+                    renderCarList(data.cars);
+                    document.getElementById('carCount').textContent = data.cars.length;
+                } else {
+                    availableCars = [];
+                    renderEmptyState();
+                }
+            } catch (error) {
+                console.error('Error loading cars:', error);
+                availableCars = [];
+                renderEmptyState('Không thể tải danh sách xe. Vui lòng thử lại.');
+            } finally {
+                document.getElementById('carLoading').style.display = 'none';
             }
         }
 
-        function updateBudgetDisplay() {
-            const selectObj = document.getElementById('contractSelect');
-            const selectedOption = selectObj.options[selectObj.selectedIndex];
-            const contractName = selectedOption.getAttribute('data-name') || '';
-            const config = budgetConfigs[contractName];
-            if (!config) return;
-
-            const slider = document.getElementById('priceRange');
-            const pct = parseInt(slider.value) / 100;
-            const currentValue = Math.round(config.min + (config.max - config.min) * pct);
+        // Render car list
+        function renderCarList(cars) {
+            const container = document.getElementById('carList');
             
-            // Round to nearest 500,000
-            const rounded = Math.round(currentValue / 500000) * 500000;
-            const finalValue = Math.min(rounded, config.max);
+            if (!cars || cars.length === 0) {
+                renderEmptyState();
+                return;
+            }
 
-            document.getElementById('budgetMin').value = formatCurrency(finalValue);
-        }
-
-        function updateCarSuggestions() {
-            const selectObj = document.getElementById('contractSelect');
-            const selectedOption = selectObj.options[selectObj.selectedIndex];
-            const contractName = selectedOption.getAttribute('data-name') || '';
-            const config = budgetConfigs[contractName];
-            if (!config) return;
-
-            const slider = document.getElementById('priceRange');
-            const pct = parseInt(slider.value) / 100;
-            const budget = Math.round(config.min + (config.max - config.min) * pct);
-            const rounded = Math.round(budget / 500000) * 500000;
-            const finalBudget = Math.min(rounded, config.max);
-
-            const locationSelect = document.getElementById('locationSelect');
-            const selectedLocation = locationSelect ? locationSelect.value : 'Hồ Chí Minh';
-            
-            const suggestions = carSuggestions[config.type] || carSuggestions.monthly;
-            const matched = suggestions.filter(s => 
-                s.maxBudget >= finalBudget && 
-                (!s.locations || s.locations.includes(selectedLocation))
-            );
-
-            const container = document.getElementById('carSuggestionList');
-            const section = document.getElementById('carSuggestionSection');
-
-            if (matched.length > 0) {
-                section.style.display = 'block';
-                let html = '';
-                matched.forEach((car, idx) => {
-                    html += `
-                    <div class="col-md-4 col-6">
-                        <div class="card shadow-sm rounded-3 h-100 suggestion-card" 
-                             style="cursor:pointer; transition: all 0.2s; border: 2px solid transparent;" 
-                             onclick="selectSuggestion('${car.brand}', '${car.model}', this)"
-                             onmouseover="this.style.borderColor='#10b981'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.2)'"
-                             onmouseout="if(!this.classList.contains('selected')){this.style.borderColor='transparent'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'}">
-                            <div class="card-body p-3 text-center">
-                                <i class="bi ${car.img} fs-2 text-primary mb-2 d-block"></i>
-                                <h6 class="fw-bold mb-1 small">${car.label}</h6>
-                                <span class="badge bg-light text-muted">${car.seats}</span>
+            let html = '';
+            cars.forEach((car, idx) => {
+                const isSelected = selectedCarId === car.carId;
+                const selectedStyle = isSelected ? 'border-color: #10b981; box-shadow: 0 0 0 2px #10b981;' : '';
+                const selectedClass = isSelected ? 'selected' : '';
+                
+                html += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm rounded-3 h-100 car-card ${selectedClass}" 
+                         style="cursor: pointer; transition: all 0.2s; ${selectedStyle}"
+                         onclick="selectCar(${car.carId}, '${car.brandName}', '${car.carName}', this)"
+                         onmouseover="if(!this.classList.contains('selected')){this.style.borderColor='#10b981'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.2)'}"
+                         onmouseout="if(!this.classList.contains('selected')){this.style.borderColor='#dee2e6'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'}">
+                        <div class="position-relative">
+                            ${car.imageUrl ? 
+                                `<img src="${car.imageUrl}" class="card-img-top" style="height: 160px; object-fit: cover;" alt="${car.carName}">` :
+                                `<div class="bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                                    <i class="bi bi-car-front-fill fs-1 text-muted"></i>
+                                </div>`
+                            }
+                            ${isSelected ? '<span class="position-absolute top-0 end-0 badge bg-success m-2"><i class="bi bi-check-circle"></i> Đã chọn</span>' : ''}
+                        </div>
+                        <div class="card-body p-3">
+                            <h6 class="fw-bold mb-1 text-dark">${car.brandName} ${car.carName}</h6>
+                            <p class="small text-muted mb-2">
+                                <i class="bi bi-geo-alt me-1"></i>${car.location || 'N/A'}
+                                <span class="ms-2"><i class="bi bi-people me-1"></i>${car.seats} chỗ</span>
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted text-decoration-line-through d-block" style="font-size: 11px;">
+                                        ${formatCurrency(car.pricePerDay * 30 * 1.1)}
+                                    </small>
+                                    <span class="fw-bold text-primary">${formatCurrency(car.pricePerDay * 30)}</span>
+                                    <small class="text-muted">/tháng</small>
+                                </div>
+                                <small class="badge bg-light text-dark">${car.transmission || 'Tự động'}</small>
                             </div>
                         </div>
-                    </div>`;
-                });
-                container.innerHTML = html;
-            } else {
-                section.style.display = 'none';
-                container.innerHTML = '';
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Render empty state
+        function renderEmptyState(message) {
+            const container = document.getElementById('carList');
+            message = message || 'Không tìm thấy xe phù hợp với bộ lọc hiện tại.';
+            container.innerHTML = `
+                <div class="col-12 text-center text-muted py-5">
+                    <i class="bi bi-car-front fs-1 opacity-25"></i>
+                    <p class="mt-3">${message}</p>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadAvailableCars()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Thử lại
+                    </button>
+                </div>
+            `;
+            document.getElementById('carCount').textContent = '0';
+        }
+
+        // Select a car
+        function selectCar(carId, brandName, carName, element) {
+            selectedCarId = carId;
+            
+            // Update hidden fields
+            document.getElementById('selectedCarId').value = carId;
+            document.getElementById('selectedBrand').value = brandName;
+            document.getElementById('selectedModel').value = carName;
+
+            // Update UI - remove previous selection
+            document.querySelectorAll('.car-card').forEach(card => {
+                card.classList.remove('selected');
+                card.style.borderColor = '#dee2e6';
+                card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                const badge = card.querySelector('.badge.bg-success');
+                if (badge) badge.remove();
+            });
+
+            // Add selection to clicked card
+            element.classList.add('selected');
+            element.style.borderColor = '#10b981';
+            element.style.boxShadow = '0 0 0 2px #10b981';
+            
+            // Add selected badge
+            const imgDiv = element.querySelector('.position-relative');
+            if (imgDiv && !imgDiv.querySelector('.badge.bg-success')) {
+                const badge = document.createElement('span');
+                badge.className = 'position-absolute top-0 end-0 badge bg-success m-2';
+                badge.innerHTML = '<i class="bi bi-check-circle"></i> Đã chọn';
+                imgDiv.appendChild(badge);
             }
 
-            // Update placeholder based on location
-            const noteField = document.getElementById('noteField');
-            if (noteField) {
-                let locText = selectedLocation;
-                if (locText === 'Hồ Chí Minh') locText = 'HCM';
-                
-                if (contractName === 'Ngày tùy chỉnh') {
-                    noteField.placeholder = "Ví dụ: Tôi chỉ cần xe vào các ngày T2, T3, T7, CN trong tháng này.";
-                } else if (contractName === 'Theo năm') {
-                    noteField.placeholder = `Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển ${locText}. Ưu tiên dòng xe Sedona, Carnival.`;
-                } else if (contractName === 'Theo tháng') {
-                    noteField.placeholder = `Ví dụ: Xe 7 chỗ gầm cao, đời từ 2020 trở lên, biển trắng, ưu tiên biển ${locText}.`;
-                } else if (contractName === 'Trong tuần') {
-                    noteField.placeholder = "Ví dụ: Mong muốn xe rộng sạch sẽ, không mùi, cần xe trong tuần tới.";
+            // Update price estimate
+            updatePriceEstimate();
+
+            // Scroll to price section
+            const priceSection = document.getElementById('priceEstimateSection');
+            if (priceSection) {
+                priceSection.style.display = 'block';
+                priceSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Update price estimate
+        async function updatePriceEstimate() {
+            const contractSelect = document.getElementById('contractSelect');
+            const durationSelect = document.getElementById('durationSelect');
+            const priceSection = document.getElementById('priceEstimateSection');
+
+            if (!contractSelect || !selectedCarId) {
+                priceSection.style.display = 'none';
+                return;
+            }
+
+            const contractTypeId = contractSelect.value;
+            const duration = durationSelect?.value || '1 Tháng';
+            
+            // Parse duration to get term months
+            const parts = duration.split(' ');
+            let termMonths = 1;
+            if (parts.length >= 2) {
+                const value = parseInt(parts[0]);
+                const unit = parts[1].toLowerCase();
+                if (unit.includes('tuần') || unit.includes('week')) {
+                    termMonths = Math.ceil(value / 4); // Convert weeks to months
+                } else if (unit.includes('năm') || unit.includes('year')) {
+                    termMonths = value * 12;
+                } else if (unit.includes('tháng') || unit.includes('month')) {
+                    termMonths = value;
                 }
             }
+
+            // Get contract discount
+            const selectedOption = contractSelect.options[contractSelect.selectedIndex];
+            const discountPercent = parseFloat(selectedOption.getAttribute('data-discount')) || 0;
+            const minDays = parseInt(selectedOption.getAttribute('data-min-days')) || 30;
+
+            // Find selected car
+            const car = availableCars.find(c => c.carId === selectedCarId);
+            if (!car) {
+                priceSection.style.display = 'none';
+                return;
+            }
+
+            // Calculate prices
+            const basePrice = car.pricePerDay * minDays;
+            const contractDiscount = basePrice * (discountPercent / 100);
+            const finalPrice = basePrice - contractDiscount;
+            const monthlyRate = finalPrice / termMonths;
+            const deposit = car.pricePerDay * 30 * 0.5; // Approx 50% of monthly price as deposit
+
+            // Update UI
+            document.getElementById('estBasePrice').textContent = formatCurrency(basePrice);
+            document.getElementById('estContractDiscount').textContent = '-' + formatCurrency(contractDiscount);
+            document.getElementById('estMembershipDiscount').textContent = '-0 VNĐ (Đăng nhập để xem)';
+            document.getElementById('estTotalPrice').textContent = formatCurrency(finalPrice);
+            document.getElementById('estDeposit').textContent = formatCurrency(deposit);
+            document.getElementById('estMonthlyRate').textContent = formatCurrency(monthlyRate);
+
+            priceSection.style.display = 'block';
         }
 
-        function selectSuggestion(brand, model, el) {
-            // Remove previous selections
-            document.querySelectorAll('.suggestion-card').forEach(c => {
-                c.classList.remove('selected');
-                c.style.borderColor = 'transparent';
-                c.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
-            });
-            // Mark selected
-            el.classList.add('selected');
-            el.style.borderColor = '#10b981';
-            el.style.boxShadow = '0 0 0 2px #10b981';
-            // Set hidden fields
-            document.getElementById('selectedBrand').value = brand;
-            document.getElementById('selectedModel').value = model;
-        }
+        // Form validation before submit
+        document.getElementById('rentalForm').addEventListener('submit', function(e) {
+            if (!selectedCarId) {
+                e.preventDefault();
+                alert('Vui lòng chọn một xe trước khi tiếp tục!');
+                document.getElementById('carListSection').scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            const contractSelect = document.getElementById('contractSelect');
+            if (!contractSelect.value) {
+                e.preventDefault();
+                alert('Vui lòng chọn gói thuê!');
+                return;
+            }
+
+            const startDate = document.getElementById('startDateInput').value;
+            if (!startDate) {
+                e.preventDefault();
+                alert('Vui lòng chọn ngày bắt đầu thuê!');
+                return;
+            }
+        });
 
         // ====== CALENDAR MULTI-SELECT ======
         let calYear, calMonth;
@@ -376,7 +667,6 @@
 
             const firstDay = new Date(calYear, calMonth, 1);
             const lastDay = new Date(calYear, calMonth + 1, 0);
-            // Monday = 0, Sunday = 6
             let startDow = (firstDay.getDay() + 6) % 7;
 
             let html = '';
@@ -437,7 +727,6 @@
             const count = selectedDates.size;
             badge.textContent = `${count} ngày`;
 
-            // Sort dates and format for display
             const sorted = [...selectedDates].sort();
             if (sorted.length > 0) {
                 const formatted = sorted.map(d => {
@@ -449,11 +738,10 @@
                 preview.innerHTML = '';
             }
 
-            // Store in hidden input
             hiddenInput.value = sorted.join(',');
         }
 
-        // Initialize calendar on page load
+        // Initialize calendar on page load if custom dates section is shown
         document.addEventListener('DOMContentLoaded', function() {
             initCalendar();
         });
