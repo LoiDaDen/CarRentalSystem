@@ -26,6 +26,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         {
             ViewBag.Search = search;
             ViewBag.ActiveRole = role;
+            ViewBag.PinVerified = HttpContext.Session.GetString("AdminPinVerified") == "true";
 
             ViewBag.TotalUsers = await _context.Users.CountAsync();
             ViewBag.TotalAdmins = await _context.Users.CountAsync(u => u.Role == "Admin");
@@ -44,14 +45,30 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             var list = await users.OrderByDescending(u => u.CreatedAt).ToListAsync();
 
-            // 🔓 Admin: decrypt PII để xem đầy đủ
-            foreach (var user in list)
+            // 🔓 Chỉ decrypt PII khi đã verify PIN
+            if (ViewBag.PinVerified == true)
             {
-                user.CitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
-                user.DrivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
+                foreach (var user in list)
+                {
+                    user.CitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
+                    user.DrivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
+                }
             }
 
             return View(list);
+        }
+
+        [HttpPost]
+        public IActionResult VerifyAdminPin(string pin)
+        {
+            const string ADMIN_PIN = "123456";
+            if (pin == ADMIN_PIN)
+            {
+                HttpContext.Session.SetString("AdminPinVerified", "true");
+                return RedirectToAction(nameof(Index));
+            }
+            TempData["PinError"] = "Mã PIN không chính xác!";
+            return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> PartnerRequests()
@@ -191,6 +208,68 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 TempData["Success"] = "Đã xóa tài khoản người dùng.";
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        // ========================================
+        // eKYC MANAGEMENT
+        // ========================================
+
+        public async Task<IActionResult> EkycPending()
+        {
+            var pendingUsers = await _context.Users
+                .Where(u => u.VerificationStatus == "Pending" || (u.IdCardFrontUrl != null && !u.IsVerified))
+                .OrderByDescending(u => u.CreatedAt)
+                .ToListAsync();
+
+            // Decrypt PII for admin view
+            foreach (var user in pendingUsers)
+            {
+                user.CitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
+                user.DrivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
+            }
+
+            return View(pendingUsers);
+        }
+
+        public async Task<IActionResult> EkycDetails(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.CitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
+            user.DrivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
+
+            return View(user);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ApproveEkyc(int id, string? notes)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.IsVerified = true;
+            user.VerificationStatus = "Verified";
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Đã xác nhận eKYC của {user.Name} thành công!";
+
+            return RedirectToAction(nameof(EkycPending));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RejectEkyc(int id, string? reason)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.IsVerified = false;
+            user.VerificationStatus = "Rejected";
+
+            await _context.SaveChangesAsync();
+            TempData["Warning"] = $"Đã từ chối eKYC của {user.Name}.";
+
+            return RedirectToAction(nameof(EkycPending));
         }
     }
 }

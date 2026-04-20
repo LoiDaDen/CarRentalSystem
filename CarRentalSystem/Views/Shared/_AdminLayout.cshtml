@@ -115,6 +115,9 @@
                             <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "PartnerRequests" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="PartnerRequests">
                                 <i class="bi bi-person-badge-fill" style="font-size: 1.1rem;"></i> Duyệt Đối tác
                             </a>
+                            <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "EkycPending" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="EkycPending">
+                                <i class="bi bi-shield-check" style="font-size: 1.1rem;"></i> Duyệt eKYC
+                            </a>
                             <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Driver" ? "active" : "")" asp-area="Admin" asp-controller="Driver" asp-action="Index">
                                 <i class="bi bi-person-workspace" style="font-size: 1.1rem;"></i> Quản lý Tài xế
                             </a>

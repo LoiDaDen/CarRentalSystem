@@ -1,6 +1,6 @@
 @model CarRentalSystem.Models.User
 @{
-    ViewData["Title"] = "Định danh điện tử (eKYC)";
+    ViewData["Title"] = "Định danh eKYC";
 }
 
 <style>
@@ -10,35 +10,23 @@
     .upload-zone {
         border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc;
         padding: 30px 20px; text-align: center; cursor: pointer; position: relative; overflow: hidden;
-        transition: all 0.2s; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: all 0.2s; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
     .upload-zone:hover { border-color: #3b82f6; background: #eff6ff; }
-    .upload-zone i { font-size: 2.5rem; color: #94a3b8; margin-bottom: 10px; transition: 0.2s; }
+    .upload-zone i { font-size: 3rem; color: #94a3b8; margin-bottom: 10px; transition: 0.2s; }
     .upload-zone:hover i { color: #3b82f6; transform: scale(1.1); }
     .upload-zone .preview-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: none; z-index: 2; }
+    .upload-zone.has-preview i,
+    .upload-zone.has-preview span { display: none; }
+    .clear-btn { position: absolute; top: 5px; right: 5px; z-index: 3; background: rgba(239,68,68,0.9); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; display: none; font-size: 0.8rem; }
+    .upload-zone.has-preview .clear-btn { display: flex; align-items: center; justify-content: center; }
     .status-badge { padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; }
-    #scannerOverlay {
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(15,23,42,0.9); z-index: 9999; display: none;
-        align-items: center; justify-content: center; flex-direction: column;
-    }
-    .face-scanner {
-        width: 250px; height: 250px; border: 4px solid #3b82f6; border-radius: 20px;
-        position: relative; overflow: hidden; box-shadow: 0 0 40px rgba(59,130,246,0.4);
-    }
-    .face-scanner::before {
-        content: ''; position: absolute; width: 100%; height: 5px;
-        background: #10b981; top: -5px; box-shadow: 0 0 15px #10b981;
-        animation: scanBar 2s linear infinite;
-    }
-    @@keyframes scanBar { 0% { top: -5px; } 50% { top: 100%; } 100% { top: -5px; } }
-    .scan-text { color: white; margin-top: 20px; font-weight: 700; font-size: 1.2rem; letter-spacing: 1px; }
 </style>
 
 <div class="container my-4">
     <div class="ekyc-header text-center">
-        <h1><i class="bi bi-shield-check me-2"></i>Hệ thống Định danh eKYC Tự Động</h1>
-        <p class="mb-0 text-white-50">Tích hợp Trí tuệ Nhân tạo FPT.AI - An toàn, Bảo mật, Nhanh chóng</p>
+        <h1><i class="bi bi-shield-check me-2"></i>Hồ sơ eKYC</h1>
+        <p class="mb-0 text-white-50">Tải lên giấy tờ để Admin xác minh danh tính</p>
     </div>
 
     @if (TempData["ErrorMessage"] != null)
@@ -51,92 +39,76 @@
     }
 
     <div class="row">
-        <!-- Status Panel -->
-        <div class="col-lg-4">
-            <div class="ekyc-card bg-light">
-                <h5 class="fw-bold mb-3">Tình trạng hồ sơ</h5>
-                <div class="d-flex align-items-center mb-3">
-                    <span class="me-auto text-muted">Trạng thái:</span>
-                    @if (Model.VerificationStatus == "Verified")
-                    {
-                        <span class="status-badge bg-success bg-opacity-10 text-success"><i class="bi bi-check-circle-fill me-1"></i>Đã phê duyệt</span>
-                    }
-                    else if (Model.VerificationStatus == "Pending")
-                    {
-                        <span class="status-badge bg-warning bg-opacity-10 text-warning"><i class="bi bi-clock-fill me-1"></i>Chờ xác thực</span>
-                    }
-                    else
-                    {
-                        <span class="status-badge bg-danger bg-opacity-10 text-danger"><i class="bi bi-x-circle-fill me-1"></i>Bị từ chối</span>
-                    }
-                </div>
-                <hr>
-                <div class="small text-muted">
-                    <i class="bi bi-info-circle text-primary me-1"></i> Hồ sơ được bảo vệ bằng mã hóa End-to-End. Nhân viên hệ thống cũng không thể xem trực tiếp giấy tờ của bạn.
-                </div>
-            </div>
-        </div>
-
         <!-- Upload Form -->
-        <div class="col-lg-8">
-            <form id="ekycForm" asp-action="Submit" method="post" enctype="multipart/form-data">
+        <div class="col-12">
+            <form asp-action="Submit" method="post" enctype="multipart/form-data">
                 <div class="ekyc-card">
                     <h5 class="fw-bold mb-4"><i class="bi bi-cloud-upload me-2 text-primary"></i>Tải lên tài liệu</h5>
+                    <p class="text-muted small mb-3">Vui lòng tải lên đầy đủ các giấy tờ bên dưới để hoàn tất xác minh danh tính.</p>
 
                     <div class="row g-4">
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-muted">1. Căn Cước Công Dân (Mặt Trước)</label>
-                            <label class="upload-zone" for="idFront">
+                            <label class="upload-zone w-100" id="idFrontZone">
                                 <i class="bi bi-credit-card-2-front"></i>
-                                <span class="fw-bold text-dark">Tải lên hoặc Chụp ảnh</span>
-                                <span class="small text-muted mt-1">(Bằng Camera hoặc từ máy)</span>
-                                <input type="file" id="idFront" name="idFront" class="d-none" accept="image/*" required>
+                                <span class="fw-bold text-dark">Click để chọn ảnh</span>
+                                <input type="file" name="idFront" class="d-none" accept="image/*" onchange="previewImage(this, 'idFrontZone', 'idFrontPreview')">
                                 <img id="idFrontPreview" class="preview-img" alt="Preview">
+                                <button type="button" class="clear-btn" onclick="clearImage(event, 'idFront')"><i class="bi bi-x"></i></button>
                             </label>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-muted">2. Căn Cước Công Dân (Mặt Sau)</label>
-                            <label class="upload-zone" for="idBack">
+                            <label class="upload-zone w-100" id="idBackZone">
                                 <i class="bi bi-credit-card-2-back"></i>
-                                <span class="fw-bold text-dark">Tải lên hoặc Chụp ảnh</span>
-                                <span class="small text-muted mt-1">(Bằng Camera hoặc từ máy)</span>
-                                <input type="file" id="idBack" name="idBack" class="d-none" accept="image/*" required>
+                                <span class="fw-bold text-dark">Click để chọn ảnh</span>
+                                <input type="file" name="idBack" class="d-none" accept="image/*" onchange="previewImage(this, 'idBackZone', 'idBackPreview')">
                                 <img id="idBackPreview" class="preview-img" alt="Preview">
+                                <button type="button" class="clear-btn" onclick="clearImage(event, 'idBack')"><i class="bi bi-x"></i></button>
                             </label>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">3. Giấy Phép Lái Xe (GPLX)</label>
-                            <label class="upload-zone" for="idLicense">
+                            <label class="form-label fw-bold small text-muted">3. Giấy Phép Lái Xe (GPLX) - Mặt Trước</label>
+                            <label class="upload-zone w-100" id="licenseZone">
                                 <i class="bi bi-card-text"></i>
-                                <span class="fw-bold text-dark">Tải lên hoặc Chụp ảnh</span>
-                                <span class="small text-muted mt-1">(Bằng Camera hoặc từ máy)</span>
-                                <input type="file" id="idLicense" name="idLicense" class="d-none" accept="image/*" required>
-                                <img id="idLicensePreview" class="preview-img" alt="Preview">
+                                <span class="fw-bold text-dark">Click để chọn ảnh</span>
+                                <input type="file" name="license" class="d-none" accept="image/*" onchange="previewImage(this, 'licenseZone', 'licensePreview')">
+                                <img id="licensePreview" class="preview-img" alt="Preview">
+                                <button type="button" class="clear-btn" onclick="clearImage(event, 'license')"><i class="bi bi-x"></i></button>
                             </label>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">4. Ảnh Chân Dung (Selfie)</label>
-                            <label class="upload-zone" for="idFace">
+                            <label class="form-label fw-bold small text-muted">4. Giấy Phép Lái Xe (GPLX) - Mặt Sau</label>
+                            <label class="upload-zone w-100" id="licenseBackZone">
+                                <i class="bi bi-card-text"></i>
+                                <span class="fw-bold text-dark">Click để chọn ảnh</span>
+                                <input type="file" name="licenseBack" class="d-none" accept="image/*" onchange="previewImage(this, 'licenseBackZone', 'licenseBackPreview')">
+                                <img id="licenseBackPreview" class="preview-img" alt="Preview">
+                                <button type="button" class="clear-btn" onclick="clearImage(event, 'licenseBack')"><i class="bi bi-x"></i></button>
+                            </label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">5. Ảnh Chân Dung (Selfie)</label>
+                            <label class="upload-zone w-100" id="faceZone">
                                 <i class="bi bi-person-bounding-box"></i>
-                                <span class="fw-bold text-dark">Chụp ảnh chân dung</span>
-                                <span class="small text-muted mt-1">(Hướng mặt vào camera, đủ ánh sáng)</span>
-                                <input type="file" id="idFace" name="idFace" class="d-none" accept="image/*" capture="user" required>
-                                <img id="idFacePreview" class="preview-img" alt="Preview">
+                                <span class="fw-bold text-dark">Click để chọn ảnh</span>
+                                <input type="file" name="face" class="d-none" accept="image/*" onchange="previewImage(this, 'faceZone', 'facePreview')">
+                                <img id="facePreview" class="preview-img" alt="Preview">
+                                <button type="button" class="clear-btn" onclick="clearImage(event, 'face')"><i class="bi bi-x"></i></button>
                             </label>
                         </div>
                     </div>
                 </div>
 
                 <div class="ekyc-card">
-                    <h5 class="fw-bold mb-3"><i class="bi bi-shield-lock text-warning me-2"></i>Xác nhận & Bảo mật</h5>
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="agreeTerms" required>
                         <label class="form-check-label" for="agreeTerms">
-                            Tôi xác nhận các giấy tờ trên là chính xác và đồng ý với <a href="#">Điều khoản sử dụng</a>
+                            Tôi xác nhận các giấy tờ tải lên là chính xác và đồng ý để Admin xác minh
                         </label>
                     </div>
                     <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm">
-                        <i class="bi bi-send me-2"></i>Gửi hồ sơ xác thực
+                        <i class="bi bi-send me-2"></i>Gửi hồ sơ eKYC
                     </button>
                 </div>
             </form>
@@ -144,34 +116,33 @@
     </div>
 </div>
 
-<!-- Scanner overlay -->
-<div id="scannerOverlay">
-    <div class="face-scanner"></div>
-    <div class="scan-text">ĐANG QUÉT KHUÔN MẶT...</div>
-</div>
-
 @section Scripts {
     <script>
-        // Image preview helper
-        function setupPreview(inputId, previewId) {
-            const inp = document.getElementById(inputId), prev = document.getElementById(previewId);
-            if (!inp || !prev) return;
-            inp.addEventListener('change', () => {
-                const file = inp.files[0];
-                if (file) {
-                    const url = URL.createObjectURL(file);
-                    prev.src = url; prev.style.display = 'block';
-                }
-            });
+        function previewImage(input, zoneId, previewId) {
+            const file = input.files[0];
+            const zone = document.getElementById(zoneId);
+            const preview = document.getElementById(previewId);
+            
+            if (file) {
+                const url = URL.createObjectURL(file);
+                preview.src = url;
+                preview.style.display = 'block';
+                zone.classList.add('has-preview');
+            }
         }
-        ['idFront','idBack','idLicense','idFace'].forEach(id => setupPreview(id, id+'Preview'));
 
-        // Face scan overlay toggle
-        document.getElementById('idFace')?.addEventListener('click', () => {
-            document.getElementById('scannerOverlay').style.display = 'flex';
-        });
-        document.getElementById('idFace')?.addEventListener('change', () => {
-            document.getElementById('scannerOverlay').style.display = 'none';
-        });
+        function clearImage(event, inputName) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const input = document.querySelector(`input[name="${inputName}"]`);
+            const zone = input.closest('.upload-zone');
+            const preview = zone.querySelector('img');
+            
+            input.value = '';
+            preview.src = '';
+            preview.style.display = 'none';
+            zone.classList.remove('has-preview');
+        }
     </script>
 }

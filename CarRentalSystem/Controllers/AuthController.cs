@@ -237,9 +237,9 @@ namespace CarRentalSystem.Controllers
                     }
                     else
                     {
-                        // User thường: che bớt, chỉ hiện 4 số cuối
-                        user.CitizenId = MaskPii(decryptedCitizenId);
-                        user.DrivingLicenseNumber = MaskPii(decryptedGplx);
+                        // User thường: che hoàn toàn nếu có dữ liệu, trống nếu không có
+                        user.CitizenId = string.IsNullOrEmpty(decryptedCitizenId) ? null : "●●●●●●●●";
+                        user.DrivingLicenseNumber = string.IsNullOrEmpty(decryptedGplx) ? null : "●●●●●●●●";
                     }
                     return View(user);
                 }

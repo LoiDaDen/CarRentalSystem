@@ -3,23 +3,20 @@ using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Controllers
 {
     [Authorize]
     public class EkycController : Controller
     {
-        private readonly IEkycService _ekycService;
         private readonly ApplicationDbContext _context;
-        private readonly IPiiEncryptionService _piiSettings;
+        private readonly IPiiEncryptionService _piiEncryption;
         private readonly IWebHostEnvironment _env;
 
-        public EkycController(IEkycService ekycService, ApplicationDbContext context, IPiiEncryptionService piiSettings, IWebHostEnvironment env)
+        public EkycController(ApplicationDbContext context, IPiiEncryptionService piiEncryption, IWebHostEnvironment env)
         {
-            _ekycService = ekycService;
             _context = context;
-            _piiSettings = piiSettings;
+            _piiEncryption = piiEncryption;
             _env = env;
         }
 
@@ -38,85 +35,87 @@ namespace CarRentalSystem.Controllers
         }
 
         // POST: /Ekyc/Submit
+        // Upload ảnh CCCD/GPLX - Admin tự xác nhận
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(IFormFile idFront, IFormFile idBack, IFormFile license, IFormFile face)
+        public async Task<IActionResult> Submit(
+            IFormFile? idFront, 
+            IFormFile? idBack, 
+            IFormFile? license, 
+            IFormFile? licenseBack,
+            IFormFile? face)
         {
-            if (idFront == null || idBack == null || license == null || face == null)
-            {
-                TempData["ErrorMessage"] = "Vui lòng tải lên đầy đủ 4 hình ảnh (Mặt trước CCCD, Mặt sau CCCD, Bằng lái, và Khuôn mặt).";
-                return RedirectToAction("Index");
-            }
-
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
 
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound();
 
+            // Kiểm tra có upload ít nhất 1 ảnh
+            if (idFront == null && idBack == null && license == null && licenseBack == null && face == null)
+            {
+                TempData["ErrorMessage"] = "Vui lòng tải lên ít nhất 1 hình ảnh.";
+                return RedirectToAction("Index");
+            }
+
             try
             {
-                // 1. Perform FPT AI Vision Checks
-                var idResultTask = _ekycService.ExtractIdCardAsync(idFront, idBack);
-                var licenseResultTask = _ekycService.ExtractDrivingLicenseAsync(license);
-                var faceMatchTask = _ekycService.CompareFaceAsync(face, idFront);
-
-                await Task.WhenAll(idResultTask, licenseResultTask, faceMatchTask);
-
-                var idResult = idResultTask.Result;
-                var licenseResult = licenseResultTask.Result;
-                var faceMatch = faceMatchTask.Result;
-
-                if (!idResult.IsSuccess || !licenseResult.IsSuccess || !faceMatch.IsSuccess)
-                {
-                    TempData["ErrorMessage"] = "Không thể phân tích một hoặc nhiều hình ảnh do mờ, chói hoặc giả mạo. Vui lòng chụp lại rõ nét hơn.";
-                    return RedirectToAction("Index");
-                }
-
-                if (!faceMatch.IsMatch || faceMatch.SimilarityPercent < 80)
-                {
-                    TempData["ErrorMessage"] = $"Xác thực khuôn mặt thất bại. Khuôn mặt thực tế và trên CCCD không khớp (Độ chính xác: {faceMatch.SimilarityPercent:F2}%).";
-                    return RedirectToAction("Index");
-                }
-
-                // 2. Save Images securely (optional in real system, some banks delete them or store in cold storage)
                 string uploadFolder = Path.Combine(_env.WebRootPath, "uploads", "ekyc", user.UserID.ToString());
                 Directory.CreateDirectory(uploadFolder);
-                
-                string idFPath = Path.Combine(uploadFolder, "id_front.jpg");
-                string idBPath = Path.Combine(uploadFolder, "id_back.jpg");
-                string licPath = Path.Combine(uploadFolder, "license.jpg");
-                string facePath = Path.Combine(uploadFolder, "face.jpg");
 
-                await SaveFileAsync(idFront, idFPath);
-                await SaveFileAsync(idBack, idBPath);
-                await SaveFileAsync(license, licPath);
-                await SaveFileAsync(face, facePath);
+                // Lưu CCCD mặt trước
+                if (idFront != null && idFront.Length > 0)
+                {
+                    string idFPath = Path.Combine(uploadFolder, "id_front" + Path.GetExtension(idFront.FileName));
+                    await SaveFileAsync(idFront, idFPath);
+                    user.IdCardFrontUrl = $"/uploads/ekyc/{user.UserID}/id_front{Path.GetExtension(idFront.FileName)}";
+                }
 
-                user.IdCardFrontUrl = $"/uploads/ekyc/{user.UserID}/id_front.jpg";
-                user.IdCardBackUrl = $"/uploads/ekyc/{user.UserID}/id_back.jpg";
-                user.DrivingLicenseUrl = $"/uploads/ekyc/{user.UserID}/license.jpg";
-                user.FaceUrl = $"/uploads/ekyc/{user.UserID}/face.jpg";
+                // Lưu CCCD mặt sau
+                if (idBack != null && idBack.Length > 0)
+                {
+                    string idBPath = Path.Combine(uploadFolder, "id_back" + Path.GetExtension(idBack.FileName));
+                    await SaveFileAsync(idBack, idBPath);
+                    user.IdCardBackUrl = $"/uploads/ekyc/{user.UserID}/id_back{Path.GetExtension(idBack.FileName)}";
+                }
 
-                // Update User Info based on real AI payload (encrypted)
-                if (!string.IsNullOrEmpty(idResult.CitizenId))
-                    user.CitizenId = _piiSettings.Encrypt(idResult.CitizenId);
-                    
-                if (!string.IsNullOrEmpty(licenseResult.LicenseNumber))
-                    user.DrivingLicenseNumber = _piiSettings.Encrypt(licenseResult.LicenseNumber);
+                // Lưu GPLX mặt trước
+                if (license != null && license.Length > 0)
+                {
+                    string licPath = Path.Combine(uploadFolder, "license_front" + Path.GetExtension(license.FileName));
+                    await SaveFileAsync(license, licPath);
+                    user.DrivingLicenseUrl = $"/uploads/ekyc/{user.UserID}/license_front{Path.GetExtension(license.FileName)}";
+                }
 
-                user.VerificationStatus = "Verified";
-                user.IsVerified = true;
+                // Lưu GPLX mặt sau
+                if (licenseBack != null && licenseBack.Length > 0)
+                {
+                    string licBPath = Path.Combine(uploadFolder, "license_back" + Path.GetExtension(licenseBack.FileName));
+                    await SaveFileAsync(licenseBack, licBPath);
+                    user.DrivingLicenseBackUrl = $"/uploads/ekyc/{user.UserID}/license_back{Path.GetExtension(licenseBack.FileName)}";
+                }
+
+                // Lưu ảnh chân dung
+                if (face != null && face.Length > 0)
+                {
+                    string facePath = Path.Combine(uploadFolder, "face" + Path.GetExtension(face.FileName));
+                    await SaveFileAsync(face, facePath);
+                    user.FaceUrl = $"/uploads/ekyc/{user.UserID}/face{Path.GetExtension(face.FileName)}";
+                }
+
+                // Set status = Pending để Admin duyệt
+                user.VerificationStatus = "Pending";
+                user.IsVerified = false;
 
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "Quá trình định danh eKYC điện tử thành công! Tài khoản của bạn đã được xác thực hoàn toàn.";
+                TempData["SuccessMessage"] = "Hồ sơ eKYC đã được gửi thành công! Vui lòng chờ Admin xác nhận.";
                 return RedirectToAction("Index");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                TempData["ErrorMessage"] = "Quá trình xác thực gặp lỗi máy chủ. Hãy thử lại.";
+                TempData["ErrorMessage"] = "Quá trình tải lên gặp lỗi: " + ex.Message;
                 return RedirectToAction("Index");
             }
         }

@@ -61,6 +61,11 @@ builder.Services.AddHttpClient<CarRentalSystem.Services.IEkycService, CarRentalS
 builder.Services.AddScoped<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>();
 
 // ═══════════════════════════════════════════════════
+// 🔍 QR CCCD PARSER — Xử lý dữ liệu từ CCCD chip
+// ═══════════════════════════════════════════════════
+builder.Services.AddScoped<IQrCccdParserService, QrCccdParserService>();
+
+// ═══════════════════════════════════════════════════
 // 🏥 HEALTH CHECKS — Monitoring endpoint /health
 // ═══════════════════════════════════════════════════
 builder.Services.AddHealthChecks()
@@ -106,6 +111,17 @@ builder.Services.AddAuthentication("Cookies")
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.Name = "CarRental.Auth";
     });
+
+// ═══════════════════════════════════════════════════
+// 🔐 SESSION — Dùng cho PIN verification
+// ═══════════════════════════════════════════════════
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.Name = "CarRental.Session";
+});
 
 // ═══════════════════════════════════════════════════
 // 🚦 REQUEST SIZE LIMIT — Giới hạn upload 10MB max
@@ -174,6 +190,7 @@ app.UseRateLimiting();
 // ═══════════════════════════════════════════════
 app.UseGlobalExceptionHandler();
 
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 

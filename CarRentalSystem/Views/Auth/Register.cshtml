@@ -1,6 +1,134 @@
 @model CarRentalSystem.Models.User
 @{ ViewData["Title"] = "Tạo Tài Khoản"; }
 
+<style>
+    .qr-scanner-container {
+        position: relative;
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #000;
+        aspect-ratio: 1;
+    }
+    
+    .qr-scanner-container video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .qr-scanner-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        border: 3px solid #3b82f6;
+        border-radius: 12px;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    }
+    
+    .qr-scanner-overlay::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #10b981, transparent);
+        animation: qr-scan-line 2s linear infinite;
+    }
+    
+    @@keyframes qr-scan-line {
+        0%, 100% { top: 0; }
+        50% { top: calc(100% - 3px); }
+    }
+    
+    .scanner-instructions {
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        border: 1px solid #93c5fd;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    
+    .scanner-instructions h6 {
+        color: #1e40af;
+        margin-bottom: 8px;
+    }
+    
+    .scanner-instructions ul {
+        margin-bottom: 0;
+        padding-left: 20px;
+    }
+    
+    .scanner-instructions li {
+        color: #3b82f6;
+        font-size: 0.875rem;
+    }
+    
+    .scan-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-top: 12px;
+        font-size: 0.9rem;
+    }
+    
+    .scan-status.scanning {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+    
+    .scan-status.success {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+    
+    .scan-status.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+    
+    .btn-scan-qr {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .btn-scan-qr:hover {
+        background: linear-gradient(135deg, #1d4ed8, #1e40af);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    
+    .qr-info-badge {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 0.8rem;
+        color: #0369a1;
+        margin-top: 12px;
+    }
+    
+    .qr-info-badge i {
+        margin-right: 6px;
+    }
+</style>
+
 <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="col-md-6 col-lg-5">
         <div class="text-center mb-5">
@@ -17,22 +145,23 @@
 
         <div class="card border-0 shadow-lg p-4 p-md-5 rounded-4">
             <div class="text-center mb-4">
-                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#qrModal">
-                    <i class="bi bi-qr-code-scan me-2"></i>Quét QR trên CCCD để tự động điền
+                <button type="button" class="btn-scan-qr" data-bs-toggle="modal" data-bs-target="#qrModal" id="openQrScanner">
+                    <i class="bi bi-qr-code-scan me-2"></i>Quét QR trên CCCD gắn chip để tự động điền
                 </button>
             </div>
 
-            <form asp-action="Register" method="post">
+            <form asp-action="Register" method="post" id="registerForm">
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số CCCD</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số CCCD <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-person-badge text-muted"></i></span>
-                            <input asp-for="CitizenId" id="citizenIdInput" class="form-control bg-transparent border-0 py-2" placeholder="Nhập hoặc quét mã QR" required />
+                            <input asp-for="CitizenId" id="citizenIdInput" class="form-control bg-transparent border-0 py-2" placeholder="Nhập 12 số CCCD" required maxlength="12" pattern="[0-9]{12}" />
                         </div>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Quét QR hoặc nhập tay 12 chữ số</small>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Họ và Tên</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Họ và Tên <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-person text-muted"></i></span>
                             <input asp-for="Name" id="nameInput" class="form-control bg-transparent border-0 py-2" placeholder="VD: Nguyễn Văn A" required />
@@ -40,7 +169,7 @@
                     </div>
                     
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Giới tính</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Giới tính <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-gender-ambiguous text-muted"></i></span>
                             <select asp-for="Gender" id="genderInput" class="form-select bg-transparent border-0 py-2" style="background-color: transparent;" required>
@@ -51,7 +180,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Ngày sinh</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Ngày sinh <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-calendar text-muted"></i></span>
                             <input asp-for="DateOfBirth" id="dobInput" type="date" class="form-control bg-transparent border-0 py-2" required />
@@ -59,10 +188,10 @@
                     </div>
                     
                     <div class="col-12">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ thường trú</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ thường trú <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-geo-alt text-muted"></i></span>
-                            <input asp-for="Address" id="addressInput" class="form-control bg-transparent border-0 py-2" placeholder="Nhập địa chỉ" required />
+                            <input asp-for="Address" id="addressInput" class="form-control bg-transparent border-0 py-2" placeholder="VD: 123 Đường ABC, Phường X, Quận Y, TP HCM" required />
                         </div>
                     </div>
 
@@ -70,38 +199,68 @@
                         <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số Giấy phép lái xe (GPLX) <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-card-heading text-muted"></i></span>
-                            <input asp-for="DrivingLicenseNumber" class="form-control bg-transparent border-0 py-2" placeholder="Nhập đúng 12 chữ số" maxlength="12" pattern="\d{12}" title="Số GPLX phải đúng 12 chữ số" required />
+                            <input asp-for="DrivingLicenseNumber" id="licenseInput" class="form-control bg-transparent border-0 py-2" placeholder="Nhập đúng 12 chữ số" maxlength="12" pattern="\d{12}" title="Số GPLX phải đúng 12 chữ số" required />
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openGplxScanner()" title="Quét QR GPLX">
+                                <i class="bi bi-qr-code-scan"></i>
+                            </button>
                         </div>
-                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Bắt buộc đúng 12 chữ số (VD: 079123456789)</small>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Quét QR hoặc nhập tay 12 chữ số</small>
+                    </div>
+                    
+                    <div class="col-12" id="gplxClassRow" style="display: none;">
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Hạng GPLX <span class="text-danger">*</span></label>
+                        <div class="input-group bg-light rounded-3 overflow-hidden border-0">
+                            <span class="input-group-text bg-transparent border-0"><i class="bi bi-award text-muted"></i></span>
+                            <select id="gplxClassInput" class="form-select bg-transparent border-0 py-2" style="background-color: transparent;" required>
+                                <option value="">Chọn hạng GPLX</option>
+                                <option value="A1">A1 - Xe mô tô hai bánh dưới 175 cm³</option>
+                                <option value="A2">A2 - Xe mô tô hai bánh trên 175 cm³</option>
+                                <option value="B1">B1 - Ô tô chở người đến 9 chỗ</option>
+                                <option value="B2">B2 - Ô tô chở người đến 9 chỗ + xe tải dưới 3.5 tấn</option>
+                                <option value="C">C - Ô tô tải trên 3.5 tấn</option>
+                                <option value="D">D - Ô tô chở người trên 9 chỗ</option>
+                                <option value="E">E - Ô tô kéo rơ moóc</option>
+                                <option value="F">F - Các loại GPLX đặc biệt</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ Email</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ Email <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-envelope text-muted"></i></span>
                             <input type="email" asp-for="Email" class="form-control bg-transparent border-0 py-2" placeholder="email@example.com" required />
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số điện thoại</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Số điện thoại <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-phone text-muted"></i></span>
-                            <input asp-for="Phone" class="form-control bg-transparent border-0 py-2" placeholder="090..." required />
+                            <input asp-for="Phone" id="phoneInput" class="form-control bg-transparent border-0 py-2" placeholder="090..." required />
                         </div>
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Mật khẩu</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase ls-1">Mật khẩu <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-lock text-muted"></i></span>
-                            <input type="password" asp-for="PasswordHash" class="form-control bg-transparent border-0 py-2" placeholder="Tối thiểu 6 ký tự" required />
+                            <input type="password" asp-for="PasswordHash" id="passwordInput" class="form-control bg-transparent border-0 py-2" placeholder="Tối thiểu 6 ký tự" required minlength="6" />
                         </div>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm rounded-pill py-3 mt-5">Tạo Tài Khoản</button>
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                    <label class="form-check-label small" for="agreeTerms">
+                        Tôi đồng ý với <a href="#" class="text-primary">Điều khoản sử dụng</a> và <a href="#" class="text-primary">Chính sách bảo mật</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm rounded-pill py-3 mt-4" id="submitBtn">
+                    <i class="bi bi-person-plus me-2"></i>Tạo Tài Khoản
+                </button>
                 
-                <div class="mt-5 text-center">
+                <div class="mt-4 text-center">
                     <p class="text-muted small mb-0">Đã có tài khoản? <a asp-action="Login" class="fw-bold text-decoration-none">Đăng nhập ngay</a></p>
                 </div>
             </form>
@@ -109,81 +268,872 @@
     </div>
 </div>
 
-<!-- Modal Header cho Scanner -->
-<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow-lg rounded-4">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold" id="qrModalLabel">Quét CCCD của bạn</h5>
-        <button type="button" id="closeQrModal" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body text-center pt-2">
-        <p class="text-muted small mb-3">Đưa mã QR trên thẻ CCCD vào khung hình để hệ thống tự động điền thông tin cá nhân.</p>
-        <div id="reader" style="width: 100%; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></div>
-      </div>
+<!-- QR Scanner Modal cho CCCD -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="qrModalLabel">
+                    <i class="bi bi-qr-code-scan text-primary me-2"></i>Quét QR CCCD gắn chip
+                </h5>
+                <button type="button" id="closeQrModalBtn" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center pt-2">
+                <div class="scanner-instructions">
+                    <h6><i class="bi bi-lightbulb me-1"></i>Hướng dẫn quét QR</h6>
+                    <ul>
+                        <li>Sử dụng <strong>CCCD gắn chip</strong> (loại có logo chip ở góc phải)</li>
+                        <li>Đưa mã QR trên thẻ vào khung hình vuông màu xanh</li>
+                        <li>Giữ thẻ ổn định trong vài giây cho đến khi có thông báo</li>
+                        <li>Đảm bảo ánh sáng đủ sáng và không bóng phản chiếu</li>
+                    </ul>
+                </div>
+                
+                <div class="qr-scanner-container" id="qrScannerContainer">
+                    <div id="qr-reader"></div>
+                    <div class="qr-scanner-overlay" id="qrScannerOverlay"></div>
+                </div>
+                
+                <div id="scanStatus" class="scan-status scanning" style="display: none;">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span id="scanStatusText">Đang khởi tạo camera...</span>
+                </div>
+                
+                <div class="qr-info-badge">
+                    <i class="bi bi-shield-check"></i>
+                    Thông tin được mã hóa và chỉ sử dụng để xác minh danh tính
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+</div>
+
+<!-- QR Scanner Modal cho GPLX -->
+<div class="modal fade" id="gplxModal" tabindex="-1" aria-labelledby="gplxModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="gplxModalLabel">
+                    <i class="bi bi-credit-card text-warning me-2"></i>Quét QR GPLX
+                </h5>
+                <button type="button" id="closeGplxModalBtn" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center pt-2">
+                <div class="scanner-instructions" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b;">
+                    <h6 style="color: #b45309;"><i class="bi bi-lightbulb me-1"></i>Hướng dẫn quét GPLX</h6>
+                    <ul>
+                        <li style="color: #d97706;">Sử dụng <strong>Giấy phép lái xe mới</strong> (loại có mã QR phía sau)</li>
+                        <li style="color: #d97706;"><strong>Mặt sau GPLX</strong> có chứa mã QR</li>
+                        <li style="color: #d97706;">Đưa mã QR vào khung hình vuông màu xanh</li>
+                        <li style="color: #d97706;">Giữ thẻ ổn định trong vài giây</li>
+                    </ul>
+                </div>
+                
+                <div class="qr-scanner-container" id="gplxScannerContainer">
+                    <div id="gplx-reader"></div>
+                    <div class="qr-scanner-overlay" id="gplxScannerOverlay"></div>
+                </div>
+                
+                <div id="gplxScanStatus" class="scan-status scanning" style="display: none;">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span id="gplxScanStatusText">Đang khởi tạo camera...</span>
+                </div>
+                
+                <div class="qr-info-badge" style="background: #fef3c7; border-color: #fcd34d; color: #b45309;">
+                    <i class="bi bi-info-circle"></i>
+                    Sau khi quét GPLX, bạn có thể quét tiếp CCCD để tự động điền các thông tin khác
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Nút mở modal quét CCCD từ modal GPLX -->
+<div class="modal fade" id="cccdFromGplxModal" tabindex="-1" aria-labelledby="cccdFromGplxModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="cccdFromGplxModalLabel">
+                    <i class="bi bi-qr-code-scan text-primary me-2"></i>Quét QR CCCD
+                </h5>
+                <button type="button" id="closeCccdFromGplxModalBtn" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center pt-2">
+                <div class="alert alert-success d-flex align-items-center mb-3" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <div>
+                        <strong>Đã quét GPLX thành công!</strong><br>
+                        Bây giờ bạn có thể quét CCCD để điền thông tin còn lại.
+                    </div>
+                </div>
+                
+                <div class="qr-scanner-container" id="cccdScannerContainer">
+                    <div id="cccd-reader"></div>
+                    <div class="qr-scanner-overlay" id="cccdScannerOverlay"></div>
+                </div>
+                
+                <div id="cccdScanStatus" class="scan-status scanning" style="display: none;">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span id="cccdScanStatusText">Đang khởi tạo camera...</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            let html5QrcodeScanner = null;
-            const qrModalEl = document.getElementById('qrModal');
-
-            qrModalEl.addEventListener('shown.bs.modal', function () {
-                if(!html5QrcodeScanner) {
-                    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, /* verbose= */ false);
-                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-                } else {
-                    // Cố gắng render lại nếu đã có
-                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-                }
-            });
-
-            qrModalEl.addEventListener('hidden.bs.modal', function () {
-                if(html5QrcodeScanner) {
-                    html5QrcodeScanner.clear().catch(error => { console.error("Failed to clear html5QrcodeScanner. ", error); });
-                }
-            });
-
-            function onScanSuccess(decodedText, decodedResult) {
-                // Định dạng QR CCCD VVN:
-                // Số CCCD|Số CMND cũ|Họ và tên|Ngày sinh (ddMMyyyy)|Giới tính|Địa chỉ thường trú|Ngày cấp thẻ (ddMMyyyy)
-                console.log(`Code matched = ${decodedText}`, decodedResult);
+        // ============================================
+        // QR SCANNER CHO CCCD
+        // ============================================
+        const QrScanner = {
+            html5QrCode: null,
+            isScanning: false,
+            isProcessing: false,
+            config: {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                disableFlip: false,
+                preferredCamera: 'environment'
+            },
+            
+            async init(containerId) {
+                this.html5QrCode = new Html5Qrcode(containerId);
+                return this.html5QrCode;
+            },
+            
+            async start(deviceId = null) {
+                if (this.isScanning || this.isProcessing) return;
                 
-                let parts = decodedText.split('|');
-                if (parts.length >= 6) {
-                    // Thành công, phân tích và điền vào form
-                    document.getElementById('citizenIdInput').value = parts[0] ? parts[0].trim() : '';
-                    document.getElementById('nameInput').value = parts[2] ? parts[2].trim() : '';
-                    document.getElementById('genderInput').value = parts[4] ? parts[4].trim() : '';
-                    document.getElementById('addressInput').value = parts[5] ? parts[5].trim() : '';
+                try {
+                    this.showStatus('scanning', 'Đang khởi tạo camera...');
                     
-                    let dobRaw = parts[3]; // "ddMMyyyy"
-                    if(dobRaw && dobRaw.length === 8) {
-                        let dd = dobRaw.substring(0,2);
-                        let MM = dobRaw.substring(2,4);
-                        let yyyy = dobRaw.substring(4,8);
-                        document.getElementById('dobInput').value = `${yyyy}-${MM}-${dd}`;
+                    let cameras = await Html5Qrcode.getCameras();
+                    
+                    if (!cameras || cameras.length === 0) {
+                        throw new Error('Không tìm thấy camera trên thiết bị');
                     }
-
-                    // Tắt scanner và đóng modal
-                    html5QrcodeScanner.clear();
-                    document.getElementById('closeQrModal').click();
                     
-                    alert('Đã tải thông tin từ CCCD thành công!');
-                } else {
-                    // Không đúng định dạng CCCD
-                    console.log('Phát hiện QR code nhưng không phải định dạng CCCD: ' + decodedText);
+                    let selectedCamera = cameras[0].id;
+                    if (cameras.length > 1) {
+                        const backCamera = cameras.find(c => 
+                            c.label.toLowerCase().includes('back') || 
+                            c.label.toLowerCase().includes('rear') ||
+                            c.label.toLowerCase().includes('environment')
+                        );
+                        if (backCamera) selectedCamera = backCamera.id;
+                    }
+                    
+                    await this.html5QrCode.start(
+                        selectedCamera,
+                        this.config,
+                        (decodedText, decodedResult) => this.onScanSuccess(decodedText, decodedResult),
+                        (errorMessage) => this.onScanFailure(errorMessage)
+                    );
+                    
+                    this.isScanning = true;
+                    this.showStatus('scanning', 'Đưa mã QR vào khung hình để quét...');
+                    
+                } catch (err) {
+                    console.error('Lỗi khởi tạo QR Scanner:', err);
+                    this.showStatus('error', `Lỗi: ${err.message}`);
+                    setTimeout(() => this.hideStatus(), 5000);
                 }
+            },
+            
+            async stop() {
+                if (!this.isScanning) return;
+                
+                try {
+                    await this.html5QrCode.stop();
+                    this.isScanning = false;
+                    this.hideStatus();
+                } catch (err) {
+                    console.error('Lỗi dừng scanner:', err);
+                }
+            },
+            
+            onScanSuccess(decodedText, decodedResult) {
+                if (this.isProcessing) return;
+                this.isProcessing = true;
+                
+                console.log('QR CCCD detected:', decodedText);
+                this.showStatus('scanning', 'Đang xử lý thông tin...');
+                
+                const parseResult = QrDataParser.parse(decodedText);
+                
+                if (parseResult.success) {
+                    this.fillFormWithData(parseResult.data);
+                    this.showStatus('success', 'Quét CCCD thành công!');
+                    
+                    setTimeout(() => {
+                        this.stop();
+                        bootstrap.Modal.getInstance(document.getElementById('qrModal'))?.hide();
+                    }, 1500);
+                } else {
+                    this.showStatus('error', parseResult.message);
+                    setTimeout(() => {
+                        this.showStatus('scanning', 'Vui lòng thử lại hoặc nhập tay');
+                    }, 3000);
+                }
+                
+                this.isProcessing = false;
+            },
+            
+            onScanFailure(errorMessage) {
+                // Bỏ qua lỗi quét - liên tục quét
+            },
+            
+            fillFormWithData(data) {
+                const fields = {
+                    'citizenIdInput': data.citizenId,
+                    'nameInput': data.fullName,
+                    'genderInput': data.gender,
+                    'dobInput': data.dateOfBirth,
+                    'addressInput': data.address
+                };
+                
+                Object.entries(fields).forEach(([fieldId, value]) => {
+                    if (value) {
+                        const field = document.getElementById(fieldId);
+                        if (field) {
+                            field.value = value;
+                            field.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                });
+            },
+            
+            showStatus(type, message) {
+                const statusEl = document.getElementById('scanStatus');
+                const textEl = document.getElementById('scanStatusText');
+                
+                statusEl.className = `scan-status ${type}`;
+                statusEl.style.display = 'flex';
+                textEl.textEl = message;
+            },
+            
+            hideStatus() {
+                document.getElementById('scanStatus').style.display = 'none';
             }
-
-            function onScanFailure(error) {
-                // handle scan failure, usually better to ignore and keep scanning.
+        };
+        
+        // ============================================
+        // QR SCANNER CHO GPLX
+        // ============================================
+        const GplxScanner = {
+            html5QrCode: null,
+            isScanning: false,
+            isProcessing: false,
+            isGplxScanned: false,
+            config: {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                disableFlip: false
+            },
+            
+            async init(containerId) {
+                this.html5QrCode = new Html5Qrcode(containerId);
+                return this.html5QrCode;
+            },
+            
+            async start() {
+                if (this.isScanning || this.isProcessing) return;
+                
+                try {
+                    this.showStatus('scanning', 'Đang khởi tạo camera...');
+                    
+                    let cameras = await Html5Qrcode.getCameras();
+                    
+                    if (!cameras || cameras.length === 0) {
+                        throw new Error('Không tìm thấy camera trên thiết bị');
+                    }
+                    
+                    let selectedCamera = cameras[0].id;
+                    if (cameras.length > 1) {
+                        const backCamera = cameras.find(c => 
+                            c.label.toLowerCase().includes('back') || 
+                            c.label.toLowerCase().includes('rear') ||
+                            c.label.toLowerCase().includes('environment')
+                        );
+                        if (backCamera) selectedCamera = backCamera.id;
+                    }
+                    
+                    await this.html5QrCode.start(
+                        selectedCamera,
+                        this.config,
+                        (decodedText, decodedResult) => this.onScanSuccess(decodedText, decodedResult),
+                        (errorMessage) => this.onScanFailure(errorMessage)
+                    );
+                    
+                    this.isScanning = true;
+                    this.showStatus('scanning', 'Đưa mã QR GPLX (mặt sau) vào khung hình...');
+                    
+                } catch (err) {
+                    console.error('Lỗi khởi tạo GPLX Scanner:', err);
+                    this.showStatus('error', `Lỗi: ${err.message}`);
+                    setTimeout(() => this.hideStatus(), 5000);
+                }
+            },
+            
+            async stop() {
+                if (!this.isScanning) return;
+                
+                try {
+                    await this.html5QrCode.stop();
+                    this.isScanning = false;
+                    this.hideStatus();
+                } catch (err) {
+                    console.error('Lỗi dừng scanner:', err);
+                }
+            },
+            
+            onScanSuccess(decodedText, decodedResult) {
+                if (this.isProcessing) return;
+                this.isProcessing = true;
+                
+                console.log('QR GPLX detected:', decodedText);
+                this.showStatus('scanning', 'Đang xử lý thông tin GPLX...');
+                
+                const parseResult = GplxDataParser.parse(decodedText);
+                
+                if (parseResult.success) {
+                    this.fillGplxForm(parseResult.data);
+                    this.isGplxScanned = true;
+                    this.showStatus('success', 'Quét GPLX thành công!');
+                    
+                    setTimeout(() => {
+                        this.stop();
+                        bootstrap.Modal.getInstance(document.getElementById('gplxModal'))?.hide();
+                        
+                        // Hỏi người dùng có muốn quét CCCD không
+                        if (confirm('Bạn có muốn quét QR CCCD để tự động điền các thông tin khác không?')) {
+                            openCccdScannerAfterGplx();
+                        }
+                    }, 1500);
+                } else {
+                    this.showStatus('error', parseResult.message);
+                    setTimeout(() => {
+                        this.showStatus('scanning', 'Vui lòng thử lại hoặc nhập tay GPLX');
+                    }, 3000);
+                }
+                
+                this.isProcessing = false;
+            },
+            
+            onScanFailure(errorMessage) {
+                // Bỏ qua lỗi quét
+            },
+            
+            fillGplxForm(data) {
+                // Điền số GPLX
+                const licenseField = document.getElementById('licenseInput');
+                if (licenseField && data.licenseNumber) {
+                    licenseField.value = data.licenseNumber;
+                    licenseField.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                // Hiển thị và điền hạng GPLX
+                const classRow = document.getElementById('gplxClassRow');
+                const classSelect = document.getElementById('gplxClassInput');
+                if (classRow && classSelect) {
+                    classRow.style.display = 'block';
+                    if (data.licenseClass) {
+                        classSelect.value = data.licenseClass;
+                    }
+                    classSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            },
+            
+            showStatus(type, message) {
+                const statusEl = document.getElementById('gplxScanStatus');
+                const textEl = document.getElementById('gplxScanStatusText');
+                
+                if (statusEl && textEl) {
+                    statusEl.className = `scan-status ${type}`;
+                    statusEl.style.display = 'flex';
+                    textEl.textContent = message;
+                }
+            },
+            
+            hideStatus() {
+                const statusEl = document.getElementById('gplxScanStatus');
+                if (statusEl) statusEl.style.display = 'none';
             }
+        };
+        
+        // ============================================
+        // QR SCANNER CHO CCCD (sau khi quét GPLX)
+        // ============================================
+        const CccdAfterGplxScanner = {
+            html5QrCode: null,
+            isScanning: false,
+            isProcessing: false,
+            config: {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+                disableFlip: false
+            },
+            
+            async init(containerId) {
+                this.html5QrCode = new Html5Qrcode(containerId);
+                return this.html5QrCode;
+            },
+            
+            async start() {
+                if (this.isScanning || this.isProcessing) return;
+                
+                try {
+                    this.showStatus('scanning', 'Đang khởi tạo camera...');
+                    
+                    let cameras = await Html5Qrcode.getCameras();
+                    
+                    if (!cameras || cameras.length === 0) {
+                        throw new Error('Không tìm thấy camera');
+                    }
+                    
+                    let selectedCamera = cameras[0].id;
+                    if (cameras.length > 1) {
+                        const backCamera = cameras.find(c => 
+                            c.label.toLowerCase().includes('back') || 
+                            c.label.toLowerCase().includes('rear') ||
+                            c.label.toLowerCase().includes('environment')
+                        );
+                        if (backCamera) selectedCamera = backCamera.id;
+                    }
+                    
+                    await this.html5QrCode.start(
+                        selectedCamera,
+                        this.config,
+                        (decodedText, decodedResult) => this.onScanSuccess(decodedText, decodedResult),
+                        (errorMessage) => this.onScanFailure(errorMessage)
+                    );
+                    
+                    this.isScanning = true;
+                    this.showStatus('scanning', 'Đưa mã QR CCCD vào khung hình...');
+                    
+                } catch (err) {
+                    console.error('Lỗi khởi tạo:', err);
+                    this.showStatus('error', `Lỗi: ${err.message}`);
+                    setTimeout(() => this.hideStatus(), 5000);
+                }
+            },
+            
+            async stop() {
+                if (!this.isScanning) return;
+                
+                try {
+                    await this.html5QrCode.stop();
+                    this.isScanning = false;
+                    this.hideStatus();
+                } catch (err) {
+                    console.error('Lỗi dừng scanner:', err);
+                }
+            },
+            
+            onScanSuccess(decodedText, decodedResult) {
+                if (this.isProcessing) return;
+                this.isProcessing = true;
+                
+                console.log('QR CCCD detected:', decodedText);
+                this.showStatus('scanning', 'Đang xử lý CCCD...');
+                
+                const parseResult = QrDataParser.parse(decodedText);
+                
+                if (parseResult.success) {
+                    QrScanner.fillFormWithData(parseResult.data);
+                    this.showStatus('success', 'Quét CCCD thành công!');
+                    
+                    setTimeout(() => {
+                        this.stop();
+                        bootstrap.Modal.getInstance(document.getElementById('cccdFromGplxModal'))?.hide();
+                    }, 1500);
+                } else {
+                    this.showStatus('error', parseResult.message);
+                    setTimeout(() => {
+                        this.showStatus('scanning', 'Vui lòng thử lại');
+                    }, 3000);
+                }
+                
+                this.isProcessing = false;
+            },
+            
+            onScanFailure(errorMessage) {},
+            
+            showStatus(type, message) {
+                const statusEl = document.getElementById('cccdScanStatus');
+                const textEl = document.getElementById('cccdScanStatusText');
+                
+                if (statusEl && textEl) {
+                    statusEl.className = `scan-status ${type}`;
+                    statusEl.style.display = 'flex';
+                    textEl.textContent = message;
+                }
+            },
+            
+            hideStatus() {
+                const statusEl = document.getElementById('cccdScanStatus');
+                if (statusEl) statusEl.style.display = 'none';
+            }
+        };
+        
+        // ============================================
+        // DATA PARSER - CCCD
+        // ============================================
+        const QrDataParser = {
+            patterns: {
+                pipeSeparated: /^[0-9]{12}\|.*$/,
+                mrzFormat: /^([A-Z<]{2,3})([A-Z0-9<]+)\n([A-Z0-9<]+)$/i
+            },
+            
+            parse(qrData) {
+                try {
+                    if (!qrData || qrData.trim() === '') {
+                        return { success: false, message: 'Dữ liệu QR trống' };
+                    }
+                    
+                    let result = this.parsePipeSeparated(qrData);
+                    if (result.success) return result;
+                    
+                    result = this.parseMrzFormat(qrData);
+                    if (result.success) return result;
+                    
+                    result = this.parseSimpleFormat(qrData);
+                    if (result.success) return result;
+                    
+                    return { success: false, message: 'Định dạng QR không được hỗ trợ. Vui lòng nhập tay.' };
+                    
+                } catch (err) {
+                    console.error('QR Parse Error:', err);
+                    return { success: false, message: 'Lỗi xử lý QR: ' + err.message };
+                }
+            },
+            
+            parsePipeSeparated(data) {
+                const parts = data.split('|').map(p => p.trim());
+                
+                if (parts.length < 5) {
+                    return { success: false, message: 'Dữ liệu không đủ fields' };
+                }
+                
+                let citizenId = parts.find(p => /^[0-9]{12}$/.test(p)) || '';
+                let fullName = parts.find(p => /^[A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơẠ-ỹ\s]+$/i.test(p) && p.length > 5) || '';
+                let dob = parts.find(p => /^(\d{8}|\d{4}-\d{2}-\d{2})$/.test(p)) || '';
+                let gender = parts.find(p => /^(Nam|Nữ|Nam|NU)$/i.test(p)) || '';
+                let address = parts.filter(p => p.length > 10 && /\d/.test(p))
+                                   .sort((a, b) => b.length - a.length)[0] || '';
+                
+                if (!citizenId || citizenId.length !== 12) {
+                    return { success: false, message: 'Không tìm thấy số CCCD hợp lệ' };
+                }
+                
+                if (!fullName) {
+                    return { success: false, message: 'Không tìm thấy họ tên' };
+                }
+                
+                return {
+                    success: true,
+                    data: {
+                        citizenId: citizenId,
+                        fullName: this.normalizeName(fullName),
+                        dateOfBirth: this.parseDate(dob),
+                        gender: this.normalizeGender(gender),
+                        address: address
+                    }
+                };
+            },
+            
+            parseMrzFormat(data) {
+                const lines = data.split('\n');
+                if (lines.length < 2) return { success: false };
+                
+                const infoLine = lines.find(l => l.includes('<') && l.length > 30) || '';
+                if (!infoLine) return { success: false };
+                
+                const nameMatch = infoLine.match(/^[A-Z]{2}[A-Z<]{0,3}(.+?)(?:<<|$)/i);
+                
+                let citizenId = '';
+                for (const line of lines) {
+                    const match = line.match(/^([A-Z]{2})([0-9]{7})([0-9]{5})/i);
+                    if (match) {
+                        citizenId = match[2] + match[3];
+                        break;
+                    }
+                }
+                
+                if (!citizenId || citizenId.length !== 12) {
+                    return { success: false };
+                }
+                
+                return {
+                    success: true,
+                    data: {
+                        citizenId: citizenId,
+                        fullName: nameMatch ? this.normalizeMrzName(nameMatch[1]) : '',
+                        dateOfBirth: '',
+                        gender: '',
+                        address: ''
+                    }
+                };
+            },
+            
+            parseSimpleFormat(data) {
+                const ccidMatch = data.match(/(\d{12})/);
+                if (!ccidMatch) {
+                    return { success: false, message: 'Không tìm thấy số CCCD' };
+                }
+                
+                const parts = data.split(/[|]/);
+                
+                return {
+                    success: true,
+                    data: {
+                        citizenId: ccidMatch[1],
+                        fullName: parts.length > 2 ? this.normalizeName(parts[2]) : '',
+                        dateOfBirth: '',
+                        gender: '',
+                        address: ''
+                    }
+                };
+            },
+            
+            normalizeName(name) {
+                if (!name) return '';
+                return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').trim();
+            },
+            
+            normalizeMrzName(name) {
+                if (!name) return '';
+                return name.replace(/</g, ' ').split(' ').filter(s => s)
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ').trim();
+            },
+            
+            parseDate(dateStr) {
+                if (!dateStr) return '';
+                
+                if (/^\d{8}$/.test(dateStr)) {
+                    const dd = dateStr.substring(0, 2);
+                    const mm = dateStr.substring(2, 4);
+                    const yyyy = dateStr.substring(4, 8);
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+                
+                if (dateStr.includes('/')) {
+                    const parts = dateStr.split('/');
+                    if (parts.length === 3) {
+                        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                }
+                
+                return dateStr;
+            },
+            
+            normalizeGender(gender) {
+                if (!gender) return '';
+                const g = gender.toLowerCase().trim();
+                if (g === 'nữ' || g === 'nu') return 'Nữ';
+                if (g === 'nam') return 'Nam';
+                return gender;
+            }
+        };
+        
+        // ============================================
+        // DATA PARSER - GPLX
+        // ============================================
+        const GplxDataParser = {
+            parse(qrData) {
+                try {
+                    if (!qrData || qrData.trim() === '') {
+                        return { success: false, message: 'Dữ liệu QR trống' };
+                    }
+                    
+                    // Thử các format khác nhau
+                    let result = this.parsePipeFormat(qrData);
+                    if (result.success) return result;
+                    
+                    result = this.parseSimpleFormat(qrData);
+                    if (result.success) return result;
+                    
+                    return { success: false, message: 'Định dạng QR GPLX không được hỗ trợ' };
+                    
+                } catch (err) {
+                    console.error('GPLX Parse Error:', err);
+                    return { success: false, message: 'Lỗi xử lý GPLX: ' + err.message };
+                }
+            },
+            
+            // Format pipe-separated của GPLX Việt Nam
+            // Format: SoGPLX|HangGPLX|NgayCap|NgayHetHan|HoTen|NgaySinh...
+            parsePipeFormat(data) {
+                const parts = data.split('|').map(p => p.trim());
+                
+                if (parts.length < 3) {
+                    return { success: false, message: 'Dữ liệu GPLX không đủ' };
+                }
+                
+                // Tìm số GPLX (12 số)
+                let licenseNumber = parts.find(p => /^[0-9]{12}$/.test(p)) || '';
+                
+                // Tìm hạng GPLX
+                let licenseClass = '';
+                const classPatterns = ['B1', 'B2', 'C', 'D', 'E', 'F', 'A1', 'A2'];
+                for (const part of parts) {
+                    for (const cls of classPatterns) {
+                        if (part.toUpperCase().includes(cls)) {
+                            licenseClass = cls;
+                            break;
+                        }
+                    }
+                    if (licenseClass) break;
+                }
+                
+                if (!licenseNumber || licenseNumber.length !== 12) {
+                    return { success: false, message: 'Không tìm thấy số GPLX hợp lệ' };
+                }
+                
+                return {
+                    success: true,
+                    data: {
+                        licenseNumber: licenseNumber,
+                        licenseClass: licenseClass
+                    }
+                };
+            },
+            
+            // Format đơn giản - trích xuất 12 số
+            parseSimpleFormat(data) {
+                const match = data.match(/(\d{12})/);
+                if (!match) {
+                    return { success: false, message: 'Không tìm thấy số GPLX 12 chữ số' };
+                }
+                
+                return {
+                    success: true,
+                    data: {
+                        licenseNumber: match[1],
+                        licenseClass: ''
+                    }
+                };
+            }
+        };
+        
+        // ============================================
+        // HÀM MỞ SCANNER
+        // ============================================
+        function openGplxScanner() {
+            GplxScanner.isGplxScanned = false;
+            const modal = new bootstrap.Modal(document.getElementById('gplxModal'));
+            modal.show();
+        }
+        
+        function openCccdScannerAfterGplx() {
+            const modal = new bootstrap.Modal(document.getElementById('cccdFromGplxModal'));
+            modal.show();
+        }
+        
+        // ============================================
+        // DOCUMENT READY
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async function() {
+            const qrModal = document.getElementById('qrModal');
+            const gplxModal = document.getElementById('gplxModal');
+            const cccdFromGplxModal = document.getElementById('cccdFromGplxModal');
+            
+            let isCccdScannerInitialized = false;
+            let isGplxScannerInitialized = false;
+            let isCccdAfterGplxInitialized = false;
+            
+            // CCCD Modal events
+            qrModal.addEventListener('shown.bs.modal', async function() {
+                try {
+                    if (!isCccdScannerInitialized) {
+                        await QrScanner.init('qr-reader');
+                        isCccdScannerInitialized = true;
+                    }
+                    await QrScanner.start();
+                } catch (err) {
+                    console.error('Lỗi khởi tạo CCCD:', err);
+                    QrScanner.showStatus('error', 'Không thể khởi tạo camera');
+                }
+            });
+            
+            qrModal.addEventListener('hidden.bs.modal', async function() {
+                await QrScanner.stop();
+                QrScanner.isProcessing = false;
+            });
+            
+            document.getElementById('closeQrModalBtn')?.addEventListener('click', async function() {
+                await QrScanner.stop();
+            });
+            
+            // GPLX Modal events
+            gplxModal.addEventListener('shown.bs.modal', async function() {
+                try {
+                    if (!isGplxScannerInitialized) {
+                        await GplxScanner.init('gplx-reader');
+                        isGplxScannerInitialized = true;
+                    }
+                    await GplxScanner.start();
+                } catch (err) {
+                    console.error('Lỗi khởi tạo GPLX:', err);
+                    GplxScanner.showStatus('error', 'Không thể khởi tạo camera');
+                }
+            });
+            
+            gplxModal.addEventListener('hidden.bs.modal', async function() {
+                await GplxScanner.stop();
+                GplxScanner.isProcessing = false;
+            });
+            
+            document.getElementById('closeGplxModalBtn')?.addEventListener('click', async function() {
+                await GplxScanner.stop();
+            });
+            
+            // CCCD after GPLX Modal events
+            cccdFromGplxModal.addEventListener('shown.bs.modal', async function() {
+                try {
+                    if (!isCccdAfterGplxInitialized) {
+                        await CccdAfterGplxScanner.init('cccd-reader');
+                        isCccdAfterGplxInitialized = true;
+                    }
+                    await CccdAfterGplxScanner.start();
+                } catch (err) {
+                    console.error('Lỗi khởi tạo CCCD:', err);
+                    CccdAfterGplxScanner.showStatus('error', 'Không thể khởi tạo camera');
+                }
+            });
+            
+            cccdFromGplxModal.addEventListener('hidden.bs.modal', async function() {
+                await CccdAfterGplxScanner.stop();
+                CccdAfterGplxScanner.isProcessing = false;
+            });
+            
+            document.getElementById('closeCccdFromGplxModalBtn')?.addEventListener('click', async function() {
+                await CccdAfterGplxScanner.stop();
+            });
+            
+            // Form validation
+            const form = document.getElementById('registerForm');
+            form.addEventListener('submit', function(e) {
+                const citizenId = document.getElementById('citizenIdInput').value;
+                const license = document.getElementById('licenseInput').value;
+                
+                if (citizenId && citizenId.length !== 12) {
+                    e.preventDefault();
+                    alert('Số CCCD phải đúng 12 chữ số!');
+                    return false;
+                }
+                
+                if (license && license.length !== 12) {
+                    e.preventDefault();
+                    alert('Số GPLX phải đúng 12 chữ số!');
+                    return false;
+                }
+            });
         });
     </script>
 }
-
