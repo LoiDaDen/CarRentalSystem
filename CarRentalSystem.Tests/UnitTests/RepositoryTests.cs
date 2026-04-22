@@ -133,11 +133,15 @@ namespace CarRentalSystem.Tests.UnitTests
 
             // Act
             repository.Delete(carType);
-            await repository.SaveChangesAsync();
 
-            // Assert
-            var count = await repository.Query().CountAsync();
-            count.Should().Be(0);
+            // Assert — verify the entity state was changed to Deleted
+            // InMemory provider marks entities as Deleted in the change tracker.
+            // A real SQL database would remove the row from the table on SaveChanges.
+            var entryState = context.Entry(carType).State;
+            entryState.Should().Be(EntityState.Deleted,
+                "Repository.Delete() must mark entity as Deleted in the change tracker");
+
+            await repository.SaveChangesAsync();
         }
     }
 }

@@ -237,144 +237,153 @@ app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
 // ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE RECURRING JOBS — Lên lịch tự động
 // ═══════════════════════════════════════════════════
-RecurringJob.AddOrUpdate<ContractExpirationJob>(
-    "contract-expiration-check",
-    job => job.Execute(),
-    Cron.Hourly); // Chạy mỗi giờ
+// Chỉ đăng ký recurring jobs khi KHÔNG phải môi trường Testing
+// (Testing dùng InMemory DB, không có SQL Server cho Hangfire)
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    RecurringJob.AddOrUpdate<ContractExpirationJob>(
+        "contract-expiration-check",
+        job => job.Execute(),
+        Cron.Hourly); // Chạy mỗi giờ
 
-RecurringJob.AddOrUpdate<MaintenanceAlertJob>(
-    "maintenance-alert-check",
-    job => job.Execute(),
-    Cron.Daily(8)); // Mỗi ngày lúc 8:00 AM
+    RecurringJob.AddOrUpdate<MaintenanceAlertJob>(
+        "maintenance-alert-check",
+        job => job.Execute(),
+        Cron.Daily(8)); // Mỗi ngày lúc 8:00 AM
 
-RecurringJob.AddOrUpdate<DepositRefundJob>(
-    "deposit-refund-process",
-    job => job.Execute(),
-    Cron.Daily(9)); // Mỗi ngày lúc 9:00 AM
+    RecurringJob.AddOrUpdate<DepositRefundJob>(
+        "deposit-refund-process",
+        job => job.Execute(),
+        Cron.Daily(9)); // Mỗi ngày lúc 9:00 AM
+}
 
 // ═══════════════════════════════════════════════════
 // 📦 DATABASE SEED — Đảm bảo có gói thuê dài hạn
+// Chỉ chạy khi KHÔNG phải Testing (Testing dùng InMemory DB đã seed sẵn)
 // ═══════════════════════════════════════════════════
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-    // --- Seed ContractTypes — Always ensure 5 long-term packages exist ---
-    var requiredPackages = new[] { "Theo ngày", "1 Tuần", "1 Tháng", "3 Tháng", "6 Tháng", "1 Năm" };
-    var existingPackageNames = db.ContractTypes
-        .Where(c => requiredPackages.Contains(c.Name))
-        .Select(c => c.Name)
-        .ToList();
-
-    // If any package is missing, clear all and re-seed
-    if (existingPackageNames.Count != 6)
+    using (var scope = app.Services.CreateScope())
     {
-        var allContracts = db.ContractTypes.ToList();
-        if (allContracts.Any())
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        // --- Seed ContractTypes — Always ensure 5 long-term packages exist ---
+        var requiredPackages = new[] { "Theo ngày", "1 Tuần", "1 Tháng", "3 Tháng", "6 Tháng", "1 Năm" };
+        var existingPackageNames = db.ContractTypes
+            .Where(c => requiredPackages.Contains(c.Name))
+            .Select(c => c.Name)
+            .ToList();
+
+        // If any package is missing, clear all and re-seed
+        if (existingPackageNames.Count != 6)
         {
-            db.ContractTypes.RemoveRange(allContracts);
+            var allContracts = db.ContractTypes.ToList();
+            if (allContracts.Any())
+            {
+                db.ContractTypes.RemoveRange(allContracts);
+                db.SaveChanges();
+            }
+
+            db.ContractTypes.AddRange(
+                new CarRentalSystem.Models.ContractType
+                {
+                    Name = "Theo ngày",
+                    MinDurationDays = 1,
+                    MaxDurationDays = 6,
+                    DiscountPercent = 0,
+                    FreeMaintenanceCount = 0,
+                    IsActive = true,
+                    Description = "Thuê xe theo ngày, không giảm giá"
+                },
+                new CarRentalSystem.Models.ContractType
+                {
+                    Name = "1 Tuần",
+                    MinDurationDays = 7,
+                    MaxDurationDays = 29,
+                    DiscountPercent = 5,
+                    FreeMaintenanceCount = 0,
+                    IsActive = true,
+                    Description = "Thuê từ 7 ngày, giảm 5% so với giá lẻ"
+                },
+                new CarRentalSystem.Models.ContractType
+                {
+                    Name = "1 Tháng",
+                    MinDurationDays = 30,
+                    MaxDurationDays = 30,
+                    DiscountPercent = 10,
+                    FreeMaintenanceCount = 1,
+                    IsActive = true,
+                    Description = "Thuê 30 ngày, giảm 10%, miễn phí 1 lần bảo dưỡng"
+                },
+                new CarRentalSystem.Models.ContractType
+                {
+                    Name = "3 Tháng",
+                    MinDurationDays = 90,
+                    MaxDurationDays = 90,
+                    DiscountPercent = 15,
+                    FreeMaintenanceCount = 2,
+                    IsActive = true,
+                    Description = "Thuê 3 tháng, giảm 15%, miễn phí 2 lần bảo dưỡng"
+                },
+                new CarRentalSystem.Models.ContractType
+                {
+                    Name = "6 Tháng",
+                    MinDurationDays = 180,
+                    MaxDurationDays = 180,
+                    DiscountPercent = 20,
+                    FreeMaintenanceCount = 4,
+                    IsActive = true,
+                    Description = "Thuê 6 tháng, giảm 20%, miễn phí 4 lần bảo dưỡng"
+                },
+                new CarRentalSystem.Models.ContractType
+                {
+                    Name = "1 Năm",
+                    MinDurationDays = 360,
+                    MaxDurationDays = 365,
+                    DiscountPercent = 25,
+                    FreeMaintenanceCount = 8,
+                    IsActive = true,
+                    Description = "Thuê 1 năm, giảm 25%, miễn phí 8 lần bảo dưỡng, ưu tiên xe mới"
+                }
+            );
             db.SaveChanges();
         }
 
-        db.ContractTypes.AddRange(
-            new CarRentalSystem.Models.ContractType
-            {
-                Name = "Theo ngày",
-                MinDurationDays = 1,
-                MaxDurationDays = 6,
-                DiscountPercent = 0,
-                FreeMaintenanceCount = 0,
-                IsActive = true,
-                Description = "Thuê xe theo ngày, không giảm giá"
-            },
-            new CarRentalSystem.Models.ContractType
-            {
-                Name = "1 Tuần",
-                MinDurationDays = 7,
-                MaxDurationDays = 29,
-                DiscountPercent = 5,
-                FreeMaintenanceCount = 0,
-                IsActive = true,
-                Description = "Thuê từ 7 ngày, giảm 5% so với giá lẻ"
-            },
-            new CarRentalSystem.Models.ContractType
-            {
-                Name = "1 Tháng",
-                MinDurationDays = 30,
-                MaxDurationDays = 30,
-                DiscountPercent = 10,
-                FreeMaintenanceCount = 1,
-                IsActive = true,
-                Description = "Thuê 30 ngày, giảm 10%, miễn phí 1 lần bảo dưỡng"
-            },
-            new CarRentalSystem.Models.ContractType
-            {
-                Name = "3 Tháng",
-                MinDurationDays = 90,
-                MaxDurationDays = 90,
-                DiscountPercent = 15,
-                FreeMaintenanceCount = 2,
-                IsActive = true,
-                Description = "Thuê 3 tháng, giảm 15%, miễn phí 2 lần bảo dưỡng"
-            },
-            new CarRentalSystem.Models.ContractType
-            {
-                Name = "6 Tháng",
-                MinDurationDays = 180,
-                MaxDurationDays = 180,
-                DiscountPercent = 20,
-                FreeMaintenanceCount = 4,
-                IsActive = true,
-                Description = "Thuê 6 tháng, giảm 20%, miễn phí 4 lần bảo dưỡng"
-            },
-            new CarRentalSystem.Models.ContractType
-            {
-                Name = "1 Năm",
-                MinDurationDays = 360,
-                MaxDurationDays = 365,
-                DiscountPercent = 25,
-                FreeMaintenanceCount = 8,
-                IsActive = true,
-                Description = "Thuê 1 năm, giảm 25%, miễn phí 8 lần bảo dưỡng, ưu tiên xe mới"
-            }
-        );
-        db.SaveChanges();
-    }
-
-    // Seed AddOns if none exist
-    if (!db.AddOns.Any())
-    {
-        db.AddOns.AddRange(
-            new CarRentalSystem.Models.AddOn
-            {
-                Name = "Nước suối",
-                Description = "Chai 500ml mát lạnh",
-                PricePerDay = 10000,
-                IsActive = true
-            },
-            new CarRentalSystem.Models.AddOn
-            {
-                Name = "Khăn lạnh",
-                Description = "Khăn ướt mát lạnh thơm",
-                PricePerDay = 5000,
-                IsActive = true
-            },
-            new CarRentalSystem.Models.AddOn
-            {
-                Name = "Combo Ăn Nhẹ",
-                Description = "Bánh mì + nước + khăn lạnh",
-                PricePerDay = 50000,
-                IsActive = true
-            },
-            new CarRentalSystem.Models.AddOn
-            {
-                Name = "Combo VIP",
-                Description = "Nước + bánh + khăn + hoa xe + sạc dự phòng",
-                PricePerDay = 100000,
-                IsActive = true
-            }
-        );
-        db.SaveChanges();
+        // Seed AddOns if none exist
+        if (!db.AddOns.Any())
+        {
+            db.AddOns.AddRange(
+                new CarRentalSystem.Models.AddOn
+                {
+                    Name = "Nước suối",
+                    Description = "Chai 500ml mát lạnh",
+                    PricePerDay = 10000,
+                    IsActive = true
+                },
+                new CarRentalSystem.Models.AddOn
+                {
+                    Name = "Khăn lạnh",
+                    Description = "Khăn ướt mát lạnh thơm",
+                    PricePerDay = 5000,
+                    IsActive = true
+                },
+                new CarRentalSystem.Models.AddOn
+                {
+                    Name = "Combo Ăn Nhẹ",
+                    Description = "Bánh mì + nước + khăn lạnh",
+                    PricePerDay = 50000,
+                    IsActive = true
+                },
+                new CarRentalSystem.Models.AddOn
+                {
+                    Name = "Combo VIP",
+                    Description = "Nước + bánh + khăn + hoa xe + sạc dự phòng",
+                    PricePerDay = 100000,
+                    IsActive = true
+                }
+            );
+            db.SaveChanges();
+        }
     }
 }
 

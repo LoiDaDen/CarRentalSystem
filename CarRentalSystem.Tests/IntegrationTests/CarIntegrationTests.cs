@@ -200,9 +200,13 @@ namespace CarRentalSystem.Tests.IntegrationTests
             await _carService.DeleteCarAsync(carId);
 
             // Assert
+            // Clear the change tracker so CountAsync/FindAsync hit the data source.
+            // In a real SQL DB, FindAsync would not see deleted rows after SaveChanges,
+            // but the InMemory provider caches deleted entities in the tracker.
+            _context.ChangeTracker.Clear();
             var count = await _context.Cars.CountAsync();
             count.Should().Be(initialCarCount - 1, "vì xe đã bị xóa");
-            var deleted = await _context.Cars.FindAsync(carId);
+            var deleted = await _context.Cars.FirstOrDefaultAsync(c => c.CarID == carId);
             deleted.Should().BeNull("vì xe đã bị xóa khỏi database");
         }
 
