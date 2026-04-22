@@ -37,8 +37,6 @@ jobs:
         load: true
         tags: carrental-scan:latest
         file: ./Dockerfile
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
 
     - name: "🔍 Trivy: Docker Image Vulnerability Scan"
       uses: aquasecurity/trivy-action@master

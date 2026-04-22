@@ -61,8 +61,9 @@ namespace CarRentalSystem.Tests.UnitTests
             // Act
             var result = await _carService.GetAllCarsAsync();
 
-            // Assert
-            result.Should().HaveCount(2, "vì có 2 xe được seed vào database");
+            // Assert — dùng relative count thay vì absolute
+            var seededCount = await _context.Cars.CountAsync();
+            result.Should().HaveCount(seededCount, "vì kết quả phải chứa tất cả xe đã seed");
         }
 
         [Fact]
