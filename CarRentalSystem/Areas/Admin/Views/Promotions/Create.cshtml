@@ -54,14 +54,16 @@
                         <small class="text-muted">Nhập số tiền tối đa được giảm.</small>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small text-uppercase text-muted">Ngày Bắt đầu <span class="text-danger">*</span></label>
-                        <input type="date" asp-for="ValidFrom" class="form-control" required value="@DateTime.Now.ToString("yyyy-MM-dd")" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small text-uppercase text-muted">Ngày Kết thúc <span class="text-danger">*</span></label>
-                        <input type="date" asp-for="ValidUntil" class="form-control" required value="@DateTime.Now.AddDays(30).ToString("yyyy-MM-dd")" />
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Thời gian hiệu lực <span class="text-danger">*</span></label>
+                        <div class="form-control bg-white fw-bold px-3 py-2 d-flex justify-content-between align-items-center shadow-sm cursor-pointer" 
+                             onclick="openCarCalendar({startInputId: 'ValidFrom', endInputId: 'ValidUntil'})"
+                             style="cursor: pointer; border-radius: 12px; border: 1.5px solid #e2e8f0;">
+                            <span id="display-promo-dates" data-calendar-display>@DateTime.Now.ToString("dd/MM/yyyy HH:mm") - @DateTime.Now.AddDays(30).ToString("dd/MM/yyyy HH:mm")</span>
+                            <i class="bi bi-calendar3 text-muted"></i>
+                        </div>
+                        <input type="hidden" asp-for="ValidFrom" id="ValidFrom" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                        <input type="hidden" asp-for="ValidUntil" id="ValidUntil" value="@DateTime.Now.AddDays(30).ToString("yyyy-MM-ddTHH:mm")" />
                     </div>
 
                     <div class="col-md-6">
@@ -92,3 +94,15 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+}
+
+@section Scripts {
+    <partial name="_CarCalendarModal" />
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+    <script src="~/js/global-calendar.js" asp-append-version="true"></script>
+}

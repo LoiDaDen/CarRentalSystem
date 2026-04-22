@@ -1,5 +1,6 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
+using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,12 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     public class PartnerContractController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPiiEncryptionService _piiEncryption;
 
-        public PartnerContractController(ApplicationDbContext context)
+        public PartnerContractController(ApplicationDbContext context, IPiiEncryptionService piiEncryption)
         {
             _context = context;
+            _piiEncryption = piiEncryption;
         }
 
         // GET: Admin/PartnerContract
@@ -48,6 +51,13 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var driverContracts = category == "partner" ? new List<DriverContract>() : await driverQuery.ToListAsync();
             var partnerContracts = category == "driver" ? new List<PartnerContract>() : await partnerQuery.ToListAsync();
 
+            // ═══ Giải mã PII trước khi hiển thị ═══
+            foreach (var contract in driverContracts)
+            {
+                contract.PartyBCCCD = _piiEncryption.DecryptIfNotEmpty(contract.PartyBCCCD);
+                contract.PartyBLicenseNumber = _piiEncryption.DecryptIfNotEmpty(contract.PartyBLicenseNumber);
+            }
+
             // Stats
             ViewBag.TotalDriverContracts = await _context.DriverContracts.CountAsync();
             ViewBag.TotalPartnerContracts = await _context.PartnerContracts.CountAsync();
@@ -75,6 +85,11 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .FirstOrDefaultAsync(dc => dc.DriverContractID == id);
 
             if (contract == null) return NotFound();
+
+            // ═══ Giải mã PII trước khi hiển thị ═══
+            contract.PartyBCCCD = _piiEncryption.DecryptIfNotEmpty(contract.PartyBCCCD);
+            contract.PartyBLicenseNumber = _piiEncryption.DecryptIfNotEmpty(contract.PartyBLicenseNumber);
+
             return View(contract);
         }
 
@@ -99,9 +114,19 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             contract.Status = "Cancelled";
             contract.CancelledAt = DateTime.UtcNow;
             contract.CancelReason = reason ?? "Hủy bởi Admin";
+
+            // ═══ Tự động khóa tài xế khi hủy hợp đồng ═══
+            var driver = await _context.Drivers.FindAsync(contract.DriverID);
+            if (driver != null)
+            {
+                driver.IsLocked = true;
+                driver.LockedAt = DateTime.UtcNow;
+                driver.IsAvailable = false;
+            }
+
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"Đã hủy hợp đồng tài xế #{contract.ContractNo}.";
+            TempData["Success"] = $"Đã hủy hợp đồng tài xế #{contract.ContractNo} và khóa tài khoản tài xế.";
             return RedirectToAction(nameof(Index));
         }
 

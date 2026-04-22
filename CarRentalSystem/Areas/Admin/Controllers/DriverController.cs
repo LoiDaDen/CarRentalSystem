@@ -91,7 +91,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        private string GenerateDriverContractTerms(Driver driver)
+        private string GenerateDriverContractTerms(CarRentalSystem.Models.Driver driver)
         {
             return @"ĐIỀU 1: NỘI DUNG HỢP TÁC
 1.1. Bên A giao quyền điều khiển xe ô tô cho Bên B để phục vụ khách hàng của hệ thống (đưa đón khách, giao nhận xe cho khách thuê tự lái).
@@ -146,17 +146,57 @@ Bên B không được tự ý tiết lộ thông tin khách hàng hoặc quy tr
             return RedirectToAction(nameof(Index));
         }
 
-        // POST: Admin/Driver/Delete/5
         [HttpPost]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> ToggleLock(int id)
         {
             var driver = await _context.Drivers.FindAsync(id);
             if (driver == null) return NotFound();
 
-            _context.Drivers.Remove(driver);
+            bool hasActiveTrips = await _context.DriverBookings
+                .Include(db => db.Booking).ThenInclude(b => b.BookingStatus)
+                .AnyAsync(db => db.DriverID == id && (db.Booking.BookingStatus.Name == "Confirmed" || db.Booking.BookingStatus.Name == "Active"));
+                
+            if (hasActiveTrips && !driver.IsLocked)
+            {
+                TempData["Error"] = "Không thể khóa tài xế này vì đang có chuyến đi chưa hoàn tất.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            driver.IsLocked = !driver.IsLocked;
+            driver.LockedAt = driver.IsLocked ? DateTime.UtcNow : null;
+            driver.IsAvailable = !driver.IsLocked; // If locked, set unavailable
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"Đã xóa tài xế {driver.FullName}.";
+            TempData["Success"] = driver.IsLocked ? $"Đã khóa tài khoản tài xế {driver.FullName}." : $"Đã mở khóa tài khoản tài xế {driver.FullName}.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleBlacklist(int id, string? reason)
+        {
+            var driver = await _context.Drivers.FindAsync(id);
+            if (driver == null) return NotFound();
+
+            bool hasActiveTrips = await _context.DriverBookings
+                .Include(db => db.Booking).ThenInclude(b => b.BookingStatus)
+                .AnyAsync(db => db.DriverID == id && (db.Booking.BookingStatus.Name == "Confirmed" || db.Booking.BookingStatus.Name == "Active"));
+
+            if (hasActiveTrips && !driver.IsBlacklisted)
+            {
+                TempData["Error"] = "Không thể đưa tài xế này vào danh sách đen vì đang có chuyến đi chưa hoàn tất.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            driver.IsBlacklisted = !driver.IsBlacklisted;
+            if (driver.IsBlacklisted)
+            {
+                driver.IsAvailable = false;
+                driver.IsLocked = true;
+                driver.LockedAt = DateTime.UtcNow;
+            }
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã cập nhật trạng thái Blacklist của tài xế {driver.FullName}.";
             return RedirectToAction(nameof(Index));
         }
 

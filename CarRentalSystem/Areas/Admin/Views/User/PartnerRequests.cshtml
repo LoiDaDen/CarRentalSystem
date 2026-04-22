@@ -68,11 +68,15 @@
                             </div>
 
                             <div class="d-flex gap-2 mt-auto">
-                                <form asp-action="ToggleVerify" asp-route-id="@user.UserID" method="post" class="flex-grow-1">
-                                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">Duyệt eKYC</button>
+                                <form asp-action="ApprovePartner" asp-route-id="@user.UserID" method="post" class="flex-grow-1">
+                                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">
+                                        <i class="bi bi-check-circle me-1"></i>Duyệt Đối tác
+                                    </button>
                                 </form>
-                                <form asp-action="ToggleBlacklist" asp-route-id="@user.UserID" method="post" class="flex-grow-1">
-                                    <button type="submit" class="btn btn-outline-danger w-100 rounded-pill">Từ chối/Chặn</button>
+                                <form asp-action="RejectPartner" asp-route-id="@user.UserID" method="post" class="flex-grow-1">
+                                    <button type="submit" class="btn btn-outline-danger w-100 rounded-pill">
+                                        <i class="bi bi-x-circle me-1"></i>Từ chối
+                                    </button>
                                 </form>
                             </div>
                         </div>

@@ -1,0 +1,77 @@
+@* CarRentalSystem/Areas/Admin/Views/Area/_LocationModal.cshtml *@
+@model CarRentalSystem.Models.Area
+@{
+    var isManager = User.IsInRole("Admin") || User.IsInRole("Manager") ||
+        (Model.AreaStaffs?.Any(s => !s.IsDeleted
+            && s.UserID.ToString() == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            && s.RoleInArea == "manager") ?? false);
+}
+
+@if (isManager)
+{
+    <div class="modal fade" id="locationModal" tabindex="-1" aria-labelledby="locationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="locationModalLabel">
+                        <i class="bi bi-geo-alt text-primary me-2"></i>Thêm địa điểm vào khu vực
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+
+                <form action="@Url.Action("Add", "AreaLocation", new { area = "Admin" })"
+                      method="post" id="locationForm" novalidate>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="AreaID" value="@Model.AreaID" />
+
+                    <div class="modal-body pt-2">
+
+                        <!-- Chọn location -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                Chọn địa điểm <span class="text-danger">*</span>
+                            </label>
+                            <select id="locationSelect" class="form-select" style="width:100%" required></select>
+                            <div class="invalid-feedback">Vui lòng chọn một địa điểm.</div>
+                            <div class="form-text small mt-1">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Chỉ hiển thị địa điểm chưa thuộc khu vực này.
+                            </div>
+                        </div>
+
+                        <!-- Preview khi đã chọn -->
+                        <div id="locationPreview" class="d-none">
+                            <div class="p-3 rounded-3 d-flex align-items-center justify-content-between"
+                                 style="background:#f0f9ff; border: 1px solid #bae6fd;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-3 d-flex align-items-center justify-content-center"
+                                         style="width:40px;height:40px; background:#dbeafe;">
+                                        <i class="bi bi-geo-alt-fill text-primary fs-5"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark" id="selectedLocName"></div>
+                                        <div class="text-muted small" id="selectedLocAddr"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-info rounded-3 me-2" id="selectedLocCars"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer border-0 pt-3">
+                        <button type="button" class="btn btn-light rounded-3 fw-bold px-4" data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-primary rounded-3 fw-bold px-4" id="submitLocationBtn" disabled>
+                            <i class="bi bi-check2 me-2"></i>Xác nhận
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

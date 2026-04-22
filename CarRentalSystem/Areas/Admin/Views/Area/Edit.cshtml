@@ -1,0 +1,537 @@
+@* CarRentalSystem/Areas/Admin/Views/Area/Edit.cshtml *@
+@model CarRentalSystem.ViewModels.Areas.AreaEditViewModel
+@{
+    ViewData["Title"] = "Chỉnh sửa Khu vực";
+    Layout = "_AdminLayout";
+
+    var assignedLocationIds = ViewBag.AssignedLocationIds as List<int> ?? new();
+}
+
+<style>
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        padding: 0.7rem 1rem;
+        font-weight: 500;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+    }
+    .form-label {
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+    }
+    .section-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.75rem;
+        border: 1px solid #f1f5f9;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        margin-bottom: 1.5rem;
+    }
+    .section-title {
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #3b82f6;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 1.5rem;
+    }
+    .location-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 50px;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #0369a1;
+    }
+    .location-badge .btn-remove {
+        background: none;
+        border: none;
+        padding: 0;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .location-badge .btn-remove:hover { color: #ef4444; }
+    .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 26px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: #e2e8f0;
+        transition: 0.3s;
+        border-radius: 26px;
+    }
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider { background-color: #22c55e; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <div>
+        <h2 class="fw-800 ls-neg-1 mb-1">
+            <i class="bi bi-pencil-square text-warning me-2"></i>Chỉnh sửa Khu vực
+        </h2>
+        <p class="text-muted mb-0">Cập nhật thông tin khu vực: <strong>@Model.Name</strong></p>
+    </div>
+    <a asp-area="Admin" asp-controller="Area" asp-action="Index" class="btn btn-light rounded-3 px-4 py-2 fw-bold border">
+        <i class="bi bi-arrow-left me-2"></i>Quay lại
+    </a>
+</div>
+
+<form asp-area="Admin" asp-controller="Area" asp-action="Edit" method="post">
+    <input type="hidden" asp-for="AreaID" />
+
+    <div asp-validation-summary="All" class="text-danger fw-bold mb-3"></div>
+
+    <div class="row g-4">
+        <!-- Cột trái -->
+        <div class="col-lg-6">
+            <div class="section-card">
+                <div class="section-title">
+                    <i class="bi bi-info-circle me-2"></i>Thông tin cơ bản
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Tên khu vực <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mã khu vực <span class="text-danger">*</span></label>
+                        <input asp-for="Code" class="form-control" maxlength="20"
+                               style="text-transform: uppercase;"
+                               oninput="this.value = this.value.toUpperCase()" />
+                        <span asp-validation-for="Code" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Trạng thái</label>
+                        <div class="d-flex align-items-center gap-3 mt-2">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="statusToggle"
+                                       onchange="syncStatusEdit(this)"
+                                       checked="@(Model.Status != "inactive")" />
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="fw-medium" id="statusLabelEdit">@(Model.Status == "inactive" ? "Tạm ngưng" : "Đang hoạt động")</span>
+                            <input type="hidden" name="Status" id="statusInputEdit" value="@Model.Status" />
+                        </div>
+                        <span asp-validation-for="Status" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Tỉnh / Thành phố <span class="text-danger">*</span></label>
+                        <select asp-for="Province" class="form-select" id="provinceSelect">
+                            <option value="">— Chọn tỉnh/thành —</option>
+                        </select>
+                        <span asp-validation-for="Province" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Địa chỉ chi tiết</label>
+                        <input asp-for="Address" class="form-control" />
+                        <span asp-validation-for="Address" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section: Địa điểm -->
+            <div class="section-card">
+                <div class="section-title">
+                    <i class="bi bi-geo-alt me-2"></i>Địa điểm thuộc khu vực
+                </div>
+
+                @if (assignedLocationIds.Any())
+                {
+                    <div class="mb-3">
+                        @foreach (var locId in assignedLocationIds)
+                        {
+                            var loc = (ViewBag.Locations as List<CarRentalSystem.Models.Location>)?
+                                .FirstOrDefault(l => l.LocationID == locId);
+                            if (loc != null)
+                            {
+                                <div class="location-badge mb-2 me-2 d-inline-flex">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                    <span>@loc.Name</span>
+                                    @if (loc.Address != null)
+                                    {
+                                        <small class="text-muted">— @loc.Address</small>
+                                    }
+                                    <form asp-area="Admin" asp-controller="AreaLocation" asp-action="Remove"
+                                          method="post" class="d-inline ms-1"
+                                          onsubmit="return confirm('Gỡ địa điểm &quot;@loc.Name&quot; khỏi khu vực này?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="areaId" value="@Model.AreaID" />
+                                        <input type="hidden" name="locationId" value="@loc.LocationID" />
+                                        <button type="submit" class="btn-remove" title="Gỡ">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-3 text-muted small">
+                        <i class="bi bi-geo-alt fs-4 d-block mb-2 opacity-50"></i>
+                        Chưa có địa điểm nào được gán.
+                    </div>
+                }
+
+                <!-- Nút mở modal -->
+                <button type="button" class="btn btn-outline-primary rounded-3 fw-bold w-100"
+                        data-bs-toggle="modal" data-bs-target="#locationModal">
+                    <i class="bi bi-plus-lg me-2"></i>Thêm địa điểm
+                </button>
+            </div>
+        </div>
+
+        <!-- Cột phải -->
+        <div class="col-lg-6">
+            <div class="section-card">
+                <div class="section-title">
+                    <i class="bi bi-person-badge me-2"></i>Quản lý khu vực
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Manager quản lý</label>
+                        <select asp-for="ManagerID" class="form-select select2-ajax-users" id="managerSelect"
+                                data-placeholder="— Tìm user quản lý —">
+                            @if (ViewBag.Managers != null)
+                            {
+                                @foreach (var u in ViewBag.Managers)
+                                {
+                                    <option value="@u.UserID" selected="@(Model.ManagerID == u.UserID)">
+                                        @u.Name — @u.Email
+                                    </option>
+                                }
+                            }
+                        </select>
+                        <span asp-validation-for="ManagerID" class="text-danger small"></span>
+                        <div class="form-text small">Thay đổi sẽ đồng thời cập nhật vai trò AreaManager.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Vĩ độ (Latitude)</label>
+                        <input asp-for="Latitude" class="form-control" step="0.0001" />
+                        <span asp-validation-for="Latitude" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Kinh độ (Longitude)</label>
+                        <input asp-for="Longitude" class="form-control" step="0.0001" />
+                        <span asp-validation-for="Longitude" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <div id="mapPicker" style="height: 200px; border-radius: 12px; border: 1.5px solid #e2e8f0;"></div>
+                        <div class="form-text small text-muted mt-1">Click vào bản đồ để cập nhật tọa độ.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thông tin hệ thống -->
+            <div class="section-card">
+                <div class="section-title">
+                    <i class="bi bi-clock-history me-2"></i>Thông tin hệ thống
+                </div>
+                <div class="row g-2 small">
+                    <div class="col-6 text-muted">Mã khu vực:</div>
+                    <div class="col-6 fw-bold text-dark">@Model.Code</div>
+                    <div class="col-6 text-muted">Trạng thái:</div>
+                    <div class="col-6">
+                        @if (Model.Status == "active")
+                        {
+                            <span class="badge bg-success rounded-pill">Đang hoạt động</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary rounded-pill">Tạm ngưng</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="d-flex gap-3 justify-content-end mt-4">
+        <a asp-area="Admin" asp-controller="Area" asp-action="Index" class="btn btn-light rounded-3 px-5 py-2 fw-bold border">
+            <i class="bi bi-x-lg me-2"></i>Hủy
+        </a>
+        <button type="submit" class="btn btn-warning rounded-3 px-5 py-2 fw-bold shadow-sm text-dark">
+            <i class="bi bi-check2 me-2"></i>Lưu thay đổi
+        </button>
+    </div>
+</form>
+
+<!-- Modal: Thêm địa điểm -->
+<div class="modal fade" id="locationModal" tabindex="-1" aria-labelledby="locationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="locationModalLabel">
+                    <i class="bi bi-geo-alt text-primary me-2"></i>Thêm địa điểm vào khu vực
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <form asp-area="Admin" asp-controller="AreaLocation" asp-action="Add" method="post" id="locationForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="AreaID" value="@Model.AreaID" />
+                <div class="modal-body pt-2">
+                    <label class="form-label fw-bold">Nhập tên địa điểm</label>
+                    <div class="position-relative">
+                        <input type="text" id="locationSearch" class="form-control"
+                               placeholder="— Gõ tên hoặc địa chỉ địa điểm —"
+                               autocomplete="off" />
+                        <div id="locationDropdown" class="list-group position-absolute w-100 d-none" style="z-index: 1050; max-height: 280px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,0.12); border-radius: 12px;">
+                        </div>
+                    </div>
+                    <div class="form-text small mt-1">Gợi ý các địa điểm chưa thuộc khu vực này.</div>
+                </div>
+                <div class="modal-footer border-0 pt-3">
+                    <button type="button" class="btn btn-light rounded-3 fw-bold px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary rounded-3 fw-bold px-4" id="addLocationBtn" disabled>
+                        <i class="bi bi-check2 me-2"></i>Thêm vào khu vực
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Select2 + Leaflet CSS + Leaflet JS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/vi.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // ── Province list ───────────────────────────────────────────────
+        (function() {
+            var vietnamProvinces = [
+                "An Giang","Bà Rịa - Vũng Tàu","Bắc Giang","Bắc Kạn","Bạc Liêu","Bắc Ninh","Bến Tre",
+                "Bình Định","Bình Dương","Bình Phước","Bình Thuận","Cà Mau","Cần Thơ","Cao Bằng","Đà Nẵng",
+                "Đắk Lắk","Đắk Nông","Điện Biên","Đồng Nai","Đồng Tháp","Gia Lai","Hà Giang","Hà Nam",
+                "Hà Nội","Hà Tĩnh","Hải Dương","Hải Phòng","Hậu Giang","Hòa Bình","Hưng Yên","Khánh Hòa",
+                "Kiên Giang","Kon Tum","Lai Châu","Lâm Đồng","Lạng Sơn","Lào Cai","Long An","Nam Định",
+                "Nghệ An","Ninh Bình","Ninh Thuận","Phú Thọ","Phú Yên","Quảng Bình","Quảng Nam","Quảng Ngãi",
+                "Quảng Ninh","Quảng Trị","Sóc Trăng","Sơn La","Tây Ninh","Thái Bình","Thái Nguyên","Thanh Hóa",
+                "Thừa Thiên Huế","Tiền Giang","TP. Hồ Chí Minh","Trà Vinh","Tuyên Quang","Vĩnh Long","Vĩnh Phúc",
+                "Yên Bái"
+            ];
+            var provinceSelect = document.getElementById('provinceSelect');
+            if (provinceSelect) {
+                vietnamProvinces.forEach(function(p) {
+                    var opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    provinceSelect.appendChild(opt);
+                });
+                provinceSelect.value = '@Model.Province';
+            }
+
+            // Status toggle
+            window.syncStatusEdit = function(toggle) {
+                var label = document.getElementById('statusLabelEdit');
+                var input = document.getElementById('statusInputEdit');
+                if (label) label.textContent = toggle.checked ? 'Đang hoạt động' : 'Tạm ngưng';
+                if (input) input.value = toggle.checked ? 'active' : 'inactive';
+            };
+        })();
+
+        // ── Autocomplete địa điểm (vanilla JS) ─────────────────────────
+        (function() {
+            var selectedLocationId = null;
+            var searchTimeout = null;
+            var areaId = '@Model.AreaID';
+
+            var input = document.getElementById('locationSearch');
+            var dropdown = document.getElementById('locationDropdown');
+            var submitBtn = document.getElementById('addLocationBtn');
+            var form = document.getElementById('locationForm');
+
+            if (!input || !dropdown) return;
+
+            input.addEventListener('input', function() {
+                var term = input.value.trim();
+
+                if (term.length < 1) {
+                    dropdown.classList.add('d-none');
+                    selectedLocationId = null;
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', '/admin/api/locations?search=' + encodeURIComponent(term) + '&excludeArea=' + areaId, true);
+                    xhr.setRequestHeader('Accept', 'application/json');
+                    xhr.onload = function() {
+                        console.log('[AC] locations response status:', xhr.status, 'body:', xhr.responseText);
+                        if (xhr.status === 200) {
+                            try {
+                                var data = JSON.parse(xhr.responseText);
+                                console.log('[AC] locations data:', data);
+                                var results = data.results || [];
+                                if (results.length === 0) {
+                                    dropdown.innerHTML = '<div class="list-group-item text-muted small px-3 py-2 border-0">Không tìm thấy địa điểm nào.</div>';
+                                } else {
+                                    dropdown.innerHTML = results.map(function(l) {
+                                        return '<button type="button" class="list-group-item list-group-item-action border-0 rounded-3 mb-1 text-start" ' +
+                                            'data-id="' + l.id + '" data-name="' + l.name.replace(/"/g, '&quot;') + '" data-addr="' + ((l.address || '').replace(/"/g, '&quot;')) + '">' +
+                                            '<div class="fw-bold" style="font-size:0.88rem;">' + l.name + '</div>' +
+                                            '<div class="text-muted small">' + (l.address || '—') + ' · ' + l.carCount + ' xe</div>' +
+                                            '</button>';
+                                    }).join('');
+                                }
+                                dropdown.classList.remove('d-none');
+                            } catch(e) {
+                                console.error('[AC] JSON parse error:', e);
+                            }
+                        } else {
+                            dropdown.innerHTML = '<div class="list-group-item text-danger small px-3 py-2 border-0">Lỗi tải dữ liệu (status ' + xhr.status + ').</div>';
+                            dropdown.classList.remove('d-none');
+                        }
+                    };
+                    xhr.onerror = function() {
+                        console.error('[AC] network error');
+                        dropdown.innerHTML = '<div class="list-group-item text-danger small px-3 py-2 border-0">Lỗi kết nối mạng.</div>';
+                        dropdown.classList.remove('d-none');
+                    };
+                    xhr.send();
+                }, 250);
+            });
+
+            dropdown.addEventListener('click', function(e) {
+                var btn = e.target.closest('button[data-id]');
+                if (!btn) return;
+                selectedLocationId = btn.getAttribute('data-id');
+                var name = btn.getAttribute('data-name');
+                var addr = btn.getAttribute('data-addr');
+                input.value = name + (addr ? ' — ' + addr : '');
+                dropdown.classList.add('d-none');
+                submitBtn.disabled = false;
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('d-none');
+                }
+            });
+
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (!selectedLocationId) {
+                        e.preventDefault();
+                        input.classList.add('is-invalid');
+                    } else {
+                        var hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = 'LocationID';
+                        hidden.value = selectedLocationId;
+                        form.appendChild(hidden);
+                    }
+                });
+            }
+
+            var modal = document.getElementById('locationModal');
+            if (modal) {
+                modal.addEventListener('shown.bs.modal', function() {
+                    input.focus();
+                });
+                modal.addEventListener('hidden.bs.modal', function() {
+                    input.value = '';
+                    input.classList.remove('is-invalid');
+                    dropdown.classList.add('d-none');
+                    submitBtn.disabled = true;
+                    selectedLocationId = null;
+                });
+            }
+        })();
+
+        // ── Select2 Manager AJAX ─────────────────────────────────────────
+        var managerEl = document.querySelector('.select2-ajax-users');
+        if (managerEl && typeof jQuery !== 'undefined' && jQuery.fn.select2) {
+            jQuery(managerEl).select2({
+                language: 'vi',
+                allowClear: true,
+                ajax: {
+                    url: '/admin/api/users',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return { search: params.term || '', roles: 'Manager,Staff' };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data.results.map(function(u) {
+                                return { id: u.id, text: u.name + ' (' + u.email + ') — ' + u.role };
+                            })
+                        };
+                    }
+                }
+            });
+        }
+
+        // ── Leaflet map ─────────────────────────────────────────────────
+        var mapEl = document.getElementById('mapPicker');
+        if (mapEl && typeof L !== 'undefined') {
+            var initLat = parseFloat('@(Model.Latitude ?? 0)') || 16.0544;
+            var initLng = parseFloat('@(Model.Longitude ?? 0)') || 108.2022;
+            var map = L.map('mapPicker').setView([initLat, initLng], @(Model.Latitude != null ? "14" : "6"));
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            var marker = null;
+            @if (Model.Latitude != null)
+            {
+                <text>
+            marker = L.marker([initLat, initLng]).addTo(map);
+                </text>
+            }
+
+            map.on('click', function(e) {
+                var lat = e.latlng.lat;
+                var lng = e.latlng.lng;
+                var latInput = document.getElementById('Latitude');
+                var lngInput = document.getElementById('Longitude');
+                if (latInput) latInput.value = lat.toFixed(6);
+                if (lngInput) lngInput.value = lng.toFixed(6);
+                if (marker) map.removeLayer(marker);
+                marker = L.marker([lat, lng]).addTo(map);
+            });
+        }
+    </script>
+}

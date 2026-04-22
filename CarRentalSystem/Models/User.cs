@@ -90,5 +90,17 @@ namespace CarRentalSystem.Models
         public decimal TotalSpending { get; set; } = 0;
         
         public int LoyaltyPoints { get; set; } = 0;
+
+        // Phase 10: Account Control
+        public bool IsLocked { get; set; } = false;
+        public DateTime? LockedAt { get; set; }
+
+        // Phase 10: Area Management
+        public ICollection<AreaStaff>? AreaStaffs { get; set; } = new List<AreaStaff>();
+
+        public bool HasRole(string role) => Role == role;
+
+        public bool BelongsToArea(int areaId) =>
+            AreaStaffs?.Any(asx => asx.AreaID == areaId) ?? false;
     }
 }

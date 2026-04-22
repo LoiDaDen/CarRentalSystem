@@ -1,0 +1,86 @@
+@model CarRentalSystem.Models.BookingTransaction
+@{
+    ViewData["Title"] = "Thanh toán thành công";
+    decimal totalDepositAmount = 0;
+    foreach (var b in Model.Bookings)
+    {
+        totalDepositAmount += b.Car?.DefaultDeposit ?? 0;
+    }
+    var paidDeposit = Model.TotalAmount * 0.2m; // Default matching required deposit display
+}
+
+<div class="container mt-5 mb-5 text-center">
+    <div class="payment-success-card p-5 shadow-lg rounded-4 bg-white mx-auto page-payment-success">
+        <div class="success-checkmark mb-4">
+            <div class="check-icon">
+                <span class="icon-line line-tip"></span>
+                <span class="icon-line line-long"></span>
+                <div class="icon-circle"></div>
+                <div class="icon-fix"></div>
+            </div>
+        </div>
+
+        <h2 class="display-6 fw-bold text-success mb-3">Thanh toán hoàn tất!</h2>
+        <p class="lead text-muted mb-4">Cảm ơn bạn đã tin tưởng dịch vụ <strong>CarRental</strong>. Đơn hàng Giỏ xe của bạn đang được xử lý.</p>
+
+        <div class="order-info-box p-3 bg-light rounded-3 mb-4 text-start">
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-secondary">Mã giao dịch:</span>
+                <span class="fw-bold">TRX-@Model.TransactionID</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-secondary">Số xe đã đặt:</span>
+                <span class="fw-bold">@Model.Bookings.Count xe</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="text-secondary">Tổng số cọc đã ghi nhận:</span>
+                <span class="fw-bold text-primary">@paidDeposit.ToString("N0") VNĐ</span>
+            </div>
+        </div>
+
+        <div class="alert alert-warning py-3 mb-4 text-start d-flex align-items-center" role="alert" style="background-color: #fffbeb; border-color: #fde68a;">
+            <i class="bi bi-file-earmark-text text-warning fs-3 me-3"></i>
+            <div>
+                <h6 class="fw-bold mb-1">Bước tiếp theo: Ký Hợp Đồng Giỏ Xe</h6>
+                <p class="small mb-0 text-muted">Vui lòng tiến hành ký điện tử một hợp đồng chung cho toàn bộ các xe trong giỏ hàng để hoàn tất thủ tục trước khi nhận xe.</p>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+            <a asp-controller="Booking" asp-action="TransactionContract" asp-route-id="@Model.TransactionID" class="btn btn-warning btn-lg px-4 rounded-pill shadow fw-bold text-dark border-0" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">
+                <i class="bi bi-pen me-2"></i>TIẾN HÀNH KÝ HỢP ĐỒNG
+            </a>
+            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-outline-secondary btn-lg px-4 rounded-pill">
+                Xem phòng xe
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .payment-success-card { border-top: 5px solid #28a745; animation: slideInDown 0.6s ease-out; max-width: 650px; }
+    .success-checkmark { width: 80px; height: 115px; margin: 0 auto; }
+    .check-icon {
+        width: 80px; height: 80px; position: relative; border-radius: 50%;
+        box-sizing: content-box; border: 4px solid #4CAF50;
+    }
+    .check-icon::before {
+        content: ""; position: absolute; width: 40px; height: 80px;
+        background: #fff; left: -10px; top: -10px; transform-origin: 100% 50%;
+        border-radius: 100px 0 0 100px; animation: rotate-circle 4.25s ease-in;
+    }
+    .check-icon::after {
+        content: ""; position: absolute; width: 100px; height: 100px;
+        background: #fff; left: 20px; top: -10px; transform-origin: 0 50%;
+        border-radius: 0 100px 100px 0; animation: rotate-circle 4.25s ease-in;
+    }
+    .icon-line { height: 5px; background-color: #4CAF50; display: block; border-radius: 2px; position: absolute; z-index: 10; }
+    .icon-line.line-tip { top: 46px; left: 14px; width: 25px; transform: rotate(45deg); animation: icon-line-tip 0.75s; }
+    .icon-line.line-long { top: 38px; right: 8px; width: 47px; transform: rotate(-45deg); animation: icon-line-long 0.75s; }
+    .icon-circle { top: -4px; left: -4px; z-index: 10; }
+    .icon-fix { top: 5px; left: 27px; z-index: 10; width: 4px; height: 5px; border-radius: 2px; }
+
+    @@keyframes rotate-circle { 0% { transform: rotate(0deg); } 100% { transform: rotate(50deg); } }
+    @@keyframes icon-line-tip { 0% { width: 0; } 54% { width: 25px; } 100% { width: 25px; } }
+    @@keyframes icon-line-long { 0% { width: 0; } 54% { width: 47px; } 100% { width: 47px; } }
+</style>

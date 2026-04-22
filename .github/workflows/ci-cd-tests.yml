@@ -12,8 +12,104 @@ env:
   MSBuildEnableWorkloadResolver: false
   DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: true
   DOTNET_NOLOGO: true
+  CAR_RENTAL_PROJECT: 'CarRentalSystem/CarRentalSystem.csproj'
+  APP_PORT: 8080
+  REGISTRY: ${{ vars.REGISTRY_HOST }}
 
 jobs:
+
+  # ═══════════════════════════════════════════════════════════
+  # 🔒 SECURITY SCAN — Dependency + Docker image vulnerability
+  # Chạy song song với build-and-test để không tốn thêm thời gian
+  # ═══════════════════════════════════════════════════════════
+  security-scan:
+    name: "🔒 Security Scan"
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+
+    # ── 1. Trivy: Docker Image Vulnerability Scan ───────────
+    - name: "🐳 Build Docker image (for scan only)"
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        load: true
+        tags: carrental-scan:latest
+        file: ./Dockerfile
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: "🔍 Trivy: Docker Image Vulnerability Scan"
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'carrental-scan:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        exit-code: '1'
+        hide-progress: false
+
+    - name: "🔍 Upload Trivy SARIF to GitHub Security"
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        category: 'trivy-image-scan'
+
+    # ── 2. OWASP Dependency-Check: NuGet packages scan ───
+    - name: "🔧 Setup .NET SDK"
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: "🔧 Install OWASP Dependency-Check"
+      run: |
+        dotnet tool install --global dotnet-dependency-check --version 10.0.*
+        export PATH="$PATH:$HOME/.dotnet/tools"
+
+    - name: "🔍 OWASP Dependency-Check: Scan NuGet Packages"
+      run: |
+        dependency-check --project CarRentalSystem \
+          --scan ./CarRentalSystem \
+          --format SARIF \
+          --output ./owasp-results \
+          --failOnCVSS 7 \
+          --verbose
+      env:
+        PATH: ${{ env.PATH }}:$HOME/.dotnet/tools
+
+    - name: "🔍 Upload OWASP SARIF to GitHub Security"
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: './owasp-results/dependency-check-report.sarif'
+        category: 'owasp-dep-check'
+
+    - name: "📋 OWASP Scan Results Summary"
+      if: always()
+      shell: bash
+      run: |
+        echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f "./owasp-results/dependency-check-report.html" ]; then
+          TOTAL=$(grep -c 'id="'+'"' ./owasp-results/dependency-check-report.html 2>/dev/null || echo "0")
+          CRITICAL=$(grep -c 'severityName="CRITICAL"' ./owasp-results/dependency-check-report.sarif 2>/dev/null || echo "0")
+          HIGH=$(grep -c 'severityName="HIGH"' ./owasp-results/dependency-check-report.sarif 2>/dev/null || echo "0")
+          echo "### ⚠️ OWASP Dependency-Check" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔴 Critical: **$CRITICAL**" >> $GITHUB_STEP_SUMMARY
+          echo "- 🟠 High: **$HIGH**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### ✅ OWASP: Không phát hiện lỗ hổng nghiêm trọng" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════
+  # 🏗️ BUILD & 🧪 TEST
+  # ═══════════════════════════════════════════════════════════
   build-and-test:
     name: "🏗️ Build & 🧪 Test"
     runs-on: ubuntu-latest
@@ -22,20 +118,56 @@ jobs:
     - name: "📥 Checkout code"
       uses: actions/checkout@v4
 
+    # ═══════════════════════════════════════════════════════
+    # 📦 NuGet Caching — Tăng tốc restore, giảm CI time
+    # ═══════════════════════════════════════════════════════
+    - name: "📦 Setup NuGet Cache"
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.nuget/packages
+          ~/.nuget/packages_store
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/GlobalUsings.cs') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+          ${{ runner.os }}-
+
     - name: "🔧 Setup .NET SDK"
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
+    # ═══════════════════════════════════════════════════════
+    # 🧮 SONARCLOUD — Static Code Analysis
+    # ═══════════════════════════════════════════════════════
+    - name: "🔧 Install SonarScanner for .NET"
+      run: dotnet tool install --global dotnet-sonarscanner --version 10.0.*
+
+    - name: "🔍 SonarCloud: Begin Analysis"
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        dotnet sonarscanner begin \
+          /k:"${{ vars.SONAR_ORG }}/CarRentalSystem" \
+          /n:"CarRentalSystem" \
+          /v:"${{ github.run_number }}" \
+          /o:"${{ vars.SONAR_ORG }}" \
+          /d:sonar.token="$SONAR_TOKEN" \
+          /d:sonar.host.url="https://sonarcloud.io" \
+          /d:sonar.cs.opencover.reportsPaths="${{ env.TEST_PROJECT_PATH }}/TestResults/**/coverage.cobertura.xml" \
+          /d:sonar.coverage.jacoco.xmlReportsPaths="${{ env.TEST_PROJECT_PATH }}/TestResults/**/coverage.cobertura.xml" \
+          /d:sonar.qualitygate.wait=true \
+          /d:sonar.qualitygate.timeout=300
+
     - name: "📦 Restore dependencies"
       run: |
-        dotnet restore CarRentalSystem/CarRentalSystem.csproj
-        dotnet restore CarRentalSystem.Tests/CarRentalSystem.Tests.csproj
+        dotnet restore ${{ env.CAR_RENTAL_PROJECT }}
+        dotnet restore ${{ env.TEST_PROJECT_PATH }}/${{ env.TEST_PROJECT_PATH }}.csproj
 
     - name: "🏗️ Build solution"
       run: |
-        dotnet build CarRentalSystem/CarRentalSystem.csproj --configuration Release --no-restore
-        dotnet build CarRentalSystem.Tests/CarRentalSystem.Tests.csproj --configuration Release --no-restore
+        dotnet build ${{ env.CAR_RENTAL_PROJECT }} --configuration Release --no-restore
+        dotnet build ${{ env.TEST_PROJECT_PATH }}/${{ env.TEST_PROJECT_PATH }}.csproj --configuration Release --no-restore
 
     # ============================================================
     # 🧪 UNIT TESTS — Hiển thị chi tiết từng test đang chạy
@@ -76,9 +208,9 @@ jobs:
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
     # ============================================================
-    # 📊 FULL TEST SUITE + CODE COVERAGE (Không bao gồm Smoke tests)
+    # 📊 FULL TEST SUITE + CODE COVERAGE
     # ============================================================
-    - name: "📊 Run All Tests + Coverage (Chi tiết)"
+    - name: "📊 Run All Tests + Coverage"
       run: |
         echo "=========================================="
         echo "📊 BẮT ĐẦU CHẠY TOÀN BỘ TESTS + COVERAGE"
@@ -96,10 +228,9 @@ jobs:
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
     # ============================================================
-    # 🌐 SMOKE TESTS — Khởi động app rồi test trực tiếp trên web
-    # (Bỏ qua nếu fail vì cần SQL Server/Redis trên CI)
+    # 🌐 SMOKE TESTS
     # ============================================================
-    - name: "🌐 Smoke Tests — Chạy app & test trên web (Chi tiết)"
+    - name: "🌐 Smoke Tests — Chạy app & test trên web"
       continue-on-error: true
       run: |
         echo "=========================================="
@@ -115,6 +246,12 @@ jobs:
         echo "✅ SMOKE TESTS HOÀN TẤT"
         echo "=========================================="
       working-directory: ${{ env.TEST_PROJECT_PATH }}
+
+    # ── SonarCloud: End Analysis (phải sau khi chạy tests) ──
+    - name: "🔍 SonarCloud: End Analysis"
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
     - name: "📝 Generate Code Coverage Report"
       uses: irongut/CodeCoverageSummary@v1.3.0
@@ -198,9 +335,8 @@ jobs:
 
         parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/unit-test-results.trx" "Unit Tests" "🧪"
         parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/integration-test-results.trx" "Integration Tests" "🔗"
-        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/smoke-test-results.trx" "Smoke Tests — Chạy app & test trên web" "🌐"
+        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/smoke-test-results.trx" "Smoke Tests" "🌐"
 
-        # --- Overall Summary ---
         echo "---" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         ALL_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/all-test-results.trx"
@@ -217,8 +353,54 @@ jobs:
           echo "### ⚠️ Full test results file not found" >> $GITHUB_STEP_SUMMARY
         fi
 
+    # ============================================================
+    # 🐳 BUILD & PUBLISH DOCKER IMAGE
+    # Chỉ chạy khi push lên main hoặc develop
+    # ============================================================
+    - name: "🐳 Login to Container Registry"
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ vars.REGISTRY_HOST }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+
+    - name: "🐳 Set up Docker Buildx"
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      uses: docker/setup-buildx-action@v3
+
+    - name: "🐳 Build and Push Docker Image"
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ vars.REGISTRY_HOST }}/carrental/${{ github.ref_name }}:${{ github.sha }}
+          ${{ vars.REGISTRY_HOST }}/carrental/${{ github.ref_name }}:latest
+          ${{ vars.REGISTRY_HOST }}/carrental/${{ github.ref_name }}:${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'v' || '' }}${{ github.run_number }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        file: ./Dockerfile
+
+    - name: "📋 Save Docker Image Tags"
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      run: |
+        echo "${{ vars.REGISTRY_HOST }}/carrental/${{ github.ref_name }}:${{ github.sha }}" > .docker-image-tags.txt
+        echo "${{ vars.REGISTRY_HOST }}/carrental/${{ github.ref_name }}:latest" >> .docker-image-tags.txt
+        echo "${{ vars.REGISTRY_HOST }}/carrental/${{ github.ref_name }}:${{ github.run_number }}" >> .docker-image-tags.txt
+        cat .docker-image-tags.txt
+
+    - name: "📥 Upload Docker Image Tags as Artifact"
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-image-tags
+        path: .docker-image-tags.txt
+        retention-days: 30
+
   # ============================================================
-  # 🌐 CYPRESS E2E TESTS — Chạy ứng dụng thật + test trình duyệt
+  # 🌐 CYPRESS E2E TESTS
   # ============================================================
   cypress-e2e:
     name: "🌐 Cypress E2E Tests"
@@ -242,6 +424,16 @@ jobs:
     steps:
     - name: "📥 Checkout code"
       uses: actions/checkout@v4
+
+    - name: "📦 NuGet Cache Restore"
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.nuget/packages
+          ~/.nuget/packages_store
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
 
     - name: "🔧 Setup .NET SDK"
       uses: actions/setup-dotnet@v4
@@ -294,3 +486,214 @@ jobs:
         else
           echo "### ✅ Tất cả Cypress E2E tests PASSED!" >> $GITHUB_STEP_SUMMARY
         fi
+
+  # ============================================================
+  # 🚀 DEPLOY TO STAGING
+  # ============================================================
+  deploy-staging:
+    name: "🚀 Deploy to Staging"
+    runs-on: ubuntu-latest
+    needs: [build-and-test, cypress-e2e, security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+
+    # ── Tạo Environment "staging" trên GitHub trước khi uncomment ──
+    # Settings → Environments → New environment → Name: "staging"
+    # environment:
+    #   name: staging
+    #   url: ${{ vars.STAGING_APP_URL }}
+
+    steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+
+    - name: "📦 NuGet Cache Restore"
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.nuget/packages
+          ~/.nuget/packages_store
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: "🔧 Setup .NET SDK"
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: "🗄️ Run Database Migration on Staging"
+      run: |
+        echo "=========================================="
+        echo "🗄️ BẮT ĐẦU APPLY DATABASE MIGRATION"
+        echo "=========================================="
+        dotnet ef database update \
+          --project CarRentalSystem/CarRentalSystem.csproj \
+          --connection "${{ secrets.STAGING_CONNECTION_STRING }}" \
+          --no-build \
+          --configuration Release
+        echo "✅ Database Migration HOÀN TẤT"
+        echo "=========================================="
+      continue-on-error: true
+      env:
+        DOTNET_EF_MIGRATIONS: CarRentalSystem/Migrations
+
+    - name: "📦 Restore Staging"
+      run: dotnet restore ${{ env.CAR_RENTAL_PROJECT }}
+
+    - name: "🚀 Publish Self-Contained App"
+      run: |
+        dotnet publish ${{ env.CAR_RENTAL_PROJECT }} \
+          --configuration Release \
+          --output ./publish/staging \
+          --self-contained true \
+          --runtime linux-x64 \
+          -p:PublishSingleFile=false \
+          -p:IncludeNativeLibrariesForSelfExtract=true
+
+    - name: "🔵 Setup Azure CLI"
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_STAGING_CREDENTIALS }}
+
+    - name: "🚀 Deploy to Azure App Service (Staging Slot)"
+      run: |
+        echo "=========================================="
+        echo "🚀 BẮT ĐẦU DEPLOY LÊN STAGING"
+        echo "=========================================="
+        az webapp up \
+          --name "${{ vars.STAGING_APP_NAME }}" \
+          --resource-group "${{ vars.STAGING_RESOURCE_GROUP }}" \
+          --slot "staging" \
+          --location "Southeast Asia" \
+          --os-type "Linux" \
+          --runtime "DOTNET|10" \
+          --zip-deploy-file ./publish/staging.zip \
+          --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        echo "✅ DEPLOY HOÀN TẤT — Staging Slot"
+        echo "🌐 URL: https://${{ vars.STAGING_APP_NAME }}-staging.${{ vars.AZURE_DEPLOYMENT_DOMAIN }}"
+        echo "⏳ Warmup Staging..."
+        sleep 5
+        curl -f -s -o /dev/null -w "%{http_code}" \
+          "https://${{ vars.STAGING_APP_NAME }}-staging.${{ vars.AZURE_DEPLOYMENT_DOMAIN }}/health" \
+          || echo "⚠️ Health check chưa trả về 200"
+        echo "=========================================="
+      continue-on-error: true
+
+    - name: "🔄 Swap Staging → Production Slot"
+      run: |
+        echo "=========================================="
+        echo "🔄 SWAP STAGING → PRODUCTION SLOT"
+        echo "=========================================="
+        az webapp deployment slot swap \
+          --resource-group "${{ vars.STAGING_RESOURCE_GROUP }}" \
+          --name "${{ vars.STAGING_APP_NAME }}" \
+          --slot staging \
+          --target-slot production
+        echo "✅ SWAP HOÀN TẤT"
+        echo "=========================================="
+      continue-on-error: true
+
+    - name: "🔵 Logout from Azure"
+      if: always()
+      run: az logout
+
+  # ============================================================
+  # 🚀 DEPLOY TO PRODUCTION
+  # ============================================================
+  deploy-production:
+    name: "🚀 Deploy to Production"
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    # ── Tạo Environment "production" trên GitHub trước khi uncomment ──
+    # Settings → Environments → New environment → Name: "production"
+    # ── Production environment NÊN có required reviewers để approve trước khi deploy ──
+    # environment:
+    #   name: production
+    #   url: ${{ vars.PRODUCTION_APP_URL }}
+
+    steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+
+    - name: "📦 NuGet Cache Restore"
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.nuget/packages
+          ~/.nuget/packages_store
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: "🔧 Setup .NET SDK"
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: "🗄️ Run Database Migration on Production"
+      run: |
+        echo "=========================================="
+        echo "🗄️ BẮT ĐẦU APPLY DATABASE MIGRATION TRÊN PRODUCTION"
+        echo "⚠️  CẨN THẬN — ĐÂY LÀ PRODUCTION!"
+        echo "=========================================="
+        dotnet ef database update \
+          --project CarRentalSystem/CarRentalSystem.csproj \
+          --connection "${{ secrets.PRODUCTION_CONNECTION_STRING }}" \
+          --no-build \
+          --configuration Release
+        echo "✅ Production Database Migration HOÀN TẤT"
+        echo "=========================================="
+      env:
+        DOTNET_EF_MIGRATIONS: CarRentalSystem/Migrations
+
+    - name: "📦 Restore Production"
+      run: dotnet restore ${{ env.CAR_RENTAL_PROJECT }}
+
+    - name: "🚀 Publish Self-Contained App"
+      run: |
+        dotnet publish ${{ env.CAR_RENTAL_PROJECT }} \
+          --configuration Release \
+          --output ./publish/production \
+          --self-contained true \
+          --runtime linux-x64 \
+          -p:PublishSingleFile=false \
+          -p:IncludeNativeLibrariesForSelfExtract=true
+
+    - name: "🔵 Setup Azure CLI"
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_PROD_CREDENTIALS }}
+
+    - name: "🚀 Deploy to Azure App Service (Production)"
+      run: |
+        echo "=========================================="
+        echo "🚀 BẮT ĐẦU DEPLOY LÊN PRODUCTION"
+        echo "⚠️  CẨN THẬN — ĐÂY LÀ PRODUCTION!"
+        echo "=========================================="
+        az webapp up \
+          --name "${{ vars.PRODUCTION_APP_NAME }}" \
+          --resource-group "${{ vars.PRODUCTION_RESOURCE_GROUP }}" \
+          --location "Southeast Asia" \
+          --os-type "Linux" \
+          --runtime "DOTNET|10" \
+          --zip-deploy-file ./publish/production.zip \
+          --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+        echo "✅ PRODUCTION DEPLOY HOÀN TẤT"
+        echo "⏳ Kiểm tra health endpoint..."
+        sleep 5
+        HTTP_CODE=$(curl -f -s -o /dev/null -w "%{http_code}" \
+          "${{ vars.PRODUCTION_APP_URL }}/health")
+        echo "Health check HTTP: $HTTP_CODE"
+        if [ "$HTTP_CODE" == "200" ]; then
+          echo "✅ Health check PASSED — Production đã sẵn sàng!"
+        else
+          echo "❌ Health check FAILED — Cần kiểm tra logs!"
+          exit 1
+        fi
+        echo "=========================================="
+
+    - name: "🔵 Logout from Azure"
+      if: always()
+      run: az logout

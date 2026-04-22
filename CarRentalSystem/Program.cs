@@ -1,8 +1,11 @@
+using CarRentalSystem.Authorization.Handlers;
+using CarRentalSystem.Authorization.Requirements;
 using CarRentalSystem.Data;
 using CarRentalSystem.Repositories;
 using CarRentalSystem.Services;
 using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Middleware;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using Hangfire.SqlServer;
@@ -28,7 +31,9 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
+builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
+builder.Services.AddScoped<ISnapshotService, SnapshotService>(); // Database snapshot & backup
 builder.Services.AddHttpClient<IDeliveryService, DeliveryService>();
 
 // ═══════════════════════════════════════════════════
@@ -50,6 +55,10 @@ else
     builder.Services.AddDistributedMemoryCache();
 }
 builder.Services.AddScoped<ICacheService, CacheService>();
+
+// ═══════════════════════════════════════════════════
+// 📅 HOLIDAY PRICING — Tăng giá ngày lễ/cuối tuần
+builder.Services.AddSingleton<IHolidayPricingService, HolidayPricingService>();
 
 // ═══════════════════════════════════════════════════
 // 🔒 PII ENCRYPTION — Mã hóa CCCD/GPLX at rest
@@ -113,8 +122,25 @@ builder.Services.AddAuthentication("Cookies")
     });
 
 // ═══════════════════════════════════════════════════
-// 🔐 SESSION — Dùng cho PIN verification
+// 🔐 AREA AUTHORIZATION — Phân quyền theo Area
+// Handler xử lý resource-based authorization cho Areas
 // ═══════════════════════════════════════════════════
+builder.Services.AddScoped<IAuthorizationHandler, AreaAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AreaView", policy =>
+        policy.Requirements.Add(new AreaViewRequirement()));
+    options.AddPolicy("AreaCreate", policy =>
+        policy.Requirements.Add(new AreaCreateRequirement()));
+    options.AddPolicy("AreaUpdate", policy =>
+        policy.Requirements.Add(new AreaUpdateRequirement()));
+    options.AddPolicy("AreaDelete", policy =>
+        policy.Requirements.Add(new AreaDeleteRequirement()));
+    options.AddPolicy("AreaManageStaff", policy =>
+        policy.Requirements.Add(new AreaManageStaffRequirement()));
+    options.AddPolicy("AreaViewStats", policy =>
+        policy.Requirements.Add(new AreaViewStatsRequirement()));
+});
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
@@ -234,14 +260,14 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
     // --- Seed ContractTypes — Always ensure 5 long-term packages exist ---
-    var requiredPackages = new[] { "1 Tuần", "1 Tháng", "3 Tháng", "6 Tháng", "1 Năm" };
+    var requiredPackages = new[] { "Theo ngày", "1 Tuần", "1 Tháng", "3 Tháng", "6 Tháng", "1 Năm" };
     var existingPackageNames = db.ContractTypes
         .Where(c => requiredPackages.Contains(c.Name))
         .Select(c => c.Name)
         .ToList();
 
     // If any package is missing, clear all and re-seed
-    if (existingPackageNames.Count != 5)
+    if (existingPackageNames.Count != 6)
     {
         var allContracts = db.ContractTypes.ToList();
         if (allContracts.Any())
@@ -253,13 +279,23 @@ using (var scope = app.Services.CreateScope())
         db.ContractTypes.AddRange(
             new CarRentalSystem.Models.ContractType
             {
+                Name = "Theo ngày",
+                MinDurationDays = 1,
+                MaxDurationDays = 6,
+                DiscountPercent = 0,
+                FreeMaintenanceCount = 0,
+                IsActive = true,
+                Description = "Thuê xe theo ngày, không giảm giá"
+            },
+            new CarRentalSystem.Models.ContractType
+            {
                 Name = "1 Tuần",
                 MinDurationDays = 7,
-                MaxDurationDays = 7,
+                MaxDurationDays = 29,
                 DiscountPercent = 5,
                 FreeMaintenanceCount = 0,
                 IsActive = true,
-                Description = "Thuê 7 ngày, giảm 5% so với giá lẻ"
+                Description = "Thuê từ 7 ngày, giảm 5% so với giá lẻ"
             },
             new CarRentalSystem.Models.ContractType
             {

@@ -23,5 +23,8 @@ namespace CarRentalSystem.Models
         public string Status { get; set; } = "Pending"; // Pending, Confirmed, Active, Completed, Cancelled
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

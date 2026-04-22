@@ -1,5 +1,5 @@
 @{ 
-    ViewData["Title"] = "Ký Hợp Đồng Thuê Xe";
+    ViewData["Title"] = "Xác nhận Lịch trình & Giá thuê";
     var car = ViewBag.Car as CarRentalSystem.Models.Car;
     var contract = ViewBag.Contract as CarRentalSystem.Models.ContractType;
     var duration = ViewBag.Duration as string;
@@ -7,10 +7,20 @@
     var phone = ViewBag.CustomerPhone as string;
     var selectedDatesStr = ViewBag.SelectedDates as string;
 
+    // Selected driver rate
+    decimal dRate = 0;
+    if (ViewBag.SelectedDriver != null)
+    {
+        var driver = (CarRentalSystem.Models.Driver)ViewBag.SelectedDriver;
+        dRate = driver.DailyRate;
+    }
+
     // Calculate total contract price
     decimal pricePerDay = car.PricePerDay;
     decimal discountPct = contract.DiscountPercent;
-    decimal discountedPerDay = pricePerDay * (1 - discountPct / 100m);
+    
+    decimal totalBaseCostPerDay = pricePerDay + dRate;
+    decimal discountedPerDay = totalBaseCostPerDay * (1 - discountPct / 100m);
     
     // Parse dates
     DateTime parsedStart = ViewBag.StartDateStr != null ? DateTime.Parse(ViewBag.StartDateStr) : DateTime.Now;
@@ -56,224 +66,137 @@
 }
 
 <div class="container py-5 mt-5">
-    <div class="row gx-lg-5">
+    <div class="row gx-lg-5 justify-content-center">
         <!-- Left: Car Details (Summary) -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm border-0 rounded-4 sticky-top" style="top: 100px; z-index: 1;">
+        <div class="col-lg-5 mb-4">
+            <h4 class="fw-bolder mb-4 text-dark"><i class="bi bi-calendar2-check text-primary me-2"></i>THÔNG TIN CHUYẾN ĐI</h4>
+            <div class="card shadow-sm border-0 rounded-4">
                 <div class="position-relative">
                     <img src="@(string.IsNullOrEmpty(car.ImageURL) ? "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600" : car.ImageURL)" 
-                         class="card-img-top object-fit-cover" style="height: 250px;" alt="@car.CarName">
-                    <span class="position-absolute top-0 start-0 m-3 badge bg-success fs-6 rounded-pill">Xe được chọn</span>
+                         class="card-img-top object-fit-cover" style="height: 250px; border-top-left-radius: 1rem; border-top-right-radius: 1rem;" alt="@car.CarName">
+                    <span class="position-absolute top-0 start-0 m-3 badge bg-success fs-6 rounded-pill">@car.CarBrand?.Name</span>
                 </div>
                 <div class="card-body p-4">
                     <h5 class="fw-bolder mb-1">@car.CarName</h5>
                     <p class="text-muted small mb-3">Biển số: @car.LicensePlate • @car.Seats Chỗ</p>
                     
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small">Thời gian thuê:</span>
-                        <span class="fw-bold">@duration</span>
+                    <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                        <span class="text-muted">Nhận xe:</span>
+                        <span class="fw-bold">@parsedStart.ToString("HH:mm - dd/MM/yyyy")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                        <span class="text-muted">Trả xe:</span>
+                        <span class="fw-bold">@parsedEnd.ToString("HH:mm - dd/MM/yyyy")</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small">Gói hợp đồng:</span>
-                        <span class="fw-bold text-primary">@contract.Name</span>
-                    </div>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small">Giá xe 1/ngày:</span>
-                        <span class="fw-bold text-dark">@string.Format("{0:N0}", discountedPerDay) ₫</span>
-                    </div>
-                    @if (discountPct > 0)
-                    {
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted small">Giá gốc:</span>
-                            <span class="text-decoration-line-through text-muted small">@string.Format("{0:N0}", pricePerDay) ₫</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted small">Giảm giá gói:</span>
-                            <span class="fw-bold text-success">-@contract.DiscountPercent.ToString("0.##")%</span>
-                        </div>
-                    }
-                    @if (memDiscountAmount > 0)
-                    {
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted small">Thành viên @ViewBag.MembershipTier.Name:</span>
-                            <span class="fw-bold text-success">-@string.Format("{0:N0}", memDiscountAmount) ₫</span>
-                        </div>
-                    }
-                    <hr>
-                    <div class="d-flex justify-content-between mb-3 p-2 rounded-3" style="background: linear-gradient(135deg, #e8f5e9, #f1f8e9);">
-                        <span class="fw-bold text-dark">Tổng tiền HĐ:</span>
-                        <span class="fw-bolder text-success fs-6">@string.Format("{0:N0}", totalContractPrice) ₫</span>
-                    </div>
-                    <div class="text-center">
-                        <p class="small text-muted mb-0">Hỗ trợ hotline: 1900 xxxx</p>
+                        <span class="text-muted">Tổng ngày thuê:</span>
+                        <span class="fw-bold text-dark">@totalDays ngày</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Right: Contract Document -->
-        <div class="col-lg-8">
-            <h4 class="fw-bolder mb-4 text-dark"><i class="bi bi-file-earmark-text text-primary me-2"></i>XEM VÀ KÝ HỢP ĐỒNG ĐIỆN TỬ</h4>
+        <!-- Right: Checkout Details -->
+        <div class="col-lg-6">
+            <h4 class="fw-bolder mb-4 text-dark"><i class="bi bi-wallet2 text-success me-2"></i>CHI TIẾT TRẢ TOÁN & XÁC NHẬN</h4>
             
-            <div class="card shadow border-0 rounded-4 mb-4">
-                <div class="card-body p-4 p-md-5">
-                    <div class="text-center mb-5">
-                        <h5 class="fw-bold mb-1">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h5>
-                        <h6 class="fw-bold text-decoration-underline mb-3">Độc lập - Tự do - Hạnh phúc</h6>
-                        <div class="mb-4 text-muted">----------oOo----------</div>
-                        <h3 class="fw-bold mb-2">HỢP ĐỒNG THUÊ XE</h3>
-                        <p class="fw-bold mb-3">Số: @DateTime.Now.ToString("ddMMyy") – @car.CarID/HĐTX</p>
-                        <ul class="list-unstyled small mb-4 font-italic text-start d-inline-block text-muted" style="text-align: left; line-height: 1.6;">
-                            <li>- Căn cứ Bộ Luật Dân sự 2015;</li>
-                            <li>- Căn cứ Luật thương mại 2005;</li>
-                            <li>- Căn cứ vào nhu cầu và khả năng cung ứng của các bên dưới đây.</li>
-                        </ul>
-                        <p class="small font-italic">Hôm nay, ngày @DateTime.Now.ToString("dd") tháng @DateTime.Now.ToString("MM") năm @DateTime.Now.ToString("yyyy"), chúng tôi gồm:</p>
-                    </div>
-
-                    <div class="row g-4 mb-4">
-                        <div class="col-md-6" style="border-right: 1px solid #dee2e6;">
-                            <h6 class="fw-bold text-primary mb-3">BÊN CHO THUÊ (BÊN A)</h6>
-                            <p class="mb-1 small"><strong>Hệ Thống:</strong> SmartRental VN</p>
-                            <p class="mb-1 small"><strong>Mã số thuế:</strong> 0123456789</p>
-                            <p class="mb-1 small"><strong>Địa chỉ:</strong> Văn phòng chính SmartRental, TP.HCM</p>
-                            <p class="mb-1 small"><strong>Hotline:</strong> 1900 1234</p>
+            <div class="card shadow-sm border-0 rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">Thông tin người đặt</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small mb-1">Họ tên / Doanh nghiệp</label>
+                            <input type="text" form="signForm" name="customerName" class="form-control form-control-sm shadow-none bg-light" value="@name" required />
                         </div>
-                        <div class="col-md-6 px-md-4">
-                            <h6 class="fw-bold text-primary mb-3">BÊN THUÊ (BÊN B)</h6>
-                            <div class="mb-2 small">
-                                <strong>Họ tên / Doanh nghiệp:</strong>
-                                <input type="text" form="signForm" name="customerName" class="form-control form-control-sm mt-1 shadow-none border-1 border-primary bg-light" value="@name" required />
-                            </div>
-                            <div class="mb-2 small">
-                                <strong>Điện thoại:</strong>
-                                <input type="text" form="signForm" name="customerPhone" class="form-control form-control-sm mt-1 shadow-none border-1 border-primary bg-light" value="@phone" required />
-                            </div>
-                            <p class="mb-1 mt-3 small"><strong>Gói thuê:</strong> @contract.Name</p>
-                            <p class="mb-1 small"><strong>Thời hạn gốc:</strong> @duration</p>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small mb-1">Số điện thoại</label>
+                            <input type="text" form="signForm" name="customerPhone" class="form-control form-control-sm shadow-none bg-light" value="@phone" required />
                         </div>
                     </div>
 
-                    <div class="bg-light p-3 p-md-4 rounded-3 mb-4">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-car-front me-2"></i>Chi Tiết Thuê Xe</h6>
-                        <table class="table table-borderless table-sm mb-0 small">
-                            <tbody>
-                                <tr><td style="width:150px">Dòng xe:</td><th>@car.CarName</th></tr>
-                                <tr><td>Biển số:</td><th>@car.LicensePlate</th></tr>
-                                <tr><td>Ngày bắt đầu:</td><th>@parsedStart.ToString("dd/MM/yyyy HH:mm")</th></tr>
-                                <tr><td>Ngày kết thúc:</td><th>@parsedEnd.ToString("dd/MM/yyyy HH:mm")</th></tr>
-                                <tr><td>Số ngày thuê:</td><th>@totalDays ngày</th></tr>
-                                @if (isCustomDate && customDateList.Count > 0)
-                                {
-                                    <tr>
-                                        <td>Ngày cụ thể:</td>
-                                        <th style="word-break: break-all;">@string.Join(", ", customDateList.Select(d => d.ToString("dd/MM")))</th>
-                                    </tr>
-                                }
-                                <tr><td>Loại hình:</td><th>Hợp đồng điện tử định kỳ (@contract.Name)</th></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <h5 class="fw-bold mb-3 border-bottom pb-2">Gói cước dài hạn</h5>
+                    <table class="table table-borderless table-sm mb-4">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted" style="width:180px">Gói áp dụng:</td>
+                                <th class="text-primary fs-6">@contract.Name</th>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Thời hạn gốc:</td>
+                                <th>@duration</th>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Quyền lợi:</td>
+                                <th>Miễn phí bảo dưỡng @contract.FreeMaintenanceCount lần</th>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    <div class="bg-light p-3 p-md-4 rounded-3 mb-4">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-cash-stack me-2"></i>Giá Trị Hợp Đồng</h6>
+                    <div class="bg-light p-3 p-md-4 rounded-3 mb-4 border">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-receipt me-2"></i>Tóm tắt chi phí</h6>
                         <div class="d-flex justify-content-between mb-2 small">
-                            <span>Giá thuê cơ bản (ngày):</span>
-                            <span class="fw-bold">@string.Format("{0:N0}", pricePerDay) VNĐ</span>
+                            <span>Giá thuê cơ bản (@totalDays ngày):</span>
+                            <span class="fw-bold">@string.Format("{0:N0}", pricePerDay * totalDays) VNĐ</span>
                         </div>
+                        @if (dRate > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-2 small">
+                                <span>Phí Dịch vụ Tài xế (@totalDays ngày):</span>
+                                <span class="fw-bold">@string.Format("{0:N0}", dRate * totalDays) VNĐ</span>
+                            </div>
+                        }
+                        
                         @if (discountPct > 0)
                         {
                             <div class="d-flex justify-content-between mb-2 small">
-                                <span>Giảm giá nền tảng:</span>
-                                <span class="fw-bold text-success">-@contract.DiscountPercent.ToString("0.##")%</span>
+                                <span>Giảm giá Hợp đồng Đai hạn (@contract.DiscountPercent.ToString("0.##")%):</span>
+                                <span class="fw-bold text-success">-@string.Format("{0:N0}", ((pricePerDay + dRate) * totalDays) * (discountPct/100m)) VNĐ</span>
                             </div>
                         }
                         @if (memDiscountAmount > 0)
                         {
                             <div class="d-flex justify-content-between mb-2 small">
-                                <span>Ưu đãi hạng thành viên @ViewBag.MembershipTier.Name (-@ViewBag.MembershipTier.DiscountPercent%):</span>
+                                <span>Thành viên @ViewBag.MembershipTier?.Name (-@membershipDiscountPct%):</span>
                                 <span class="fw-bold text-success">-@string.Format("{0:N0}", memDiscountAmount) VNĐ</span>
                             </div>
                         }
+
                         <hr>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">Tổng Giá Trị Hợp Đồng:</span>
-                            <h5 class="fw-bold text-primary mb-0">@string.Format("{0:N0}", totalContractPrice) VNĐ</h5>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold fs-6">Tổng chi phí thuê (Gồm Tài xế nếu có):</span>
+                            <h5 class="fw-bold text-success mb-0">@string.Format("{0:N0}", totalContractPrice) VNĐ</h5>
                         </div>
-                        <small class="text-muted fst-italic mt-2 d-block">(*) Chi phí trên được tính cho @totalDays ngày thuê @(isCustomDate ? "(ngày tùy chỉnh)" : $"(gói {duration})").</small>
+                        <div class="d-flex justify-content-between align-items-center mb-0 mt-3 pt-3 border-top">
+                            <span class="fw-bold text-muted">Tiền thế chấp (Cọc):</span>
+                            <span class="fw-bold text-dark fs-5">@string.Format("{0:N0}", car.DefaultDeposit) VNĐ</span>
+                        </div>
                     </div>
 
-                    <div class="mb-5 text-dark small" style="line-height: 1.6;">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-file-text me-2"></i>Điều Khoản Hợp Đồng</h6>
-                        <p class="mb-3">Sau khi bàn bạc, thỏa thuận, hai bên thống nhất ký kết Hợp đồng thuê xe với các điều khoản như sau:</p>
-                        
-                        <p class="fw-bold mb-1">ĐIỀU 1: NỘI DUNG HỢP ĐỒNG</p>
-                        <p class="mb-3">
-                            Bên A đồng ý cho bên B thuê một xe ô tô du lịch @car.Seats chỗ ngồi tự lái trong thời gian cho thuê.<br/>
-                            + Xe @car.CarBrand?.Name @car.CarName sản xuất năm @DateTime.Now.Year, biển số kiểm soát @car.LicensePlate.
-                        </p>
+                    <div class="alert alert-info border-0 p-3 rounded-3 mb-0" style="background-color: #eef2ff;">
+                        <div class="d-flex">
+                            <i class="bi bi-info-circle text-primary fs-4 me-3"></i>
+                            <div>
+                                <h6 class="fw-bold mb-1 text-primary">Quy trình Đặt Xe An Toàn</h6>
+                                <p class="small text-muted mb-3">Với gói thuê dài hạn, bạn sẽ thực hiện xác nhận yêu cầu & kiểm tra xe trước, sau đó tiến hành thanh toán Tiền Cọc, và cuối cùng ký hợp đồng điện tử khi nhận xe.</p>
+                                
+                                <form asp-action="VehicleInspection" method="get" id="signForm">
+                                    <input type="hidden" name="carId" value="@car.CarID" />
+                                    <input type="hidden" name="contractId" value="@contract.ContractTypeID" />
+                                    <input type="hidden" name="duration" value="@duration" />
+                                    <input type="hidden" name="customerName" form="signForm" value="@name" />
+                                    <input type="hidden" name="customerPhone" form="signForm" value="@phone" />
+                                    <input type="hidden" name="startDateStr" value="@ViewBag.StartDateStr" />
+                                    <input type="hidden" name="selectedDates" value="@ViewBag.SelectedDates" />
+                                    <input type="hidden" name="selectedDriverId" value="@(ViewBag.SelectedDriver?.DriverID)" />
 
-                        <p class="fw-bold mb-1">ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG, PHƯƠNG THỨC THANH TOÁN</p>
-                        <p class="mb-3">
-                            @{
-                                string cycleFmt = "tháng";
-                                decimal cyclePrice = discountedPerDay * 30;
-                                if(duration != null && (duration.ToLower().Contains("năm") || duration.ToLower().Contains("year"))) { cycleFmt = "năm"; cyclePrice = discountedPerDay * 365; }
-                                else if(duration != null && (duration.ToLower().Contains("tuần") || duration.ToLower().Contains("week"))) { cycleFmt = "tuần"; cyclePrice = discountedPerDay * 7; }
-                                else if(duration != null && (duration.ToLower().Contains("ngày") || duration.ToLower().Contains("day"))) { cycleFmt = "ngày"; cyclePrice = discountedPerDay; }
-                            }
-                            - Giá thuê xe là: <strong>@string.Format("{0:N0}", cyclePrice) đồng/@cycleFmt</strong> (Giá trên chưa bao gồm thuế GTGT).<br/>
-                            - Bên B sẽ thanh toán cho Bên A theo định kỳ mỗi <strong>@cycleFmt</strong> một lần vào chu kỳ thanh toán.
-                        </p>
-
-                        <p class="fw-bold mb-1">ĐIỀU 3: TRÁCH NHIỆM CỦA CÁC BÊN</p>
-                        <p class="mb-1"><strong>3.1. Trách nhiệm của bên A (Bên cho thuê):</strong></p>
-                        <ul class="list-unstyled ms-3 mb-2">
-                            <li>- Giao xe và toàn bộ giấy tờ liên quan đến xe ngay sau khi Hợp đồng có hiệu lực. </li>
-                            <li>- Chịu trách nhiệm pháp lý về nguồn gốc và quyền sở hữu của xe.</li>
-                            <li>- Mua bảo hiểm xe và đăng kiểm xe cho các lần kế tiếp trong thời hạn hiệu lực của Hợp đồng.</li>
-                            <li>- Bảo dưỡng xe theo định kỳ, chi trả phí bảo dưỡng (@contract.FreeMaintenanceCount lần).</li>
-                        </ul>
-                        <p class="mb-1"><strong>3.2. Trách nhiệm, quyền hạn của bên B (Bên thuê):</strong></p>
-                        <ul class="list-unstyled ms-3 mb-3">
-                            <li>- Thanh toán tiền thuê xe cho Bên A đúng hạn.</li>
-                            <li>- Bên B được toàn quyền sử dụng xe do Bên A giao trong thời gian thuê theo đúng thỏa thuận.</li>
-                            <li>- Chịu toàn bộ chi phí xăng, phí cầu đường khi sử dụng xe.</li>
-                        </ul>
-
-                        <p class="fw-bold mb-1">ĐIỀU 4: HIỆU LỰC HỢP ĐỒNG</p>
-                        <p class="mb-3">
-                            - Hợp đồng có giá trị kể từ ngày @parsedStart.ToString("dd/MM/yyyy") đến hết ngày @parsedEnd.ToString("dd/MM/yyyy").<br/>
-                            - Nếu một trong hai Bên, bên nào muốn chấm dứt Hợp đồng trước thời hạn thì phải thông báo cho Bên kia trước ít nhất 07 ngày.
-                        </p>
-
-                        <p class="fw-bold mb-1">ĐIỀU 5: ĐIỀU KHOẢN CHUNG</p>
-                        <p class="mb-3">
-                            - Trong quá trình thực hiện hợp đồng, nếu có đề nghị điều chỉnh thì phải thông báo cho nhau bằng văn bản để cùng bàn bạc giải quyết.<br/>
-                            - Hai bên cam kết thi hành đúng các điều khoản của hợp đồng, không bên nào tự ý đơn phương sửa đổi, đình chỉ hoặc hủy bỏ hợp đồng. Mọi sự vi phạm phải được xử lý theo pháp luật.<br/>
-                            - Hợp đồng điện tử này có hiệu lực từ thời điểm ký bằng chữ ký điện tử và coi như được thanh lý sau khi hai bên thực hiện xong nghĩa vụ.
-                        </p>
-                    </div>
-
-                    <div class="alert alert-info border-0 p-4 rounded-4 shadow-sm mb-0 text-center" style="background-color: #eef2ff;">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary"></i>Xác nhận thủ tục Đặt Xe Doanh Nghiệp</h6>
-                        <p class="small text-muted mb-4">Trước khi ký hợp đồng, quý khách sẽ được xem và kiểm tra tình trạng xe chi tiết qua hình ảnh thực tế 360° để đảm bảo sự minh bạch.</p>
-                        
-                        <form asp-action="VehicleInspection" method="get" id="signForm">
-                            <input type="hidden" name="carId" value="@car.CarID" />
-                            <input type="hidden" name="contractId" value="@contract.ContractTypeID" />
-                            <input type="hidden" name="duration" value="@duration" />
-                            <input type="hidden" name="customerName" form="signForm" value="@name" />
-                            <input type="hidden" name="customerPhone" form="signForm" value="@phone" />
-                            <input type="hidden" name="startDateStr" value="@ViewBag.StartDateStr" />
-                            <input type="hidden" name="selectedDates" value="@ViewBag.SelectedDates" />
-
-                            <div class="d-flex gap-2 justify-content-center mt-2">
-                                <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm text-secondary" style="border: 1px solid #ddd;" onclick="window.history.back()">Quay lại sửa yêu cầu</button>
-                                <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm"><i class="bi bi-camera me-2"></i>XÁC NHẬN — XEM XE TRƯỚC KHI KÝ</button>
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm">
+                                            <i class="bi bi-camera-fill me-2"></i>XEM XE 360° VÀ ĐẶT CỌC
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>

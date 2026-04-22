@@ -408,13 +408,13 @@
                                     defaultEnd = ViewBag.EndDate ?? now.AddHours(6).ToString("yyyy-MM-ddTHH:mm");
                                 }
                             }
-                            <div class="row g-2 mt-2">
-                                <div class="col-12 col-xl-6">
-                                    <input type="datetime-local" id="startDate" name="StartDate" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" value="@defaultStart" required>
+                            <div class="mt-2">
+                                <div class="form-control bg-white fw-bold px-3 py-2 d-flex justify-content-between align-items-center shadow-sm cursor-pointer" onclick="openCarCalendar({startInputId: 'startDate', endInputId: 'endDate', disabledDates: window.carDisabledDates})" style="cursor: pointer;">
+                                    <span id="bookingCalendarDisplay" data-calendar-display>Chọn thời gian thuê...</span>
+                                    <i class="bi bi-pencil-square text-muted"></i>
                                 </div>
-                                <div class="col-12 col-xl-6">
-                                    <input type="datetime-local" id="endDate" name="EndDate" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" value="@defaultEnd" required>
-                                </div>
+                                <input type="hidden" id="startDate" name="StartDate" value="@defaultStart" required pattern=".*\S+.*">
+                                <input type="hidden" id="endDate" name="EndDate" value="@defaultEnd" required pattern=".*\S+.*">
                             </div>
                             <div class="text-warning mt-2 custom-small-text">Đây là chuyến đặt sát giờ. Để xe được chuẩn bị tốt và vệ sinh chu đáo, vui lòng đặt trước 2 tiếng.</div>
                         </div>
@@ -683,6 +683,7 @@
             try {
                 const res = await fetch('/Car/BusyDates?carId=' + carData.id);
                 if (res.ok) disabledDates = await res.json();
+                window.carDisabledDates = disabledDates;
             } catch(e) {}
 
             const urlParams = new URLSearchParams(window.location.search);
@@ -706,22 +707,24 @@
             } else if (queryStart) {
                 defaultEnd = new Date(defaultStart.getTime() + 4 * 3600 * 1000);
             }
-
-            const opts = {
-                enableTime: true,
-                dateFormat: 'Y-m-d\\TH:i',
-                time_24hr: true,
-                minDate: 'today',
-                locale: 'vn',
-                disable: disabledDates.map(d => new Date(d)),
-                onDayCreate(dObj, dStr, fp, dayElem) {
-                    if (dayElem.classList.contains('disabled')) {
-                        dayElem.title = 'Xe đã có người thuê ngày này';
-                    }
-                }
-            };
-            flatpickr('#startDate', { ...opts, defaultDate: defaultStart });
-            flatpickr('#endDate',   { ...opts, defaultDate: defaultEnd });
+            
+            if (startInputElem) {
+                const ds = defaultStart;
+                startInputElem.value = ds.getFullYear() + '-' + String(ds.getMonth()+1).padStart(2,'0') + '-' + String(ds.getDate()).padStart(2,'0') + 'T' + String(ds.getHours()).padStart(2,'0') + ':' + String(ds.getMinutes()).padStart(2,'0');
+            }
+            if (endInputElem) {
+                const de = defaultEnd;
+                endInputElem.value = de.getFullYear() + '-' + String(de.getMonth()+1).padStart(2,'0') + '-' + String(de.getDate()).padStart(2,'0') + 'T' + String(de.getHours()).padStart(2,'0') + ':' + String(de.getMinutes()).padStart(2,'0');
+            }
+            
+            const displayObj = document.getElementById('bookingCalendarDisplay');
+            if (displayObj) {
+                const m1 = String(defaultStart.getMonth() + 1).padStart(2,'0'); const d1 = String(defaultStart.getDate()).padStart(2,'0');
+                const h1 = String(defaultStart.getHours()).padStart(2,'0') + ':' + String(defaultStart.getMinutes()).padStart(2,'0');
+                const m2 = String(defaultEnd.getMonth() + 1).padStart(2,'0'); const d2 = String(defaultEnd.getDate()).padStart(2,'0');
+                const h2 = String(defaultEnd.getHours()).padStart(2,'0') + ':' + String(defaultEnd.getMinutes()).padStart(2,'0');
+                displayObj.innerText = `${d1}/${m1} ${h1} - ${d2}/${m2} ${h2}`;
+            }
         })();
     </script>
     <script src="~/js/car-details.js?v=@DateTime.Now.Ticks"></script>

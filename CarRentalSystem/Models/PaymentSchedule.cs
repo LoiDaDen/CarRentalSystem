@@ -22,5 +22,8 @@ namespace CarRentalSystem.Models
         public string Status { get; set; } = "Unpaid"; // Unpaid, Paid, Reminded, Overdue
         
         public DateTime? PaidAt { get; set; }
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

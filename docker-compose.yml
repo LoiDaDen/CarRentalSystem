@@ -1,0 +1,179 @@
+# ============================================================
+# CarRentalSystem — Docker Compose
+# Development & Local Testing Environment
+#
+# Usage:
+#   docker compose up -d          # Chạy nền (background)
+#   docker compose up              # Chạy foreground (xem logs)
+#   docker compose down -v         # Dừng và xóa volumes (reset data)
+#   docker compose --profile test up  # Chạy kèm test containers
+# ============================================================
+
+services:
+
+  # ─────────────────────────────────────────────────────────
+  # 🚗 CarRentalSystem Web Application
+  # ─────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: carrental_web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # ASP.NET Core environment
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+
+      # Connection string — kết nối tới SQL Server container
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=CarRentalDB;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=true;Encrypt=False
+
+      # Redis (optional — fallback sang in-memory cache nếu không có)
+      - Redis__ConnectionString=redis:6379
+
+      # Hangfire dashboard (đặt secret mạnh trong production)
+      - HangfireDashboardPassword=${HANGFIRE_PASSWORD:-CarRental2024!}
+
+      # JWT / Encryption keys
+      - EncryptionKey=${ENCRYPTION_KEY:-default-dev-key-replace-in-prod}
+
+      # File upload settings
+      - MaxUploadFileSizeMb=10
+
+      # eKYC FPT API (dùng mock trong dev)
+      - FptEkycApiUrl=${FPT_EKYC_URL:-https://api.fpt.ai}
+      - FptEkycApiKey=${FPT_EKYC_KEY:-dev-key}
+
+      # Email (dùng SMTP debug trong dev)
+      - Email__SmtpHost=${SMTP_HOST:-smtp.mailtrap.io}
+      - Email__SmtpPort=${SMTP_PORT:-587}
+      - Email__SmtpUser=${SMTP_USER:-}
+      - Email__SmtpPassword=${SMTP_PASSWORD:-}
+      - Email__FromAddress=noreply@carrental.local
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - carrental-net
+    volumes:
+      # Mount uploads folder for persistent file storage
+      - carrental-uploads:/app/wwwroot/uploads
+      # Mount appsettings override (nếu có)
+      - ./appsettings.Docker.json:/app/appsettings.Docker.json:ro
+
+  # ─────────────────────────────────────────────────────────
+  # 🗄️ SQL Server 2022 — Database
+  # ─────────────────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: carrental_sqlserver
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SA_PASSWORD}
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - carrental-sql-data:/var/opt/mssql
+      # Mount init scripts (chạy lần đầu khi volume trống)
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P ${SA_PASSWORD} -C -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - carrental-net
+
+  # ─────────────────────────────────────────────────────────
+  # 🗄️ Redis — Cache & Session Store
+  # ─────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: carrental_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - "6379:6379"
+    volumes:
+      - carrental-redis-data:/data
+    networks:
+      - carrental-net
+
+  # ─────────────────────────────────────────────────────────
+  # 🌐 Nginx — Reverse Proxy & Static File Server
+  # ─────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: carrental_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - carrental-uploads:/var/www/uploads:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - carrental-net
+    profiles:
+      - production
+
+  # ─────────────────────────────────────────────────────────
+  # 🧪 Test — Smoke/Integration Tests via Docker
+  # ─────────────────────────────────────────────────────────
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    container_name: carrental_test
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=CarRentalDB_Test;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;Encrypt=False
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: >
+      dotnet test
+      --configuration Release
+      --filter "Type=Unit"
+      --verbosity normal
+    networks:
+      - carrental-net
+    profiles:
+      - test
+
+# ─────────────────────────────────────────────────────────
+# Networks — Isolated Docker network
+# ─────────────────────────────────────────────────────────
+networks:
+  carrental-net:
+    driver: bridge
+
+# ─────────────────────────────────────────────────────────
+# Volumes — Persistent data across restarts
+# ─────────────────────────────────────────────────────────
+volumes:
+  carrental-sql-data:
+    driver: local
+  carrental-redis-data:
+    driver: local
+  carrental-uploads:
+    driver: local

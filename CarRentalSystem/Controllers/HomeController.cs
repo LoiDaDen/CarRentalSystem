@@ -44,8 +44,8 @@ namespace CarRentalSystem.Controllers
                 availableCarsQuery = availableCarsQuery.Where(c => c.LocationID == currentRegionId.Value);
             }
 
-            var featuredCars = await featuredCarsQuery.Take(6).ToListAsync();
-            var availableCars = await availableCarsQuery.Take(6).ToListAsync();
+            var featuredCars = await featuredCarsQuery.OrderByDescending(c => c.CarID).Take(6).ToListAsync();
+            var availableCars = await availableCarsQuery.OrderByDescending(c => c.CarID).Take(6).ToListAsync();
 
             ViewBag.Locations = await _context.Locations.ToListAsync();
             ViewBag.CarTypes = await _context.CarTypes.ToListAsync();

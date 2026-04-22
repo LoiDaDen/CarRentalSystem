@@ -211,8 +211,8 @@
                         <label class="form-label small fw-bold text-muted text-uppercase ls-1">Hạng GPLX <span class="text-danger">*</span></label>
                         <div class="input-group bg-light rounded-3 overflow-hidden border-0">
                             <span class="input-group-text bg-transparent border-0"><i class="bi bi-award text-muted"></i></span>
-                            <select id="gplxClassInput" class="form-select bg-transparent border-0 py-2" style="background-color: transparent;" required>
-                                <option value="">Chọn hạng GPLX</option>
+                            <select id="gplxClassInput" class="form-select bg-transparent border-0 py-2" style="background-color: transparent;">
+                                <option value="">Chọn hạng GPLX (Nếu có)</option>
                                 <option value="A1">A1 - Xe mô tô hai bánh dưới 175 cm³</option>
                                 <option value="A2">A2 - Xe mô tô hai bánh trên 175 cm³</option>
                                 <option value="B1">B1 - Ô tô chở người đến 9 chỗ</option>
@@ -278,30 +278,57 @@
                 </h5>
                 <button type="button" id="closeQrModalBtn" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center pt-2">
-                <div class="scanner-instructions">
-                    <h6><i class="bi bi-lightbulb me-1"></i>Hướng dẫn quét QR</h6>
-                    <ul>
-                        <li>Sử dụng <strong>CCCD gắn chip</strong> (loại có logo chip ở góc phải)</li>
-                        <li>Đưa mã QR trên thẻ vào khung hình vuông màu xanh</li>
-                        <li>Giữ thẻ ổn định trong vài giây cho đến khi có thông báo</li>
-                        <li>Đảm bảo ánh sáng đủ sáng và không bóng phản chiếu</li>
-                    </ul>
+            <div class="modal-body pt-2 px-4">
+                <ul class="nav nav-pills justify-content-center mb-4 bg-light rounded-pill p-1" id="qrTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill fw-bold px-4" id="camera-tab" data-bs-toggle="pill" data-bs-target="#camera-pane" type="button" role="tab" aria-controls="camera-pane" aria-selected="true">
+                            <i class="bi bi-camera-video me-1"></i>Camera
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill fw-bold px-4" id="upload-tab" data-bs-toggle="pill" data-bs-target="#upload-pane" type="button" role="tab" aria-controls="upload-pane" aria-selected="false">
+                            <i class="bi bi-file-image me-1"></i>Tải ảnh lên
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="qrTabContent">
+                    <div class="tab-pane fade show active text-center" id="camera-pane" role="tabpanel" aria-labelledby="camera-tab">
+                        <div class="scanner-instructions">
+                            <h6><i class="bi bi-lightbulb me-1"></i>Hướng dẫn quét QR</h6>
+                            <ul>
+                                <li>Sử dụng <strong>CCCD gắn chip</strong></li>
+                                <li>Đưa mã QR trên thẻ vào khung màu xanh</li>
+                            </ul>
+                        </div>
+                        <div class="qr-scanner-container mx-auto" id="qrScannerContainer">
+                            <div id="qr-reader"></div>
+                            <div class="qr-scanner-overlay" id="qrScannerOverlay"></div>
+                        </div>
+                        
+                        <div id="scanStatus" class="scan-status scanning mx-auto mt-3" style="display: none; max-width: 320px;">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span id="scanStatusText">Đang khởi tạo camera...</span>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade text-center" id="upload-pane" role="tabpanel" aria-labelledby="upload-tab">
+                        <div class="p-5 border rounded-4 bg-light" style="border-style: dashed !important; border-width: 2px !important; border-color: #cbd5e1 !important;">
+                            <i class="bi bi-cloud-arrow-up display-3 text-primary mb-3 d-block"></i>
+                            <h6 class="fw-bold mb-2">Tải ảnh QR CCCD</h6>
+                            <p class="text-muted small mb-4">Chấp nhận định dạng JPG, PNG.</p>
+                            <input type="file" id="cccdImageUpload" class="form-control mb-3" accept="image/png, image/jpeg" style="max-width: 300px; margin: 0 auto;">
+                        </div>
+                        
+                        <div id="scanUploadStatus" class="scan-status error mx-auto mt-3" style="display: none; max-width: 320px;">
+                            <i class="bi bi-x-circle me-2"></i>
+                            <span id="scanUploadStatusText">Lỗi ảnh</span>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="qr-scanner-container" id="qrScannerContainer">
-                    <div id="qr-reader"></div>
-                    <div class="qr-scanner-overlay" id="qrScannerOverlay"></div>
-                </div>
-                
-                <div id="scanStatus" class="scan-status scanning" style="display: none;">
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    <span id="scanStatusText">Đang khởi tạo camera...</span>
-                </div>
-                
-                <div class="qr-info-badge">
-                    <i class="bi bi-shield-check"></i>
-                    Thông tin được mã hóa và chỉ sử dụng để xác minh danh tính
+
+                <div class="qr-info-badge text-center mt-4">
+                    <i class="bi bi-shield-check"></i> Thông tin được mã hóa và chỉ dùng xác minh
                 </div>
             </div>
         </div>
@@ -318,30 +345,55 @@
                 </h5>
                 <button type="button" id="closeGplxModalBtn" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center pt-2">
-                <div class="scanner-instructions" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b;">
-                    <h6 style="color: #b45309;"><i class="bi bi-lightbulb me-1"></i>Hướng dẫn quét GPLX</h6>
-                    <ul>
-                        <li style="color: #d97706;">Sử dụng <strong>Giấy phép lái xe mới</strong> (loại có mã QR phía sau)</li>
-                        <li style="color: #d97706;"><strong>Mặt sau GPLX</strong> có chứa mã QR</li>
-                        <li style="color: #d97706;">Đưa mã QR vào khung hình vuông màu xanh</li>
-                        <li style="color: #d97706;">Giữ thẻ ổn định trong vài giây</li>
-                    </ul>
+            <div class="modal-body pt-2 px-4">
+                <ul class="nav nav-pills justify-content-center mb-4 bg-light rounded-pill p-1" id="gplxTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill fw-bold px-4 text-warning-emphasis" id="gplx-camera-tab" data-bs-toggle="pill" data-bs-target="#gplx-camera-pane" type="button" role="tab" aria-selected="true">
+                            <i class="bi bi-camera-video me-1"></i>Camera
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill fw-bold px-4 text-warning-emphasis" id="gplx-upload-tab" data-bs-toggle="pill" data-bs-target="#gplx-upload-pane" type="button" role="tab" aria-selected="false">
+                            <i class="bi bi-file-image me-1"></i>Tải ảnh lên
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="gplxTabContent">
+                    <div class="tab-pane fade show active text-center" id="gplx-camera-pane" role="tabpanel">
+                        <div class="scanner-instructions" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b;">
+                            <h6 style="color: #b45309;"><i class="bi bi-lightbulb me-1"></i>Hướng dẫn quét GPLX</h6>
+                            <ul>
+                                <li style="color: #d97706;"><strong>Mặt sau GPLX mới</strong> có mã QR</li>
+                                <li style="color: #d97706;">Đưa mã QR vào khung trên màn hình</li>
+                            </ul>
+                        </div>
+                        <div class="qr-scanner-container mx-auto" id="gplxScannerContainer">
+                            <div id="gplx-reader"></div>
+                            <div class="qr-scanner-overlay" id="gplxScannerOverlay"></div>
+                        </div>
+                        <div id="gplxScanStatus" class="scan-status scanning mx-auto mt-3" style="display: none; max-width: 320px;">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span id="gplxScanStatusText">Đang khởi tạo camera...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade text-center" id="gplx-upload-pane" role="tabpanel">
+                        <div class="p-5 border rounded-4" style="background: #fffbeb; border-style: dashed !important; border-width: 2px !important; border-color: #fcd34d !important;">
+                            <i class="bi bi-cloud-arrow-up display-3 text-warning mb-3 d-block"></i>
+                            <h6 class="fw-bold mb-2 text-warning-emphasis">Tải ảnh QR mặt sau GPLX</h6>
+                            <p class="text-muted small mb-4">Chấp nhận định dạng JPG, PNG.</p>
+                            <input type="file" id="gplxImageUpload" class="form-control border-warning bg-white mb-3" accept="image/png, image/jpeg" style="max-width: 300px; margin: 0 auto;">
+                        </div>
+                        <div id="gplxScanUploadStatus" class="scan-status error mx-auto mt-3" style="display: none; max-width: 320px;">
+                            <i class="bi bi-x-circle me-2"></i>
+                            <span id="gplxScanUploadStatusText">Lỗi ảnh</span>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="qr-scanner-container" id="gplxScannerContainer">
-                    <div id="gplx-reader"></div>
-                    <div class="qr-scanner-overlay" id="gplxScannerOverlay"></div>
-                </div>
-                
-                <div id="gplxScanStatus" class="scan-status scanning" style="display: none;">
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    <span id="gplxScanStatusText">Đang khởi tạo camera...</span>
-                </div>
-                
-                <div class="qr-info-badge" style="background: #fef3c7; border-color: #fcd34d; color: #b45309;">
-                    <i class="bi bi-info-circle"></i>
-                    Sau khi quét GPLX, bạn có thể quét tiếp CCCD để tự động điền các thông tin khác
+
+                <div class="qr-info-badge text-center mt-4" style="background: #fef3c7; border-color: #fcd34d; color: #b45309;">
+                    <i class="bi bi-info-circle"></i> Có thể quét tiếp CCCD sau bước này
                 </div>
             </div>
         </div>
@@ -402,6 +454,53 @@
             async init(containerId) {
                 this.html5QrCode = new Html5Qrcode(containerId);
                 return this.html5QrCode;
+            },
+            
+            async scanImageFile(file) {
+                if (!file || this.isProcessing) return;
+                this.isProcessing = true;
+                
+                const statusEl = document.getElementById('scanUploadStatus');
+                const textEl = document.getElementById('scanUploadStatusText');
+                if (statusEl && textEl) {
+                    statusEl.className = 'scan-status scanning mx-auto mt-3';
+                    statusEl.style.display = 'flex';
+                    textEl.textContent = 'Đang phân tích hình ảnh...';
+                }
+                
+                try {
+                    console.log('Bắt đầu phân tích ảnh file:', file.name);
+                    
+                    let tempContainer = document.getElementById('temp-qr-reader-cccd');
+                    if (!tempContainer) {
+                        tempContainer = document.createElement('div');
+                        tempContainer.id = 'temp-qr-reader-cccd';
+                        tempContainer.style.position = 'absolute';
+                        tempContainer.style.opacity = '0';
+                        tempContainer.style.pointerEvents = 'none';
+                        tempContainer.style.width = '300px';
+                        tempContainer.style.height = '300px';
+                        tempContainer.style.zIndex = '-1000';
+                        document.body.appendChild(tempContainer);
+                    }
+                    
+                    const tempScanner = new Html5Qrcode('temp-qr-reader-cccd');
+                    const decodedText = await tempScanner.scanFile(file, true);
+                    console.log('Kết quả phân tích ảnh:', decodedText);
+                    
+                    try { tempScanner.clear(); } catch(e) {}
+                    
+                    this.isProcessing = false;
+                    this.onScanSuccess(decodedText, null);
+                } catch (err) {
+                    console.error('Lỗi scanImageFile CCCD:', err);
+                    this.isProcessing = false;
+                    if (statusEl && textEl) {
+                        statusEl.className = 'scan-status error mx-auto mt-3';
+                        textEl.textContent = 'Lỗi ảnh: Không nhận diện được QR hợp lệ.';
+                        setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+                    }
+                }
             },
             
             async start(deviceId = null) {
@@ -538,6 +637,53 @@
             async init(containerId) {
                 this.html5QrCode = new Html5Qrcode(containerId);
                 return this.html5QrCode;
+            },
+            
+            async scanImageFile(file) {
+                if (!file || this.isProcessing) return;
+                this.isProcessing = true;
+                
+                const statusEl = document.getElementById('gplxScanUploadStatus');
+                const textEl = document.getElementById('gplxScanUploadStatusText');
+                if (statusEl && textEl) {
+                    statusEl.className = 'scan-status scanning mx-auto mt-3';
+                    statusEl.style.display = 'flex';
+                    textEl.textContent = 'Đang phân tích hình ảnh...';
+                }
+                
+                try {
+                    console.log('Bắt đầu phân tích ảnh GPLX:', file.name);
+                    
+                    let tempContainer = document.getElementById('temp-qr-reader-gplx');
+                    if (!tempContainer) {
+                        tempContainer = document.createElement('div');
+                        tempContainer.id = 'temp-qr-reader-gplx';
+                        tempContainer.style.position = 'absolute';
+                        tempContainer.style.opacity = '0';
+                        tempContainer.style.pointerEvents = 'none';
+                        tempContainer.style.width = '300px';
+                        tempContainer.style.height = '300px';
+                        tempContainer.style.zIndex = '-1000';
+                        document.body.appendChild(tempContainer);
+                    }
+                    
+                    const tempScanner = new Html5Qrcode('temp-qr-reader-gplx');
+                    const decodedText = await tempScanner.scanFile(file, true);
+                    console.log('Kết quả GPLX:', decodedText);
+                    
+                    try { tempScanner.clear(); } catch(e) {}
+                    
+                    this.isProcessing = false;
+                    this.onScanSuccess(decodedText, null);
+                } catch (err) {
+                    console.error('Lỗi scanImageFile GPLX:', err);
+                    this.isProcessing = false;
+                    if (statusEl && textEl) {
+                        statusEl.className = 'scan-status error mx-auto mt-3';
+                        textEl.textContent = 'Lỗi ảnh: Không nhận diện được QR hợp lệ.';
+                        setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+                    }
+                }
             },
             
             async start() {
@@ -1092,6 +1238,42 @@
             document.getElementById('closeGplxModalBtn')?.addEventListener('click', async function() {
                 await GplxScanner.stop();
             });
+            
+            // Tab Events
+            document.getElementById('camera-tab')?.addEventListener('shown.bs.tab', async function() {
+                if (!QrScanner.isScanning) await QrScanner.start();
+            });
+            document.getElementById('upload-tab')?.addEventListener('shown.bs.tab', async function() {
+                await QrScanner.stop();
+            });
+            
+            document.getElementById('gplx-camera-tab')?.addEventListener('shown.bs.tab', async function() {
+                if (!GplxScanner.isScanning) await GplxScanner.start();
+            });
+            document.getElementById('gplx-upload-tab')?.addEventListener('shown.bs.tab', async function() {
+                await GplxScanner.stop();
+            });
+
+            // File Upload Bindings
+            const cccdFileInput = document.getElementById('cccdImageUpload');
+            if (cccdFileInput) {
+                cccdFileInput.addEventListener('change', function(e) {
+                    if (e.target.files && e.target.files.length > 0) {
+                        QrScanner.scanImageFile(e.target.files[0]);
+                        e.target.value = ''; // Reset input to allow re-selection
+                    }
+                });
+            }
+            
+            const gplxFileInput = document.getElementById('gplxImageUpload');
+            if (gplxFileInput) {
+                gplxFileInput.addEventListener('change', function(e) {
+                    if (e.target.files && e.target.files.length > 0) {
+                        GplxScanner.scanImageFile(e.target.files[0]);
+                        e.target.value = ''; // Reset input
+                    }
+                });
+            }
             
             // CCCD after GPLX Modal events
             cccdFromGplxModal.addEventListener('shown.bs.modal', async function() {

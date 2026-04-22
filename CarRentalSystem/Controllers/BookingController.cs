@@ -182,6 +182,21 @@ namespace CarRentalSystem.Controllers
             return View(booking);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> DepositTransaction(int id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var transaction = await _context.BookingTransactions
+                .Include(t => t.Bookings).ThenInclude(b => b.Car)
+                .FirstOrDefaultAsync(t => t.TransactionID == id && t.UserID == userId);
+            
+            if (transaction == null || !transaction.Bookings.Any()) return NotFound();
+            
+            return View(transaction);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Book(Booking booking, int? SelectedDriverID, decimal DriverFee)
         {
@@ -785,6 +800,37 @@ namespace CarRentalSystem.Controllers
 
             TempData["Success"] = "Hệ thống đã ghi nhận thông tin chuyển khoản của bạn. Vui lòng chờ Admin xác nhận đơn hàng trong giây lát.";
             return RedirectToAction("Success", "Payment", new { bookingId = id });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ConfirmManualPaymentTransaction(int id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var transaction = await _context.BookingTransactions
+                .Include(t => t.Bookings).ThenInclude(b => b.BookingStatus)
+                .FirstOrDefaultAsync(t => t.TransactionID == id && t.UserID == userId);
+
+            if (transaction == null) return NotFound();
+
+            var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == "Pending");
+            if (pendingStatus != null)
+            {
+                transaction.Status = "Pending";
+                foreach (var b in transaction.Bookings)
+                {
+                    if (b.BookingStatus?.Name == "Draft" || b.BookingStatus?.Name == "Pending")
+                    {
+                        b.BookingStatusID = pendingStatus.BookingStatusID;
+                    }
+                }
+                _context.BookingTransactions.Update(transaction);
+                await _context.SaveChangesAsync();
+            }
+            
+            TempData["Success"] = "Hệ thống đã ghi nhận thông tin chuyển khoản của giỏ hàng. Vui lòng chờ Admin xác nhận trong giây lát.";
+            return RedirectToAction("SuccessTransaction", "Payment", new { transactionId = id });
         }
 
         public async Task<IActionResult> Details(int id)

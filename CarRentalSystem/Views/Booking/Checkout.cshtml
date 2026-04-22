@@ -1,6 +1,11 @@
 @model CarRentalSystem.Models.Booking
 @{
     ViewData["Title"] = "Thủ tục thanh toán";
+    var diffTime = Model.EndDate - Model.StartDate;
+    var totalHours = Math.Ceiling(diffTime.TotalHours);
+    if (totalHours <= 0) totalHours = 1;
+    var rentalDays = (int)Math.Ceiling(totalHours / 24.0);
+    if (rentalDays == 0) rentalDays = 1;
 }
 
 <style>
@@ -8,20 +13,104 @@
     .form-control { border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; }
     .form-control:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
     .step-badge { width: 28px; height: 28px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; }
+
+    /* Driver cards styling */
+    .drv-card {
+        background: white; border-radius: 14px; padding: 14px;
+        margin-bottom: 10px; border: 2px solid transparent;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        display: flex; gap: 14px; align-items: center;
+        transition: all 0.25s ease; cursor: pointer;
+    }
+    .drv-card:hover { border-color: #93c5fd; box-shadow: 0 4px 20px rgba(59,130,246,0.12); transform: translateY(-1px); }
+    .drv-card.active { border-color: #3b82f6; background: #eff6ff; }
+    .drv-card-avatar {
+        width: 60px; height: 60px; border-radius: 50%; object-fit: cover;
+        border: 3px solid #e2e8f0; flex-shrink: 0;
+    }
+    .drv-card-avatar-placeholder {
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .drv-card-info { flex: 1; min-width: 0; }
+    .drv-card-name { font-weight: 700; font-size: 0.9rem; color: #1e293b; }
+    .drv-card-meta { font-size: 0.68rem; color: #64748b; display: flex; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
+    .drv-card-meta span { display: flex; align-items: center; gap: 2px; }
+    .drv-card-stars { display: flex; gap: 1px; margin-top: 3px; }
+    .drv-card-stars i { font-size: 0.7rem; color: #f59e0b; }
+    .drv-card-rating-text { font-size: 0.68rem; color: #f59e0b; font-weight: 700; margin-left: 4px; }
+    .drv-card-price { text-align: right; flex-shrink: 0; }
+    .drv-card-price .price-val { font-weight: 800; font-size: 0.95rem; color: #059669; }
+    .drv-card-price .price-unit { font-size: 0.6rem; color: #94a3b8; }
+
+    /* Self-drive option */
+    .drv-selfdrive {
+        background: white; border-radius: 14px; padding: 14px;
+        margin-bottom: 14px; border: 2px solid transparent;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        display: flex; align-items: center; gap: 14px;
+        cursor: pointer; transition: all 0.25s;
+    }
+    .drv-selfdrive:hover { border-color: #a3e635; }
+    .drv-selfdrive.active { border-color: #65a30d; background: #f7fee7; }
+    .drv-selfdrive-icon {
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #65a30d, #84cc16);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.5rem; flex-shrink: 0;
+    }
+
+    /* Driver Popup Styles */
+    .driver-popup-overlay {
+        display: none; position: fixed; inset: 0; z-index: 10000;
+        background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
+        align-items: center; justify-content: center;
+    }
+    .driver-popup-overlay.show { display: flex; }
+    .driver-popup {
+        background: #f8fafc; border-radius: 20px; max-width: 680px; width: 95%;
+        max-height: 85vh; box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+        animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+        overflow: hidden; display: flex; flex-direction: column;
+    }
+    .driver-popup-header {
+        padding: 16px 20px; display: flex; align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%);
+        color: white; flex-shrink: 0;
+    }
+    .driver-popup-header h5 { margin: 0; font-weight: 800; font-size: 1rem; }
+    .driver-popup-header .subtitle { font-size: 0.7rem; opacity: 0.8; margin-top: 2px; }
+    .driver-popup-body {
+        padding: 16px 20px; overflow-y: auto; flex: 1;
+    }
+    .driver-popup-body::-webkit-scrollbar { width: 5px; }
+    .driver-popup-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>
 
 <div class="container py-5 page-checkout">
     <div class="row g-4">
-        <div class="col-lg-7">
-            <h3 class="fw-800 mb-4">Hoàn tất thủ tục thuê xe</h3>
+        <form asp-action="Book" method="post" id="checkoutForm" class="w-100">
+            <input type="hidden" asp-for="CarID" />
+            <input type="hidden" asp-for="StartDate" />
+            <input type="hidden" asp-for="EndDate" />
+            <input type="hidden" name="PickupLocationText" value="@(Model.Car?.CarAddress ?? Model.Car?.Location?.Name)" />
 
-            <form asp-action="Book" method="post" id="checkoutForm">
-                <input type="hidden" asp-for="CarID" />
-                <input type="hidden" asp-for="StartDate" />
-                <input type="hidden" asp-for="EndDate" />
-                <input type="hidden" name="PickupLocationText" value="@(Model.Car?.CarAddress ?? Model.Car?.Location?.Name)" />
+            <div class="row w-100 m-0 justify-content-center">
+                <div class="col-12 col-lg-8">
+                    @if (TempData["BookingError"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show mb-4 rounded-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["BookingError"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
 
-                <div class="checkout-card ui-elevated-card">
+                    <h3 class="fw-800 mb-4 text-center">Hoàn tất thủ tục thuê xe</h3>
+
+                    <div class="checkout-card ui-elevated-card">
                     <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">1</div> Thông tin người thuê</h5>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -160,323 +249,130 @@
                                     </label>
                                 </div>
                             </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </form>
-        </div>
 
-        <!-- Sidebar -->
-        <div class="col-lg-5">
-            @if (TempData["BookingError"] != null)
+                    <!-- Lựa chọn tài xế -->
+                    @if (totalHours <= 4)
+                    {
+                        <div class="border rounded-3 p-3 mt-3 bg-light border-warning">
+                            <div class="fw-bold text-warning mb-2"><i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>Chỉ hỗ trợ Tự Lái</div>
+                            <small class="text-muted d-block">Lịch trình thuê từ 1 - 4 tiếng đồng hồ không hỗ trợ tùy chọn kèm Tài xế. Bạn sẽ tự điều khiển phương tiện của mình.</small>
+                            <input type="hidden" name="SelectedDriverID" value="" />
+                            <input type="hidden" name="DriverFee" value="0" />
+                        </div>
+                    }
+                    else if (ViewBag.Drivers != null && ((IEnumerable<Driver>)ViewBag.Drivers).Any())
+                    {
+                        <div class="border rounded-3 p-3 mt-3 bg-light border-success">
+                            <div class="fw-bold mb-3"><i class="bi bi-person-badge me-2 text-success fs-5"></i>Tùy chọn Tài xế (Tùy chọn)</div>
+                            <input type="hidden" name="SelectedDriverID" id="selectedDriverIdInput" value="" />
+                            <input type="hidden" name="DriverFee" id="driverFeeInput" value="0" />
+                            
+                            <!-- Compact trigger button -->
+                            <div class="drv-selfdrive active p-2 m-0" id="selectedDriverBtn" style="cursor:pointer;" onclick="openDriverPopup()">
+                                <div class="drv-selfdrive-icon" style="width:46px; height:46px; font-size:1.2rem;" id="selectedDriverIcon"><i class="bi bi-steering-wheel"></i></div>
+                                <div class="drv-card-info ms-2">
+                                    <div class="drv-card-name fs-6" id="selectedDriverName">Tự lái (Không kèm tài xế)</div>
+                                    <div class="drv-card-meta"><span id="selectedDriverMeta">Bạn sẽ tự điều khiển phương tiện của mình</span></div>
+                                </div>
+                                <div class="drv-card-price ms-auto me-2">
+                                    <div class="price-val fs-5" id="selectedDriverPrice">0đ</div>
+                                </div>
+                                <div class="text-success"><i class="bi bi-check-circle-fill fs-5"></i></div>
+                            </div>
+                        </div>
+                    }
+                        
+                        <!-- Submit Action inside Left Sidebar -->
+                        <div class="mt-4">
+                            @if(User?.Identity?.IsAuthenticated == true)
+                            {
+                                <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3" id="confirmBookingBtn" style="font-size: 1.1rem;">
+                                    Xác nhận & Chuyển tới Thanh toán / Đặt cọc
+                                </button>
+                                <div class="text-center mt-3 text-muted small">
+                                    Bằng việc bấm Xác nhận, bạn đồng ý với<br>
+                                    <a href="#" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a> và <a href="#" class="text-success fw-bold text-decoration-none">Chính sách bảo mật</a>
+                                </div>
+                            }
+                            else
+                            {
+                                <a asp-controller="Auth" asp-action="Login" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3 text-center">Đăng nhập để đặt xe</a>
+                            }
+                        </div>
+                    </div>
+            </form>
+    </div>
+</div>
+
+@if (ViewBag.Drivers != null && ((IEnumerable<Driver>)ViewBag.Drivers).Any())
+{
+<div class="driver-popup-overlay" id="driverOverlay" onclick="closeDriverPopup(event)">
+    <div class="driver-popup" onclick="event.stopPropagation()">
+        <div class="driver-popup-header">
+            <div>
+                <h5>Tùy chọn Tài xế</h5>
+                <div class="subtitle">Tăng thêm sự thoải mái cho chuyến đi của bạn</div>
+            </div>
+            <button class="btn-close btn-close-white" onclick="closeDriverPopup()"></button>
+        </div>
+        <div class="driver-popup-body" id="driverPopupBody">
+            <div class="drv-selfdrive active" id="drv-0" onclick="selectDriverNew('', 0, 'drv-0', 'Tự lái (Không kèm tài xế)', 'Bạn sẽ tự điều khiển phương tiện', '')">
+                <div class="drv-selfdrive-icon"><i class="bi bi-steering-wheel"></i></div>
+                <div class="drv-card-info">
+                    <div class="drv-card-name">Tự lái (Không kèm tài xế)</div>
+                    <div class="drv-card-meta"><span><i class="bi bi-check-circle me-1"></i>Bạn sẽ tự điều khiển phương tiện</span></div>
+                </div>
+                <div class="drv-card-price">
+                    <div class="price-val">0đ</div>
+                </div>
+                <div class="ms-2 active-indicator" style="display: block; color:#65a30d; font-weight:bold; font-size: 1.2rem;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>
+
+            @foreach (var driver in (IEnumerable<Driver>)ViewBag.Drivers)
             {
-                <div class="alert alert-danger alert-dismissible fade show mb-4 rounded-3" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["BookingError"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                var dFee = driver.DailyRate * rentalDays;
+                <div class="drv-card" id="drv-@driver.DriverID" onclick="selectDriverNew('@driver.DriverID', @dFee, 'drv-@driver.DriverID', '@driver.FullName', '@driver.ExperienceYears năm KN - Bằng @driver.LicenseType', '@driver.AvatarUrl')">
+                    @if (!string.IsNullOrEmpty(driver.AvatarUrl))
+                    {
+                        <img src="@driver.AvatarUrl" class="drv-card-avatar" alt="Avatar" />
+                    }
+                    else
+                    {
+                        <div class="drv-card-avatar-placeholder"><i class="bi bi-person-fill"></i></div>
+                    }
+                    <div class="drv-card-info">
+                        <div class="drv-card-name">@driver.FullName</div>
+                        <div class="drv-card-meta">
+                            <span><i class="bi bi-geo-alt"></i> @driver.Location?.Name</span>
+                            <span><i class="bi bi-award"></i> @driver.ExperienceYears năm KN</span>
+                            <span><i class="bi bi-card-checklist"></i> Bằng @driver.LicenseType</span>
+                        </div>
+                        <div class="drv-card-stars">
+                            @for (int s = 0; s < (int)Math.Round((double)driver.Rating); s++)
+                            {
+                                <i class="bi bi-star-fill"></i>
+                            }
+                            <span class="drv-card-rating-text">@driver.Rating.ToString("0.0")</span>
+                        </div>
+                    </div>
+                    <div class="drv-card-price">
+                        <div class="price-val">@dFee.ToString("N0")đ</div>
+                        <div class="price-unit">(@driver.DailyRate.ToString("N0")đ x @rentalDays ngày)</div>
+                    </div>
+                    <div class="ms-2 active-indicator" style="display: none; color:#3b82f6; font-weight:bold; font-size: 1.2rem;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
                 </div>
             }
-
-            <form asp-controller="Booking" asp-action="Checkout" method="get" id="bookingForm" class="booking-sidebar">
-                <input type="hidden" name="CarID" value="@Model.CarID" />
-
-                <div class="checkout-card ui-elevated-card mb-4 p-4">
-                    <div class="service-badge bg-success bg-opacity-10 text-success w-100 justify-content-center mb-4">
-                        <i class="bi bi-phone"></i> Tự nhận xe
-                    </div>
-                    <ul class="list-unstyled small text-muted mb-4 px-2">
-                        <li class="mb-2"><i class="bi bi-check2 text-success me-2"></i>Tối ưu chi phí khi thuê gói theo giờ</li>
-                        <li class="mb-2"><i class="bi bi-check2 text-success me-2"></i>Nhận và trả xe chủ động qua ứng dụng @(Model.Car?.Owner?.Name ?? "Chủ xe")</li>
-                        <li class="mb-0"><i class="bi bi-check2 text-success me-2"></i>Đặt xe nhanh, không cần chờ chủ xe duyệt đơn</li>
-                    </ul>
-                    <div class="text-center">
-                        <a href="#" class="text-success text-decoration-none small fw-bold">Cách thức hoạt động <i class="bi bi-arrow-right-circle ms-1"></i></a>
-                    </div>
-                </div>
-
-                <div class="checkout-card ui-elevated-card p-4">
-                    <div class="mb-4">
-                        <label class="small fw-bold mb-2">Chọn gói thuê</label>
-                        <div class="row g-2" id="pricePackageButtons">
-                            @{
-                                var car = Model.Car;
-                                var hrRate = car.PricePerHour;
-                                // Tính giá combo từ Car.PricePerDay theo tỷ lệ
-                                decimal pkg4 = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
-                                decimal pkg8 = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
-                                decimal pkg12 = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
-                                var pkg24 = car.PricePerDay;
-                                int[] comboHours = { 4, 8, 12, 24 };
-                            }
-                            @foreach (var h in comboHours)
-                            {
-                                var hourlyTotal = hrRate * h;
-                                decimal comboPrice = h switch { 4 => pkg4, 8 => pkg8, 12 => pkg12, _ => pkg24 };
-                                <div class="col-6 col-lg-3">
-                                    <button type="button" class="btn btn-outline-success w-100 fw-bold pkg-btn d-flex flex-column align-items-center justify-content-center p-2 rounded-3 h-100 transition-all" data-hours="@h">
-                                        <span style="font-size: 1rem;">@(h)h</span>
-                                        <span class="small" style="font-size: 0.75rem;">@comboPrice.ToString("N0")đ</span>
-                                    </button>
-                                </div>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="border rounded-3 p-3 border-warning bg-warning bg-opacity-10 mb-4 position-relative">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small fw-bold">Thời gian thuê</span>
-                            <i class="bi bi-calendar-event text-success"></i>
-                        </div>
-                        @{
-                            var now = DateTime.Now;
-                            var startMin = now.Minute;
-                            if (startMin > 0 && startMin <= 30) now = now.Date.AddHours(now.Hour).AddMinutes(30);
-                            else if (startMin > 30) now = now.Date.AddHours(now.Hour + 1);
-                            else now = now.Date.AddHours(now.Hour);
-                            var defaultStart = ViewBag.StartDate ?? now.AddHours(2).ToString("yyyy-MM-ddTHH:mm");
-                            string defaultEnd;
-                            if (ViewBag.Duration != null) {
-                                int dur = (int)ViewBag.Duration;
-                                defaultEnd = DateTime.Parse(defaultStart).AddHours(dur).ToString("yyyy-MM-ddTHH:mm");
-                            } else {
-                                defaultEnd = ViewBag.EndDate ?? now.AddHours(6).ToString("yyyy-MM-ddTHH:mm");
-                            }
-                        }
-                        <div class="row g-2 mt-2">
-                            <div class="col-12 col-xl-6">
-                                <input type="datetime-local" id="startDate" name="StartDate" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" value="@defaultStart" required>
-                            </div>
-                            <div class="col-12 col-xl-6">
-                                <input type="datetime-local" id="endDate" name="EndDate" class="form-control form-control-sm border-0 bg-transparent fw-bold px-1" value="@defaultEnd" required>
-                            </div>
-                        </div>
-                        <div class="text-warning mt-2 custom-small-text">Đây là chuyến đặt sát giờ. Để xe được chuẩn bị tốt và vệ sinh chu đáo, vui lòng đặt trước 2 tiếng.</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="small fw-bold mb-2">Vị trí nhận xe</label>
-                        <input type="hidden" id="finalPickupLocation" name="PickupLocation" value="@(Model.Car?.CarAddress ?? Model.Car?.Location?.Name)" />
-                        <input type="hidden" name="ReturnLocation" value="@(Model.Car?.CarAddress ?? Model.Car?.Location?.Name)" />
-                        <div class="btn-group-vertical w-100 mb-3 rounded-3 overflow-hidden border bg-white" role="group">
-                            <label class="d-flex align-items-start p-3 location-option border-bottom m-0" for="locCustomer">
-                                <input type="radio" name="pickupLocationType" id="locCustomer" value="customer" class="form-check-input mt-1 me-3" checked>
-                                <div>
-                                    <div class="fw-bold mb-1 text-dark">Khách nhận tại vị trí xe đậu</div>
-                                    <div class="text-muted small">@(Model.Car?.CarAddress ?? Model.Car?.Location?.Name)</div>
-                                </div>
-                            </label>
-                            <label class="d-flex align-items-start p-3 location-option m-0" for="locOwner">
-                                <input type="radio" name="pickupLocationType" id="locOwner" value="owner" class="form-check-input mt-1 me-3">
-                                <div class="w-100">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div class="fw-bold mb-1 text-dark">@(Model.Car?.Owner?.Name ?? "Chủ xe") giao & nhận xe</div>
-                                    </div>
-                                    <div class="text-muted small d-flex align-items-center"><i class="bi bi-geo-alt me-1"></i> Chọn địa điểm</div>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div id="ownerDeliverySection" style="display: none;">
-                            <div id="deliveryInfoBanner" class="alert alert-info mb-3 py-2 px-3">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <i class="bi bi-truck me-2"></i>
-                                        <span class="fw-bold">Khoảng cách giao:</span>
-                                        <span id="deliveryDistanceDisplay">Đang tính...</span>
-                                    </div>
-                                    <div>
-                                        <span class="badge bg-success">Thời gian giao: <span id="deliveryTimeDisplay">-</span></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="input-group input-group-sm mb-2 shadow-sm">
-                                <input type="text" id="pickupCoords" class="form-control bg-light border-0" placeholder="Chọn trên bản đồ / gửi vị trí" value="10.7816, 106.6994" readonly>
-                                <button class="btn btn-primary" type="button" id="getCurrentPoint" title="Vị trí của tôi"><i class="bi bi-crosshair"></i></button>
-                            </div>
-                            <div id="bookingMap" class="rounded-3 border shadow-sm" style="height: 150px;"></div>
-                        </div>
-                    </div>
-
-                    <div class="border-top pt-3">
-                        <div class="d-flex justify-content-between mb-3 align-items-center">
-                            <h6 class="mb-0 fw-bold">Đơn thuê</h6>
-                            <span class="text-muted small">Phí thuê xe <i class="bi bi-info-circle"></i></span>
-                            <span class="fw-bold" id="baseRentAmount">@Model.Car.PricePerDay.ToString("N0") đ</span>
-                        </div>
-
-                        @if (ViewBag.Contract is CarRentalSystem.Models.ContractType ct)
-                        {
-                            <input type="hidden" id="contractDiscount" value="@ct.DiscountPercent" />
-                            <div class="alert alert-success py-2 mb-3 small fw-bold">
-                                <i class="bi bi-tag-fill me-1"></i> Áp dụng: @ct.Name (Giảm @ct.DiscountPercent%)
-                            </div>
-                            <div class="d-flex justify-content-between mb-3 small text-success fw-bold" id="discountRow">
-                                <span>Chiết khấu hợp đồng</span>
-                                <span id="discountAmount">-0 đ</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <input type="hidden" id="contractDiscount" value="0" />
-                        }
-
-                        @if(ViewBag.MembershipTier != null && ViewBag.MembershipTier.DiscountPercent > 0)
-                        {
-                            <input type="hidden" id="membershipDiscount" value="@ViewBag.MembershipTier.DiscountPercent" />
-                            <div class="alert alert-warning py-2 mb-3 small fw-bold" style="background-color: #fffbeb; border-color: #fef08a; color: #b45309;">
-                                🥇 Hạng thành viên @ViewBag.MembershipTier.Name: Giảm @ViewBag.MembershipTier.DiscountPercent%
-                            </div>
-                            <div class="d-flex justify-content-between mb-3 small fw-bold" style="color: #ea580c;" id="memDiscountRow">
-                                <span>Tiết kiệm hạng thành viên</span>
-                                <span id="memDiscountAmount">-0 đ</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <input type="hidden" id="membershipDiscount" value="0" />
-                        }
-
-                        <div class="d-flex justify-content-between mb-3 small">
-                            <span>Thuế VAT</span>
-                            <span>200,000 đ</span>
-                        </div>
-                        <div class="d-none justify-content-between mb-3 small text-primary fw-bold" id="deliveryFeeRow">
-                            <span><i class="bi bi-truck me-1"></i>Phí giao nhận xe tận nơi</span>
-                            <span>+50,000 đ</span>
-                        </div>
-                        <div id="addonItemsInOrder"></div>
-                        <div class="d-none justify-content-between mb-3 small text-info fw-bold" id="addonTotalRow">
-                            <span><i class="bi bi-bag-check me-1"></i>Combo & Tiện ích</span>
-                            <span id="addonTotalAmount">+0 đ</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-4 pt-3 border-top">
-                            <span class="fw-bold">Tổng cộng tiền thuê</span>
-                            <span class="fw-800 fs-4 text-success" id="finalTotalAmount">@((Model.Car.PricePerDay + 200000m).ToString("N0")) đ</span>
-                        </div>
-
-                        @if(User?.Identity?.IsAuthenticated == true)
-                        {
-                            <div class="row g-2">
-                                <div class="col-9">
-                                    <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm" id="confirmBookingBtn">Thuê xe</button>
-                                </div>
-                                <div class="col-3">
-                                    <button type="button" class="btn btn-outline-success btn-lg w-100 fw-bold rounded-3 shadow-sm" id="addToCartBtn" title="Thêm vào giỏ hàng">
-                                        <i class="bi bi-cart-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                        else
-                        {
-                            <a asp-controller="Auth" asp-action="Login" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm">Đăng nhập để thuê xe</a>
-                        }
-
-                        <!-- Phụ phí phát sinh -->
-                        <div class="mt-4 pt-4 border-top">
-                            <div class="p-3 bg-success bg-opacity-10 text-success fw-bold text-center rounded-top" style="border: 1px solid #d1e7dd; border-bottom: none;">
-                                Phụ phí có thể phát sinh
-                            </div>
-                            <div class="border rounded-bottom p-3 bg-white" style="border-color: #d1e7dd !important;">
-                                <div class="mb-3 border-bottom pb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-success fw-bold"><i class="bi bi-signpost-split me-2"></i> Phí cầu đường</span>
-                                    </div>
-                                    <small class="text-muted d-block" style="line-height: 1.4;">Chủ xe có thể yêu cầu thanh toán tất cả các khoản lệ phí cầu đường phát sinh trên tài khoản VETC trong thời gian thuê xe.</small>
-                                </div>
-                                <div class="mb-3 border-bottom pb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-success fw-bold"><i class="bi bi-stars me-2"></i> Phí vệ sinh</span>
-                                        <span class="fw-bold fs-6">@Model.Car.CleaningFee.ToString("N0") đ</span>
-                                    </div>
-                                    <small class="text-muted d-block" style="line-height: 1.4;">Chủ xe sẽ dựa vào tình trạng vệ sinh xe lúc khách hàng trả xe để thu phí. Vui lòng trả lại hiện trạng xe được vệ sinh sạch sẽ.</small>
-                                </div>
-                                <div class="mb-3 border-bottom pb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-danger fw-bold"><i class="bi bi-clock-history me-2"></i> Phí trả xe trễ</span>
-                                    </div>
-                                    <div class="small" style="line-height: 1.6;">
-                                        <div class="d-flex align-items-start mb-1">
-                                            <span class="badge bg-success me-2 mt-1" style="min-width: 20px;">✓</span>
-                                            <span class="text-muted">Dưới <strong class="text-dark">60 phút</strong>: <strong class="text-success">Không phụ thu</strong></span>
-                                        </div>
-                                        <div class="d-flex align-items-start mb-1">
-                                            <span class="badge bg-danger me-2 mt-1" style="min-width: 20px;">!</span>
-                                            <span class="text-muted">Trên <strong class="text-dark">60 phút</strong> (không mua gói): <strong class="text-danger">20% giá gói 24h / mỗi tiếng</strong></span>
-                                        </div>
-                                    </div>
-                                    <div class="alert alert-warning py-2 px-3 mt-2 mb-0 small" style="border-radius: 10px;">
-                                        <i class="bi bi-lightbulb me-1"></i> <strong>Mẹo tiết kiệm:</strong> Vui lòng mua thêm gói 4h, 8h, 12h, 24h gia hạn <strong>trước 1 tiếng</strong> kết thúc chuyến đi để có chi phí gia hạn phù hợp hơn.
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-success fw-bold"><i class="bi bi-truck me-2"></i> Phí giao nhận xe</span>
-                                    </div>
-                                    <small class="text-muted d-block" style="line-height: 1.4;">Tính theo khoảng cách: <strong class="text-dark">3.000đ/km</strong> + phí xăng cả đi cả về.</small>
-                                </div>
-                            </div>
-                            <div class="text-center mt-3 text-muted small">
-                                Bằng việc bấm Thuê xe, bạn đồng ý với<br>
-                                <a href="#" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a> và <a href="#" class="text-success fw-bold text-decoration-none">Chính sách bảo mật</a>
-                            </div>
-                        </div>
-
-                        <!-- Combo tiện ích -->
-                        <div class="mt-4 pt-3 border-top">
-                            <h6 class="fw-bold mb-3"><i class="bi bi-gift text-danger me-2"></i>Combo & Tiện Ích Đi Kèm</h6>
-                            <div class="d-flex flex-column gap-2">
-                                <label class="d-flex align-items-center p-2 border rounded-3 bg-white addon-option" style="cursor:pointer;">
-                                    <input type="checkbox" name="SelectedAddons" class="form-check-input me-3 addon-check" value="Nước suối|10000" data-name="Nước suối">
-                                    <div class="d-flex align-items-center flex-grow-1">
-                                        <span style="font-size:1.3rem;" class="me-2">💧</span>
-                                        <div class="flex-grow-1">
-                                            <div class="fw-bold small">Nước suối</div>
-                                            <div class="text-muted" style="font-size: 0.7rem;">Chai 500ml mát lạnh</div>
-                                        </div>
-                                        <span class="badge bg-success bg-opacity-10 text-success fw-bold">10K</span>
-                                    </div>
-                                </label>
-                                <label class="d-flex align-items-center p-2 border rounded-3 bg-white addon-option" style="cursor:pointer;">
-                                    <input type="checkbox" name="SelectedAddons" class="form-check-input me-3 addon-check" value="Khăn lạnh|5000" data-name="Khăn lạnh">
-                                    <div class="d-flex align-items-center flex-grow-1">
-                                        <span style="font-size:1.3rem;" class="me-2">🧊</span>
-                                        <div class="flex-grow-1">
-                                            <div class="fw-bold small">Khăn lạnh</div>
-                                            <div class="text-muted" style="font-size: 0.7rem;">Khăn ướt mát lạnh thơm</div>
-                                        </div>
-                                        <span class="badge bg-success bg-opacity-10 text-success fw-bold">5K</span>
-                                    </div>
-                                </label>
-                                <label class="d-flex align-items-center p-2 border rounded-3 bg-white addon-option" style="cursor:pointer;">
-                                    <input type="checkbox" name="SelectedAddons" class="form-check-input me-3 addon-check" value="Combo Ăn Nhẹ|50000" data-name="Combo Ăn Nhẹ">
-                                    <div class="d-flex align-items-center flex-grow-1">
-                                        <span style="font-size:1.3rem;" class="me-2">🍱</span>
-                                        <div class="flex-grow-1">
-                                            <div class="fw-bold small">Combo Ăn Nhẹ</div>
-                                            <div class="text-muted" style="font-size: 0.7rem;">Bánh mì + nước + khăn lạnh</div>
-                                        </div>
-                                        <span class="badge bg-warning bg-opacity-10 text-warning fw-bold">50K</span>
-                                    </div>
-                                </label>
-                                <label class="d-flex align-items-center p-2 border rounded-3 bg-white addon-option" style="cursor:pointer;">
-                                    <input type="checkbox" name="SelectedAddons" class="form-check-input me-3 addon-check" value="Combo VIP|100000" data-name="Combo VIP">
-                                    <div class="d-flex align-items-center flex-grow-1">
-                                        <span style="font-size:1.3rem;" class="me-2">🌟</span>
-                                        <div class="flex-grow-1">
-                                            <div class="fw-bold small">Combo VIP</div>
-                                            <div class="text-muted" style="font-size: 0.7rem;">Nước + bánh + khăn + hoa xe + sạc dự phòng</div>
-                                        </div>
-                                        <span class="badge bg-primary bg-opacity-10 text-primary fw-bold">100K</span>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
         </div>
     </div>
 </div>
+}
 
 @section Scripts {
     <script>
@@ -485,5 +381,65 @@
             document.getElementById('insuranceFeeInput').value = fee;
         }
         function toggleAddon(row) {}
+        
+        function selectDriverNew(driverId, fee, elemId, name, metaLabel, iconUrl) {
+            document.getElementById('selectedDriverIdInput').value = driverId;
+            document.getElementById('driverFeeInput').value = fee;
+            
+            // Remove active classes
+            document.querySelectorAll('.drv-card, .drv-selfdrive').forEach(el => {
+                el.classList.remove('active');
+                if(el.querySelector('.active-indicator')) {
+                    el.querySelector('.active-indicator').style.display = 'none';
+                }
+            });
+            
+            // Set active
+            let sel = document.getElementById(elemId);
+            if(sel) {
+                sel.classList.add('active');
+                if(sel.querySelector('.active-indicator')) {
+                    sel.querySelector('.active-indicator').style.display = 'block';
+                }
+            }
+            
+            // Sync with parent trigger button
+            document.getElementById('selectedDriverName').innerText = name;
+            document.getElementById('selectedDriverPrice').innerText = fee > 0 ? (fee.toLocaleString('vi-VN') + 'đ') : '0đ';
+            document.getElementById('selectedDriverMeta').innerText = metaLabel;
+
+            let iconHtml = '';
+            if (driverId) {
+                 if (iconUrl && iconUrl !== '') {
+                     iconHtml = '<img src="' + iconUrl + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
+                 } else {
+                     iconHtml = '<i class="bi bi-person-fill"></i>';
+                 }
+                 document.getElementById('selectedDriverIcon').innerHTML = iconHtml;
+                 document.getElementById('selectedDriverIcon').style.background = 'linear-gradient(135deg, #3b82f6, #8b5cf6)';
+                 document.getElementById('selectedDriverBtn').classList.remove('drv-selfdrive');
+                 document.getElementById('selectedDriverBtn').classList.add('drv-card');
+                 document.getElementById('selectedDriverBtn').classList.add('active'); // mimic active card styling
+            } else {
+                 document.getElementById('selectedDriverIcon').innerHTML = '<i class="bi bi-steering-wheel"></i>';
+                 document.getElementById('selectedDriverIcon').style.background = 'linear-gradient(135deg, #65a30d, #84cc16)';
+                 document.getElementById('selectedDriverBtn').classList.remove('drv-card');
+                 document.getElementById('selectedDriverBtn').classList.add('drv-selfdrive');
+            }
+
+            closeDriverPopup();
+            updateTotal();
+        }
+
+        function openDriverPopup() {
+            document.getElementById('driverOverlay').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeDriverPopup(e) {
+            if (e && e.target !== document.getElementById('driverOverlay')) return;
+            document.getElementById('driverOverlay').classList.remove('show');
+            document.body.style.overflow = '';
+        }
     </script>
 }

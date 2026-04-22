@@ -27,6 +27,11 @@
             <a asp-area="Admin" asp-controller="Car" asp-action="Manage" class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-bold">
                 <i class="bi bi-arrow-left me-2"></i>Quay lại
             </a>
+            <form asp-action="Delete" asp-route-id="@car.CarID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn đưa xe này vào thùng rác?');">
+                <button type="submit" class="btn btn-danger shadow-sm px-4 py-2 rounded-3 fw-bold">
+                    <i class="bi bi-trash me-2"></i>Xóa
+                </button>
+            </form>
         </div>
     </div>
 

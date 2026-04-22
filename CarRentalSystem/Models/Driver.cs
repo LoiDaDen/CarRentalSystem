@@ -66,5 +66,10 @@ namespace CarRentalSystem.Models
         
         public ICollection<DriverBooking>? DriverBookings { get; set; } = new List<DriverBooking>();
         public ICollection<DriverReview>? DriverReviews { get; set; } = new List<DriverReview>();
+
+        // Phase 10: Account Control
+        public bool IsLocked { get; set; } = false;
+        public DateTime? LockedAt { get; set; }
+        public bool IsBlacklisted { get; set; } = false;
     }
 }

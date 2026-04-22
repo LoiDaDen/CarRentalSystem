@@ -32,5 +32,8 @@ namespace CarRentalSystem.Models
             // 2. FinalPrice = booking's TotalPrice (đã bao gồm late fee nếu có)
             FinalPrice = Booking?.TotalPrice ?? BasePrice;
         }
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

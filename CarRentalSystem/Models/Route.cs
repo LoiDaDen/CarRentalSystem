@@ -17,5 +17,8 @@ namespace CarRentalSystem.Models
 
         [ForeignKey("BookingID")]
         public Booking? Booking { get; set; }
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

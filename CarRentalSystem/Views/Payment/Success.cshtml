@@ -32,17 +32,20 @@
             </div>
         </div>
 
-        <div class="alert alert-info py-2" role="alert">
-            <i class="bi bi-info-circle me-2"></i>
-            Hệ thống sẽ tự động chuyển hướng về trang cá nhân sau <span id="countdown">5</span> giây...
+        <div class="alert alert-warning py-3 mb-4 text-start d-flex align-items-center" role="alert" style="background-color: #fffbeb; border-color: #fde68a;">
+            <i class="bi bi-shield-lock text-warning fs-3 me-3"></i>
+            <div>
+                <h6 class="fw-bold mb-1">Bước tiếp theo: Ký Hợp Đồng Thuê Xe</h6>
+                <p class="small mb-0 text-muted">Vui lòng tiến hành ký điện tử minh bạch để xác nhận các điều khoản trước khi bạn nhận xe.</p>
+            </div>
         </div>
 
         <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
-            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-primary btn-lg px-4 rounded-pill shadow">
-                <i class="bi bi-calendar-check me-2"></i>Xem chuyến xe của tôi
+            <a asp-controller="Booking" asp-action="Contract" asp-route-id="@Model.BookingID" class="btn btn-warning btn-lg px-4 rounded-pill shadow fw-bold text-dark border-0" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">
+                <i class="bi bi-pen me-2"></i>TIẾN HÀNH KÝ HỢP ĐỒNG
             </a>
-            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary btn-lg px-4 rounded-pill">
-                Về trang chủ
+            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-outline-primary btn-lg px-4 rounded-pill shadow">
+                <i class="bi bi-view-list me-2"></i>Chuyến xe của tôi
             </a>
         </div>
     </div>
@@ -77,12 +80,4 @@
 </style>
 
 @section Scripts {
-    <script>
-        let count = 5;
-        const el = document.getElementById('countdown');
-        const timer = setInterval(() => {
-            count--; if (el) el.textContent = count;
-            if (count <= 0) clearInterval(timer);
-        }, 1000);
-    </script>
 }

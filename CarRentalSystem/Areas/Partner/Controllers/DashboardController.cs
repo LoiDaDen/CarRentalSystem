@@ -122,14 +122,15 @@ namespace CarRentalSystem.Areas.Partner.Controllers
             var user = await _db.Users.FindAsync(userId);
             if (user == null) return NotFound();
 
-            // 🔒 SECURITY: Không tự đổi role ngay — đặt cờ chờ Admin duyệt
-            // Admin sẽ duyệt và đổi role trong Areas/Admin/UserController
+            // 🔒 SECURITY: Đổi role thành Partner, Admin sẽ verify
             if (user.Role == "Partner" || user.Role == "Admin")
             {
                 TempData["Info"] = "Bạn đã có quyền Partner.";
                 return RedirectToAction("Index");
             }
 
+            // Đổi role để Admin filter tìm thấy
+            user.Role = "Partner";
             user.IsVerified = false; // Đánh dấu = "pending partner approval"
             user.PartnerAddress = "PENDING_PARTNER_APPROVAL"; // Flag cho Admin filter
             await _db.SaveChangesAsync();

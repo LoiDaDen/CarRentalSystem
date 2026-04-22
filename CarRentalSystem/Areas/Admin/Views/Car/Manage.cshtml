@@ -10,15 +10,42 @@
         <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Đội xe</h2>
         <p class="text-muted mb-0">Xem và quản lý tất cả phương tiện trong hệ thống.</p>
     </div>
-    <a asp-area="Admin" asp-controller="Car" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
-        <i class="bi bi-plus-lg me-2"></i>Thêm xe mới
-    </a>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+        {
+            <a asp-area="Admin" asp-controller="Car" asp-action="Trash" class="btn btn-outline-danger shadow-sm px-4 py-2 rounded-3 fw-bold">
+                <i class="bi bi-trash me-2"></i>Thùng rác
+            </a>
+        }
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+        {
+            <a asp-area="Admin" asp-controller="Car" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
+                <i class="bi bi-plus-lg me-2"></i>Thêm xe mới
+            </a>
+        }
+    </div>
 </div>
 
 <!-- Bộ lọc -->
 <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
     <form method="get" asp-action="Manage" class="row g-3 align-items-end">
-        <div class="col-md-4">
+        @if (User.IsInRole("Admin"))
+        {
+            <div class="col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Khu vực</label>
+                <select name="areaId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
+                    <option value="">Tất cả khu vực</option>
+                    @if (ViewBag.Areas != null)
+                    {
+                        foreach (var a in ViewBag.Areas)
+                        {
+                            <option value="@a.AreaID" selected="@(ViewBag.CurrentAreaId == a.AreaID)">@a.Name — @a.Province</option>
+                        }
+                    }
+                </select>
+            </div>
+        }
+        <div class="col-md-3">
             <label class="form-label text-muted small fw-bold text-uppercase">Hãng xe</label>
             <select name="brandId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
                 <option value="">Tất cả hãng xe</option>
@@ -31,7 +58,7 @@
                 }
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label text-muted small fw-bold text-uppercase">Khu vực / Tỉnh thành</label>
             <select name="locationId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
                 <option value="">Tất cả khu vực</option>
@@ -44,14 +71,35 @@
                 }
             </select>
         </div>
-        <div class="col-md-4 text-end">
-            @if(ViewBag.CurrentBrandId != null || ViewBag.CurrentLocationId != null)
-            {
+        <div class="col-md-3">
+            <label class="form-label text-muted small fw-bold text-uppercase">Trạng thái xe</label>
+            <select name="statusId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
+                <option value="">Tất cả trạng thái</option>
+                @if(ViewBag.CarStatuses != null)
+                {
+                    foreach(var status in ViewBag.CarStatuses)
+                    {
+                        <option value="@status.CarStatusID" selected="@(ViewBag.CurrentStatusId == status.CarStatusID)">@status.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        @if (!User.IsInRole("Admin") && (ViewBag.CurrentBrandId != null || ViewBag.CurrentLocationId != null || ViewBag.CurrentStatusId != null || ViewBag.CurrentAreaId != null))
+        {
+            <div class="col-12 text-end">
                 <a asp-action="Manage" class="btn btn-light text-danger fw-bold rounded-3 px-4 py-2">
                     <i class="bi bi-x-circle me-1"></i> Bỏ lọc
                 </a>
-            }
-        </div>
+            </div>
+        }
+        @if (User.IsInRole("Admin") && (ViewBag.CurrentBrandId != null || ViewBag.CurrentLocationId != null || ViewBag.CurrentStatusId != null || ViewBag.CurrentAreaId != null))
+        {
+            <div class="col-12 text-end">
+                <a asp-action="Manage" class="btn btn-light text-danger fw-bold rounded-3 px-4 py-2">
+                    <i class="bi bi-x-circle me-1"></i> Bỏ lọc
+                </a>
+            </div>
+        }
     </form>
 </div>
 
@@ -77,7 +125,7 @@
                                 <div class="car-avatar-admin">
                                     @if (car.CarImages?.Any() == true)
                                     {
-                                        <img src="@car.CarImages.First().ImageUrl" alt="@car.CarName" style="width:100%;height:100%;object-fit:cover;">
+                                        <img src="@car.CarImages.First().ImageUrl" alt="@car.CarName" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
                                     }
                                     else
                                     {
@@ -132,12 +180,23 @@
                             <span class="badge @statusClass px-3 py-1 rounded-pill status-badge-admin">@statusName</span>
                         </td>
                         <td class="text-end pe-4">
-                            <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-outline-primary btn-sm rounded-pill px-3" title="Chỉnh sửa">
-                                <i class="bi bi-pencil me-1"></i>Sửa
-                            </a>
+                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                            {
+                                <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-outline-primary btn-sm rounded-pill px-3" title="Chỉnh sửa">
+                                    <i class="bi bi-pencil me-1"></i>Sửa
+                                </a>
+                            }
                             <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
                                 <i class="bi bi-eye me-1"></i>Chi tiết
                             </a>
+                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                            {
+                                <form asp-action="Delete" asp-route-id="@car.CarID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn đưa xe này vào thùng rác?');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3" title="Xóa mềm">
+                                        <i class="bi bi-trash me-1"></i>Xóa
+                                    </button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }

@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using CarRentalSystem.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
@@ -15,11 +17,16 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     {
         private readonly ICarService _carService;
         private readonly IBookingService _bookingService;
+        private readonly ApplicationDbContext _context;
 
-        public DashboardController(ICarService carService, IBookingService bookingService)
+        public DashboardController(
+            ICarService carService,
+            IBookingService bookingService,
+            ApplicationDbContext context)
         {
             _carService = carService;
             _bookingService = bookingService;
+            _context = context;
         }
 
         public async Task<IActionResult> Index()
@@ -27,7 +34,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var cars = (await _carService.GetAllCarsAsync())?.ToList() ?? new List<CarRentalSystem.Models.Car>();
             var allBookings = await _bookingService.GetAllBookingsAsync() ?? new List<CarRentalSystem.Models.Booking>();
 
-            // Filter out draft bookings (unpaid)
             var bookings = allBookings.Where(b => b.BookingStatus?.Name != "Draft").ToList();
 
             var viewModel = new DashboardViewModel
@@ -45,7 +51,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     .ToDictionary(g => g.Key, g => g.Count())
             };
 
-            // Monthly Revenue (Last 6 months)
             var last6Months = Enumerable.Range(0, 6)
                 .Select(i => DateTime.UtcNow.AddMonths(-i))
                 .OrderBy(d => d)
@@ -57,29 +62,22 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                         .Sum(b => b.TotalPrice) / 1000000
             ).ToList();
 
-            // Top Cars (Most rented) - Only count Completed rentals
             viewModel.TopCars = bookings.Where(b => b.BookingStatus?.Name == "Completed")
                 .GroupBy(b => b.CarID)
                 .Select(g => new TopCarViewModel {
-                    Car = g.FirstOrDefault()?.Car, // Null-safe
+                    Car = g.FirstOrDefault()?.Car,
                     RentalCount = g.Count(),
                     TotalRevenue = ((decimal?)g.Sum(b => b.TotalPrice)) ?? 0m
                 })
-                .Where(x => x.Car != null) // Filter out null cars
+                .Where(x => x.Car != null)
                 .OrderByDescending(x => x.RentalCount)
                 .Take(3)
                 .ToList();
 
-            // ═══════════════════════════════════════════════
-            // 📊 ADDITIONAL DATA FOR VIEWS
-            // ═══════════════════════════════════════════════
-            ViewBag.MaintenanceCostYear = 0; // TODO: Query from MaintenanceService
-            ViewBag.MaintenanceLogs = new List<CarRentalSystem.Models.MaintenanceLog>(); // TODO: Query from MaintenanceService
-            ViewBag.TopCustomers = new List<CarRentalSystem.Areas.Admin.Models.TopCustomerViewModel>(); // TODO: Query from CustomerService
+            ViewBag.MaintenanceCostYear = 0;
+            ViewBag.MaintenanceLogs = new List<CarRentalSystem.Models.MaintenanceLog>();
+            ViewBag.TopCustomers = new List<TopCustomerViewModel>();
 
-            // ═══════════════════════════════════════════════
-            // 📈 BOOKING CHART DATA (by Status)
-            // ═══════════════════════════════════════════════
             viewModel.BookingLabels = bookings
                 .GroupBy(b => b.BookingStatus?.Name ?? "Unknown")
                 .Select(g => g.Key)
@@ -89,9 +87,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .Select(g => g.Count())
                 .ToList();
 
-            // ═══════════════════════════════════════════════
-            // 🚗 CAR CHART DATA (by Status)
-            // ═══════════════════════════════════════════════
             viewModel.CarLabels = cars
                 .GroupBy(c => c.CarStatus?.Name ?? "Unknown")
                 .Select(g => g.Key)

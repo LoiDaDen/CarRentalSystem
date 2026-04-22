@@ -96,7 +96,19 @@ else
                             <td class="text-center">@d.TotalTrips</td>
                             <td class="text-center fw-bold">@(d.HourlyRate > 0 ? d.HourlyRate.ToString("N0") + "đ" : "—")</td>
                             <td class="text-center">
-                                @if (!d.IsApproved)
+                                @if (d.IsBlacklisted)
+                                {
+                                    <span class="badge bg-dark rounded-pill px-3">
+                                        <i class="bi bi-slash-circle me-1"></i>Blacklisted
+                                    </span>
+                                }
+                                else if (d.IsLocked)
+                                {
+                                    <span class="badge bg-danger rounded-pill px-3">
+                                        <i class="bi bi-lock-fill me-1"></i>Đã khóa
+                                    </span>
+                                }
+                                else if (!d.IsApproved)
                                 {
                                     <span class="badge bg-warning text-dark rounded-pill px-3">
                                         <i class="bi bi-hourglass-split me-1"></i>Chờ duyệt
@@ -131,6 +143,19 @@ else
                                     <a asp-action="Edit" asp-route-id="@d.DriverID" class="btn btn-outline-primary rounded-pill px-3" title="Sửa">
                                         <i class="bi bi-pencil"></i>
                                     </a>
+                                    @if(d.IsApproved)
+                                    {
+                                        <form asp-action="ToggleLock" asp-route-id="@d.DriverID" method="post" class="d-inline">
+                                            <button type="submit" class="btn @(d.IsLocked ? "btn-warning" : "btn-outline-warning text-dark") rounded-pill px-3" title="@(d.IsLocked ? "Mở khóa" : "Khóa")">
+                                                <i class="bi @(d.IsLocked ? "bi-unlock" : "bi-lock")"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-action="ToggleBlacklist" asp-route-id="@d.DriverID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn thay đổi trạng thái Blacklist?');">
+                                            <button type="submit" class="btn @(d.IsBlacklisted ? "btn-dark" : "btn-outline-dark") rounded-pill px-3" title="@(d.IsBlacklisted ? "Gỡ Blacklist" : "Blacklist")">
+                                                <i class="bi bi-slash-circle"></i>
+                                            </button>
+                                        </form>
+                                    }
                                 </div>
                             </td>
                         </tr>

@@ -33,7 +33,8 @@ namespace CarRentalSystem.Models
         [Required, MaxLength(100)]
         public string PartyBFullName { get; set; } = string.Empty;
         
-        [MaxLength(20)]
+        // 🔒 CCCD đã mã hóa, cần MaxLength lớn như CitizenId
+        [MaxLength(500)]
         public string? PartyBCCCD { get; set; }
         
         [MaxLength(200)]

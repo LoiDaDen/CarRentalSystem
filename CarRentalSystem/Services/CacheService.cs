@@ -30,7 +30,8 @@ namespace CarRentalSystem.Services
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
+            WriteIndented = false,
+            ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
         };
 
         public CacheService(IDistributedCache cache, ILogger<CacheService> logger)

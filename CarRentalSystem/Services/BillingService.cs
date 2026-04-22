@@ -10,10 +10,12 @@ namespace CarRentalSystem.Services
     public class BillingService : IBillingService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IHolidayPricingService _holidayService;
         
-        public BillingService(ApplicationDbContext context)
+        public BillingService(ApplicationDbContext context, IHolidayPricingService holidayService)
         {
             _context = context;
+            _holidayService = holidayService;
         }
 
         public async Task<BillingQuotation> CalculateQuotationAsync(int carId, int userId, DateTime startDate, DateTime endDate, bool withDriver, decimal addOnFees)
@@ -30,22 +32,28 @@ namespace CarRentalSystem.Services
 
             decimal baseRate = car.PricePerHour;
             
+            // ═══ TÍNH MULTIPLIER TỪ SERVICE ═══
+            // Ưu tiên: Custom DB pricing > Holiday Service pricing
             decimal durationMultiplier = 1.0m;
+            
             var holidayPricings = await _context.HolidayPricings
+                .Where(h => h.IsActive && (h.CarID == null || h.CarID == carId))
                 .Where(h => (h.StartDate <= startDate && h.EndDate >= startDate) || (h.StartDate <= endDate && h.EndDate >= endDate))
                 .ToListAsync();
 
             if (holidayPricings.Any())
             {
-                // Take the max multiplier
                 durationMultiplier = holidayPricings.Max(h => h.PriceMultiplier);
+            }
+            else
+            {
+                // Không có custom pricing -> dùng Holiday Pricing Service
+                durationMultiplier = _holidayService.GetMultiplier(startDate, endDate);
             }
 
             decimal driverFee = 0;
             if (withDriver)
             {
-                // In a real scenario, this would depend on the matched driver's HourlyRate.
-                // Assuming default abstract driver fee 80000 per hour
                 driverFee = 80000m * totalHours; 
             }
 
@@ -57,7 +65,7 @@ namespace CarRentalSystem.Services
                 TotalHours = totalHours,
                 DurationMultiplier = durationMultiplier,
                 DriverFee = driverFee,
-                AdminFee = 50000m, // Fixed dummy admin fee
+                AdminFee = 50000m,
                 MembershipDiscountPercent = membershipDiscountPercent,
                 AddOnFees = addOnFees
             };

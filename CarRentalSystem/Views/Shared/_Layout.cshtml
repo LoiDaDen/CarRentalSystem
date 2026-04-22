@@ -174,6 +174,11 @@
                                             <i class="bi bi-building-check text-warning opacity-75 me-3 fs-5"></i><span class="fw-bold">Cổng Đối Tác (Partner)</span>
                                         </a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center text-info" asp-area="Driver" asp-controller="DriverDashboard" asp-action="Index">
+                                            <i class="bi bi-steering text-info opacity-75 me-3 fs-5"></i><span>Cổng Tài Xế (Driver)</span>
+                                        </a>
+                                    </li>
                                     <li><hr class="dropdown-divider border-light border-opacity-10 my-2"></li>
                                     @if (User.IsInRole("Admin"))
                                     {
@@ -289,23 +294,10 @@
     <script src="~/js/smartrental-map.js" asp-append-version="true"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+    @await Html.PartialAsync("_CarCalendarModal")
+    <script src="~/js/global-calendar.js" asp-append-version="true"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('input[type="datetime-local"]').forEach(function(el) {
-                var currentVal = el.value;
-                flatpickr(el, {
-                    enableTime: true,
-                    time_24hr: true,
-                    dateFormat: 'Y-m-d\\TH:i',
-                    altInput: true,
-                    altFormat: 'd/m/Y - H:i',
-                    locale: 'vn',
-                    defaultDate: currentVal || null,
-                    allowInput: true,
-                    disableMobile: true
-                });
-            });
-        });
+        // Custom global setup if needed, individual inputs are now handled by global-calendar.js
     </script>
     <!-- AI Chatbot Widget -->
     <div id="chatbot-widget" style="position:fixed;bottom:90px;right:20px;width:370px;max-height:500px;z-index:9999;display:none;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.2);">

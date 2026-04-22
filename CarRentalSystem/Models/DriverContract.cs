@@ -39,13 +39,13 @@ namespace CarRentalSystem.Models
         [Required, MaxLength(100)]
         public string PartyBFullName { get; set; } = string.Empty;
         
-        [MaxLength(20)]
+        [MaxLength(500)]
         public string? PartyBCCCD { get; set; }
         
         [MaxLength(20)]
         public string? PartyBLicenseType { get; set; } // GPLX hạng: B1, B2, C, D, E
         
-        [MaxLength(50)]
+        [MaxLength(500)]
         public string? PartyBLicenseNumber { get; set; } // Số GPLX
         
         public int PartyBExperienceYears { get; set; } // Kinh nghiệm lái xe (năm)

@@ -2,6 +2,7 @@ using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using PayOS;
@@ -14,35 +15,40 @@ namespace CarRentalSystem.Controllers
     public class PaymentController : Controller
     {
         private readonly IBookingService _bookingService;
+        private readonly CarRentalSystem.Data.ApplicationDbContext _context;
         private readonly PayOSClient _payOS;
 
-        public PaymentController(IBookingService bookingService, IConfiguration configuration)
+        public PaymentController(IBookingService bookingService, CarRentalSystem.Data.ApplicationDbContext context, IConfiguration configuration)
         {
             _bookingService = bookingService;
+            _context = context;
             string clientId = configuration["PayOS:ClientId"] ?? "";
             string apiKey = configuration["PayOS:ApiKey"] ?? "";
             string checksumKey = configuration["PayOS:ChecksumKey"] ?? "";
 
-            if (string.IsNullOrWhiteSpace(clientId) ||
-                string.IsNullOrWhiteSpace(apiKey) ||
-                string.IsNullOrWhiteSpace(checksumKey))
+            if (!string.IsNullOrWhiteSpace(clientId) &&
+                !string.IsNullOrWhiteSpace(apiKey) &&
+                !string.IsNullOrWhiteSpace(checksumKey))
             {
-                throw new InvalidOperationException(
-                    "Thiếu cấu hình PayOS. Vui lòng thiết lập PayOS:ClientId, PayOS:ApiKey, PayOS:ChecksumKey trong biến môi trường hoặc secret store.");
+                var options = new PayOSOptions
+                {
+                    ClientId = clientId,
+                    ApiKey = apiKey,
+                    ChecksumKey = checksumKey
+                };
+                _payOS = new PayOSClient(options);
             }
-            
-            var options = new PayOSOptions
-            {
-                ClientId = clientId,
-                ApiKey = apiKey,
-                ChecksumKey = checksumKey
-            };
-            _payOS = new PayOSClient(options);
         }
 
         [HttpGet]
         public async Task<IActionResult> CreatePayment(int bookingId)
         {
+            if (_payOS == null)
+            {
+                TempData["Error"] = "Cổng thanh toán PayOS hiện chưa được cấu hình. Vui lòng thiết lập biến môi trường.";
+                return RedirectToAction("Deposit", "Booking", new { id = bookingId });
+            }
+
             var booking = await _bookingService.GetBookingByIdAsync(bookingId);
             if (booking == null) return NotFound();
 
@@ -85,6 +91,7 @@ namespace CarRentalSystem.Controllers
         [IgnoreAntiforgeryToken] // PayOS gửi POST webhook, không có CSRF token
         public async Task<IActionResult> Webhook([FromBody] Webhook webhookData)
         {
+            if (_payOS == null) return BadRequest(new { message = "PayOS not configured" });
             if (webhookData == null) return BadRequest();
 
             try
@@ -118,6 +125,18 @@ namespace CarRentalSystem.Controllers
             }
             
             return View(booking);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SuccessTransaction(int transactionId)
+        {
+            var transaction = await _context.BookingTransactions
+                .Include(t => t.Bookings).ThenInclude(b => b.BookingStatus)
+                .FirstOrDefaultAsync(t => t.TransactionID == transactionId);
+            
+            if (transaction == null) return NotFound();
+            
+            return View(transaction);
         }
 
         [HttpGet]

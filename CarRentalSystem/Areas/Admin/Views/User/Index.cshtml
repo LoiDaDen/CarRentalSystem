@@ -148,7 +148,11 @@
                         <td class="text-center">
                             @if (user.IsBlacklisted)
                             {
-                                <span class="badge bg-dark rounded-pill px-3 py-1 mb-1 d-block"><i class="bi bi-x-circle-fill me-1"></i>Đã khóa</span>
+                                <span class="badge bg-dark rounded-pill px-3 py-1 mb-1 d-block"><i class="bi bi-slash-circle me-1"></i>Blacklisted</span>
+                            }
+                            else if (user.IsLocked)
+                            {
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1 mb-1 d-block"><i class="bi bi-lock-fill me-1"></i>Đã khóa</span>
                             }
                             @if (user.IsVerified)
                             {
@@ -171,28 +175,7 @@
 
                     </tr>
 
-                    <!-- Delete Modal -->
-                    <div class="modal fade" id="delUser-@user.UserID" tabindex="-1">
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-                            <div class="modal-content border-0 shadow-lg rounded-4">
-                                <div class="modal-body p-4 text-center">
-                                    <div class="mb-3">
-                                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style="width:60px;height:60px;">
-                                            <i class="bi bi-person-x-fill text-danger fs-3"></i>
-                                        </span>
-                                    </div>
-                                    <h6 class="fw-800 mb-1">Xóa tài khoản?</h6>
-                                    <p class="text-muted small mb-4">@user.Name sẽ bị xóa khỏi hệ thống.</p>
-                                    <div class="d-flex gap-2">
-                                        <button class="btn btn-light flex-grow-1 rounded-3" data-bs-dismiss="modal">Hủy</button>
-                                        <form asp-action="Delete" asp-route-id="@user.UserID" method="post" class="flex-grow-1">
-                                            <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">Xóa</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <!-- eKYC Modal -->
                     <div class="modal fade" id="ekycUser-@user.UserID" tabindex="-1">
@@ -288,14 +271,16 @@
                                                     </button>
                                                 </form>
                                             }
-                                            <form asp-action="ToggleBlacklist" asp-route-id="@user.UserID" method="post" class="d-inline">
-                                                <button type="submit" class="btn btn-outline-dark btn-sm rounded-pill fw-500">
-                                                    <i class="bi bi-slash-circle me-1"></i>@(user.IsBlacklisted ? "Mở Khóa" : "Khóa Tài Khoản")
+                                            <form asp-action="ToggleLock" asp-route-id="@user.UserID" method="post" class="d-inline">
+                                                <button type="submit" class="btn @(user.IsLocked ? "btn-warning" : "btn-outline-warning text-dark") btn-sm rounded-pill fw-500">
+                                                    <i class="bi @(user.IsLocked ? "bi-unlock" : "bi-lock") me-1"></i>@(user.IsLocked ? "Mở khóa" : "Khóa tạm")
                                                 </button>
                                             </form>
-                                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill fw-500" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#delUser-@user.UserID">
-                                                <i class="bi bi-trash3 me-1"></i>Xóa
-                                            </button>
+                                            <form asp-action="ToggleBlacklist" asp-route-id="@user.UserID" method="post" class="d-inline" onsubmit="return confirm('Xác nhận thay đổi trạng thái Blacklist?');">
+                                                <button type="submit" class="btn @(user.IsBlacklisted ? "btn-dark" : "btn-outline-dark") btn-sm rounded-pill fw-500">
+                                                    <i class="bi bi-slash-circle me-1"></i>@(user.IsBlacklisted ? "Gỡ Blacklist" : "Blacklist")
+                                                </button>
+                                            </form>
                                         </div>
                                         <div class="d-inline mb-0">
                                             @if (user.IsVerified)

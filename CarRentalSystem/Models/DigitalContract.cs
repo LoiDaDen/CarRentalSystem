@@ -76,5 +76,8 @@ namespace CarRentalSystem.Models
         public DateTime? OwnerSignDate { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

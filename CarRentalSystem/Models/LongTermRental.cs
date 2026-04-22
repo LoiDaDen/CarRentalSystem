@@ -23,5 +23,8 @@ namespace CarRentalSystem.Models
         public int TermMonths { get; set; }
         
         public ICollection<PaymentSchedule> PaymentSchedules { get; set; } = new List<PaymentSchedule>();
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

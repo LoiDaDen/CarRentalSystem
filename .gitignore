@@ -52,3 +52,9 @@ errors.log
 query_out.csv
 statuses_out.csv
 seed_data.sql
+
+## Sensitive user data
+CarRentalSystem/wwwroot/uploads/ekyc/
+
+## Misc files
+*.zip

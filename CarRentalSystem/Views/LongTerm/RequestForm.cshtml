@@ -18,6 +18,82 @@
     ) : "[]";
 }
 
+<style>
+    /* Driver cards styling */
+    .drv-card {
+        background: white; border-radius: 14px; padding: 14px;
+        margin-bottom: 10px; border: 2px solid transparent;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        display: flex; gap: 14px; align-items: center;
+        transition: all 0.25s ease; cursor: pointer;
+    }
+    .drv-card:hover { border-color: #93c5fd; box-shadow: 0 4px 20px rgba(59,130,246,0.12); transform: translateY(-1px); }
+    .drv-card.active { border-color: #3b82f6; background: #eff6ff; }
+    .drv-card-avatar {
+        width: 60px; height: 60px; border-radius: 50%; object-fit: cover;
+        border: 3px solid #e2e8f0; flex-shrink: 0;
+    }
+    .drv-card-avatar-placeholder {
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .drv-card-info { flex: 1; min-width: 0; }
+    .drv-card-name { font-weight: 700; font-size: 0.9rem; color: #1e293b; }
+    .drv-card-meta { font-size: 0.68rem; color: #64748b; display: flex; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
+    .drv-card-meta span { display: flex; align-items: center; gap: 2px; }
+    .drv-card-stars { display: flex; gap: 1px; margin-top: 3px; }
+    .drv-card-stars i { font-size: 0.7rem; color: #f59e0b; }
+    .drv-card-rating-text { font-size: 0.68rem; color: #f59e0b; font-weight: 700; margin-left: 4px; }
+    .drv-card-price { text-align: right; flex-shrink: 0; }
+    .drv-card-price .price-val { font-weight: 800; font-size: 0.95rem; color: #059669; }
+    .drv-card-price .price-unit { font-size: 0.6rem; color: #94a3b8; }
+
+    /* Self-drive option */
+    .drv-selfdrive {
+        background: white; border-radius: 14px; padding: 14px;
+        margin-bottom: 14px; border: 2px solid transparent;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        display: flex; align-items: center; gap: 14px;
+        cursor: pointer; transition: all 0.25s;
+    }
+    .drv-selfdrive:hover { border-color: #a3e635; }
+    .drv-selfdrive.active { border-color: #65a30d; background: #f7fee7; }
+    .drv-selfdrive-icon {
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #65a30d, #84cc16);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.5rem; flex-shrink: 0;
+    }
+    /* Driver Popup Styles */
+    .driver-popup-overlay {
+        display: none; position: fixed; inset: 0; z-index: 10000;
+        background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
+        align-items: center; justify-content: center;
+    }
+    .driver-popup-overlay.show { display: flex; }
+    .driver-popup {
+        background: #f8fafc; border-radius: 20px; max-width: 680px; width: 95%;
+        max-height: 85vh; box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+        animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+        overflow: hidden; display: flex; flex-direction: column;
+    }
+    .driver-popup-header {
+        padding: 16px 20px; display: flex; align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%);
+        color: white; flex-shrink: 0;
+    }
+    .driver-popup-header h5 { margin: 0; font-weight: 800; font-size: 1rem; }
+    .driver-popup-header .subtitle { font-size: 0.7rem; opacity: 0.8; margin-top: 2px; }
+    .driver-popup-body {
+        padding: 16px 20px; overflow-y: auto; flex: 1;
+    }
+    .driver-popup-body::-webkit-scrollbar { width: 5px; }
+    .driver-popup-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+</style>
+
 <div class="container py-5 mt-5">
     <!-- Advanced Consultation Form -->
     <div class="row justify-content-center" id="request-form">
@@ -127,7 +203,7 @@
 
                         <!-- Bộ lọc xe -->
                         <div class="row g-3 mb-4">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="small text-muted fw-bold mb-2">Hãng xe</label>
                                 <select id="brandFilter" class="form-select bg-light border-0 shadow-none" onchange="loadAvailableCars()">
                                     <option value="">Tất cả hãng</option>
@@ -141,7 +217,7 @@
                                     <option value="BMW">BMW</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="small text-muted fw-bold mb-2">Số chỗ</label>
                                 <select id="seatsFilter" class="form-select bg-light border-0 shadow-none" onchange="loadAvailableCars()">
                                     <option value="">Tất cả</option>
@@ -151,7 +227,7 @@
                                     <option value="9">9 chỗ</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="small text-muted fw-bold mb-2">Loại xe</label>
                                 <select id="carTypeFilter" class="form-select bg-light border-0 shadow-none" onchange="loadAvailableCars()">
                                     <option value="">Tất cả loại</option>
@@ -159,6 +235,16 @@
                                     <option value="SUV">SUV</option>
                                     <option value="MPV">MPV</option>
                                     <option value="Hatchback">Hatchback</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small text-muted fw-bold mb-2">Ngân sách / tháng</label>
+                                <select id="priceFilter" class="form-select bg-light border-0 shadow-none" onchange="loadAvailableCars()">
+                                    <option value="150000000">Tất cả ngân sách</option>
+                                    <option value="15000000">Dưới 15 Tr / tháng</option>
+                                    <option value="25000000">Dưới 25 Tr / tháng</option>
+                                    <option value="40000000">Dưới 40 Tr / tháng</option>
+                                    <option value="70000000">Dưới 70 Tr / tháng</option>
                                 </select>
                             </div>
                         </div>
@@ -241,6 +327,28 @@
                             </div>
                         </div>
 
+                        <!-- Yêu cầu tài xế -->
+                        <div class="mb-4">
+                            <label class="small text-muted fw-bold mb-2"><i class="bi bi-person-badge text-primary me-1"></i>Tùy chọn Tài xế <span class="badge bg-success ms-1">Mới</span></label>
+                            <input type="hidden" name="SelectedDriverID" id="selectedDriverIdInput" value="" />
+                            
+                            <div class="border p-3 rounded-3 bg-light m-0">
+                                <!-- Compact trigger button -->
+                                <div class="drv-selfdrive active p-2 m-0" id="selectedDriverBtn" style="cursor:pointer;" onclick="openDriverPopup()">
+                                    <div class="drv-selfdrive-icon" style="width:46px; height:46px; font-size:1.2rem;" id="selectedDriverIcon"><i class="bi bi-steering-wheel"></i></div>
+                                    <div class="drv-card-info ms-2">
+                                        <div class="drv-card-name fs-6" id="selectedDriverName">Tự lái (Không kèm tài xế)</div>
+                                        <div class="drv-card-meta"><span id="selectedDriverMeta">Bạn sẽ tự điều khiển phương tiện</span></div>
+                                    </div>
+                                    <div class="drv-card-price ms-auto me-2">
+                                        <div class="price-val fs-5" id="selectedDriverPrice">0đ</div>
+                                    </div>
+                                    <div class="text-success"><i class="bi bi-check-circle-fill fs-5"></i></div>
+                                </div>
+                            </div>
+                            <div class="form-text small mt-1 text-secondary"><i class="bi bi-info-circle me-1"></i>Chi phí thuê tài xế sẽ cộng thêm vào ngân sách hợp đồng dựa theo số ngày thực tế.</div>
+                        </div>
+
                         <!-- Requirements -->
                         <div class="mb-4">
                             <label class="small text-muted fw-bold mb-2">Yêu cầu chi tiết về xe muốn thuê</label>
@@ -263,6 +371,74 @@
         </div>
     </div>
 </div>
+
+</div>
+
+@if (ViewBag.Drivers != null)
+{
+<div class="driver-popup-overlay" id="driverOverlay" onclick="closeDriverPopup(event)">
+    <div class="driver-popup" onclick="event.stopPropagation()">
+        <div class="driver-popup-header">
+            <div>
+                <h5>Tùy chọn Tài xế</h5>
+                <div class="subtitle">Tăng thêm sự thoải mái cho chuyến đi của bạn</div>
+            </div>
+            <button class="btn-close btn-close-white" onclick="closeDriverPopup()"></button>
+        </div>
+        <div class="driver-popup-body" id="driverPopupBody">
+            <div class="drv-selfdrive active" id="drv-0" onclick="selectDriverNew('', 'drv-0', 'Tự lái (Không kèm tài xế)', 'Bạn sẽ tự điều khiển phương tiện', '', 0)">
+                <div class="drv-selfdrive-icon"><i class="bi bi-steering-wheel"></i></div>
+                <div class="drv-card-info">
+                    <div class="drv-card-name">Tự lái (Không kèm tài xế)</div>
+                    <div class="drv-card-meta"><span><i class="bi bi-check-circle me-1"></i>Bạn sẽ tự điều khiển phương tiện</span></div>
+                </div>
+                <div class="drv-card-price">
+                    <div class="price-val">0đ</div>
+                </div>
+                <div class="ms-2 active-indicator" style="display: block; color:#65a30d; font-weight:bold; font-size: 1.2rem;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>
+
+            @foreach (var driver in (IEnumerable<Driver>)ViewBag.Drivers)
+            {
+                <div class="drv-card" id="drv-@driver.DriverID" onclick="selectDriverNew('@driver.DriverID', 'drv-@driver.DriverID', '@driver.FullName', '@driver.ExperienceYears năm KN - Bằng @driver.LicenseType', '@driver.AvatarUrl', @driver.DailyRate)">
+                    @if (!string.IsNullOrEmpty(driver.AvatarUrl))
+                    {
+                        <img src="@driver.AvatarUrl" class="drv-card-avatar" alt="Avatar" />
+                    }
+                    else
+                    {
+                        <div class="drv-card-avatar-placeholder"><i class="bi bi-person-fill"></i></div>
+                    }
+                    <div class="drv-card-info">
+                        <div class="drv-card-name">@driver.FullName</div>
+                        <div class="drv-card-meta">
+                            <span><i class="bi bi-geo-alt"></i> @driver.Location?.Name</span>
+                            <span><i class="bi bi-award"></i> @driver.ExperienceYears năm KN</span>
+                            <span><i class="bi bi-card-checklist"></i> Bằng @driver.LicenseType</span>
+                        </div>
+                        <div class="drv-card-stars">
+                            @for (int s = 0; s < (int)Math.Round((double)driver.Rating); s++)
+                            {
+                                <i class="bi bi-star-fill"></i>
+                            }
+                            <span class="drv-card-rating-text">@driver.Rating.ToString("0.0")</span>
+                        </div>
+                    </div>
+                    <div class="drv-card-price">
+                        <div class="price-val">@driver.DailyRate.ToString("N0")đ</div>
+                        <div class="price-unit">/ngày</div>
+                    </div>
+                    <div class="ms-2 active-indicator" style="display: none; color:#3b82f6; font-weight:bold; font-size: 1.2rem;">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+}
 
 @section Scripts {
     <script>
@@ -395,6 +571,7 @@
             const brandFilter = document.getElementById('brandFilter');
             const seatsFilter = document.getElementById('seatsFilter');
             const carTypeFilter = document.getElementById('carTypeFilter');
+            const priceFilter = document.getElementById('priceFilter');
             const startDateInput = document.getElementById('startDateInput');
 
             const locationId = locationSelect?.options[locationSelect.selectedIndex]?.getAttribute('data-location-id') || 1;
@@ -402,6 +579,7 @@
             const brand = brandFilter?.value || '';
             const seats = seatsFilter?.value || '';
             const carType = carTypeFilter?.value || '';
+            const maxPrice = priceFilter?.value || '';
             const startDate = startDateInput?.value || '';
 
             // Show loading
@@ -419,6 +597,7 @@
                 if (brand) url += '&brand=' + encodeURIComponent(brand);
                 if (seats) url += '&minSeats=' + seats;
                 if (carType) url += '&carType=' + encodeURIComponent(carType);
+                if (maxPrice) url += '&maxMonthlyPrice=' + maxPrice;
 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -596,8 +775,12 @@
             }
 
             // Calculate prices
-            const basePrice = car.pricePerDay * minDays;
-            const contractDiscount = basePrice * (discountPercent / 100);
+            const contractDiscount = (car.pricePerDay * minDays + (window.selectedDriverRate || 0) * minDays) * (discountPercent / 100);
+            
+            // Adjust basePrice to show the raw total (Car + Driver) before discount
+            const driverComponent = (window.selectedDriverRate || 0) * minDays;
+            const basePrice = (car.pricePerDay * minDays) + driverComponent;
+            
             const finalPrice = basePrice - contractDiscount;
             const monthlyRate = finalPrice / termMonths;
             const deposit = car.pricePerDay * 30 * 0.5; // Approx 50% of monthly price as deposit
@@ -612,6 +795,9 @@
 
             priceSection.style.display = 'block';
         }
+
+        // Initialize global driver rate when form loads
+        window.selectedDriverRate = 0;
 
         // Form validation before submit
         document.getElementById('rentalForm').addEventListener('submit', function(e) {
@@ -745,5 +931,68 @@
         document.addEventListener('DOMContentLoaded', function() {
             initCalendar();
         });
+
+        // Driver selection
+        function selectDriverNew(driverId, elemId, name, metaLabel, iconUrl, dailyRate) {
+            document.getElementById('selectedDriverIdInput').value = driverId;
+            
+            // Remove active classes
+            document.querySelectorAll('.drv-card, .drv-selfdrive').forEach(el => {
+                el.classList.remove('active');
+                if(el.querySelector('.active-indicator')) {
+                    el.querySelector('.active-indicator').style.display = 'none';
+                }
+            });
+            
+            // Set active
+            let sel = document.getElementById(elemId);
+            if(sel) {
+                sel.classList.add('active');
+                if(sel.querySelector('.active-indicator')) {
+                    sel.querySelector('.active-indicator').style.display = 'block';
+                }
+            }
+
+            // Sync with parent trigger button
+            document.getElementById('selectedDriverName').innerText = name;
+            document.getElementById('selectedDriverPrice').innerText = dailyRate > 0 ? (dailyRate.toLocaleString('vi-VN') + 'đ/ngày') : '0đ';
+            document.getElementById('selectedDriverMeta').innerText = metaLabel;
+
+            let iconHtml = '';
+            if (driverId) {
+                 if (iconUrl && iconUrl !== '') {
+                     iconHtml = '<img src="' + iconUrl + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
+                 } else {
+                     iconHtml = '<i class="bi bi-person-fill"></i>';
+                 }
+                 document.getElementById('selectedDriverIcon').innerHTML = iconHtml;
+                 document.getElementById('selectedDriverIcon').style.background = 'linear-gradient(135deg, #3b82f6, #8b5cf6)';
+                 document.getElementById('selectedDriverBtn').classList.remove('drv-selfdrive');
+                 document.getElementById('selectedDriverBtn').classList.add('drv-card');
+                 document.getElementById('selectedDriverBtn').classList.add('active'); // mimic active card
+            } else {
+                 document.getElementById('selectedDriverIcon').innerHTML = '<i class="bi bi-steering-wheel"></i>';
+                 document.getElementById('selectedDriverIcon').style.background = 'linear-gradient(135deg, #65a30d, #84cc16)';
+                 document.getElementById('selectedDriverBtn').classList.remove('drv-card');
+                 document.getElementById('selectedDriverBtn').classList.add('drv-selfdrive');
+            }
+
+            closeDriverPopup();
+            
+            // Trigger price update with new driver rate
+            window.selectedDriverRate = dailyRate || 0;
+            updatePriceEstimate();
+        }
+
+        function openDriverPopup() {
+            document.getElementById('driverOverlay').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeDriverPopup(e) {
+            if (e && e.target !== document.getElementById('driverOverlay')) return;
+            document.getElementById('driverOverlay').classList.remove('show');
+            document.body.style.overflow = '';
+        }
     </script>
 }

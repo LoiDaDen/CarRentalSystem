@@ -37,6 +37,10 @@ namespace CarRentalSystem.Models
         [ForeignKey("CarID")]
         public Car? Car { get; set; }
 
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
+
         public Payment? Payment { get; set; }
         public RentalContract? RentalContract { get; set; }
         public DigitalContract? DigitalContract { get; set; }

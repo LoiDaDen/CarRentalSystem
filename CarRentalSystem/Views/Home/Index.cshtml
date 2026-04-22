@@ -104,13 +104,14 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="home-label fw-bold"><i class="bi bi-calendar-event text-primary"></i> Ngày giờ nhận</label>
-                            <input type="datetime-local" class="form-control home-input" name="startDate" id="heroStartDate" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="home-label fw-bold"><i class="bi bi-calendar-check text-primary"></i> Ngày giờ trả</label>
-                            <input type="datetime-local" class="form-control home-input" name="endDate" id="heroEndDate" required>
+                        <div class="col-md-6">
+                            <label class="home-label fw-bold"><i class="bi bi-calendar-range text-primary"></i> Lịch thuê xe</label>
+                            <div class="form-control home-input d-flex align-items-center justify-content-between" onclick="openCarCalendar({startInputId: 'heroStartDate', endInputId: 'heroEndDate', defaultStart: document.getElementById('heroStartDate').value, defaultEnd: document.getElementById('heroEndDate').value})" style="cursor: pointer; min-height: 48px;">
+                                <span id="heroCalendarDisplay" data-calendar-display class="fw-bold text-dark">Chọn thời gian...</span>
+                                <i class="bi bi-pencil-square text-muted"></i>
+                            </div>
+                            <input type="hidden" name="startDate" id="heroStartDate" required>
+                            <input type="hidden" name="endDate" id="heroEndDate" required>
                         </div>
                         <div class="col-md-3">
                             <button type="submit" class="btn btn-success w-100 home-btn-search py-3 fs-5">TÌM XE</button>
@@ -174,6 +175,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function fmtDT(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
     var s = document.getElementById('heroStartDate'); var e = document.getElementById('heroEndDate');
     if (s) s.value = fmtDT(start); if (e) e.value = fmtDT(end);
+    var dDisp = document.getElementById('heroCalendarDisplay');
+    if (dDisp) {
+        var m1 = String(start.getMonth() + 1).padStart(2,'0'); var d1 = String(start.getDate()).padStart(2,'0');
+        var h1 = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
+        var m2 = String(end.getMonth() + 1).padStart(2,'0'); var d2 = String(end.getDate()).padStart(2,'0');
+        var h2 = String(end.getHours()).padStart(2,'0') + ':' + String(end.getMinutes()).padStart(2,'0');
+        dDisp.innerText = d1 + '/' + m1 + ' ' + h1 + ' - ' + d2 + '/' + m2 + ' ' + h2;
+    }
     document.querySelectorAll('#rentalTabs .nav-link').forEach(function(tab) {
         tab.addEventListener('click', function() {
             document.querySelectorAll('#rentalTabs .nav-link').forEach(function(t) { t.classList.remove('tab-btn-primary'); t.classList.add('tab-btn-secondary'); });

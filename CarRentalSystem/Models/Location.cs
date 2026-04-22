@@ -18,5 +18,8 @@ namespace CarRentalSystem.Models
         public double Longitude { get; set; } = 106.7009;
 
         public ICollection<Car>? Cars { get; set; } = new List<Car>();
+
+        // Phase 10: Area Management
+        public ICollection<AreaLocation>? AreaLocations { get; set; } = new List<AreaLocation>();
     }
 }

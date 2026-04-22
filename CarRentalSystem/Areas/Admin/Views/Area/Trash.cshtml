@@ -1,0 +1,188 @@
+@* CarRentalSystem/Areas/Admin/Views/Area/Trash.cshtml *@
+@using CarRentalSystem.Helpers
+@model PaginatedList<CarRentalSystem.Models.Area>
+@{
+    ViewData["Title"] = "Thùng rác - Khu vực";
+    Layout = "_AdminLayout";
+
+    int index = (Model.PageIndex - 1) * Model.PageSize + 1;
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-800 ls-neg-1 mb-1">
+            <i class="bi bi-trash3-fill text-danger me-2"></i>Thùng rác Khu vực
+        </h2>
+        <p class="text-muted mb-0">Các khu vực đã bị xóa. Chỉ có Admin mới có thể khôi phục hoặc xóa vĩnh viễn.</p>
+    </div>
+    <div>
+        <a asp-area="Admin" asp-controller="Area" asp-action="Index" class="btn btn-outline-secondary rounded-3 px-4 fw-bold shadow-sm">
+            <i class="bi bi-arrow-left me-2"></i>Quay lại
+        </a>
+    </div>
+</div>
+
+<!-- Flash Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2 animate__animated animate__fadeInDown">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2 animate__animated animate__fadeInDown">
+        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        <span>@TempData["Error"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-4 text-center" style="background: linear-gradient(135deg, #fff1f2, #fff);">
+            <h3 class="fw-800 text-danger mb-0">@Model.TotalCount</h3>
+            <small class="text-muted fw-bold text-uppercase" style="font-size:0.68rem; letter-spacing:0.8px;">Đã xóa</small>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead style="background: #f8fafd;">
+                <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
+                    <th class="ps-4">STT</th>
+                    <th>Tên khu vực</th>
+                    <th>Mã</th>
+                    <th>Tỉnh / TP</th>
+                    <th>Manager</th>
+                    <th class="text-center">Địa điểm</th>
+                    <th>Xóa lúc</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <i class="bi bi-check-circle fs-1 d-block mb-3 text-success opacity-50"></i>
+                            <span class="text-muted fw-medium">Thùng rác trống.</span>
+                        </td>
+                    </tr>
+                }
+                @foreach (var area in Model)
+                {
+                    var activeLocations = area.AreaLocations?.Where(l => !l.IsDeleted).ToList() ?? new();
+
+                    <tr>
+                        <td class="ps-4 text-muted fw-medium">@(index++)</td>
+                        <td>
+                            <div class="fw-bold text-dark">@area.Name</div>
+                            <small class="text-muted">@area.Address</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-dark rounded-3 px-3 py-2" style="font-family: monospace; font-size: 0.75rem;">
+                                @area.Code
+                            </span>
+                        </td>
+                        <td>
+                            <span class="fw-medium">@area.Province</span>
+                        </td>
+                        <td>
+                            @if (area.Manager != null)
+                            {
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white"
+                                         style="width:28px;height:28px;font-size:0.7rem; font-weight:700;">
+                                        @area.Manager.Name.Substring(0, 1).ToUpper()
+                                    </div>
+                                    <div>
+                                        <div class="fw-medium small text-dark">@area.Manager.Name</div>
+                                        <div class="text-muted" style="font-size:0.7rem;">@area.Manager.Email</div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">—</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary rounded-3">@activeLocations.Count</span>
+                        </td>
+                        <td>
+                            <span class="small text-muted">@area.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <form asp-area="Admin" asp-controller="Area" asp-action="Restore" asp-route-id="@area.AreaID"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Khôi phục khu vực &quot;@area.Name&quot;?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-light btn-sm rounded-3 text-success" title="Khôi phục">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                </form>
+                                <form asp-area="Admin" asp-controller="Area" asp-action="DeletePermanent" asp-route-id="@area.AreaID"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Xóa vĩnh viễn khu vực &quot;@area.Name&quot;. Hành động này KHÔNG THỂ hoàn tác!');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-light btn-sm rounded-3 text-danger" title="Xóa vĩnh viễn">
+                                        <i class="bi bi-x-octagon"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer border-0 bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">
+                    Trang @(Model.PageIndex) / @(Model.TotalPages) — @(Model.TotalCount) kết quả
+                </span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+                        @{
+                            var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+                            var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+                        }
+                        <li class="page-item @prevDisabled">
+                            <a class="page-link rounded-3 @(prevDisabled)" asp-area="Admin" asp-controller="Area" asp-action="Trash"
+                               asp-route-page="@(Model.PageIndex - 1)" asp-route-pageSize="@Model.PageSize">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        @for (var i = 1; i <= Model.TotalPages; i++)
+                        {
+                            var active = Model.PageIndex == i ? "active bg-primary border-primary" : "";
+                            <li class="page-item">
+                                <a class="page-link rounded-3 @active" asp-area="Admin" asp-controller="Area" asp-action="Trash"
+                                   asp-route-page="@i" asp-route-pageSize="@Model.PageSize">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @nextDisabled">
+                            <a class="page-link rounded-3 @(nextDisabled)" asp-area="Admin" asp-controller="Area" asp-action="Trash"
+                               asp-route-page="@(Model.PageIndex + 1)" asp-route-pageSize="@Model.PageSize">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+</div>

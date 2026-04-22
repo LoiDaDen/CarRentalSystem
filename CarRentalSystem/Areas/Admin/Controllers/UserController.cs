@@ -93,6 +93,90 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // ═══ DUYỆT ĐỐI TÁC + TẠO HỢP ĐỒNG ═══
+        [HttpPost]
+        public async Task<IActionResult> ApprovePartner(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            // Verify user is Partner and not yet approved
+            if (user.Role != "Partner")
+            {
+                TempData["Error"] = "Người dùng này không phải là Đối tác.";
+                return RedirectToAction(nameof(PartnerRequests));
+            }
+
+            if (user.IsVerified)
+            {
+                TempData["Info"] = $"{user.Name} đã được phê duyệt trước đó.";
+                return RedirectToAction(nameof(PartnerRequests));
+            }
+
+            // Bước 1: Duyệt eKYC
+            user.IsVerified = true;
+            await _context.SaveChangesAsync();
+
+            // Bước 2: Kiểm tra đã có HĐ chưa, nếu chưa thì tạo mới
+            var existingContract = await _context.PartnerContracts
+                .AnyAsync(pc => pc.PartnerUserID == user.UserID && (pc.Status == "Pending" || pc.Status == "Active"));
+
+            if (!existingContract)
+            {
+                var contractCount = await _context.PartnerContracts.CountAsync() + 1;
+                var contractNo = $"{contractCount:D4}/{DateTime.UtcNow.Year}/HĐHT-XT";
+                var now = DateTime.UtcNow;
+
+                var contract = new PartnerContract
+                {
+                    ContractNo = contractNo,
+                    PartnerUserID = user.UserID,
+                    PartyAName = "Công ty TNHH Cho Thuê Xe CarRental",
+                    PartyAAddress = "TP. Hồ Chí Minh, Việt Nam",
+                    PartyBFullName = user.Name,
+                    PartyBCCCD = user.CitizenId ?? "",
+                    PartyBRevenuePercent = 80.00m,
+                    PartyARevenuePercent = 20.00m,
+                    PaymentDay = 5,
+                    PaymentCycle = "Hàng tháng",
+                    ContractDurationMonths = 0, // Vĩnh viễn
+                    NoticePeriodDays = 15,
+                    Status = "Pending",
+                    CreatedAt = now,
+                    ExpiresAt = now.AddDays(7),
+                    SignedByPartyA = true,
+                    PartyASignDate = now,
+                    TermsContent = GeneratePartnerContractTerms(user)
+                };
+
+                _context.PartnerContracts.Add(contract);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Đã duyệt Đối tác {user.Name} và tạo Hợp đồng #{contractNo}. Đối tác có 7 ngày để ký xác nhận.";
+            }
+            else
+            {
+                TempData["Success"] = $"Đã duyệt eKYC của {user.Name}. Hợp đồng đã tồn tại.";
+            }
+
+            return RedirectToAction(nameof(PartnerRequests));
+        }
+
+        // ═══ BỎ DUYỆT ĐỐI TÁC ═══
+        [HttpPost]
+        public async Task<IActionResult> RejectPartner(int id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound();
+
+            user.IsVerified = false;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã bỏ duyệt Đối tác {user.Name}.";
+            return RedirectToAction(nameof(PartnerRequests));
+        }
+
+        // ToggleVerify - Giữ lại cho Index.cshtml (duyệt eKYC thông thường)
         [HttpPost]
         public async Task<IActionResult> ToggleVerify(int id)
         {
@@ -189,6 +273,14 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var user = await _context.Users.FindAsync(id);
             if (user != null)
             {
+                // Constraint: Cannot blacklist if there are active bookings
+                bool hasActiveBookings = await _context.Bookings.AnyAsync(b => b.UserID == id && (b.BookingStatus.Name == "Confirmed" || b.BookingStatus.Name == "Active"));
+                if (hasActiveBookings && !user.IsBlacklisted) // Only check constraint when blacklisting, allow un-blacklisting
+                {
+                    TempData["Error"] = "Không thể đưa tài khoản này vào danh sách đen vì người dùng đang có chuyến đi chưa hoàn tất. Vui lòng xử lý chuyến đi trước.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 user.IsBlacklisted = !user.IsBlacklisted;
                 user.BlacklistReason = user.IsBlacklisted ? (reason ?? "Vi phạm chính sách nền tảng") : null;
                 await _context.SaveChangesAsync();
@@ -198,14 +290,23 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> ToggleLock(int id)
         {
             var user = await _context.Users.FindAsync(id);
             if (user != null)
             {
-                _context.Users.Remove(user);
+                // Constraint: Cannot block if there are active bookings
+                bool hasActiveBookings = await _context.Bookings.AnyAsync(b => b.UserID == id && (b.BookingStatus.Name == "Confirmed" || b.BookingStatus.Name == "Active"));
+                if (hasActiveBookings && !user.IsLocked) // Only check constraint when locking
+                {
+                    TempData["Error"] = "Không thể khóa tài khoản này vì người dùng đang có chuyến đi chưa hoàn tất.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                user.IsLocked = !user.IsLocked;
+                user.LockedAt = user.IsLocked ? DateTime.UtcNow : null;
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Đã xóa tài khoản người dùng.";
+                TempData["Success"] = user.IsLocked ? $"Đã khóa tài khoản {user.Name} tạm thời." : $"Đã mở khóa tài khoản {user.Name}.";
             }
             return RedirectToAction(nameof(Index));
         }

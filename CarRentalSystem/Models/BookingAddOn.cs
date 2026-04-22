@@ -17,5 +17,8 @@ namespace CarRentalSystem.Models
         
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalPrice { get; set; }
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

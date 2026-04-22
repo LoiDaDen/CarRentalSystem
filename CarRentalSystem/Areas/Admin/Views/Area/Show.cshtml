@@ -1,0 +1,710 @@
+@* CarRentalSystem/Areas/Admin/Views/Area/Show.cshtml *@
+@model CarRentalSystem.Models.Area
+@{
+    ViewData["Title"] = Model.Name;
+    Layout = "_AdminLayout";
+
+    var activeStaffs = Model.AreaStaffs?.Where(s => !s.IsDeleted).ToList() ?? new();
+    var activeLocations = Model.AreaLocations?.Where(l => !l.IsDeleted).ToList() ?? new();
+    var totalCars = activeLocations.Sum(l => l.Location?.Cars?.Count(c => !c.IsDeleted) ?? 0);
+    var availableCars = activeLocations.Sum(l => l.Location?.Cars?.Count(c => !c.IsDeleted && c.CarStatusID == 1) ?? 0);
+    var isManager = User.IsInRole("Admin") || User.IsInRole("Manager") || activeStaffs.Any(s =>
+        s.UserID.ToString() == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+        && s.RoleInArea == "manager");
+}
+
+<!-- Flash Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2 animate__animated animate__fadeInDown">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2 animate__animated animate__fadeInDown">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>@TempData["Error"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-3 mb-2">
+            <a asp-area="Admin" asp-controller="Area" asp-action="Index" class="btn btn-light rounded-3 btn-sm border fw-bold">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h2 class="fw-800 ls-neg-1 mb-0">
+                <i class="bi bi-geo-alt-fill text-primary me-2"></i>@Model.Name
+            </h2>
+            <span class="badge bg-dark rounded-3 px-3 py-2" style="font-family:monospace; font-size:0.75rem;">@Model.Code</span>
+            @if (Model.Status == "active")
+            {
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-bold" style="font-size:0.72rem;">
+                    <i class="bi bi-check-circle-fill me-1"></i>Đang hoạt động
+                </span>
+            }
+            else
+            {
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2 fw-bold" style="font-size:0.72rem;">
+                    <i class="bi bi-x-circle-fill me-1"></i>Tạm ngưng
+                </span>
+            }
+        </div>
+        <p class="text-muted mb-0 ms-5">
+            <i class="bi bi-pin-map me-1"></i>@Model.Province@(string.IsNullOrEmpty(Model.Address) ? "" : " — " + Model.Address)
+        </p>
+    </div>
+    @if (isManager)
+    {
+        <div class="d-flex gap-2">
+            <a asp-area="Admin" asp-controller="Area" asp-action="Edit" asp-route-id="@Model.AreaID"
+               class="btn btn-warning rounded-3 px-4 fw-bold shadow-sm text-dark">
+                <i class="bi bi-pencil me-2"></i>Sửa khu vực
+            </a>
+        </div>
+    }
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="background: linear-gradient(135deg, #eff6ff, #dbeafe);">
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                <i class="bi bi-car-front-fill text-primary fs-5"></i>
+                <h3 class="fw-800 text-primary mb-0">@totalCars</h3>
+            </div>
+            <small class="text-muted fw-bold text-uppercase" style="font-size:0.65rem; letter-spacing:0.8px;">Tổng xe</small>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="background: linear-gradient(135deg, #ecfdf5, #d1fae5);">
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                <h3 class="fw-800 text-success mb-0">@availableCars</h3>
+            </div>
+            <small class="text-muted fw-bold text-uppercase" style="font-size:0.65rem; letter-spacing:0.8px;">Xe sẵn sàng</small>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="background: linear-gradient(135deg, #fffbeb, #fef3c7);">
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                <i class="bi bi-receipt-cutoff text-warning fs-5"></i>
+                <h3 class="fw-800 text-warning mb-0">@(ViewBag.MonthlyOrders ?? 0)</h3>
+            </div>
+            <small class="text-muted fw-bold text-uppercase" style="font-size:0.65rem; letter-spacing:0.8px;">Đơn tháng này</small>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm rounded-4 p-3 text-center" style="background: linear-gradient(135deg, #f5f3ff, #ede9fe);">
+            <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                <i class="bi bi-currency-dollar text-purple fs-5"></i>
+                <h3 class="fw-800 text-purple mb-0" style="color:#7c3aed;">@(((decimal)(ViewBag.MonthlyRevenue ?? 0m)).ToString("N0"))</h3>
+            </div>
+            <small class="text-muted fw-bold text-uppercase" style="font-size:0.65rem; letter-spacing:0.8px;">Doanh thu tháng</small>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs border-0 mb-4" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#tab-overview"
+                type="button" role="tab">
+            <i class="bi bi-pie-chart me-2"></i>Tổng quan
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tab-locations"
+                type="button" role="tab">
+            <i class="bi bi-geo-alt me-2"></i>Địa điểm <span class="badge bg-secondary rounded-pill ms-1">@activeLocations.Count</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tab-staffs"
+                type="button" role="tab">
+            <i class="bi bi-people me-2"></i>Nhân sự <span class="badge bg-secondary rounded-pill ms-1">@activeStaffs.Count</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tab-bookings"
+                type="button" role="tab">
+            <i class="bi bi-receipt me-2"></i>Đơn hàng
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    <!-- ======= TAB 1: Tổng quan ======= -->
+    <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+        <div class="row g-4">
+            <!-- Chart -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-800 mb-0">
+                            <i class="bi bi-graph-up-arrow text-primary me-2"></i>Đơn đặt 30 ngày gần nhất
+                        </h5>
+                        <span class="badge bg-light text-dark border fw-bold" style="font-size:0.7rem;">30 ngày</span>
+                    </div>
+                    <div style="height: 260px;">
+                        <canvas id="ordersChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                    <h5 class="fw-800 mb-3">
+                        <i class="bi bi-info-circle text-primary me-2"></i>Thông tin khu vực
+                    </h5>
+                    <div class="vstack gap-3">
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Mã</span>
+                            <span class="fw-bold" style="font-family:monospace;">@Model.Code</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Tỉnh / TP</span>
+                            <span class="fw-bold">@Model.Province</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Địa chỉ</span>
+                            <span class="fw-bold text-end" style="font-size:0.85rem;">@(string.IsNullOrEmpty(Model.Address) ? "—" : Model.Address)</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Manager</span>
+                            <span class="fw-bold">@(Model.Manager?.Name ?? "—")</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Ngày tạo</span>
+                            <span class="fw-bold">@Model.CreatedAt.ToString("dd/MM/yyyy")</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Địa điểm</span>
+                            <span class="fw-bold">@activeLocations.Count</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Nhân sự</span>
+                            <span class="fw-bold">@activeStaffs.Count</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-2">
+                            <span class="text-muted small fw-bold text-uppercase" style="font-size:0.7rem;">Tỷ lệ xe</span>
+                            <span class="fw-bold">@(totalCars > 0 ? Math.Round((decimal)availableCars / totalCars * 100, 1) : 0)%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======= TAB 2: Địa điểm ======= -->
+    <div class="tab-pane fade" id="tab-locations" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-800 mb-0"><i class="bi bi-geo-alt-fill text-primary me-2"></i>Danh sách địa điểm</h5>
+                @if (isManager)
+                {
+                    <button type="button" class="btn btn-primary rounded-3 fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#locationModal">
+                        <i class="bi bi-plus-lg me-2"></i>Thêm địa điểm
+                    </button>
+                }
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background: #f8fafd;">
+                        <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
+                            <th class="ps-4">Địa điểm</th>
+                            <th>Địa chỉ</th>
+                            <th class="text-center">Số xe</th>
+                            <th class="text-center">Xe sẵn sàng</th>
+                            <th class="text-end pe-4">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!activeLocations.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="bi bi-geo-alt fs-1 d-block mb-2 opacity-50"></i>
+                                    Chưa có địa điểm nào.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var al in activeLocations)
+                        {
+                            var loc = al.Location;
+                            var locCars = loc?.Cars?.Where(c => !c.IsDeleted).ToList() ?? new();
+                            var locAvail = locCars.Count(c => c.CarStatusID == 1);
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-3 d-flex align-items-center justify-content-center"
+                                             style="width:36px;height:36px; background:#dbeafe;">
+                                            <i class="bi bi-geo-alt-fill text-primary"></i>
+                                        </div>
+                                        <span class="fw-bold">@loc?.Name</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-muted small">@(string.IsNullOrEmpty(loc?.Address) ? "—" : loc.Address)</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info rounded-3">@locCars.Count</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success rounded-3">@locAvail</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    @if (isManager)
+                                    {
+                                        <form asp-area="Admin" asp-controller="AreaLocation" asp-action="Remove"
+                                              method="post" class="d-inline"
+                                              onsubmit="return confirm('Gỡ địa điểm &quot;@loc?.Name&quot; khỏi khu vực này?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="areaId" value="@Model.AreaID" />
+                                            <input type="hidden" name="locationId" value="@loc?.LocationID" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-3">
+                                                <i class="bi bi-unlink me-1"></i>Gỡ
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======= TAB 3: Nhân sự ======= -->
+    <div class="tab-pane fade" id="tab-staffs" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="fw-800 mb-0"><i class="bi bi-people-fill text-primary me-2"></i>Nhân sự khu vực</h5>
+                @if (isManager)
+                {
+                    <button type="button" class="btn btn-primary rounded-3 fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#staffModal">
+                        <i class="bi bi-person-plus me-2"></i>Gán nhân sự
+                    </button>
+                }
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background: #f8fafd;">
+                        <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
+                            <th class="ps-4">Nhân viên</th>
+                            <th>Email</th>
+                            <th>Role hệ thống</th>
+                            <th>Role khu vực</th>
+                            <th>Ngày gán</th>
+                            <th class="text-end pe-4">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!activeStaffs.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="bi bi-people fs-1 d-block mb-2 opacity-50"></i>
+                                    Chưa có nhân sự nào.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var staff in activeStaffs)
+                        {
+                            var roleBadgeClass = staff.RoleInArea switch
+                            {
+                                "manager" => "bg-danger-subtle text-danger border border-danger-subtle",
+                                "staff" => "bg-success-subtle text-success border border-success-subtle",
+                                "viewer" => "bg-secondary-subtle text-secondary border border-secondary-subtle",
+                                _ => "bg-light text-dark"
+                            };
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white"
+                                             style="width:32px;height:32px;font-size:0.75rem;font-weight:700;">
+                                            @(staff.User?.Name?.Substring(0, 1).ToUpper() ?? "?")
+                                        </div>
+                                        <span class="fw-bold">@staff.User?.Name</span>
+                                    </div>
+                                </td>
+                                <td><span class="text-muted small">@staff.User?.Email</span></td>
+                                <td>
+                                    <span class="badge bg-dark rounded-3">@staff.User?.Role</span>
+                                </td>
+                                <td>
+                                    <span class="badge @roleBadgeClass rounded-pill fw-bold px-3 py-2" style="font-size:0.72rem;">
+                                        @staff.RoleInArea
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="small text-muted">@staff.AssignedAt.ToString("dd/MM/yyyy")</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    @if (isManager)
+                                    {
+                                        @if (Model.ManagerID != staff.UserID)
+                                        {
+                                            <form asp-area="Admin" asp-controller="AreaStaff" asp-action="UpdateRole"
+                                                  method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="StaffID" value="@staff.ID" />
+                                                <input type="hidden" name="NewRole" id="newRole_@staff.ID" value="" />
+                                                <div class="d-flex gap-1 justify-content-end">
+                                                    <select class="form-select form-select-sm rounded-3"
+                                                            style="width:120px; font-size:0.78rem;"
+                                                            onchange="document.getElementById('newRole_@staff.ID').value = this.value; if(this.value) { this.nextElementSibling.click(); }">
+                                                        <option value="">— Đổi role —</option>
+                                                        <option value="manager">manager</option>
+                                                        <option value="staff">staff</option>
+                                                        <option value="viewer">viewer</option>
+                                                    </select>
+                                                </div>
+                                            </form>
+                                            <form asp-area="Admin" asp-controller="AreaStaff" asp-action="Remove"
+                                                  method="post" class="d-inline"
+                                                  onsubmit="return confirm('Gỡ nhân viên &quot;@staff.User?.Name&quot; khỏi khu vực?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@staff.ID" />
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-3">
+                                                    <i class="bi bi-person-dash me-1"></i>Gỡ
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark rounded-3 px-3 py-2" style="font-size:0.7rem;">
+                                                <i class="bi bi-star-fill me-1"></i>Manager chính
+                                            </span>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======= TAB 4: Đơn hàng ======= -->
+    <div class="tab-pane fade" id="tab-bookings" role="tabpanel">
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
+            <form method="get" asp-action="Show" class="row g-3 align-items-end">
+                <input type="hidden" name="id" value="@Model.AreaID" />
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Trạng thái</label>
+                    <select name="statusFilter" class="form-select rounded-4 fw-bold">
+                        <option value="">— Tất cả —</option>
+                        @foreach (var bs in (ViewBag.BookingStatuses as List<CarRentalSystem.Models.BookingStatus>) ?? new())
+                        {
+                            <option value="@bs.BookingStatusID" selected="@(ViewBag.CurrentStatusFilter?.ToString() == bs.BookingStatusID.ToString())">
+                                @bs.Name
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Từ ngày</label>
+                    <input type="date" name="fromDate" value="@ViewBag.CurrentFromDate" class="form-control rounded-4" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Đến ngày</label>
+                    <input type="date" name="toDate" value="@ViewBag.CurrentToDate" class="form-control rounded-4" />
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary rounded-4 fw-bold flex-grow-1">
+                        <i class="bi bi-filter me-2"></i>Lọc
+                    </button>
+                    <a asp-area="Admin" asp-controller="Area" asp-action="Show" asp-route-id="@Model.AreaID"
+                       class="btn btn-light rounded-4 border fw-bold">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background: #f8fafd;">
+                        <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
+                            <th class="ps-4">Mã đơn</th>
+                            <th>Khách hàng</th>
+                            <th>Xe</th>
+                            <th>Thời gian</th>
+                            <th class="text-end">Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end pe-4">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var bookings = ViewBag.Bookings as List<CarRentalSystem.Models.Booking> ?? new(); }
+                        @if (!bookings.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-receipt fs-1 d-block mb-2 opacity-50"></i>
+                                    Chưa có đơn hàng nào.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var bk in bookings)
+                        {
+                            var statusBadge = bk.BookingStatus?.Name switch
+                            {
+                                "Confirmed" => "bg-success",
+                                "Pending" => "bg-warning text-dark",
+                                "Completed" => "bg-secondary",
+                                "Cancelled" => "bg-danger",
+                                "Rejected" => "bg-dark",
+                                _ => "bg-info"
+                            };
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold" style="font-family:monospace; font-size:0.82rem;">
+                                        #@(bk.BookingID.ToString("D6"))
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-bold small">@bk.User?.Name</div>
+                                    <div class="text-muted" style="font-size:0.7rem;">@bk.User?.Email</div>
+                                </td>
+                                <td>
+                                    <span class="small">@bk.Car?.CarBrand?.Name @bk.Car?.CarName</span>
+                                    <div class="text-muted" style="font-size:0.7rem;">@bk.Car?.LicensePlate</div>
+                                </td>
+                                <td>
+                                    <div class="small">
+                                        <i class="bi bi-calendar-event text-muted me-1"></i>
+                                        @bk.StartDate.ToString("dd/MM HH:mm")
+                                    </div>
+                                    <div class="small text-muted">
+                                        → @bk.EndDate.ToString("dd/MM HH:mm")
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <span class="fw-bold text-success">@bk.TotalPrice.ToString("N0") ₫</span>
+                                </td>
+                                <td>
+                                    <span class="badge @statusBadge rounded-3">@bk.BookingStatus?.Name</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a asp-area="Admin" asp-controller="Booking" asp-action="Details" asp-route-id="@bk.BookingID"
+                                       class="btn btn-light btn-sm rounded-3" title="Xem chi tiết">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if ((ViewBag.BookingsTotal ?? 0) > (ViewBag.BookingsPageSize ?? 20))
+            {
+                var bookingsTotal = (int)(ViewBag.BookingsTotal ?? 0);
+                var bookingsPage = (int)(ViewBag.BookingsPage ?? 1);
+                var bookingsPageSize = (int)(ViewBag.BookingsPageSize ?? 20);
+                var totalPages = (int)Math.Ceiling(bookingsTotal / (double)bookingsPageSize);
+                <div class="card-footer border-0 bg-white">
+                    <div class="d-flex justify-content-between align-items-center small text-muted">
+                        <span>Hiển thị <strong>@bookings.Count</strong> / <strong>@bookingsTotal</strong> đơn</span>
+                        <div class="d-flex gap-1">
+                            @if (bookingsPage > 1)
+                            {
+                                <a asp-action="Show" asp-route-id="@Model.AreaID"
+                                   asp-route-bookingsPage="@(bookingsPage - 1)"
+                                   asp-route-statusFilter="@ViewBag.CurrentStatusFilter"
+                                   asp-route-fromDate="@ViewBag.CurrentFromDate"
+                                   asp-route-toDate="@ViewBag.CurrentToDate"
+                                   class="btn btn-light btn-sm rounded-3">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            }
+                            <span class="btn btn-light btn-sm rounded-3 disabled">Trang @bookingsPage / @totalPages</span>
+                            @if (bookingsPage < totalPages)
+                            {
+                                <a asp-action="Show" asp-route-id="@Model.AreaID"
+                                   asp-route-bookingsPage="@(bookingsPage + 1)"
+                                   asp-route-statusFilter="@ViewBag.CurrentStatusFilter"
+                                   asp-route-fromDate="@ViewBag.CurrentFromDate"
+                                   asp-route-toDate="@ViewBag.CurrentToDate"
+                                   class="btn btn-light btn-sm rounded-3">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+<!-- Partial Modals -->
+<partial name="_StaffModal" model="Model" />
+<partial name="_LocationModal" model="Model" />
+
+@section Scripts {
+    <!-- jQuery + Chart.js + Select2 -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/vi.js"></script>
+
+    <script>
+        $(function () {
+            // --- Location Select2 ---
+            function formatLocation(loc) {
+                if (!loc.id) return loc.text;
+                var cars = loc.carCount > 0
+                    ? '<span class="badge bg-info rounded-pill ms-2" style="font-size:0.7rem;">' + loc.carCount + ' xe</span>'
+                    : '<span class="badge bg-light text-muted rounded-pill ms-2" style="font-size:0.7rem;">0 xe</span>';
+                return $('<div class="d-flex align-items-center justify-content-between w-100">' +
+                    '<div><div class="fw-bold" style="font-size:0.85rem;">' + loc.name + '</div>' +
+                    '<div class="text-muted" style="font-size:0.72rem;">' + (loc.address || '—') + '</div></div>' +
+                    cars + '</div>');
+            }
+
+            $('#locationSelect').select2({
+                language: 'vi',
+                dropdownParent: $('#locationModal'),
+                allowClear: true,
+                placeholder: '— Gõ tên hoặc địa chỉ để tìm —',
+                ajax: {
+                    url: '/admin/api/locations',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return { search: params.term || '', excludeArea: '@Model.AreaID' };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.results.map(function (l) {
+                                return { id: l.id, name: l.name, address: l.address, carCount: l.carCount, text: l.name };
+                            })
+                        };
+                    }
+                },
+                templateResult: formatLocation,
+                templateSelection: function (loc) {
+                    return loc.id ? loc.name : loc.text;
+                }
+            });
+
+            $('#locationSelect').on('select2:select', function (e) {
+                var loc = e.params.data;
+                $('#selectedLocationId').remove();
+                $('#locationForm').append('<input type="hidden" name="LocationID" id="selectedLocationId" value="' + loc.id + '" />');
+                $('#selectedLocName').text(loc.name);
+                $('#selectedLocAddr').text(loc.address || '—');
+                $('#selectedLocCars').text((loc.carCount || 0) + ' xe');
+                $('#locationPreview').removeClass('d-none').addClass('animate__animated animate__fadeIn');
+                $('#locationSelect').removeClass('is-invalid');
+                $('#submitLocationBtn').prop('disabled', false);
+            });
+
+            $('#locationSelect').on('select2:clear', function () {
+                $('#selectedLocationId').remove();
+                $('#locationPreview').addClass('d-none');
+                $('#submitLocationBtn').prop('disabled', true);
+            });
+
+            $('#locationForm').on('submit', function (e) {
+                if (!$('#locationSelect').val()) {
+                    e.preventDefault();
+                    $('#locationSelect').addClass('is-invalid');
+                }
+            });
+
+            $('#locationModal').on('hidden.bs.modal', function () {
+                $('#locationSelect').val(null).trigger('change.select2').removeClass('is-invalid');
+                $('#selectedLocationId').remove();
+                $('#locationPreview').addClass('d-none');
+                $('#submitLocationBtn').prop('disabled', true);
+            });
+
+            // --- Staff Select2 ---
+            $('.select2-staff').select2({
+                language: 'vi',
+                dropdownParent: $('#staffModal'),
+                ajax: {
+                    url: '/admin/api/users',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return { search: params.term || '', roles: 'Manager,Staff,Viewer', excludeArea: '@Model.AreaID' };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data.results.map(function(u) {
+                                return { id: u.id, text: u.name + ' (' + u.email + ') — ' + u.role };
+                            })
+                        };
+                    }
+                }
+            });
+
+            // --- Orders Chart (30 ngày) ---
+            var chartData = @Html.Raw(ViewBag.ChartData ?? "[]");
+            var chartLabels = @Html.Raw(ViewBag.ChartLabels ?? "[]");
+
+            if (chartData && chartData.length > 0) {
+                var ctx = document.getElementById('ordersChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: 'Số đơn',
+                            data: chartData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59,130,246,0.08)',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#3b82f6',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) { return ctx.parsed.y + ' đơn'; }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1, font: { size: 11 } },
+                                grid: { color: '#f1f5f9' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { maxTicksLimit: 10, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('ordersChart').parentElement.innerHTML =
+                    '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><div class="text-center"><i class="bi bi-bar-chart fs-1 d-block mb-2 opacity-25"></i>Không có dữ liệu</div></div>';
+            }
+        });
+    </script>
+}

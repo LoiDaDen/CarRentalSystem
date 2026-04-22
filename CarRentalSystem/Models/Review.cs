@@ -23,5 +23,8 @@ namespace CarRentalSystem.Models
         public bool IsApproved { get; set; } = false;
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

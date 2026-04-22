@@ -51,5 +51,8 @@ namespace CarRentalSystem.Models
                 SelectedAddOns = string.Join(",", value);
             }
         }
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

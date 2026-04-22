@@ -341,54 +341,7 @@
                 </div>
             </div>
 
-            <!-- Actions Card -->
-            <div class="card border-0 shadow-sm rounded-4 mb-4">
-                <div class="card-body">
-                    <h5 class="fw-700 mb-3"><i class="bi bi-lightning me-2"></i>Thao tác</h5>
 
-                    <div class="d-grid gap-2">
-                        @if(booking.BookingStatus?.Name == "Pending")
-                        {
-                            <form asp-action="UpdateStatus" method="post">
-                                <input type="hidden" name="id" value="@booking.BookingID" />
-                                <input type="hidden" name="status" value="Confirmed" />
-                                <button type="submit" class="btn btn-success w-100 mb-2 rounded-3 fw-bold"
-                                        onclick="return confirm('Xác nhận đơn đặt xe này?')">
-                                    <i class="bi bi-check-circle me-2"></i>Xác nhận
-                                </button>
-                            </form>
-                            <form asp-action="Cancel" method="post" onsubmit="return confirmCancel('@booking.BookingID')">
-                                <input type="hidden" name="id" value="@booking.BookingID" />
-                                <input type="hidden" name="reason" id="reason-@booking.BookingID" />
-                                <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">
-                                    <i class="bi bi-x-circle me-2"></i>Hủy đơn
-                                </button>
-                            </form>
-                        }
-                        else if(booking.BookingStatus?.Name == "Confirmed")
-                        {
-                            <form asp-action="ConfirmPickup" method="post">
-                                <input type="hidden" name="id" value="@booking.BookingID" />
-                                <button type="submit" class="btn btn-primary w-100 mb-2 rounded-3 fw-bold"
-                                        onclick="return confirm('Xác nhận khách đã nhận xe?')">
-                                    <i class="bi bi-key me-2"></i>Xác nhận nhận xe
-                                </button>
-                            </form>
-                            <form asp-action="CompleteReturn" method="post">
-                                <input type="hidden" name="bookingId" value="@booking.BookingID" />
-                                <button type="submit" class="btn btn-success w-100 mb-2 rounded-3 fw-bold"
-                                        onclick="return confirm('Hoàn thành trả xe?')">
-                                    <i class="bi bi-flag-checkered me-2"></i>Hoàn thành trả xe
-                                </button>
-                            </form>
-                        }
-                        <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Create" asp-route-bookingId="@booking.BookingID"
-                           class="btn btn-outline-primary w-100 rounded-3 fw-bold">
-                            <i class="bi bi-file-earmark-text me-2"></i>Tạo hợp đồng
-                        </a>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>

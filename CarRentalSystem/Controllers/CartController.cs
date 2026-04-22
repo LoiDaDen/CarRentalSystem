@@ -428,12 +428,12 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
             _context.CartItems.RemoveRange(cart.CartItems);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Đã khởi tạo đơn hàng từ giỏ thành công! Vui lòng ký hợp đồng và thanh toán.";
+            TempData["Success"] = "Đã khởi tạo đơn hàng từ giỏ thành công! Vui lòng thanh toán tiền cọc.";
             if (skippedCars.Any())
             {
                 TempData["Warning"] = $"Lưu ý: {skippedCars.Count} xe đã bị bỏ qua do trùng lịch: {string.Join(", ", skippedCars)}";
             }
-            return RedirectToAction("TransactionContract", "Booking", new { id = transaction.TransactionID });
+            return RedirectToAction("DepositTransaction", "Booking", new { id = transaction.TransactionID });
         }
 
         private int GetUserId()

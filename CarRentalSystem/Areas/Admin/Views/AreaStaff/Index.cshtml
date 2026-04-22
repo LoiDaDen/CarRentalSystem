@@ -1,0 +1,436 @@
+@* CarRentalSystem/Areas/Admin/Views/AreaStaff/Index.cshtml *@
+@model IEnumerable<CarRentalSystem.Models.AreaStaff>
+@{
+    ViewData["Title"] = "Phân quyền Khu vực";
+    Layout = "_AdminLayout";
+
+    var area = ViewBag.Area as CarRentalSystem.Models.Area;
+    var allRoles = ViewBag.AllRoles as string[] ?? new[] { "manager", "staff", "viewer" };
+    var currentUserId = int.TryParse(
+        User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+        ?? User.FindFirst("sub")?.Value ?? User.FindFirst("UserID")?.Value,
+        out var uid) ? uid : 0;
+
+    string RoleLabel(string r) => r switch
+    {
+        "manager" => "<span class='badge bg-danger rounded-pill px-2'><i class='bi bi-shield-check me-1'></i>Manager KV</span>",
+        "staff" => "<span class='badge bg-warning text-dark rounded-pill px-2'><i class='bi bi-person-badge me-1'></i>Staff KV</span>",
+        "viewer" => "<span class='badge bg-secondary rounded-pill px-2'><i class='bi bi-eye me-1'></i>Viewer</span>",
+        _ => $"<span class='badge bg-light text-dark rounded-pill px-2'>{r}</span>"
+    };
+}
+
+<!-- Flash Messages -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2 animate__animated animate__fadeInDown">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2 animate__animated animate__fadeInDown">
+        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        <span>@TempData["Error"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb small mb-1">
+                <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Area" asp-action="Index" class="text-decoration-none text-muted">Khu vực</a></li>
+                <li class="breadcrumb-item text-primary fw-bold">@(area?.Name ?? "Phân quyền")</li>
+            </ol>
+        </nav>
+        <h2 class="fw-800 ls-neg-1 mb-1">
+            <i class="bi bi-people-fill text-primary me-2"></i>Phân quyền Khu vực
+        </h2>
+        @if (area != null)
+        {
+            <p class="text-muted mb-0">
+                <i class="bi bi-geo-alt-fill me-1"></i>@area.Name
+                <span class="mx-2">·</span>
+                <i class="bi bi-pin-map me-1"></i>@area.Province
+            </p>
+        }
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-area="Admin" asp-controller="Area" asp-action="Show" asp-route-id="@area?.AreaID"
+           class="btn btn-outline-secondary rounded-3 px-4 fw-bold shadow-sm">
+            <i class="bi bi-arrow-left me-2"></i>Quay lại
+        </a>
+        <button class="btn btn-primary rounded-3 px-4 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+            <i class="bi bi-person-plus me-2"></i>Thêm nhân sự
+        </button>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm rounded-4 text-center py-3">
+            <div class="card-body">
+                <div class="text-primary mb-1"><i class="bi bi-people-fill fs-2"></i></div>
+                <h3 class="mb-0 fw-bolder text-primary">@Model.Count()</h3>
+                <small class="text-muted fw-bold">Tổng nhân sự</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm rounded-4 text-center py-3">
+            <div class="card-body">
+                <div class="text-danger mb-1"><i class="bi bi-shield-check fs-2"></i></div>
+                <h3 class="mb-0 fw-bolder text-danger">@Model.Count(s => s.RoleInArea == "manager")</h3>
+                <small class="text-muted fw-bold">Manager KV</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm rounded-4 text-center py-3">
+            <div class="card-body">
+                <div class="text-warning mb-1"><i class="bi bi-person-badge fs-2"></i></div>
+                <h3 class="mb-0 fw-bolder text-warning">@Model.Count(s => s.RoleInArea == "staff")</h3>
+                <small class="text-muted fw-bold">Staff KV</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card border-0 shadow-sm rounded-4 text-center py-3">
+            <div class="card-body">
+                <div class="text-secondary mb-1"><i class="bi bi-eye fs-2"></i></div>
+                <h3 class="mb-0 fw-bolder text-secondary">@Model.Count(s => s.RoleInArea == "viewer")</h3>
+                <small class="text-muted fw-bold">Viewer</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Staff Table -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-white border-bottom py-3">
+        <div class="d-flex align-items-center justify-content-between">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2 text-primary"></i>Danh sách nhân sự</h5>
+            <span class="badge bg-primary rounded-pill px-3 py-2">@Model.Count() người</span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                <p class="text-muted mt-2 mb-0">Chưa có nhân sự nào trong khu vực này.</p>
+                <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                    <i class="bi bi-person-plus me-2"></i>Thêm nhân sự đầu tiên
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="px-4 py-3 fw-bold text-muted text-uppercase small">#</th>
+                            <th class="py-3 fw-bold text-muted text-uppercase small">Nhân sự</th>
+                            <th class="py-3 fw-bold text-muted text-uppercase small">Vai trò hệ thống</th>
+                            <th class="py-3 fw-bold text-muted text-uppercase small">Vai trò trong KV</th>
+                            <th class="py-3 fw-bold text-muted text-uppercase small">Ngày gán</th>
+                            <th class="py-3 fw-bold text-muted text-uppercase small text-end px-4">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        @{
+                            int stt = 1;
+                            foreach (var staff in Model)
+                            {
+                                var isCurrentUser = staff.UserID == currentUserId;
+                                var isAreaManager = area?.ManagerID == staff.UserID;
+                                <tr class="@(isCurrentUser ? "table-info bg-info bg-opacity-5" : "")">
+                                    <td class="px-4 py-3 text-muted fw-bold">@(stt++)</td>
+                                    <td class="py-3">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(staff.User?.Name ?? "?")&background=@(staff.RoleInArea == "manager" ? "dc2626" : staff.RoleInArea == "staff" ? "d97706" : "6b7280")&color=fff&size=40"
+                                                 alt="@staff.User?.Name" class="rounded-circle shadow-sm" width="40" height="40">
+                                            <div>
+                                                <div class="fw-bold @(isCurrentUser ? "text-primary" : "")">
+                                                    @(staff.User?.Name ?? "—")
+                                                    @if (isCurrentUser)
+                                                    {
+                                                        <span class="badge bg-primary ms-1" style="font-size:0.6rem;">Bạn</span>
+                                                    }
+                                                    @if (isAreaManager)
+                                                    {
+                                                        <span class="badge bg-danger ms-1" style="font-size:0.6rem;">
+                                                            <i class="bi bi-star-fill me-1"></i>KV
+                                                        </span>
+                                                    }
+                                                </div>
+                                                <small class="text-muted">@staff.User?.Email</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3">
+                                        @if (staff.User?.Role == "Manager")
+                                        {
+                                            <span class="badge bg-danger rounded-pill px-2">
+                                                <i class="bi bi-shield-check me-1"></i>Manager
+                                            </span>
+                                        }
+                                        else if (staff.User?.Role == "Staff")
+                                        {
+                                            <span class="badge bg-warning text-dark rounded-pill px-2">
+                                                <i class="bi bi-person-badge me-1"></i>Staff
+                                            </span>
+                                        }
+                                        else if (staff.User?.Role == "Viewer")
+                                        {
+                                            <span class="badge bg-secondary rounded-pill px-2">
+                                                <i class="bi bi-eye me-1"></i>Viewer
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-dark rounded-pill px-2">
+                                                @staff.User?.Role
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="py-3">
+                                        @Html.Raw(RoleLabel(staff.RoleInArea))
+                                    </td>
+                                    <td class="py-3 text-muted small">
+                                        @staff.AssignedAt.ToString("dd/MM/yyyy")
+                                        <br>
+                                        <small class="text-secondary">@staff.AssignedAt.ToString("HH:mm")</small>
+                                    </td>
+                                    <td class="py-3 text-end px-4">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            @if (!isAreaManager)
+                                            {
+                                                <button class="btn btn-sm btn-outline-primary rounded-3 px-3"
+                                                        onclick="openRoleModal(@staff.ID, '@staff.User?.Name?.Replace("'", "\\'")', '@staff.RoleInArea')"
+                                                        title="Đổi vai trò">
+                                                    <i class="bi bi-arrow-repeat me-1"></i>Đổi vai trò
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger rounded-3 px-3"
+                                                        onclick="openRemoveModal(@staff.ID, '@staff.User?.Name?.Replace("'", "\\'")', @area?.AreaID)"
+                                                        title="Gỡ khỏi khu vực">
+                                                    <i class="bi bi-person-dash me-1"></i>Gỡ
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-muted border py-2 px-3">
+                                                    <i class="bi bi-lock me-1"></i>Quản trị KV
+                                                </span>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: THÊM NHÂN SỰ
+═══════════════════════════════════════════════════ -->
+<div class="modal fade" id="addStaffModal" tabindex="-1" aria-labelledby="addStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom bg-primary bg-opacity-10">
+                <h5 class="modal-title fw-bold" id="addStaffModalLabel">
+                    <i class="bi bi-person-plus text-primary me-2"></i>Thêm nhân sự vào khu vực
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-area="Admin" asp-controller="AreaStaff" asp-action="Add" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="AreaID" value="@area?.AreaID" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase">
+                            Chọn nhân sự <span class="text-danger">*</span>
+                        </label>
+                        <select name="UserID" id="userSelect" class="form-select rounded-3" required>
+                            <option value="">— Đang tải... —</option>
+                        </select>
+                        <div class="form-text">Chỉ hiển thị user có vai trò Manager/Staff/Viewer.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase">
+                            Vai trò trong khu vực <span class="text-danger">*</span>
+                        </label>
+                        <select name="RoleInArea" class="form-select rounded-3" required>
+                            <option value="viewer" selected>Viewer — Chỉ xem thống kê</option>
+                            <option value="staff">Staff — Quản lý xe & đơn hàng</option>
+                            <option value="manager">Manager — Quản lý toàn khu vực</option>
+                        </select>
+                        <div class="form-text">
+                            <span class="text-danger fw-bold">Lưu ý:</span> Mỗi khu vực chỉ có 1 Manager. Manager hệ thống có quyền quản lý mọi khu vực.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-3 px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-bold">
+                        <i class="bi bi-plus-lg me-2"></i>Thêm vào khu vực
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: ĐỔI VAI TRÒ
+═══════════════════════════════════════════════════ -->
+<div class="modal fade" id="changeRoleModal" tabindex="-1" aria-labelledby="changeRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom bg-primary bg-opacity-10">
+                <h5 class="modal-title fw-bold" id="changeRoleModalLabel">
+                    <i class="bi bi-arrow-repeat text-primary me-2"></i>Đổi vai trò
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-area="Admin" asp-controller="AreaStaff" asp-action="UpdateRole" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StaffID" id="changeRole_staffId" />
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Chọn vai trò mới cho <strong id="changeRole_userName">—</strong> trong khu vực <strong>@area?.Name</strong>:
+                    </p>
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var r in new[] { ("viewer", "Viewer", "bg-secondary", "bi-eye", "Chỉ xem thống kê"), ("staff", "Staff", "bg-warning text-dark", "bi-person-badge", "Quản lý xe & đơn hàng"), ("manager", "Manager KV", "bg-danger", "bi-shield-check", "Quản lý toàn khu vực") })
+                        {
+                            <label class="p-3 rounded-3 border role-option @(r.Item1 == "viewer" ? "border-primary bg-primary bg-opacity-5" : "")" style="cursor:pointer;">
+                                <input type="radio" name="NewRole" value="@r.Item1" class="form-check-input me-2"
+                                       @(r.Item1 == "viewer" ? "checked" : "") />
+                                <span class="badge @r.Item3 me-2">@r.Item1</span>
+                                <strong>@r.Item2</strong>
+                                <small class="text-muted ms-2">— @r.Item5</small>
+                            </label>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-3 px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary rounded-3 px-4 fw-bold">
+                        <i class="bi bi-check-lg me-2"></i>Xác nhận đổi vai trò
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: GỠ NHÂN SỰ
+═══════════════════════════════════════════════════ -->
+<div class="modal fade" id="removeStaffModal" tabindex="-1" aria-labelledby="removeStaffModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom bg-danger bg-opacity-10">
+                <h5 class="modal-title fw-bold text-danger" id="removeStaffModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Xác nhận gỡ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-area="Admin" asp-controller="AreaStaff" asp-action="Remove" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="remove_staffId" />
+                <div class="modal-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-person-dash text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="mb-1">Bạn có chắc muốn gỡ <strong id="remove_userName">—</strong> khỏi khu vực <strong>@area?.Name</strong>?</p>
+                    <p class="text-muted small mb-0">Người dùng sẽ không còn thuộc khu vực này nữa.</p>
+                </div>
+                <div class="modal-footer border-top justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary rounded-3 px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger rounded-3 px-4 fw-bold">
+                        <i class="bi bi-person-dash me-2"></i>Gỡ khỏi KV
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ── Load users via AJAX (Select2-style) ──────────────────────────
+        async function loadUsers() {
+            const select = document.getElementById('userSelect');
+            if (!select) return;
+
+            try {
+                const resp = await fetch('/admin/api/users?excludeArea=@area?.AreaID&roles=Manager,Staff,Viewer');
+                const data = await resp.json();
+                const users = data.results || [];
+
+                select.innerHTML = '<option value="">— Chọn nhân sự —</option>';
+                users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `${u.name} (${u.email}) — ${u.role}`;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                select.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadUsers);
+
+        // ── Đổi vai trò ─────────────────────────────────────────────────
+        function openRoleModal(staffId, userName, currentRole) {
+            document.getElementById('changeRole_staffId').value = staffId;
+            document.getElementById('changeRole_userName').textContent = userName || '—';
+
+            document.querySelectorAll('input[name="NewRole"]').forEach(r => {
+                r.checked = r.value === currentRole;
+            });
+
+            // Highlight selected
+            document.querySelectorAll('.role-option').forEach(el => {
+                el.classList.remove('border-primary', 'bg-primary', 'bg-opacity-5');
+                const input = el.querySelector('input[type="radio"]');
+                if (input && input.checked) {
+                    el.classList.add('border-primary', 'bg-primary', 'bg-opacity-5');
+                }
+            });
+
+            new bootstrap.Modal(document.getElementById('changeRoleModal')).show();
+        }
+
+        // ── Gỡ nhân sự ─────────────────────────────────────────────────
+        function openRemoveModal(staffId, userName, areaId) {
+            document.getElementById('remove_staffId').value = staffId;
+            document.getElementById('remove_userName').textContent = userName || '—';
+            new bootstrap.Modal(document.getElementById('removeStaffModal')).show();
+        }
+
+        // ── Highlight role option on click ─────────────────────────────
+        document.querySelectorAll('.role-option').forEach(el => {
+            el.addEventListener('click', function () {
+                document.querySelectorAll('.role-option').forEach(e => {
+                    e.classList.remove('border-primary', 'bg-primary', 'bg-opacity-5');
+                });
+                this.classList.add('border-primary', 'bg-primary', 'bg-opacity-5');
+                const radio = this.querySelector('input[type="radio"]');
+                if (radio) radio.checked = true;
+            });
+        });
+    </script>
+}

@@ -587,17 +587,20 @@ else
                             </span>
                         </div>
                         <div class="car-config-tabs">
-                            <div class="cfg-tab">
-                                <div class="cfg-tab-label"><i class="bi bi-calendar-event"></i> Nhận xe</div>
-                                <input type="datetime-local" class="start-date"
+                            <div class="cfg-tab" style="flex: 2;">
+                                <div class="cfg-tab-label"><i class="bi bi-calendar3"></i> Nhận & Trả xe</div>
+                                <div class="form-control bg-white fw-bold px-2 py-1 d-flex justify-content-between align-items-center shadow-sm cursor-pointer" 
+                                     style="font-size: 0.72rem; cursor: pointer; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 2px; line-height: 1.2; width: 100%; border: none; background: transparent; padding: 0 !important; color: #1e293b;"
+                                     onclick="openCarCalendar({startInputId: 'start-date-@item.CartItemID', endInputId: 'end-date-@item.CartItemID', onConfirm: function() { updateCartItem(@item.CartItemID); }})">
+                                    <span id="display-date-@item.CartItemID" data-calendar-display>@item.StartDate.ToString("dd/MM HH:mm") - @item.EndDate.ToString("dd/MM HH:mm")</span>
+                                    <i class="bi bi-pencil-square ms-auto text-muted" style="font-size: 0.6rem;"></i>
+                                </div>
+                                <input type="hidden" class="start-date" id="start-date-@item.CartItemID"
                                        data-item-id="@item.CartItemID"
-                                       value="@item.StartDate.ToString("yyyy-MM-ddTHH:mm")">
-                            </div>
-                            <div class="cfg-tab">
-                                <div class="cfg-tab-label"><i class="bi bi-calendar-check"></i> Trả xe</div>
-                                <input type="datetime-local" class="end-date"
+                                       value="@item.StartDate.ToString("yyyy-MM-ddTHH:mm")" onchange="updateCartItem(@item.CartItemID)">
+                                <input type="hidden" class="end-date" id="end-date-@item.CartItemID"
                                        data-item-id="@item.CartItemID"
-                                       value="@item.EndDate.ToString("yyyy-MM-ddTHH:mm")">
+                                       value="@item.EndDate.ToString("yyyy-MM-ddTHH:mm")" onchange="updateCartItem(@item.CartItemID)">
                             </div>
                             <div class="cfg-tab">
                                 <div class="cfg-tab-label"><i class="bi bi-box-seam"></i> Gói</div>
@@ -619,7 +622,7 @@ else
                                     }
                                 </button>
                             </div>
-                            <div class="cfg-tab">
+                            <div class="cfg-tab" id="driver-tab-@item.CartItemID" style="@(hours <= 4 ? "opacity:0.5; pointer-events:none;" : "")">
                                 <div class="cfg-tab-label"><i class="bi bi-person-badge"></i> Tài xế</div>
                                 <button type="button" class="driver-pick-btn" id="driver-btn-@item.CartItemID"
                                         onclick="openDriverPopup(@item.CartItemID)">
@@ -692,8 +695,13 @@ else
                     <span id="summaryCarCount">@Model.CartItems.Count xe</span>
                 </div>
                 <div class="summary-row">
-                    <span class="text-muted">Giá thuê</span>
+                    <span class="text-muted">Giá thuê xe (Tạm tính)</span>
                     <span id="summaryBasePrice">@baseTotal.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</span>
+                </div>
+                <!-- Vị trí hiển thị tổng Phí Tài Xế -->
+                <div class="summary-row" id="summaryDriverRow" style="display: none;">
+                    <span class="text-muted">Phí dịch vụ Tài xế</span>
+                    <span id="summaryDriverFee">0 đ</span>
                 </div>
                 @if (memDiscount > 0)
                 {
@@ -1064,6 +1072,10 @@ else
                     }
 
                     closeDriverPopup();
+                    
+                    // Parse dailyRate and trigger price recalculation in UI
+                    card.dataset.driverRate = data.dailyRate || 0;
+                    handleDateChange(itemId);
 
                     Swal.fire({
                         icon: 'success',
@@ -1137,11 +1149,18 @@ else
             const localISOTime = (new Date(newEnd - tzOffset)).toISOString().slice(0, 16);
             
             const endInput = card.querySelector('.end-date');
-            if (endInput._flatpickr) {
-                endInput._flatpickr.setDate(newEnd, false);
-            } else {
-                endInput.value = localISOTime;
+            endInput.value = localISOTime;
+            
+            // Update display label
+            const displayLabel = card.querySelector('[data-calendar-display]');
+            if (displayLabel) {
+                const startStr = `${String(start.getDate()).padStart(2, '0')}/${String(start.getMonth()+1).padStart(2, '0')} ${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+                const endStr = `${String(newEnd.getDate()).padStart(2, '0')}/${String(newEnd.getMonth()+1).padStart(2, '0')} ${String(newEnd.getHours()).padStart(2, '0')}:${String(newEnd.getMinutes()).padStart(2, '0')}`;
+                displayLabel.innerText = `${startStr} - ${endStr}`;
             }
+
+            // Trigger update to calculate new price
+            updateCartItem(itemId);
 
             closePackagePopup();
             Swal.fire({
@@ -1217,7 +1236,24 @@ else
                 }
             }
             
-            const driverRate = parseFloat(card.dataset.driverRate) || 0;
+            // Prevent driver for <= 4 hours
+            const driverTab = document.getElementById(`driver-tab-${itemId}`);
+            if (driverTab) {
+                const currentDriverId = parseInt(card.dataset.driverId) || 0;
+                if (hours <= 4) {
+                    driverTab.style.opacity = '0.5';
+                    driverTab.style.pointerEvents = 'none';
+                    if (currentDriverId !== 0) {
+                        card.dataset.driverRate = '0';
+                        selectDriver(itemId, 0);
+                    }
+                } else {
+                    driverTab.style.opacity = '1';
+                    driverTab.style.pointerEvents = 'auto';
+                }
+            }
+            
+            const driverRate = hours <= 4 ? 0 : (parseFloat(card.dataset.driverRate) || 0);
             const driverDays = Math.max(1, Math.ceil(hours / 24));
             
             // Original un-discounted calculation
@@ -1397,16 +1433,42 @@ else
         // ===== SUMMARY =====
         function updateSummary() {
             let total = 0;
+            let driverTotal = 0;
             let count = 0;
             document.querySelectorAll('.car-row.selected').forEach(card => {
                 const el = card.querySelector(`[class*="item-price-"]`);
                 if (el) total += parseInt(el.textContent.replace(/\D/g, '')) || 0;
+                
+                // Bóc tách phí tài xế để hiển thị
+                const startVal = card.querySelector('.start-date').value;
+                const endVal = card.querySelector('.end-date').value;
+                if (startVal && endVal) {
+                    const hours = Math.ceil((new Date(endVal) - new Date(startVal)) / (1000 * 60 * 60));
+                    if (hours > 4) {
+                        const drvRate = parseFloat(card.dataset.driverRate) || 0;
+                        const drvDays = Math.max(1, Math.ceil(hours / 24));
+                        driverTotal += (drvRate * drvDays);
+                    }
+                }
                 count++;
             });
             const b = document.getElementById('summaryBasePrice'), t = document.getElementById('summaryTotal');
             const c = document.getElementById('summaryCarCount');
-            if (b) b.textContent = `${total.toLocaleString('vi-VN')} đ`;
+            const dRow = document.getElementById('summaryDriverRow'), dFee = document.getElementById('summaryDriverFee');
+            
+            // Vì total đã gồm cả driverTotal (do logic DP xử lý ngầm), ta chỉ bóc tách ra hiển thị
+            const carOnly = total > driverTotal ? total - driverTotal : total;
+            
+            if (b) b.textContent = `${carOnly.toLocaleString('vi-VN')} đ`;
             if (t) t.textContent = `${total.toLocaleString('vi-VN')} đ`;
+            if (dRow && dFee) {
+                if (driverTotal > 0) {
+                    dRow.style.display = 'flex';
+                    dFee.textContent = `${driverTotal.toLocaleString('vi-VN')} đ`;
+                } else {
+                    dRow.style.display = 'none';
+                }
+            }
             if (c) c.textContent = `${count} xe`;
         }
     </script>

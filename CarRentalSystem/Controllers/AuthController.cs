@@ -68,7 +68,10 @@ namespace CarRentalSystem.Controllers
 
             if (user.Role == UserRoleConstants.Admin)
                 return RedirectToAction("Index", "Dashboard", new { area = "Admin" });
-                
+
+            if (user.Role == UserRoleConstants.Manager || user.Role == UserRoleConstants.Staff)
+                return RedirectToAction("Index", "AreaDashboard", new { area = "Admin" });
+
             return RedirectToAction("Index", "Home");
         }
 

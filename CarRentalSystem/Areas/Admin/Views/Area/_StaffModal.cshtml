@@ -1,0 +1,233 @@
+@* CarRentalSystem/Areas/Admin/Views/Area/_StaffModal.cshtml *@
+@model CarRentalSystem.Models.Area
+@{
+    var isManager = User.IsInRole("Admin") || User.IsInRole("Manager") ||
+        (Model.AreaStaffs?.Any(s => !s.IsDeleted
+            && s.UserID.ToString() == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            && s.RoleInArea == "manager") ?? false);
+}
+
+@if (isManager)
+{
+    <div class="modal fade" id="staffModal" tabindex="-1" aria-labelledby="staffModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="staffModalLabel">
+                        <i class="bi bi-person-plus text-primary me-2"></i>Gán nhân viên vào khu vực
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+
+                <form action="@Url.Action("Add", "AreaStaff", new { areaId = Model.AreaID })"
+                      method="post" id="staffForm" novalidate>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="AreaID" value="@Model.AreaID" />
+
+                    <div class="modal-body pt-2">
+                        <input type="hidden" name="UserID" id="staffUserId" value="" />
+
+                        <!-- Chọn user -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                Chọn nhân viên <span class="text-danger">*</span>
+                            </label>
+                            <select id="staffSelect" class="form-select" style="width:100%" required></select>
+                            <div class="invalid-feedback">Vui lòng chọn một nhân viên.</div>
+                            <div class="form-text small mt-1">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Chỉ hiển thị user chưa thuộc khu vực này.
+                            </div>
+                        </div>
+
+                        <!-- Chọn role -->
+                        <div>
+                            <label class="form-label fw-bold">
+                                Vai trò trong khu vực <span class="text-danger">*</span>
+                            </label>
+                            <div class="row g-2" id="roleOptions">
+                                @{
+                                    var roles = new[]
+                                    {
+                                        ("manager", "Quản lý", "bg-danger-subtle text-danger border-danger-subtle", "bi-shield-fill"),
+                                        ("staff",    "Nhân viên",  "bg-success-subtle text-success border-success-subtle", "bi-person-badge-fill"),
+                                        ("viewer",   "Người xem",  "bg-secondary-subtle text-secondary border-secondary-subtle", "bi-eye-fill")
+                                    };
+                                }
+                                @foreach (var role in roles)
+                                {
+                                    <div class="col-4">
+                                        <label class="role-card w-100 p-3 rounded-3 text-center cursor-pointer"
+                                               style="border: 2px solid #e2e8f0; transition: all 0.2s; display: block; cursor: pointer;"
+                                               id="role-card-@role.Item1">
+                                            <input type="radio" name="RoleInArea" value="@role.Item1"
+                                                   class="d-none" required />
+                                            <div class="mb-1">
+                                                <i class="bi @role.Item4 @role.Item3.Replace("border-", "text-")" style="font-size:1.4rem;"></i>
+                                            </div>
+                                            <div class="fw-bold small @role.Item3.Replace("border-", "text-")">@role.Item2</div>
+                                            <div class="small text-muted" style="font-size:0.7rem;">@role.Item1</div>
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                            <div class="form-text small mt-2">
+                                <div class="d-flex align-items-start gap-2 mb-1">
+                                    <i class="bi bi-shield-fill text-danger mt-1" style="font-size:0.8rem;"></i>
+                                    <span><b>Manager:</b> toàn quyền quản lý khu vực, nhân sự, địa điểm.</span>
+                                </div>
+                                <div class="d-flex align-items-start gap-2 mb-1">
+                                    <i class="bi bi-person-badge-fill text-success mt-1" style="font-size:0.8rem;"></i>
+                                    <span><b>Staff:</b> quản lý đơn hàng, xe trong khu vực.</span>
+                                </div>
+                                <div class="d-flex align-items-start gap-2">
+                                    <i class="bi bi-eye-fill text-secondary mt-1" style="font-size:0.8rem;"></i>
+                                    <span><b>Viewer:</b> chỉ xem, không thao tác.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-light rounded-3 fw-bold px-4" data-bs-dismiss="modal">
+                            Hủy
+                        </button>
+                        <button type="submit" class="btn btn-primary rounded-3 fw-bold px-4" id="submitStaffBtn" disabled>
+                            <i class="bi bi-check2 me-2"></i>Xác nhận
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(function () {
+            // ── Highlight selected role card ───────────────────────────
+            $('#roleOptions input[type="radio"]').on('change', function () {
+                $('#roleOptions .role-card').css({
+                    'border-color': '#e2e8f0',
+                    'background': ''
+                });
+                var card = document.getElementById('role-card-' + this.value);
+                card.style.borderColor = '#3b82f6';
+                card.style.background = '#eff6ff';
+                validateStaffForm();
+            });
+
+            // ── Select2 AJAX ─────────────────────────────────────────
+            function formatUser(user) {
+                if (!user.id) return user.text;
+                var roleBadge = {
+                    'Manager': '<span class="badge bg-primary rounded-pill ms-2" style="font-size:0.7rem;">Manager</span>',
+                    'Staff': '<span class="badge bg-success rounded-pill ms-2" style="font-size:0.7rem;">Staff</span>',
+                    'Viewer': '<span class="badge bg-secondary rounded-pill ms-2" style="font-size:0.7rem;">Viewer</span>'
+                };
+                var badge = roleBadge[user.role] || '';
+                return $('<div class="d-flex align-items-center justify-content-between w-100">' +
+                    '<div><div class="fw-bold" style="font-size:0.85rem;">' + user.name + '</div>' +
+                    '<div class="text-muted" style="font-size:0.72rem;">' + user.email + '</div></div>' +
+                    badge + '</div>');
+            }
+
+            $('#staffSelect').select2({
+                language: 'vi',
+                dropdownParent: $('#staffModal'),
+                allowClear: true,
+                placeholder: '— Gõ tên hoặc email để tìm —',
+                ajax: {
+                    url: '/admin/api/users',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term || '',
+                            roles: 'Manager,Staff,Viewer',
+                            excludeArea: '@Model.AreaID'
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.results.map(function (u) {
+                                return { id: u.id, name: u.name, email: u.email, role: u.role, text: u.name };
+                            })
+                        };
+                    }
+                },
+                templateResult: formatUser,
+                templateSelection: function (user) {
+                    if (!user.id) return user.text;
+                    return user.name + ' — ' + user.email;
+                }
+            });
+
+            $('#staffSelect').on('select2:select', function (e) {
+                $('#staffUserId').val(e.params.data.id);
+                validateStaffForm();
+            });
+
+            $('#staffSelect').on('select2:clear', function () {
+                $('#staffUserId').val('');
+                validateStaffForm();
+            });
+
+            // ── Validation helper ─────────────────────────────────────
+            function validateStaffForm() {
+                var userSelected = $('#staffUserId').val() && $('#staffUserId').val().length > 0;
+                var roleSelected = $('input[name="RoleInArea"]:checked').length > 0;
+                $('#submitStaffBtn').prop('disabled', !(userSelected && roleSelected));
+            }
+
+            // ── Submit AJAX ────────────────────────────────────────────
+            $('#staffForm').on('submit', function (e) {
+                e.preventDefault();
+
+                var userId = $('#staffUserId').val();
+                var role = $('input[name="RoleInArea"]:checked').val();
+                var areaId = @Model.AreaID;
+
+                if (!userId || !role) {
+                    if (!userId) $('#staffSelect').addClass('is-invalid');
+                    if (!role) {
+                        $('#roleOptions').addClass('border border-danger rounded-3 p-2');
+                    }
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("Add", "AreaStaff")',
+                    type: 'POST',
+                    data: {
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val(),
+                        AreaID: areaId,
+                        UserID: userId,
+                        RoleInArea: role
+                    },
+                    success: function () {
+                        $('#staffModal').modal('hide');
+                        location.reload();
+                    },
+                    error: function (xhr) {
+                        alert(xhr.responseText || 'Có lỗi xảy ra. Vui lòng thử lại.');
+                    }
+                });
+            });
+
+            // Reset on close
+            $('#staffModal').on('hidden.bs.modal', function () {
+                $('#staffSelect').val(null).trigger('change.select2').removeClass('is-invalid');
+                $('#staffUserId').val('');
+                $('input[name="RoleInArea"]').prop('checked', false);
+                $('#roleOptions .role-card').css({ 'border-color': '#e2e8f0', 'background': '' });
+                $('#roleOptions').removeClass('border border-danger');
+                $('#submitStaffBtn').prop('disabled', true);
+            });
+        });
+    </script>
+}
+
+<style>
+    .cursor-pointer { cursor: pointer; }
+</style>

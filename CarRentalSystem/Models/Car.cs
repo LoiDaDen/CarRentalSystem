@@ -98,5 +98,9 @@ namespace CarRentalSystem.Models
         // Phase 5: Partner Discount
         [Column(TypeName = "decimal(5,2)")]
         public decimal? PartnerDiscountPercent { get; set; } // Partner can set discount, validate <= regular price
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
     }
 }

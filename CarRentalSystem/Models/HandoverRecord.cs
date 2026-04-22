@@ -43,5 +43,8 @@ namespace CarRentalSystem.Models
 
         [MaxLength(255)]
         public string? SignatureUrl { get; set; }
+
+        // Phase 10: Soft Delete
+        public bool IsDeleted { get; set; } = false;
     }
 }

@@ -40,7 +40,7 @@ namespace CarRentalSystem.Controllers
 
             // Lấy danh sách gói thuê dài hạn (tối thiểu 7 ngày)
             var contracts = await _context.ContractTypes
-                .Where(c => c.IsActive && c.MinDurationDays >= 7)
+                .Where(c => c.IsActive && c.MinDurationDays >= 1)
                 .OrderBy(c => c.MinDurationDays)
                 .ToListAsync();
 
@@ -55,12 +55,16 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> RequestForm(int? contractId)
         {
             var contracts = await _context.ContractTypes
-                .Where(c => c.IsActive && c.MinDurationDays >= 7)
+                .Where(c => c.IsActive && c.MinDurationDays >= 1)
                 .OrderBy(c => c.MinDurationDays)
                 .ToListAsync();
 
             ViewBag.ContractTypes = contracts;
             ViewBag.Locations = await _context.Locations.ToListAsync();
+            
+            ViewBag.Drivers = await _context.Drivers
+                .Where(d => d.IsApproved && d.IsAvailable)
+                .ToListAsync();
 
             // Lấy region từ cookie
             var regionCookie = Request.Cookies["RegionID"];
@@ -91,7 +95,8 @@ namespace CarRentalSystem.Controllers
             string? RentDuration,
             DateTime StartDate,
             string? SelectedDates,
-            int? CarID)
+            int? CarID,
+            int? SelectedDriverID)
         {
             _logger.LogInformation("SubmitRequest started for ContractTypeID: {ContractTypeID}, CarID: {CarID}", ContractTypeID, CarID);
 
@@ -202,7 +207,8 @@ namespace CarRentalSystem.Controllers
                 customerName = FullName,
                 customerPhone = Phone,
                 startDateStr = StartDate.ToString("yyyy-MM-ddTHH:mm"),
-                selectedDates = SelectedDates ?? ""
+                selectedDates = SelectedDates ?? "",
+                selectedDriverId = SelectedDriverID
             });
         }
 
@@ -218,7 +224,8 @@ namespace CarRentalSystem.Controllers
             string? customerName,
             string? customerPhone,
             string startDateStr,
-            string? selectedDates)
+            string? selectedDates,
+            int? selectedDriverId)
         {
             // Lấy thông tin user
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -234,6 +241,11 @@ namespace CarRentalSystem.Controllers
             if (user == null)
             {
                 return NotFound("Không tìm thấy thông tin người dùng.");
+            }
+            
+            if (selectedDriverId.HasValue)
+            {
+                ViewBag.SelectedDriver = await _context.Drivers.FirstOrDefaultAsync(d => d.DriverID == selectedDriverId.Value);
             }
 
             // Lấy thông tin xe
@@ -297,7 +309,8 @@ namespace CarRentalSystem.Controllers
             string? customerName,
             string? customerPhone,
             string startDateStr,
-            string? selectedDates)
+            string? selectedDates,
+            int? selectedDriverId)
         {
             var car = await _context.Cars
                 .Include(c => c.CarBrand)
@@ -318,6 +331,7 @@ namespace CarRentalSystem.Controllers
             ViewBag.CustomerPhone = customerPhone;
             ViewBag.StartDateStr = startDateStr;
             ViewBag.SelectedDates = selectedDates;
+            ViewBag.SelectedDriverId = selectedDriverId;
 
             return View();
         }
@@ -335,7 +349,8 @@ namespace CarRentalSystem.Controllers
             string? customerName,
             string? customerPhone,
             string startDateStr,
-            string? selectedDates)
+            string? selectedDates,
+            int? selectedDriverId)
         {
             // Lấy user ID
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int userId))
@@ -385,6 +400,31 @@ namespace CarRentalSystem.Controllers
                 TempData["Error"] = result.ErrorMessage ?? "Đã xảy ra lỗi khi tạo đơn thuê. Vui lòng thử lại.";
                 _logger.LogError("Failed to create long-term rental: {Error}", result.ErrorMessage);
                 return RedirectToAction("Index");
+            }
+
+            if (selectedDriverId.HasValue && selectedDriverId.Value > 0)
+            {
+                var driver = await _context.Drivers.FindAsync(selectedDriverId.Value);
+                if (driver != null)
+                {
+                    var driverFee = driver.DailyRate * totalDays;
+                    var driverBooking = new DriverBooking
+                    {
+                        BookingID = result.BookingID,
+                        DriverID = driver.DriverID,
+                        DriverFee = driverFee,
+                        Status = "Pending"
+                    };
+                    _context.DriverBookings.Add(driverBooking);
+                    
+                    var bUpdate = await _context.Bookings.FindAsync(result.BookingID);
+                    if (bUpdate != null)
+                    {
+                        bUpdate.TotalPrice += driverFee;
+                        // For long-term, we don't necessarily set DriverBookingID natively on booking, but adding the row is enough.
+                    }
+                    await _context.SaveChangesAsync();
+                }
             }
 
             _logger.LogInformation(
@@ -497,7 +537,7 @@ namespace CarRentalSystem.Controllers
         /// API: Lấy danh sách xe cho dropdown/browse (không cần ngày)
         /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetCarsForSelection(int? locationId, string? brand, int? minSeats, string? carType)
+        public async Task<IActionResult> GetCarsForSelection(int? locationId, string? brand, int? minSeats, string? carType, int? maxMonthlyPrice)
         {
             var query = _context.Cars
                 .Include(c => c.CarBrand)
@@ -531,6 +571,12 @@ namespace CarRentalSystem.Controllers
             {
                 query = query.Where(c => c.CarType != null &&
                     c.CarType.Name.ToLower().Contains(carType.ToLower()));
+            }
+
+            // Lọc theo ngân sách tối đa
+            if (maxMonthlyPrice.HasValue && maxMonthlyPrice.Value > 0)
+            {
+                query = query.Where(c => c.PricePerDay * 30 <= maxMonthlyPrice.Value);
             }
 
             var cars = await query
@@ -618,7 +664,7 @@ namespace CarRentalSystem.Controllers
         private async Task EnsureLongTermContractsExistAsync()
         {
             var hasLongTerm = await _context.ContractTypes
-                .AnyAsync(c => c.IsActive && c.MinDurationDays >= 7);
+                .AnyAsync(c => c.IsActive && c.MinDurationDays >= 1);
 
             if (!hasLongTerm)
             {
@@ -628,13 +674,23 @@ namespace CarRentalSystem.Controllers
                 {
                     new()
                     {
+                        Name = "Theo ngày",
+                        MinDurationDays = 1,
+                        MaxDurationDays = 6,
+                        DiscountPercent = 0,
+                        FreeMaintenanceCount = 0,
+                        IsActive = true,
+                        Description = "Thuê xe theo ngày, không giảm giá"
+                    },
+                    new()
+                    {
                         Name = "1 Tuần",
                         MinDurationDays = 7,
-                        MaxDurationDays = 7,
+                        MaxDurationDays = 29,
                         DiscountPercent = 5,
                         FreeMaintenanceCount = 0,
                         IsActive = true,
-                        Description = "Thuê 7 ngày, giảm 5% so với giá lẻ"
+                        Description = "Thuê từ 7 ngày, giảm 5% so với giá lẻ"
                     },
                     new()
                     {
