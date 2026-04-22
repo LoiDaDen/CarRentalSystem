@@ -147,11 +147,15 @@ namespace CarRentalSystem.Tests.UnitTests
             // Act
             await _carService.AddCarAsync(newCar);
 
-            // Assert
-            var savedCar = await _context.Cars.FirstOrDefaultAsync(c => c.LicensePlate == "51D-55555");
-            savedCar.Should().NotBeNull();
-            savedCar!.PricePerDay.Should().Be(900000);
-            savedCar.CarName.Should().Be("Honda Civic Test");
+            // Assert — verify the saved car has correct properties using its CarID.
+            // Using CarID avoids potential case-sensitivity/collation issues with LicensePlate queries.
+            var savedCar = await _context.Cars.FindAsync(newCar.CarID);
+            savedCar.Should().NotBeNull("car must be persisted after AddCarAsync");
+            savedCar!.CarName.Should().Be("Honda Civic Test");
+            savedCar.PricePerDay.Should().Be(900000);
+            savedCar.PricePerHour.Should().Be(90000);
+            savedCar.BrandID.Should().Be(2);
+            savedCar.LicensePlate.Should().Be("51D-55555");
         }
 
         // =============================================
