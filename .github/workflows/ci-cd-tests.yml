@@ -13,11 +13,12 @@ env:
   DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: true
   DOTNET_NOLOGO: true
   CAR_RENTAL_PROJECT: 'CarRentalSystem/CarRentalSystem.csproj'
+  SONAR_PROJECT_KEY: 'CarRentalSystem'
 
 jobs:
 
   # ═══════════════════════════════════════════════════════════
-  # 🔒 SECURITY SCAN — Dependency check (chạy nhanh, không block)
+  # 🔒 SECURITY SCAN — Trivy (non-blocking)
   # ═══════════════════════════════════════════════════════════
   security-scan:
     name: "🔒 Security Scan"
@@ -29,7 +30,6 @@ jobs:
     - name: "📥 Checkout code"
       uses: actions/checkout@v4
 
-    # ── Trivy: Docker Image Vulnerability Scan ───────────
     - name: "🐳 Build Docker image (for scan only)"
       uses: docker/build-push-action@v6
       with:
@@ -57,7 +57,6 @@ jobs:
         sarif_file: 'trivy-results.sarif'
         category: 'trivy-image-scan'
 
-    # ── Trivy: Scan source code ──────────────────────────
     - name: "🔍 Trivy: Scan source code for vulnerabilities"
       uses: aquasecurity/trivy-action@master
       with:
@@ -84,14 +83,13 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- Trivy Docker image scan: **PASSED**" >> $GITHUB_STEP_SUMMARY
         echo "- Trivy source code scan: **PASSED**" >> $GITHUB_STEP_SUMMARY
-        echo "- SARIF results uploaded to GitHub Security tab" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
 
   # ═══════════════════════════════════════════════════════════
-  # 🏗️ BUILD & 🧪 TEST
+  # 🏗️ BUILD & 🧪 TEST + SONARCLOUD
   # ═══════════════════════════════════════════════════════════
-  build-and-test:
-    name: "🏗️ Build & 🧪 Test"
+  build-test-sonar:
+    name: "🏗️ Build & 🧪 Test + 🔍 SonarCloud"
     runs-on: ubuntu-latest
 
     steps:
@@ -117,6 +115,26 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
+    # ═══════════════════════════════════════════════════════
+    # 🔍 SONARCLOUD — Begin Analysis (before build)
+    # ═══════════════════════════════════════════════════════
+    - name: "🔍 SonarCloud: Begin Analysis"
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        dotnet tool install --global dotnet-sonarscanner --version 10.0.* || true
+        dotnet sonarscanner begin \
+          /k:"${{ env.SONAR_PROJECT_KEY }}" \
+          /n:"CarRentalSystem" \
+          /v:"${{ github.run_number }}.${{ github.run_attempt }}" \
+          /o:"${{ vars.SONAR_ORG }}" \
+          /d:sonar.token="$SONAR_TOKEN" \
+          /d:sonar.host.url="https://sonarcloud.io" \
+          /d:sonar.cs.opencover.reportsPaths="**/coverage.cobertura.xml" \
+          /d:sonar.coverage.jacoco.xmlReportsPaths="**/coverage.cobertura.xml" \
+          /d:sonar.qualitygate.wait=true \
+          /d:sonar.qualitygate.timeout=300
+
     - name: "📦 Restore dependencies"
       run: |
         dotnet restore ${{ env.CAR_RENTAL_PROJECT }}
@@ -128,68 +146,40 @@ jobs:
         dotnet build ${{ env.TEST_PROJECT_PATH }}/${{ env.TEST_PROJECT_PATH }}.csproj --configuration Release --no-restore
 
     # ============================================================
-    # 🧪 UNIT TESTS
+    # 🧪 RUN ALL TESTS IN ONE STEP (coverage collected here)
+    # Running separately caused coverage files to overwrite each other.
+    # Smoke tests excluded here — they need separate InMemory DB setup.
     # ============================================================
-    - name: "🧪 Run Unit Tests"
+    - name: "🧪 Run Unit + Integration Tests with Coverage"
       run: |
         echo "=========================================="
-        echo "🧪 BẮT ĐẦU CHẠY UNIT TESTS"
-        echo "=========================================="
-        dotnet test --configuration Release --no-build \
-          --verbosity normal \
-          --filter "Type=Unit" \
-          --logger "trx;LogFileName=unit-test-results.trx" \
-          --results-directory ./TestResults
-        echo "=========================================="
-        echo "✅ UNIT TESTS HOÀN TẤT"
-        echo "=========================================="
-      working-directory: ${{ env.TEST_PROJECT_PATH }}
-
-    # ============================================================
-    # 🔗 INTEGRATION TESTS
-    # ============================================================
-    - name: "🔗 Run Integration Tests"
-      run: |
-        echo "=========================================="
-        echo "🔗 BẮT ĐẦU CHẠY INTEGRATION TESTS"
-        echo "=========================================="
-        dotnet test --configuration Release --no-build \
-          --verbosity normal \
-          --filter "Type=Integration" \
-          --logger "trx;LogFileName=integration-test-results.trx" \
-          --results-directory ./TestResults
-        echo "=========================================="
-        echo "✅ INTEGRATION TESTS HOÀN TẤT"
-        echo "=========================================="
-      working-directory: ${{ env.TEST_PROJECT_PATH }}
-
-    # ============================================================
-    # 📊 FULL TEST SUITE + CODE COVERAGE
-    # ============================================================
-    - name: "📊 Run All Tests + Coverage"
-      run: |
-        echo "=========================================="
-        echo "📊 BẮT ĐẦU CHẠY TOÀN BỘ TESTS + COVERAGE"
+        echo "🧪 BẮT ĐẦU CHẠY TESTS + COVERAGE"
         echo "=========================================="
         dotnet test --configuration Release --no-build \
           --verbosity normal \
           --filter "Type!=Smoke" \
-          --logger "trx;LogFileName=all-test-results.trx" \
+          --logger "trx;LogFileName=test-results.trx" \
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults
         echo "=========================================="
-        echo "✅ FULL TEST SUITE HOÀN TẤT"
+        echo "✅ TESTS HOÀN TẤT"
         echo "=========================================="
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
+    # ── SonarCloud: End Analysis (after tests, sends coverage) ──
+    - name: "🔍 SonarCloud: End Analysis"
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
     # ============================================================
-    # 🌐 SMOKE TESTS
+    # 🌐 SMOKE TESTS — Separate step (InMemory DB via WebApplicationFactory)
     # ============================================================
-    - name: "🌐 Smoke Tests"
+    - name: "🌐 Smoke Tests (WebApplicationFactory + InMemory DB)"
       continue-on-error: true
       run: |
         echo "=========================================="
-        echo "🌐 KHỞI ĐỘNG APP & TEST TRỰC TIẾP TRÊN WEB"
+        echo "🌐 CHẠY SMOKE TESTS"
         echo "=========================================="
         dotnet test --configuration Release --no-build \
           --verbosity normal \
@@ -201,6 +191,9 @@ jobs:
         echo "=========================================="
       working-directory: ${{ env.TEST_PROJECT_PATH }}
 
+    # ============================================================
+    # 📊 Code Coverage Report
+    # ============================================================
     - name: "📝 Generate Code Coverage Report"
       uses: irongut/CodeCoverageSummary@v1.3.0
       if: always()
@@ -228,7 +221,7 @@ jobs:
     # ============================================================
     # 📋 BẢNG KẾT QUẢ CHI TIẾT
     # ============================================================
-    - name: "📋 Bảng kết quả chi tiết từng Test Case"
+    - name: "📋 Test Results Summary"
       if: always()
       shell: bash
       run: |
@@ -274,13 +267,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
         }
 
-        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/unit-test-results.trx" "Unit Tests" "🧪"
-        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/integration-test-results.trx" "Integration Tests" "🔗"
-        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/smoke-test-results.trx" "Smoke Tests" "🌐"
+        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/test-results.trx" "Unit + Integration Tests" "🧪"
+        parse_trx "${{ env.TEST_PROJECT_PATH }}/TestResults/smoke-test-results.trx" "Smoke Tests (Web)" "🌐"
 
         echo "---" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        ALL_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/all-test-results.trx"
+        ALL_TRX="${{ env.TEST_PROJECT_PATH }}/TestResults/test-results.trx"
         if [ -f "$ALL_TRX" ]; then
           TOTAL_PASSED=$(grep -o 'outcome="Passed"' "$ALL_TRX" | wc -l)
           TOTAL_FAILED=$(grep -o 'outcome="Failed"' "$ALL_TRX" | wc -l)
@@ -290,8 +282,6 @@ jobs:
           else
             echo "### ❌ TỔNG KẾT: $TOTAL_FAILED/$TOTAL tests FAILED" >> $GITHUB_STEP_SUMMARY
           fi
-        else
-          echo "### ⚠️ Full test results file not found" >> $GITHUB_STEP_SUMMARY
         fi
 
   # ============================================================
@@ -300,7 +290,7 @@ jobs:
   cypress-e2e:
     name: "🌐 Cypress E2E Tests"
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: build-test-sonar
 
     services:
       sqlserver:
@@ -344,12 +334,17 @@ jobs:
       run: npm ci
       working-directory: .
 
-    - name: "🚀 Start .NET App (Background)"
+    - name: "🚀 Start .NET App"
       run: |
         dotnet run --project CarRentalSystem/CarRentalSystem.csproj --urls "http://localhost:5168" &
         echo "⏳ Đợi app khởi động..."
-        sleep 15
-        echo "✅ App đã khởi động!"
+        for i in $(seq 1 30); do
+          if curl -sf http://localhost:5168 > /dev/null 2>&1; then
+            echo "✅ App sẵn sàng sau ${i}s"
+            break
+          fi
+          sleep 1
+        done
       env:
         ASPNETCORE_ENVIRONMENT: "Development"
         ConnectionStrings__DefaultConnection: "Server=127.0.0.1,1433;Database=CarRentalDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;MultipleActiveResultSets=true"
