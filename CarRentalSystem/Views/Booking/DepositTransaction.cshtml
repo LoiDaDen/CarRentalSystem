@@ -1,17 +1,25 @@
 @model CarRentalSystem.Models.BookingTransaction
 @{
     ViewData["Title"] = "Thanh toán Đặt cọc Giỏ hàng";
+    bool hasBookings = Model.Bookings != null && Model.Bookings.Any();
     decimal totalDepositAmount = 0;
     decimal totalPrice = 0;
-    foreach (var b in Model.Bookings)
+    if (hasBookings)
     {
-        totalDepositAmount += b.Car?.DefaultDeposit ?? 0;
-        totalPrice += b.TotalPrice;
+        foreach (var b in Model.Bookings)
+        {
+            totalDepositAmount += b.Car?.DefaultDeposit ?? 0;
+            totalPrice += b.TotalPrice;
+        }
     }
-    
-    // Default deposit amount for transaction could be 20% of total price
+    var snapshot = ViewBag.Snapshot as System.Text.Json.JsonElement?;
+    if (snapshot.HasValue && !hasBookings)
+    {
+        totalPrice = snapshot.Value.GetProperty("totalAmount").GetDecimal();
+        totalDepositAmount = snapshot.Value.GetProperty("totalDeposit").GetDecimal();
+    }
     var requiredDeposit = totalPrice * 0.2m;
-    var finalAmount = totalPrice + 150000m; // Example service fee
+    var finalAmount = totalPrice + 150000m;
 }
 
 <style>
@@ -102,22 +110,52 @@
             <div class="payment-card sticky-top" style="top: 20px;">
                 <h5 class="fw-bold mb-4 text-center">Thông tin đơn thuê</h5>
                 
-                @foreach(var b in Model.Bookings)
+                @if (hasBookings)
                 {
-                    <div class="mb-3 rounded-3 overflow-hidden border p-2">
-                        <div class="d-flex align-items-center">
-                            <img src="@(b.Car?.ImageURL ?? "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=300&fit=crop")" alt="@b.Car?.CarName" class="rounded" style="width: 80px; height: 60px; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=300&fit=crop'" />
-                            <div class="ms-3">
-                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">@b.Car?.CarBrand?.Name @b.Car?.CarName</div>
-                                <div class="small text-muted">@b.StartDate.ToString("dd/MM/yyyy") - @b.EndDate.ToString("dd/MM/yyyy")</div>
+                    @foreach(var b in Model.Bookings)
+                    {
+                        <div class="mb-3 rounded-3 overflow-hidden border p-2">
+                            <div class="d-flex align-items-center">
+                                <img src="@(b.Car?.ImageURL ?? "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=300&fit=crop")" alt="@b.Car?.CarName" class="rounded" style="width: 80px; height: 60px; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=300&fit=crop'" />
+                                <div class="ms-3">
+                                    <div class="fw-bold text-dark" style="font-size: 0.9rem;">@b.Car?.CarBrand?.Name @b.Car?.CarName</div>
+                                    <div class="small text-muted">@b.StartDate.ToString("dd/MM/yyyy") - @b.EndDate.ToString("dd/MM/yyyy")</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    }
+                }
+                else if (snapshot.HasValue)
+                {
+                    var items = snapshot.Value.GetProperty("items");
+                    @foreach(var item in items.EnumerateArray())
+                    {
+                        <div class="mb-3 rounded-3 overflow-hidden border p-2">
+                            <div class="d-flex align-items-center">
+                                <img src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=300&fit=crop" alt="@item.GetProperty("carName")" class="rounded" style="width: 80px; height: 60px; object-fit: cover;" />
+                                <div class="ms-3">
+                                    <div class="fw-bold text-dark" style="font-size: 0.9rem;">@item.GetProperty("carBrand") @item.GetProperty("carName")</div>
+                                    <div class="small text-muted">@item.GetProperty("startDate").GetDateTime().ToString("dd/MM/yyyy HH:mm") - @item.GetProperty("endDate").GetDateTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 }
                 
                 <ul class="info-list mt-4">
                     <li><span class="text-muted">Mã giao dịch</span> <span class="fw-bold">TRX-@Model.TransactionID</span></li>
-                    <li><span class="text-muted">Tổng số xe</span> <span class="fw-bold">@Model.Bookings.Count xe</span></li>
+                    <li><span class="text-muted">Tổng số xe</span>
+                        <span class="fw-bold">
+                            @if (hasBookings)
+                            {
+                                @:@Model.Bookings.Count xe
+                            }
+                            else if (snapshot.HasValue)
+                            {
+                                @:@snapshot.Value.GetProperty("items").GetArrayLength() xe
+                            }
+                        </span>
+                    </li>
                 </ul>
                 
                 <div class="bg-light p-3 rounded-3 mt-3 mb-4 border border-light">

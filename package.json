@@ -9,5 +9,9 @@
   },
   "devDependencies": {
     "cypress": "^13.7.0"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "pptxgenjs": "^4.0.1"
   }
 }

@@ -1,10 +1,14 @@
+using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
 
@@ -20,13 +24,15 @@ namespace CarRentalSystem.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly IEmailService _emailService;
         private readonly IPiiEncryptionService _piiEncryption;
+        private readonly ApplicationDbContext _context;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context)
         {
             _authService = authService;
             _env = env;
             _emailService = emailService;
             _piiEncryption = piiEncryption;
+            _context = context;
         }
 
         [HttpGet]
@@ -50,6 +56,18 @@ namespace CarRentalSystem.Controllers
             if (!user.IsEmailVerified)
             {
                 ViewBag.Error = "Vui lòng kiểm tra hộp thư email và xác thực tài khoản trước khi đăng nhập. Hoặc đăng nhập khi đã xác thực.";
+                return View();
+            }
+
+            if (user.IsLocked)
+            {
+                ViewBag.Error = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.";
+                return View();
+            }
+
+            if (user.IsBlacklisted)
+            {
+                ViewBag.Error = $"Tài khoản của bạn đã bị chặn. Lý do: {user.BlacklistReason ?? "Không xác định"}. Vui lòng liên hệ quản trị viên.";
                 return View();
             }
 
@@ -103,11 +121,19 @@ namespace CarRentalSystem.Controllers
                 return View(user);
             }
 
-            if (string.IsNullOrEmpty(user.CitizenId) || string.IsNullOrEmpty(user.Gender) || 
-                user.DateOfBirth == null || string.IsNullOrEmpty(user.Address) || 
+            if (string.IsNullOrEmpty(user.CitizenId) || string.IsNullOrEmpty(user.Gender) ||
+                user.DateOfBirth == null || string.IsNullOrEmpty(user.Address) ||
                 string.IsNullOrEmpty(user.DrivingLicenseNumber) || string.IsNullOrEmpty(user.Phone))
             {
                 ViewBag.Error = "Vui lòng nhập đầy đủ tất cả các thông tin.";
+                return View(user);
+            }
+
+            // Tuổi phải >= 18
+            var age = (DateTime.Today - user.DateOfBirth.Value.Date).TotalDays / 365.25;
+            if (age < 18)
+            {
+                ViewBag.Error = $"Bạn phải từ 18 tuổi trở lên để đăng ký. Tuổi hiện tại: {age:F1} tuổi.";
                 return View(user);
             }
 
@@ -118,16 +144,46 @@ namespace CarRentalSystem.Controllers
                 return View(user);
             }
 
-            // 🔒 Validate GPLX = đúng 12 chữ số
-            if (!System.Text.RegularExpressions.Regex.IsMatch(user.DrivingLicenseNumber.Trim(), @"^\d{12}$"))
+            // 🔒 Validate GPLX = đúng 12 chữ số + check trùng
+            var gplx = user.DrivingLicenseNumber?.Trim() ?? "";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(gplx, @"^\d{12}$"))
             {
                 ViewBag.Error = "Số Giấy Phép Lái Xe phải đúng 12 chữ số.";
                 return View(user);
             }
+            bool gplxTaken = await _authService.IsDrivingLicenseTakenAsync(gplx, 0);
+            if (gplxTaken)
+            {
+                ViewBag.Error = "Số Giấy Phép Lái Xe này đã được sử dụng bởi một tài khoản khác.";
+                return View(user);
+            }
+
+            // 🔒 Validate SĐT + check trùng
+            var phone = user.Phone?.Trim() ?? "";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(phone, @"^0\d{9,10}$"))
+            {
+                ViewBag.Error = "Số điện thoại phải bắt đầu bằng 0 và có 10-11 chữ số.";
+                return View(user);
+            }
+            bool phoneTaken = await _authService.IsPhoneTakenAsync(phone, 0);
+            if (phoneTaken)
+            {
+                ViewBag.Error = "Số điện thoại này đã được sử dụng bởi một tài khoản khác.";
+                return View(user);
+            }
+
+            // Lay plaintext truoc khi encrypt
+            var plaintextCitizenId = user.CitizenId?.Trim() ?? "";
 
             // 🔒 Encrypt PII at rest trước khi lưu
             user.CitizenId = _piiEncryption.EncryptIfNotEmpty(user.CitizenId);
             user.DrivingLicenseNumber = _piiEncryption.EncryptIfNotEmpty(user.DrivingLicenseNumber);
+
+            // 🔐 Compute SHA-256 hash từ PLAINTEXT (khong phai ciphertext)
+            user.CitizenIdHash = ComputeHash(plaintextCitizenId);
+            user.DrivingLicenseHash = ComputeHash(gplx);
+            user.PhoneHash = ComputeHash(phone);
+            user.Phone = phone;
 
             user.Role = "Customer"; // Default role
             user.IsEmailVerified = false;
@@ -270,19 +326,40 @@ namespace CarRentalSystem.Controllers
                         }
                     }
 
-                    user.Name = updatedUser.Name;
-                    user.Phone = updatedUser.Phone;
-
-                    // 🔒 Validate GPLX = 12 chữ số
-                    if (!string.IsNullOrEmpty(updatedUser.DrivingLicenseNumber))
+                    // 🔒 Validate SĐT format + check trùng
+                    var newPhone = updatedUser.Phone?.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(newPhone) &&
+                        !System.Text.RegularExpressions.Regex.IsMatch(newPhone, @"^0\d{9,10}$"))
                     {
-                        var gplxClean = updatedUser.DrivingLicenseNumber.Trim();
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(gplxClean, @"^\d{12}$"))
+                        TempData["ErrorMessage"] = "Số điện thoại phải bắt đầu bằng 0 và có 10-11 chữ số.";
+                        return RedirectToAction("Profile");
+                    }
+                    bool phoneTaken = await _authService.IsPhoneTakenAsync(newPhone, userId);
+                    if (phoneTaken)
+                    {
+                        TempData["ErrorMessage"] = "Số điện thoại này đã được sử dụng bởi một tài khoản khác.";
+                        return RedirectToAction("Profile");
+                    }
+
+                    // 🔒 Validate GPLX = 12 chữ số + check trùng
+                    var newGplx = updatedUser.DrivingLicenseNumber?.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(newGplx))
+                    {
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(newGplx, @"^\d{12}$"))
                         {
                             TempData["ErrorMessage"] = "Số Giấy Phép Lái Xe phải đúng 12 chữ số.";
                             return RedirectToAction("Profile");
                         }
+                        bool gplxTaken = await _authService.IsDrivingLicenseTakenAsync(newGplx, userId);
+                        if (gplxTaken)
+                        {
+                            TempData["ErrorMessage"] = "Số Giấy Phép Lái Xe này đã được sử dụng bởi một tài khoản khác.";
+                            return RedirectToAction("Profile");
+                        }
                     }
+
+                    user.Name = updatedUser.Name;
+                    user.Phone = newPhone;
 
                     // 🔒 Encrypt PII at rest
                     user.CitizenId = _piiEncryption.EncryptIfNotEmpty(updatedUser.CitizenId);
@@ -290,6 +367,11 @@ namespace CarRentalSystem.Controllers
                     user.DateOfBirth = updatedUser.DateOfBirth;
                     user.Gender = updatedUser.Gender;
                     user.Address = updatedUser.Address;
+
+                    // 🔐 Compute SHA-256 hash từ PLAINTEXT (khong phai ciphertext)
+                    user.CitizenIdHash = ComputeHash(updatedUser.CitizenId?.Trim());
+                    user.DrivingLicenseHash = ComputeHash(newGplx);
+                    user.PhoneHash = ComputeHash(newPhone);
 
                     // Handle eKYC Uploads
                     string uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "eKyc");
@@ -396,6 +478,13 @@ namespace CarRentalSystem.Controllers
             return new string('*', value.Length - 4) + value[^4..];
         }
 
+        private static string ComputeHash(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value.Trim()));
+            return Convert.ToHexString(bytes).ToLowerInvariant();
+        }
+
         // ═══════════════════════════════════════════════
         // 🔐 PII PIN — Mã PIN 6 số để xem CCCD/GPLX
         // ═══════════════════════════════════════════════
@@ -478,6 +567,77 @@ namespace CarRentalSystem.Controllers
                 citizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId) ?? "",
                 drivingLicenseNumber = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber) ?? ""
             });
+        }
+
+        /// <summary>
+        /// BACKFILL: Chạy một lần để compute SHA-256 hashes cho dữ liệu cũ.
+        /// Tài khoản cũ có CitizenIdHash = null sẽ được backfill.
+        /// Chi Admin mới được gọi.
+        /// </summary>
+        [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> BackfillPiiHashes()
+        {
+            var users = await _context.Users
+                .Where(u => u.CitizenIdHash == null)
+                .ToListAsync();
+
+            int count = 0;
+            foreach (var user in users)
+            {
+                bool changed = false;
+
+                // CCCD
+                if (!string.IsNullOrEmpty(user.CitizenId))
+                {
+                    var val = user.CitizenId.Trim();
+                    string? plaintextCccd = null;
+                    try { plaintextCccd = _piiEncryption.DecryptIfNotEmpty(val); } catch { }
+                    // Nếu decrypt trả về khác giá trị gốc → đã encrypt. Nếu giống → có thể là plaintext
+                    if (!string.IsNullOrEmpty(plaintextCccd) && plaintextCccd != val)
+                    {
+                        user.CitizenIdHash = ComputeHash(plaintextCccd.Trim());
+                        changed = true;
+                    }
+                    else if (!string.IsNullOrEmpty(plaintextCccd) && plaintextCccd.Length >= 9 && plaintextCccd.Length <= 15)
+                    {
+                        // Giá trị 9-15 ký tự → có thể là CCCD plaintext cũ
+                        user.CitizenIdHash = ComputeHash(plaintextCccd.Trim());
+                        changed = true;
+                    }
+                }
+
+                // GPLX
+                if (!string.IsNullOrEmpty(user.DrivingLicenseNumber))
+                {
+                    var val = user.DrivingLicenseNumber.Trim();
+                    string? plaintextLic = null;
+                    try { plaintextLic = _piiEncryption.DecryptIfNotEmpty(val); } catch { }
+                    if (!string.IsNullOrEmpty(plaintextLic) && plaintextLic != val)
+                    {
+                        user.DrivingLicenseHash = ComputeHash(plaintextLic.Trim());
+                        changed = true;
+                    }
+                    else if (!string.IsNullOrEmpty(plaintextLic) && plaintextLic.Length == 12 && plaintextLic.All(char.IsDigit))
+                    {
+                        user.DrivingLicenseHash = ComputeHash(plaintextLic.Trim());
+                        changed = true;
+                    }
+                }
+
+                // Phone
+                if (!string.IsNullOrEmpty(user.Phone))
+                {
+                    user.PhoneHash = ComputeHash(user.Phone.Trim());
+                    changed = true;
+                }
+
+                if (changed) count++;
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, message = $"Da backfill {count}/{users.Count} tai khoan." });
         }
     }
 

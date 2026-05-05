@@ -43,7 +43,12 @@
                         </div>
                         <div class="col-md-6">
                             <label asp-for="LicensePlate" class="form-label fw-bold">Biển số xe <span class="text-danger">*</span></label>
-                            <input asp-for="LicensePlate" class="form-control form-control-lg bg-light" placeholder="VD: 51H-123.45" required />
+                            <input asp-for="LicensePlate" class="form-control form-control-lg bg-light" placeholder="VD: 51H-123.45" required id="licensePlateInput" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Số khung (VIN)</label>
+                            <input asp-for="VIN" class="form-control form-control-lg bg-light" placeholder="VD: 1HGBH41JXMN109186" maxlength="17" id="vinInput" />
+                            <small class="text-muted">17 ký tự chữ và số</small>
                         </div>
                         <div class="col-md-6">
                             <label asp-for="PricePerDay" class="form-label fw-bold">Giá theo ngày (₫) <span class="text-danger">*</span></label>
@@ -72,7 +77,7 @@
                         </div>
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Khu vực đăng ký (Tỉnh/Thành) <span class="text-danger">*</span></label>
-                            <select asp-for="LocationID" id="LocationID" class="form-select form-select-lg bg-light" required style="pointer-events: none;">
+                            <select asp-for="LocationID" id="LocationID" class="form-select form-select-lg bg-light" required>
                                 @if (ViewBag.Locations != null) {
                                     @foreach(var loc in (IEnumerable<CarRentalSystem.Models.Location>)ViewBag.Locations) {
                                         <option value="@loc.LocationID" selected="@(loc.LocationID == Model.LocationID ? "selected" : null)">@loc.Name</option>
@@ -270,6 +275,32 @@
             // Init
             fuelTypeSelect.dispatchEvent(new Event('change'));
         }
+    });
+
+    // --- LICENSE PLATE CHANGE CONFIRMATION ---
+    document.addEventListener("DOMContentLoaded", function () {
+        var originalPlate = '@Model.LicensePlate';
+        var plateInput = document.getElementById('licensePlateInput');
+        if (!plateInput) return;
+
+        var form = plateInput.closest('form');
+        if (!form) return;
+
+        form.addEventListener('submit', function(e) {
+            var currentPlate = plateInput.value.trim().toUpperCase();
+            var origPlate = originalPlate.trim().toUpperCase();
+
+            if (currentPlate !== origPlate && currentPlate.length > 0) {
+                e.preventDefault();
+                var confirmed = confirm(
+                    'Bạn có chắc muốn thay đổi biển số xe từ [' + originalPlate + '] thành [' + currentPlate + ']?\n\n' +
+                    'Thao tác này sẽ cập nhật toàn bộ hệ thống.'
+                );
+                if (confirmed) {
+                    form.submit();
+                }
+            }
+        });
     });
 </script>
 }

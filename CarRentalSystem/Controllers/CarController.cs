@@ -440,6 +440,8 @@ namespace CarRentalSystem.Controllers
             string sort,
             bool? isPremium,
             int? contractId,
+            decimal? minPrice,
+            decimal? maxPrice,
             int page = 2)
         {
             const int pageSize = 12;
@@ -489,6 +491,12 @@ namespace CarRentalSystem.Controllers
 
             if (isPremium == true)
                 carsQuery = carsQuery.Where(c => c.IsPremium);
+
+            if (minPrice.HasValue)
+                carsQuery = carsQuery.Where(c => c.PricePerDay >= minPrice.Value);
+
+            if (maxPrice.HasValue)
+                carsQuery = carsQuery.Where(c => c.PricePerDay <= maxPrice.Value);
 
             var totalCars = await carsQuery.CountAsync();
             var cars = await carsQuery

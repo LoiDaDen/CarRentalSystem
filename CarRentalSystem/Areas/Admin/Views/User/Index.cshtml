@@ -106,6 +106,22 @@
             </div>
         </a>
     </div>
+    <div class="col-md-3">
+        <a href="@Url.Action("Index", new { role = "Manager", search = ViewBag.Search })" class="text-decoration-none">
+            <div class="card shadow-sm rounded-4 p-4 text-center transition-all hover-translate-y @(ViewBag.ActiveRole == "Manager" ? "border-primary border-2 shadow-lg" : "border-0")" style="background: linear-gradient(135deg,#ede9fe,#fff);">
+                <h3 class="fw-800 mb-0" style="color:#7c3aed;">@ViewBag.TotalManagers</h3>
+                <small class="text-muted fw-bold text-uppercase" style="font-size:0.7rem; letter-spacing:1px;">Quản lý</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="@Url.Action("Index", new { role = "Staff", search = ViewBag.Search })" class="text-decoration-none">
+            <div class="card shadow-sm rounded-4 p-4 text-center transition-all hover-translate-y @(ViewBag.ActiveRole == "Staff" ? "border-info border-2 shadow-lg" : "border-0")" style="background: linear-gradient(135deg,#e0f2fe,#fff);">
+                <h3 class="fw-800 mb-0 text-info">@ViewBag.TotalStaffs</h3>
+                <small class="text-muted fw-bold text-uppercase" style="font-size:0.7rem; letter-spacing:1px;">Nhân viên</small>
+            </div>
+        </a>
+    </div>
 </div>
 
 <style>
@@ -135,6 +151,18 @@
                                 <div>
                                     <div class="fw-800 text-dark">@user.Name</div>
                                     <small class="text-muted">ID #@user.UserID</small>
+                                    @{
+                                        var roleBadgeClass = user.Role switch
+                                        {
+                                            "Admin" => "bg-danger",
+                                            "Manager" => "bg-primary",
+                                            "Staff" => "bg-info",
+                                            "Partner" => "bg-warning text-dark",
+                                            "Customer" => "bg-secondary",
+                                            _ => "bg-secondary"
+                                        };
+                                    }
+                                    <span class="badge @roleBadgeClass rounded-pill px-2 py-0 ms-1" style="font-size:0.6rem;">@user.Role</span>
                                 </div>
                             </div>
                         </td>

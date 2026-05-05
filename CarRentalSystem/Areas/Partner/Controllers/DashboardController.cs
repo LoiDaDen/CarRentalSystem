@@ -324,16 +324,24 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         // ═══ HỢP ĐỒNG ĐỐI TÁC ═══
 
         // GET /Partner/Dashboard/Contract
-        public async Task<IActionResult> Contract()
+        public async Task<IActionResult> Contract(string? status)
         {
             var userId = GetCurrentUserId();
             if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
 
-            var contracts = await _db.PartnerContracts
+            var query = _db.PartnerContracts
                 .Where(pc => pc.PartnerUserID == userId)
                 .OrderByDescending(pc => pc.CreatedAt)
-                .ToListAsync();
+                .AsQueryable();
 
+            // Default: hide cancelled unless explicitly requested
+            if (string.IsNullOrEmpty(status))
+                query = query.Where(pc => pc.Status != "Cancelled");
+            else if (status == "cancelled")
+                query = query.Where(pc => pc.Status == "Cancelled");
+
+            ViewBag.Status = status ?? "active";
+            var contracts = await query.ToListAsync();
             return View(contracts);
         }
 

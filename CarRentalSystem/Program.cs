@@ -9,8 +9,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using Hangfire.SqlServer;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
+
+DotNetEnv.Env.Load(Path.Combine(builder.Environment.ContentRootPath, ".env"));
 
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
@@ -22,7 +25,8 @@ builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
 });
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+        .EnableSensitiveDataLogging());
 
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ICarService, CarService>();
@@ -30,6 +34,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPayOSPaymentService, PayOSPaymentService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
@@ -68,6 +73,21 @@ builder.Services.AddScoped<IPiiEncryptionService, PiiEncryptionService>();
 
 builder.Services.AddHttpClient<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>();
 builder.Services.AddScoped<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>();
+
+// ═══════════════════════════════════════════════════
+// 🤖 GROQ AI CHAT (Miễn phí, không giới hạn)
+// ═══════════════════════════════════════════════════
+var groqApiKey = builder.Configuration["Groq:ApiKey"]
+                  ?? Environment.GetEnvironmentVariable("GROQ_API_KEY")
+                  ?? "";
+builder.Services.AddHttpClient("GroqChatService", client =>
+{
+    client.BaseAddress = new Uri("https://api.groq.com/openai/v1/");
+    if (!string.IsNullOrWhiteSpace(groqApiKey))
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", groqApiKey);
+});
+builder.Services.AddSingleton<IChatSessionService, ChatSessionService>();
+builder.Services.AddScoped<CarRentalSystem.Services.GroqChatService>();
 
 // ═══════════════════════════════════════════════════
 // 🔍 QR CCCD PARSER — Xử lý dữ liệu từ CCCD chip
@@ -158,6 +178,7 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 var app = builder.Build();
+AuditLogServiceAccessor.ScopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
 // ═══════════════════════════════════════════════════
 // 🗄️ DATABASE MIGRATION & SEED
@@ -204,6 +225,14 @@ app.Use(async (context, next) =>
 
 // app.UseHttpsRedirection(); // Tạm thời tắt trong Development
 app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "..", "docs")),
+    RequestPath = "/docs",
+    ServeUnknownFileTypes = true,
+    DefaultContentType = "text/plain"
+});
 app.UseRouting();
 
 // ═══════════════════════════════════════════════
@@ -221,7 +250,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // ═══════════════════════════════════════════════
-// 📝 AUDIT LOG — Ghi lại mọi thao tác POST/PUT/DELETE
+// 🔒 ACCOUNT LOCK CHECKER — Kiểm tra IsLocked/IsBlacklisted
+// sau mỗi request đã xác thực
+// ═══════════════════════════════════════════════
+app.UseAccountLockChecker();
+
+// ═══════════════════════════════════════════════
+// 📝 AUDIT LOG — Ghi lại MỌI request HTTP (View, Create, Update, Delete)
+// Loại trừ: static files, health check, hangfire, signalr
 // ═══════════════════════════════════════════════
 app.UseAuditLog();
 
@@ -405,6 +441,14 @@ app.MapControllerRoute(
 
 
 app.Run();
+
+// ═══════════════════════════════════════════════════
+// 🌍 SHARED SERVICE PROVIDER — cho background services
+// ═══════════════════════════════════════════════════
+public static class AppHost
+{
+    public static IServiceProvider? Services { get; set; }
+}
 
 // ═══════════════════════════════════════════════════
 // 🔒 Hangfire Dashboard Authorization Filter

@@ -1140,17 +1140,17 @@ else
             const startVal = card.querySelector('.start-date').value;
             if (!startVal) return;
             const start = new Date(startVal);
-            
-            // Adjust end date based on package's minimum days (e.g. 1 year = 365 days, 1 week = 7 days)
+
+            // Adjust end date based on package's minimum days
             const daysToApply = pkg.minDays;
             const newEnd = new Date(start.getTime() + daysToApply * 24 * 60 * 60 * 1000);
-            
+
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
             const localISOTime = (new Date(newEnd - tzOffset)).toISOString().slice(0, 16);
-            
+
             const endInput = card.querySelector('.end-date');
             endInput.value = localISOTime;
-            
+
             // Update display label
             const displayLabel = card.querySelector('[data-calendar-display]');
             if (displayLabel) {
@@ -1159,17 +1159,59 @@ else
                 displayLabel.innerText = `${startStr} - ${endStr}`;
             }
 
-            // Trigger update to calculate new price
-            updateCartItem(itemId);
+            // Save dates to server first
+            const fdDates = new FormData();
+            fdDates.append('cartItemId', itemId);
+            fdDates.append('startDate', startVal);
+            fdDates.append('endDate', localISOTime);
+            try { await fetch('/Cart/UpdateCartItemDates', { method: 'POST', body: fdDates }); } catch(e) {}
+
+            // Save package to server (will recalculate price with discount)
+            const fdPkg = new FormData();
+            fdPkg.append('cartItemId', itemId);
+            fdPkg.append('packageId', packageId);
+            try {
+                const res = await fetch('/Cart/UpdateCartItemPackage', { method: 'POST', body: fdPkg });
+                const data = await res.json();
+                if (data.success) {
+                    // Update item price badge
+                    const priceEl = card.querySelector(`.item-price-${itemId}`);
+                    if (priceEl && data.estimatedPrice !== undefined) {
+                        priceEl.textContent = data.estimatedPrice.toLocaleString('vi-VN') + ' đ';
+                    }
+
+                    // Show original price if discounted
+                    const origPriceEl = card.querySelector(`.item-original-price-${itemId}`);
+                    if (origPriceEl && data.originalPrice !== undefined && data.originalPrice > (data.estimatedPrice || 0)) {
+                        origPriceEl.textContent = data.originalPrice.toLocaleString('vi-VN') + ' đ';
+                        origPriceEl.style.display = 'block';
+                    } else if (origPriceEl) {
+                        origPriceEl.style.display = 'none';
+                    }
+
+                    // Update package button text
+                    const pkgBtn = document.getElementById(`pkg-btn-${itemId}`);
+                    if (pkgBtn) {
+                        if (pkg.discount > 0) {
+                            pkgBtn.innerHTML = `<i class="bi bi-box-seam" style="color: #10b981;"></i>
+                                <span style="color: #1e293b;">${pkg.name}</span>
+                                <span class="ms-auto" style="font-size: 0.6rem; color: #059669; font-weight:700;">-${pkg.discount}%</span>`;
+                        } else {
+                            pkgBtn.innerHTML = `<i class="bi bi-box-seam" style="color: #3b82f6;"></i>
+                                <span style="color: #1e293b;">${pkg.name}</span>
+                                <i class="bi bi-chevron-right ms-auto" style="font-size: 0.55rem; color: #94a3b8;"></i>`;
+                        }
+                    }
+                    card.dataset.packageId = pkg.id;
+                    updateSummary();
+                }
+            } catch(e) {}
 
             closePackagePopup();
             Swal.fire({
-                icon: 'success', title: `Đã tự động chỉnh thời gian theo ${pkg.name}`,
+                icon: 'success', title: `Đã chọn gói ${pkg.name}${pkg.discount > 0 ? ' (-' + pkg.discount + '%)' : ''}`,
                 toast: true, position: 'top-end', showConfirmButton: false, timer: 2000
             });
-            
-            // Trigger recalculation which handles syncing to server
-            handleDateChange(itemId);
         }
 
         function renderStars(rating) {
@@ -1426,7 +1468,21 @@ else
             chip.classList.toggle('selected');
             const fd = new FormData();
             fd.append('cartItemId', itemId); fd.append('addonId', addonId); fd.append('selected', !isSel);
-            try { await fetch('/Cart/ToggleAddon', { method: 'POST', body: fd }); }
+            try {
+                const res = await fetch('/Cart/ToggleAddon', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success && data.estimatedPrice !== undefined) {
+                    // Update item price badge
+                    const card = document.getElementById(`car-card-${itemId}`);
+                    if (card) {
+                        const priceEl = card.querySelector(`.item-price-${itemId}`);
+                        if (priceEl) {
+                            priceEl.textContent = data.estimatedPrice.toLocaleString('vi-VN') + ' đ';
+                        }
+                        updateSummary();
+                    }
+                }
+            }
             catch(e) { chip.classList.toggle('selected'); }
         }
 

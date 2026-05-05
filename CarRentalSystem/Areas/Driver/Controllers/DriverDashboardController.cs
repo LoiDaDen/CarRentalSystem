@@ -183,7 +183,7 @@ namespace CarRentalSystem.Areas.Driver.Controllers
             if (driver == null) return NotFound();
 
             var driverBooking = await _db.DriverBookings
-                .Include(db => db.Booking)
+                .Include(db => db.Booking).ThenInclude(b => b!.BookingStatus)
                 .FirstOrDefaultAsync(db => db.DriverBookingID == id && db.DriverID == driver.DriverID);
 
             if (driverBooking == null) return NotFound();
@@ -194,18 +194,34 @@ namespace CarRentalSystem.Areas.Driver.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            // Update DriverBooking status
+            // Check if booking was cancelled by customer before driver confirms
+            var cancelledStatuses = new[] { "Cancelled", "Rejected", "Rejected by Admin" };
+            if (driverBooking.Booking?.BookingStatus != null &&
+                cancelledStatuses.Contains(driverBooking.Booking.BookingStatus.Name))
+            {
+                TempData["Error"] = "Chuyến đi này đã bị hủy bởi khách hàng. Vui lòng quay về danh sách chuyến xe.";
+                TempData["ForceCancelled"] = "1";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Re-fetch fresh status to prevent race conditions
+            await _db.Entry(driverBooking).ReloadAsync();
+            if (driverBooking.Status == "Cancelled")
+            {
+                TempData["Error"] = "Chuyến đi này đã bị hủy.";
+                TempData["ForceCancelled"] = "1";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
             driverBooking.Status = "Active";
             driverBooking.Booking!.ActualPickupDate = DateTime.UtcNow;
 
-            // Update Booking status to Active if needed
             var activeStatus = await _db.BookingStatuses.FirstOrDefaultAsync(s => s.Name == "Active");
             if (activeStatus != null)
             {
                 driverBooking.Booking!.BookingStatusID = activeStatus.BookingStatusID;
             }
 
-            // Update Car status to Rented
             var car = await _db.Cars.FindAsync(driverBooking.Booking!.CarID);
             if (car != null)
             {
@@ -317,6 +333,38 @@ namespace CarRentalSystem.Areas.Driver.Controllers
                 : "Bạn đã tắt chế độ sẵn sàng.";
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // GET: API check booking status (for polling / real-time updates)
+        [HttpGet]
+        public async Task<IActionResult> CheckBookingStatus(int id)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var driver = await _db.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
+            if (driver == null) return Json(new { success = false, error = "Driver not found" });
+
+            var driverBooking = await _db.DriverBookings
+                .Include(db => db.Booking).ThenInclude(b => b!.BookingStatus)
+                .FirstOrDefaultAsync(db => db.DriverBookingID == id && db.DriverID == driver.DriverID);
+
+            if (driverBooking == null)
+                return Json(new { success = false, error = "Booking not found" });
+
+            var cancelledStatuses = new[] { "Cancelled", "Rejected", "Rejected by Admin" };
+            bool isCancelled = driverBooking.Booking?.BookingStatus != null &&
+                cancelledStatuses.Contains(driverBooking.Booking.BookingStatus.Name);
+
+            return Json(new
+            {
+                success = true,
+                driverBookingId = driverBooking.DriverBookingID,
+                status = driverBooking.Status,
+                bookingStatus = driverBooking.Booking?.BookingStatus?.Name,
+                isCancelled,
+                message = isCancelled ? "Chuyến đi đã bị hủy bởi khách hàng." : null
+            });
         }
     }
 }

@@ -97,6 +97,7 @@
             <input type="hidden" asp-for="StartDate" />
             <input type="hidden" asp-for="EndDate" />
             <input type="hidden" name="PickupLocationText" value="@(Model.Car?.CarAddress ?? Model.Car?.Location?.Name)" />
+            <input type="hidden" name="PromotionID" id="promotionIdInput" value="" />
 
             <div class="row w-100 m-0 justify-content-center">
                 <div class="col-12 col-lg-8">
@@ -129,26 +130,59 @@
                 </div>
 
                 <div class="checkout-card ui-elevated-card">
+                    <h5 class="fw-bold mb-3 d-flex align-items-center"><div class="step-badge" style="background:#f59e0b;"><i class="bi bi-ticket-perforated"></i></div> Mã Giảm Giá</h5>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <div class="input-group" id="voucherGroup">
+                                <input type="text" class="form-control fw-bold text-uppercase" id="promoCodeInput" placeholder="Nhập mã voucher (VD: SUMMER2026)" autocomplete="off" />
+                                <button class="btn btn-outline-primary fw-bold" type="button" id="applyPromoBtn" onclick="applyPromoCode()">
+                                    <span id="promoBtnText">Áp dụng</span>
+                                    <span id="promoBtnSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="promoError" class="text-danger small mt-2 fw-bold d-none"></div>
+                    <div id="promoSuccess" class="text-success small mt-2 fw-bold d-none">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        <span id="promoSuccessText"></span>
+                    </div>
+                    @if (ViewBag.MembershipTier != null && ViewBag.MembershipTier.DiscountPercent > 0)
+                    {
+                        <div class="mt-2 p-2 bg-info bg-opacity-10 border border-info border-opacity-25 rounded-3">
+                            <div class="small text-info fw-bold">
+                                <i class="bi bi-star-fill me-1"></i>
+                                Bạn được giảm <span class="fw-bolder">@ViewBag.MembershipTier.DiscountPercent%</span> theo hạng thành viên @ViewBag.MembershipTier.Name
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="checkout-card ui-elevated-card">
                     <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">2</div> Các bước thanh toán</h5>
 
                     <div class="p-3 border rounded-3 mb-3 bg-light">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="fw-bold text-success"><i class="bi bi-1-circle-fill me-2"></i>Thanh toán giữ chỗ qua ứng dụng</div>
-                            <span class="fw-bold">@((Model.TotalPrice * 0.2m).ToString("N0")) đ</span>
+                            <span class="fw-bold" id="depositAmountDisplay">@((Model.TotalPrice * 0.2m).ToString("N0")) đ</span>
                         </div>
-                        <p class="small text-muted mb-0 ps-4">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào s��� tiền phải thanh toán khi nhận xe.</p>
+                        <p class="small text-muted mb-0 ps-4">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào tiền phải thanh toán khi nhận xe.</p>
                     </div>
 
                     <div class="p-3 border rounded-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toán khi nhận xe</div>
-                            <span class="fw-bold text-dark">@((Model.TotalPrice * 0.8m + Model.DepositAmount).ToString("N0")) đ</span>
+                            <span class="fw-bold text-dark" id="balanceAmountDisplay">@((Model.TotalPrice * 0.8m + Model.DepositAmount).ToString("N0")) đ</span>
                         </div>
                         <ul class="small text-muted mb-0 ps-4 list-unstyled">
-                            <li class="d-flex justify-content-between mb-1"><span>Tiền thuê (còn lại)</span> <span>@((Model.TotalPrice * 0.8m).ToString("N0")) đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tiền thuê (còn lại)</span> <span id="rentalRemainingDisplay">@((Model.TotalPrice * 0.8m).ToString("N0")) đ</span></li>
                             <li class="d-flex justify-content-between mb-1"><span>Tài sản Đặt cọc / Thế chấp</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
-                            <li class="d-flex text-warning mt-2"><i class="bi bi-shield-lock me-2"></i> <span>Tiền cọc sẽ được giữ lại vòng 15 ngày để tra cứu Phạt Nguội giao thông trước khi hoàn trả tự động vào ví của bạn.</span></li>
                         </ul>
+                        <div id="voucherDiscountRow" class="d-flex justify-content-between mb-1 text-success fw-bold d-none">
+                            <span><i class="bi bi-ticket-perforated me-1"></i>Giảm voucher</span>
+                            <span id="voucherDiscountAmount">-0 đ</span>
+                        </div>
+                        <div class="d-flex text-warning mt-2"><i class="bi bi-shield-lock me-2"></i> <span>Tiền cọc sẽ được giữ lại vòng 15 ngày để tra cứu Phạt Nguội giao thông trước khi hoàn trả tự động vào ví của bạn.</span></div>
                     </div>
                 </div>
 
@@ -376,6 +410,56 @@
 
 @section Scripts {
     <script>
+        var promoApplied = false;
+        var promoDiscount = 0;
+
+        async function applyPromoCode() {
+            var code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
+            if (!code) return;
+
+            document.getElementById('promoBtnSpinner').classList.remove('d-none');
+            document.getElementById('promoBtnText').textContent = 'Đang kiểm tra...';
+            document.getElementById('applyPromoBtn').disabled = true;
+            document.getElementById('promoError').classList.add('d-none');
+            document.getElementById('promoSuccess').classList.add('d-none');
+
+            try {
+                var totalPrice = @Model.TotalPrice;
+                var res = await fetch('/api/Voucher/check?code=' + encodeURIComponent(code) + '&totalPrice=' + totalPrice);
+                var data = await res.json();
+
+                if (data.success) {
+                    promoApplied = true;
+                    promoDiscount = data.discountAmount;
+                    document.getElementById('promotionIdInput').value = data.promotionId;
+                    document.getElementById('promoSuccess').classList.remove('d-none');
+                    document.getElementById('promoSuccessText').textContent = 'Giảm ' + data.discountAmount.toLocaleString('vi-VN') + 'đ cho đơn hàng!';
+                    document.getElementById('promoCodeInput').readOnly = true;
+                    document.getElementById('applyPromoBtn').innerHTML = '<i class="bi bi-check-circle-fill"></i> Đã áp dụng';
+                    document.getElementById('applyPromoBtn').classList.remove('btn-outline-primary');
+                    document.getElementById('applyPromoBtn').classList.add('btn-success');
+                    document.getElementById('applyPromoBtn').disabled = false;
+
+                    var discountedTotal = totalPrice - promoDiscount;
+                    document.getElementById('voucherDiscountRow').classList.remove('d-none');
+                    document.getElementById('voucherDiscountAmount').textContent = '-' + promoDiscount.toLocaleString('vi-VN') + 'đ';
+                    document.getElementById('depositAmountDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.2)).toLocaleString('vi-VN') + ' đ';
+                    document.getElementById('balanceAmountDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8 + @Model.DepositAmount)).toLocaleString('vi-VN') + ' đ';
+                    document.getElementById('rentalRemainingDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8)).toLocaleString('vi-VN') + ' đ';
+                } else {
+                    document.getElementById('promoError').classList.remove('d-none');
+                    document.getElementById('promoError').textContent = data.message || 'Mã voucher không hợp lệ hoặc đã hết hạn.';
+                }
+            } catch (e) {
+                document.getElementById('promoError').classList.remove('d-none');
+                document.getElementById('promoError').textContent = 'Không thể kiểm tra mã voucher. Thử lại sau.';
+            }
+
+            document.getElementById('promoBtnSpinner').classList.add('d-none');
+            document.getElementById('promoBtnText').textContent = promoApplied ? 'Đã áp dụng' : 'Áp dụng';
+            document.getElementById('applyPromoBtn').disabled = promoApplied;
+        }
+
         function selectInsurance(tier, fee) {
             document.getElementById('insuranceTierInput').value = tier;
             document.getElementById('insuranceFeeInput').value = fee;

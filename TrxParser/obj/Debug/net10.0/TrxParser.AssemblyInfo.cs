@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TrxParser")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f32b94eb6eab06cfbf07eada176e49b342bbfe69")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8fdf1187b5db67f9e60110507258057275e3f868")]
 [assembly: System.Reflection.AssemblyProductAttribute("TrxParser")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TrxParser")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

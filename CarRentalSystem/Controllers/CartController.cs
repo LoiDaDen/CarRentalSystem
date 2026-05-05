@@ -212,21 +212,79 @@ namespace CarRentalSystem.Controllers
         {
             var userId = GetUserId();
             var item = await _context.CartItems
+                .Include(ci => ci.Car)
                 .Include(ci => ci.Cart)
                 .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
 
-            if (item != null)
+            if (item == null)
+                return Json(new { success = false, message = "Khong tim thay san pham" });
+
+            var package = await _context.ContractTypes.FindAsync(packageId);
+            if (package == null)
+                return Json(new { success = false, message = "Khong tim thay goi thue" });
+
+            item.ContractTypeID = packageId;
+
+            // ===== Tinh lai EstimatedPrice voi discount =====
+            var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
+            var days = Math.Max(1, (int)Math.Ceiling(hours / 24.0));
+
+            // Tinh gia co ban
+            decimal p4 = (item.Car?.PricePerDay ?? 600000m) * 0.4m;
+            decimal p8 = (item.Car?.PricePerDay ?? 600000m) * 0.7m;
+            decimal p12 = (item.Car?.PricePerDay ?? 600000m) * 0.85m;
+            decimal p24 = item.Car?.PricePerDay ?? 600000m;
+            decimal basePrice = 0;
+            int fullDays = hours / 24, rem = hours % 24;
+            if (hours <= 4) basePrice = Math.Min(hours * (item.Car?.PricePerHour ?? 50000m), p4);
+            else if (hours <= 8) basePrice = Math.Min(p4 + (hours - 4) * (item.Car?.PricePerHour ?? 50000m), p8);
+            else if (hours <= 12) basePrice = Math.Min(p8 + (hours - 8) * (item.Car?.PricePerHour ?? 50000m), p12);
+            else if (hours <= 24) basePrice = Math.Min(p12 + (hours - 12) * (item.Car?.PricePerHour ?? 50000m), p24);
+            else
             {
-                var package = await _context.ContractTypes.FindAsync(packageId);
-                if (package != null)
-                {
-                    item.ContractTypeID = packageId;
-                    _context.CartItems.Update(item);
-                    await _context.SaveChangesAsync();
-                    return Json(new { success = true, packageName = package.Name, discount = package.DiscountPercent });
-                }
+                decimal remP = rem <= 4 ? Math.Min(rem * (item.Car?.PricePerHour ?? 50000m), p4)
+                    : rem <= 8 ? Math.Min(p4 + (rem - 4) * (item.Car?.PricePerHour ?? 50000m), p8)
+                    : rem <= 12 ? Math.Min(p8 + (rem - 8) * (item.Car?.PricePerHour ?? 50000m), p12)
+                    : Math.Min(p12 + (rem - 12) * (item.Car?.PricePerHour ?? 50000m), p24);
+                basePrice = (fullDays * p24) + remP;
             }
-            return Json(new { success = false });
+
+            // Lay driver rate
+            decimal driverRate = 0;
+            if (item.DriverID.HasValue && item.DriverID > 0)
+            {
+                var driver = await _context.Drivers.FindAsync(item.DriverID.Value);
+                if (driver != null) driverRate = driver.DailyRate;
+            }
+
+            var driverDays = Math.Max(1, days);
+            decimal carAndDriverPrice = basePrice + (driverRate * driverDays);
+
+            // Lay addon prices
+            decimal addonTotal = 0;
+            foreach (var adId in item.AddOnIDs)
+            {
+                var ad = await _context.AddOns.FindAsync(adId);
+                if (ad != null) addonTotal += ad.PricePerDay * days;
+            }
+
+            decimal originalPrice = carAndDriverPrice + addonTotal;
+
+            // Ap dung discount goi
+            decimal discountedCarPrice = originalPrice;
+            if (package.DiscountPercent > 0)
+            {
+                discountedCarPrice = carAndDriverPrice * (1 - package.DiscountPercent / 100m) + addonTotal;
+            }
+
+            decimal originalPrice_rounded = Math.Round(originalPrice);
+            decimal estimatedPrice = Math.Round(discountedCarPrice);
+
+            item.EstimatedPrice = estimatedPrice;
+            _context.CartItems.Update(item);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, packageName = package.Name, discount = package.DiscountPercent, estimatedPrice, originalPrice = originalPrice_rounded });
         }
 
         [HttpPost]
@@ -235,14 +293,15 @@ namespace CarRentalSystem.Controllers
         {
             var userId = GetUserId();
             var item = await _context.CartItems
+                .Include(ci => ci.Car)
                 .Include(ci => ci.Cart)
                 .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
 
             if (item == null)
-                return Json(new { success = false, message = "Không tìm thấy sản phẩm" });
+                return Json(new { success = false, message = "Khong tim thay san pham" });
 
             var currentAddOns = item.AddOnIDs;
-            
+
             if (selected)
             {
                 if (!currentAddOns.Contains(addonId))
@@ -252,12 +311,53 @@ namespace CarRentalSystem.Controllers
             {
                 currentAddOns.Remove(addonId);
             }
-            
+
             item.AddOnIDs = currentAddOns;
+
+            // ===== Tinh lai EstimatedPrice bao gom addons =====
+            var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
+            var days = Math.Max(1, (int)Math.Ceiling(hours / 24.0));
+
+            // Lay addon prices
+            decimal addonTotal = 0;
+            foreach (var adId in item.AddOnIDs)
+            {
+                var ad = await _context.AddOns.FindAsync(adId);
+                if (ad != null) addonTotal += ad.PricePerDay * days;
+            }
+
+            // Lay driver rate
+            decimal driverRate = 0;
+            if (item.DriverID.HasValue && item.DriverID > 0)
+            {
+                var driver = await _context.Drivers.FindAsync(item.DriverID.Value);
+                if (driver != null) driverRate = driver.DailyRate;
+            }
+
+            // Tinh gia co ban (khong co addon)
+            decimal p4 = (item.Car?.PricePerDay ?? 600000m) * 0.4m;
+            decimal p8 = (item.Car?.PricePerDay ?? 600000m) * 0.7m;
+            decimal p12 = (item.Car?.PricePerDay ?? 600000m) * 0.85m;
+            decimal p24 = item.Car?.PricePerDay ?? 600000m;
+            decimal basePrice = 0;
+            int fullDays = hours / 24, rem = hours % 24;
+            if (hours <= 4) basePrice = Math.Min(hours * (item.Car?.PricePerHour ?? 50000m), p4);
+            else if (hours <= 8) basePrice = Math.Min(p4 + (hours - 4) * (item.Car?.PricePerHour ?? 50000m), p8);
+            else if (hours <= 12) basePrice = Math.Min(p8 + (hours - 8) * (item.Car?.PricePerHour ?? 50000m), p12);
+            else if (hours <= 24) basePrice = Math.Min(p12 + (hours - 12) * (item.Car?.PricePerHour ?? 50000m), p24);
+            else basePrice = (fullDays * p24) + (rem <= 4 ? Math.Min(rem * (item.Car?.PricePerHour ?? 50000m), p4) : rem <= 8 ? Math.Min(p4 + (rem - 4) * (item.Car?.PricePerHour ?? 50000m), p8) : rem <= 12 ? Math.Min(p8 + (rem - 8) * (item.Car?.PricePerHour ?? 50000m), p12) : Math.Min(p12 + (rem - 12) * (item.Car?.PricePerHour ?? 50000m), p24));
+
+            var driverDays = Math.Max(1, days);
+            decimal estimatedPrice = basePrice + (driverRate * driverDays);
+
+            // Cong addon vao
+            estimatedPrice += addonTotal;
+
+            item.EstimatedPrice = estimatedPrice;
             _context.CartItems.Update(item);
             await _context.SaveChangesAsync();
-            
-            return Json(new { success = true });
+
+            return Json(new { success = true, estimatedPrice = item.EstimatedPrice, addonTotal });
         }
 
         [HttpPost]
@@ -279,160 +379,141 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Index");
             }
 
-            // 1. Transaction
             var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
             if (user == null) return RedirectToAction("Login", "Auth");
 
-            decimal baseTotalAmount = cart.CartItems.Sum(ci => ci.EstimatedPrice);
-            decimal memDiscountPct = user?.MembershipTier?.DiscountPercent ?? 0;
-            decimal totalDiscountAmount = baseTotalAmount * (memDiscountPct / 100m);
-            decimal totalAmount = baseTotalAmount - totalDiscountAmount;
-
-            var transaction = new BookingTransaction
+            // ===== 1. Validate: tat ca cac xe deu phai cach nhau >= 1 tieng =====
+            var items = cart.CartItems.ToList();
+            for (int i = 0; i < items.Count; i++)
             {
-                UserID = userId,
-                TotalAmount = totalAmount,
-                Status = BookingStatusConstants.Draft,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.BookingTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
-
-            var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending) ??
-                              new BookingStatus { Name = BookingStatusConstants.Pending };
-            if (pendingStatus.BookingStatusID == 0)
-            {
-                _context.BookingStatuses.Add(pendingStatus);
-                await _context.SaveChangesAsync();
+                for (int j = i + 1; j < items.Count; j++)
+                {
+                    // Neu cung xe, kiem tra khoang cach thoi gian
+                    if (items[i].CarID == items[j].CarID)
+                    {
+                        var gapHours = Math.Min(
+                            (items[i].StartDate - items[j].EndDate).TotalHours,
+                            (items[j].StartDate - items[i].EndDate).TotalHours);
+                        if (gapHours >= 0 && gapHours < 1)
+                        {
+                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' có 2 đơn đặt cách nhau chỉ {gapHours:F1} giờ. Vui lòng đảm bảo khoảng cách tối thiểu 1 tiếng giữa các đơn cùng xe.";
+                            return RedirectToAction("Index");
+                        }
+                    }
+                }
             }
 
-            // 2. Bookings
-            var skippedCars = new List<string>();
-            foreach (var item in cart.CartItems)
+            // ===== 2. Kiem tra overlap voi booking da ton tai =====
+            var overlapErrors = new List<string>();
+            foreach (var item in items)
             {
-                // 🔒 Overlap check cho từng xe trong giỏ hàng
                 bool isOverlapped = await _context.Bookings
                     .Include(b => b.BookingStatus)
                     .AnyAsync(b => b.CarID == item.CarID &&
                         b.BookingStatus != null &&
                         b.BookingStatus.Name != "Cancelled" && b.BookingStatus.Name != "Completed" &&
-                        ((item.StartDate >= b.StartDate && item.StartDate < b.EndDate) ||
-                         (item.EndDate > b.StartDate && item.EndDate <= b.EndDate) ||
-                         (item.StartDate <= b.StartDate && item.EndDate >= b.EndDate)));
+                        !(((item.StartDate >= b.EndDate.AddHours(1)) || (item.EndDate <= b.StartDate.AddHours(-1)) ||
+                          (item.StartDate <= b.StartDate.AddHours(-1) && item.EndDate >= b.EndDate.AddHours(1)))));
 
                 if (isOverlapped)
                 {
-                    skippedCars.Add(item.Car?.CarName ?? $"Xe #{item.CarID}");
-                    continue; // Skip xe bị trùng, không tạo booking
-                }
-
-                decimal itemDiscount = item.EstimatedPrice * (memDiscountPct / 100m);
-                var booking = new Booking
-                {
-                    UserID = userId,
-                    CarID = item.CarID,
-                    StartDate = item.StartDate,
-                    EndDate = item.EndDate,
-                    TotalPrice = item.EstimatedPrice - itemDiscount,
-                    DiscountAmount = itemDiscount,
-                    TotalHours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours),
-                    BookingStatusID = pendingStatus.BookingStatusID,
-                    DepositAmount = item.Car?.DefaultDeposit ?? 0,
-                    DepositStatus = DepositStatusConstants.Holding,
-                    TransactionID = transaction.TransactionID,
-                    PickupLocationID = item.Car?.LocationID ?? 1,
-                    ReturnLocationID = item.Car?.LocationID ?? 1
-                };
-                _context.Bookings.Add(booking);
-                await _context.SaveChangesAsync();
-                
-                // Thêm BookingAddOns nếu có
-                if (!string.IsNullOrEmpty(item.SelectedAddOns))
-                {
-                    var addonIds = item.AddOnIDs;
-                    foreach (var addonId in addonIds)
-                    {
-                        var addon = await _context.AddOns.FindAsync(addonId);
-                        if (addon != null)
-                        {
-                            _context.BookingAddOns.Add(new BookingAddOn
-                            {
-                                BookingID = booking.BookingID,
-                                AddOnID = addonId,
-                                Quantity = 1,
-                                TotalPrice = addon.PricePerDay
-                            });
-                        }
-                    }
-                    await _context.SaveChangesAsync();
+                    overlapErrors.Add($"'{item.Car?.CarName}' đã có người đặt trong khoảng thời gian bạn chọn (cần cách ít nhất 1 tiếng).");
                 }
             }
-            await _context.SaveChangesAsync();
 
-            // 3. Master Digital Contract
-            const int MaxFieldLength = 1000;
-            var carPlates = string.Join(", ", cart.CartItems.Select(ci => ci.Car?.LicensePlate ?? "Chưa rõ"));
-            if (carPlates.Length > MaxFieldLength) carPlates = carPlates[..MaxFieldLength] + "...";
-            var carModels = string.Join(" | ", cart.CartItems.Select(ci => $"{ci.Car?.CarBrand?.Name} {ci.Car?.CarName}"));
-            if (carModels.Length > MaxFieldLength) carModels = carModels[..MaxFieldLength] + "...";
-            var minStartDate = cart.CartItems.Min(ci => ci.StartDate);
-            var maxEndDate = cart.CartItems.Max(ci => ci.EndDate);
-
-            string termsCarsStr = string.Join("\n", cart.CartItems.Select((ci, index) => 
-                $"- Xe {index+1}: {ci.Car?.CarBrand?.Name} {ci.Car?.CarName}, BKS: {ci.Car?.LicensePlate}, Giá thuê: {ci.EstimatedPrice.ToString("N0")} VNĐ"));
-
-            var newContract = new DigitalContract
+            if (overlapErrors.Any())
             {
-                TransactionID = transaction.TransactionID,
-                ContractNo = $"HD-Cart-{transaction.TransactionID}-{DateTime.UtcNow:MMddyy}",
-                CustomerName = user?.Name ?? "",
-                CustomerIdentityCard = _piiEncryption.DecryptIfNotEmpty(user?.CitizenId) ?? "Chưa cập nhật",
-                CustomerPhone = user?.Phone ?? "",
-                CustomerAddress = user?.Address ?? "Chưa cập nhật",
-                CarLicensePlate = carPlates,
-                CarModel = carModels,
-                RentalStartDate = minStartDate,
-                RentalEndDate = maxEndDate,
-                RentalPricePerDay = 0,
-                TotalContractValue = totalAmount,
-                DepositAmount = cart.CartItems.Sum(ci => ci.Car?.DefaultDeposit) ?? 0,
-                TermsAndConditions = $@"Sau khi bàn bạc, thỏa thuận, hai bên thống nhất ký kết Hợp đồng thuê XE tự lái với các điều khoản như sau:
+                TempData["Error"] = string.Join(" ", overlapErrors);
+                return RedirectToAction("Index");
+            }
 
-ĐIỀU 1: NỘI DUNG HỢP ĐỒNG
-- Bên A đồng ý cho bên B thuê nhiều xe ô tô tự lái trong thời gian cho thuê.
-- Danh sách xe:
-{termsCarsStr}
+            // ===== 3. Tinh toan tong tien (bao gom add-ons) =====
+            var addons = await _context.AddOns.ToListAsync();
+            decimal baseTotal = 0;
+            var itemDetails = new List<object>();
 
-ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG, PHƯƠNG THỨC THANH TOÁN
-- Tổng tiền thuê xe nền tảng: {baseTotalAmount.ToString("N0")} VNĐ.
-{(memDiscountPct > 0 ? $"- Ưu đãi hạng thẻ thành viên {user?.MembershipTier?.Name} (Giảm {memDiscountPct}%): -{totalDiscountAmount.ToString("N0")} VNĐ.\n" : "")}- Tổng cộng tiền thuê phải thanh toán: {totalAmount.ToString("N0")} VNĐ.
-- Tiền cọc tổng (Giữ chỗ): {(cart.CartItems.Sum(ci => ci.Car?.DefaultDeposit) ?? 0).ToString("N0")} VNĐ.
-- Bên B thanh toán đầy đủ phí thuê và tiền cọc cho Bên A ngay khi hợp đồng có hiệu lực.
+            foreach (var item in items)
+            {
+                var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
+                var days = (int)Math.Ceiling(hours / 24.0);
 
-ĐIỀU 3: TRÁCH NHIỆM CHUNG (Áp dụng cho tất cả các xe)
-- Không sử dụng xe thuê vào mục đích vi phạm pháp luật.
-- Chịu toàn bộ chi phí nhiên liệu, cầu đường, đỗ xe trong thời gian thuê từng xe.
-- Trả xe đúng thời gian và địa điểm theo như thỏa thuận gốc.
+                // Lay addon da chon
+                var selectedAddonIds = item.AddOnIDs;
+                decimal addonTotal = 0;
+                var addonDetails = new List<object>();
+                foreach (var addonId in selectedAddonIds)
+                {
+                    var addon = addons.FirstOrDefault(a => a.AddOnID == addonId);
+                    if (addon != null)
+                    {
+                        var addonCost = addon.PricePerDay * days;
+                        addonTotal += addonCost;
+                        addonDetails.Add(new { id = addon.AddOnID, name = addon.Name, pricePerDay = addon.PricePerDay, total = addonCost });
+                    }
+                }
 
-ĐIỀU 4: HIỆU LỰC HỢP ĐỒNG
-- Hợp đồng có giá trị từ {minStartDate:HH:mm dd/MM/yyyy} đến hết ngày {maxEndDate:HH:mm dd/MM/yyyy}.
+                decimal itemTotal = item.EstimatedPrice + addonTotal;
+                baseTotal += itemTotal;
 
-Hợp đồng điện tử này có giá trị pháp lý tương đương bản giấy.",
-                IsSignedByCustomer = false,
-                IsSignedByOwner = false
+                itemDetails.Add(new
+                {
+                    carId = item.CarID,
+                    carName = item.Car?.CarName,
+                    carBrand = item.Car?.CarBrand?.Name,
+                    licensePlate = item.Car?.LicensePlate,
+                    locationId = item.Car?.LocationID,
+                    startDate = item.StartDate,
+                    endDate = item.EndDate,
+                    hours,
+                    days,
+                    withDriver = item.WithDriver,
+                    driverId = item.DriverID,
+                    contractTypeId = item.ContractTypeID,
+                    basePrice = item.EstimatedPrice,
+                    addonTotal,
+                    addonDetails,
+                    totalPrice = itemTotal,
+                    defaultDeposit = item.Car?.DefaultDeposit ?? 0
+                });
+            }
+
+            decimal memDiscount = user?.MembershipTier?.DiscountPercent ?? 0;
+            decimal discountAmount = baseTotal * (memDiscount / 100m);
+            decimal totalAmount = baseTotal - discountAmount;
+            decimal totalDeposit = items.Sum(i => (i.Car?.DefaultDeposit ?? 0));
+
+            // ===== 4. Luu transaction voi PendingCartSnapshot (chua tao booking) =====
+            var transaction = new BookingTransaction
+            {
+                UserID = userId,
+                TotalAmount = totalAmount,
+                DiscountAmount = discountAmount,
+                MembershipDiscountPercent = (int)memDiscount,
+                Status = BookingStatusConstants.Unpaid,
+                CreatedAt = DateTime.UtcNow,
+                PendingCartSnapshot = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    items = itemDetails,
+                    totalDeposit,
+                    baseTotal,
+                    discountAmount,
+                    totalAmount,
+                    membershipName = user?.MembershipTier?.Name,
+                    userName = user?.Name,
+                    userEmail = user?.Email,
+                    userPhone = user?.Phone,
+                    userAddress = user?.Address
+                })
             };
 
-            _context.DigitalContracts.Add(newContract);
-            
-            // 4. Clear cart
+            _context.BookingTransactions.Add(transaction);
+            await _context.SaveChangesAsync();
+
+            // ===== 5. Xoa cart items =====
             _context.CartItems.RemoveRange(cart.CartItems);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Đã khởi tạo đơn hàng từ giỏ thành công! Vui lòng thanh toán tiền cọc.";
-            if (skippedCars.Any())
-            {
-                TempData["Warning"] = $"Lưu ý: {skippedCars.Count} xe đã bị bỏ qua do trùng lịch: {string.Join(", ", skippedCars)}";
-            }
+            TempData["Success"] = $"Đơn hàng #{transaction.TransactionID} đã được tạo. Vui lòng thanh toán tiền cọc {totalDeposit.ToString("N0")}đ để xác nhận.";
             return RedirectToAction("DepositTransaction", "Booking", new { id = transaction.TransactionID });
         }
 

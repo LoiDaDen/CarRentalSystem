@@ -47,6 +47,18 @@ namespace CarRentalSystem.Models
         // 🔒 Giới hạn 12 số — validated in Controller, encrypted at rest (MaxLength lớn vì ciphertext dài)
         [MaxLength(500)]
         public string? DrivingLicenseNumber { get; set; }
+
+        // 🔐 SHA-256 hash để check trùng CCCD (vì ciphertext không deterministic)
+        [MaxLength(64)]
+        public string? CitizenIdHash { get; set; }
+
+        // 🔐 SHA-256 hash để check trùng GPLX
+        [MaxLength(64)]
+        public string? DrivingLicenseHash { get; set; }
+
+        // 🔐 SHA-256 hash để check trùng SĐT
+        [MaxLength(64)]
+        public string? PhoneHash { get; set; }
         
         // Email Verification
         public bool IsEmailVerified { get; set; } = false;

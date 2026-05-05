@@ -102,7 +102,15 @@
 
                 <!-- Dropdown chon khu vuc (chi hien thi neu co it nhat 1 khu vuc) -->
                 @await Component.InvokeAsync("AreaSelector")
-                
+
+                <!-- Badge counts from database (set before nav renders) -->
+                @await Component.InvokeAsync("AdminBadgeCounts")
+
+                @{
+                    var pendingDriverCount = ViewData["PendingDriverCount"] as int? ?? 0;
+                    var contractBadgeCount = ViewData["ContractBadgeCount"] as int? ?? 0;
+                }
+
                 <nav class="nav flex-column px-2 pb-4 flex-grow-1">
                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
                         <i class="bi bi-grid-1x2-fill"></i> Tổng quan
@@ -115,7 +123,7 @@
                                 <span><i class="bi bi-kanban-fill"></i> Quản lý</span>
                                 <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
-                            <div class="collapse @(new[]{"Car", "Booking", "User", "Maintenance", "Driver", "Membership", "PartnerContract", "DigitalContract", "HolidayPricing"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
+                            <div class="collapse @(new[]{"Car", "CarApproval", "Booking", "User", "Maintenance", "Driver", "Membership", "PartnerContract", "DigitalContract", "HolidayPricing"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
                                 @if (User.IsInRole("Admin"))
                                 {
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Car" && ViewContext.RouteData.Values["action"]?.ToString() == "Manage" ? "active" : "")" asp-area="Admin" asp-controller="Car" asp-action="Manage">
@@ -124,6 +132,15 @@
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CarApproval" ? "active" : "")" asp-area="Admin" asp-controller="CarApproval" asp-action="Index">
                                         <i class="bi bi-check2-square" style="font-size: 1.1rem;"></i> Duyệt Xe Mới
                                     </a>
+                                }
+                                @if (User.IsInRole("Manager"))
+                                {
+                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CarApproval" ? "active" : "")" asp-area="Admin" asp-controller="CarApproval" asp-action="Index">
+                                        <i class="bi bi-check2-square" style="font-size: 1.1rem;"></i> Duyệt Xe Mới
+                                    </a>
+                                }
+                                @if (User.IsInRole("Admin"))
+                                {
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Payment" ? "active" : "")" asp-area="Admin" asp-controller="Payment" asp-action="Index">
                                         <i class="bi bi-currency-exchange" style="font-size: 1.1rem;"></i> Lịch sử Giao dịch
                                     </a>
@@ -132,6 +149,12 @@
                                     </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "PartnerContract" ? "active" : "")" asp-area="Admin" asp-controller="PartnerContract" asp-action="Index">
                                         <i class="bi bi-file-earmark-person-fill" style="font-size: 1.1rem;"></i> HĐ Đối tác/Tài xế
+                                        @if (contractBadgeCount > 0)
+                                        {
+                                            <span class="badge bg-danger rounded-pill ms-auto" style="font-size: 0.65rem; padding: 2px 6px;">
+                                                @(contractBadgeCount > 99 ? "99+" : contractBadgeCount)
+                                            </span>
+                                        }
                                     </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="Index">
                                         <i class="bi bi-people-fill" style="font-size: 1.1rem;"></i> Người dùng
@@ -139,11 +162,14 @@
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "PartnerRequests" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="PartnerRequests">
                                         <i class="bi bi-person-badge-fill" style="font-size: 1.1rem;"></i> Duyệt Đối tác
                                     </a>
-                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "EkycPending" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="EkycPending">
-                                        <i class="bi bi-shield-check" style="font-size: 1.1rem;"></i> Duyệt eKYC
-                                    </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Driver" ? "active" : "")" asp-area="Admin" asp-controller="Driver" asp-action="Index">
-                                        <i class="bi bi-person-workspace" style="font-size: 1.1rem;"></i> Quản lý Tài xế
+                                        <i class="bi bi-person-workspace" style="font-size: 1.1rem;"></i> Hồ sơ Tài xế
+                                        @if (pendingDriverCount > 0)
+                                        {
+                                            <span class="badge bg-danger rounded-pill ms-auto" style="font-size: 0.65rem; padding: 2px 6px;">
+                                                @(pendingDriverCount > 99 ? "99+" : pendingDriverCount)
+                                            </span>
+                                        }
                                     </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Membership" ? "active" : "")" asp-area="Admin" asp-controller="Membership" asp-action="Index">
                                         <i class="bi bi-gem text-info" style="font-size: 1.1rem;"></i> Hạng TV & Hợp đồng
@@ -193,6 +219,10 @@
                             <i class="bi bi-shield-lock-fill"></i> Bảo mật
                         </a>
 
+                        <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AuditLog" ? "active" : "")" asp-area="Admin" asp-controller="AuditLog" asp-action="Index">
+                            <i class="bi bi-clipboard-data-fill"></i> Audit Log
+                        </a>
+
                         <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Snapshot" ? "active" : "")" asp-area="Admin" asp-controller="Snapshot" asp-action="Index">
                             <i class="bi bi-archive-fill"></i> Sao lưu & Phục hồi
                         </a>
@@ -205,14 +235,23 @@
                                 <span><i class="bi bi-geo-alt-fill"></i> Khu vực</span>
                                 <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
-                            <div class="collapse @(new[]{"AreaDashboard", "Area", "AreaStaff"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="areaDropdown">
+                            <div class="collapse @(new[]{"AreaDashboard", "Area", "AreaStaff", "CarApproval"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="areaDropdown">
                                 <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AreaDashboard" ? "active" : "")" asp-area="Admin" asp-controller="AreaDashboard" asp-action="Index">
                                     <i class="bi bi-grid-3x3-gap-fill" style="font-size: 1.1rem;"></i> Dashboard Khu vực
+                                </a>
+                                <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CarApproval" ? "active" : "")" asp-area="Admin" asp-controller="CarApproval" asp-action="Index">
+                                    <i class="bi bi-check2-square" style="font-size: 1.1rem;"></i> Duyệt Xe Mới
                                 </a>
                                 @if (User.IsInRole("Manager") || User.IsInRole("Admin"))
                                 {
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Area" ? "active" : "")" asp-area="Admin" asp-controller="Area" asp-action="Index">
                                         <i class="bi bi-geo-alt-fill" style="font-size: 1.1rem;"></i> Danh sách Khu vực
+                                    </a>
+                                }
+                                @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Staff"))
+                                {
+                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AreaBooking" ? "active" : "")" asp-area="Admin" asp-controller="AreaBooking" asp-action="Index">
+                                        <i class="bi bi-clipboard-check" style="font-size: 1.1rem;"></i> Đơn xe khu vực
                                     </a>
                                 }
                             </div>
@@ -252,6 +291,24 @@
                             <a class="admin-link text-info" asp-area="" asp-controller="Home" asp-action="Index">
                                 <i class="bi bi-display"></i> Xem website
                             </a>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <a class="admin-link text-success" asp-area="" asp-controller="Guide" asp-action="Index" asp-route-role="admin">
+                                    <i class="bi bi-book-fill"></i> Hướng dẫn sử dụng
+                                </a>
+                            }
+                            else if (User.IsInRole("Manager"))
+                            {
+                                <a class="admin-link text-success" asp-area="" asp-controller="Guide" asp-action="Index" asp-route-role="manager">
+                                    <i class="bi bi-book-fill"></i> Hướng dẫn (Manager)
+                                </a>
+                            }
+                            else if (User.IsInRole("Staff"))
+                            {
+                                <a class="admin-link text-success" asp-area="" asp-controller="Guide" asp-action="Index" asp-route-role="staff">
+                                    <i class="bi bi-book-fill"></i> Hướng dẫn (Staff)
+                                </a>
+                            }
                             <a class="admin-link text-danger" asp-area="" asp-controller="Auth" asp-action="Logout">
                                 <i class="bi bi-box-arrow-right"></i> Đăng xuất
                             </a>

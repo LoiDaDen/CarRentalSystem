@@ -17,6 +17,13 @@
     <style>
         .hover-white:hover { color: white !important; }
         .hover-primary:hover { border-color: #0d6efd !important; color: #0d6efd !important; }
+        .typing-dots span { animation: typingDot 1.4s infinite; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @@keyframes typingDot {
+            0%, 80%, 100% { opacity: 0; }
+            40% { opacity: 1; }
+        }
         
         @@media (min-width: 992px) {
             .dropdown:hover > .dropdown-menu { display: block; margin-top: 0; }
@@ -89,6 +96,14 @@
                                 </a>
                             </li>
                         }
+                        else if (User.IsInRole("Manager") || User.IsInRole("Staff"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-danger fw-bold" asp-area="Admin" asp-controller="AreaDashboard" asp-action="Index">
+                                    <i class="bi bi-geo-alt-fill me-1"></i>Khu vực
+                                </a>
+                            </li>
+                        }
                     </ul>
                     <ul class="navbar-nav align-items-center">
                         <li class="nav-item dropdown px-2 border-end border-secondary border-opacity-25 me-2">
@@ -148,9 +163,10 @@
                                         </div>
                                         <h6 class="mb-0 text-white fw-bold">@User.Identity.Name</h6>
                                         <small class="text-white-50">
-                                            @if (User.IsInRole("Admin")) { <text>Quản trị viên</text> }
+                                            @if (User.IsInRole("Admin")) { <text><span class="badge bg-primary rounded-pill px-2 py-1" style="font-size:0.6rem;"><i class="bi bi-shield-lock-fill me-1"></i>Quản trị viên</span></text> }
+                                            else if (User.IsInRole("Manager")) { <text><span class="badge bg-danger rounded-pill px-2 py-1" style="font-size:0.6rem;"><i class="bi bi-shield-check-fill me-1"></i>Quản lý</span></text> }
+                                            else if (User.IsInRole("Staff")) { <text><span class="badge bg-warning text-dark rounded-pill px-2 py-1" style="font-size:0.6rem;"><i class="bi bi-person-badge-fill me-1"></i>Nhân viên</span></text> }
                                             else if (User.IsInRole("Partner")) { <text>Đối tác</text> }
-                                            else if (User.IsInRole("Staff")) { <text>Nhân viên</text> }
                                             else { <text>Thành viên</text> }
                                         </small>
                                     </li>
@@ -160,13 +176,13 @@
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item py-2 d-flex align-items-center text-white" asp-controller="Ekyc" asp-action="Index">
-                                            <i class="bi bi-shield-check text-success opacity-75 me-3 fs-5"></i><span>Xác thực eKYC</span>
+                                        <a class="dropdown-item py-2 d-flex align-items-center text-white" asp-controller="Booking" asp-action="MyBookings">
+                                            <i class="bi bi-car-front text-white-50 me-3 fs-5"></i><span>Chuyến xe của tôi</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item py-2 d-flex align-items-center text-white" asp-controller="Booking" asp-action="MyBookings">
-                                            <i class="bi bi-car-front text-white-50 me-3 fs-5"></i><span>Chuyến xe của tôi</span>
+                                        <a class="dropdown-item py-2 d-flex align-items-center text-white" asp-controller="Ekyc" asp-action="Index">
+                                            <i class="bi bi-shield-check text-success opacity-75 me-3 fs-5"></i><span>Xác thực eKYC</span>
                                         </a>
                                     </li>
                                     <li>
@@ -196,6 +212,17 @@
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider border-light border-opacity-10 my-2"></li>
+                                    }
+                                    else if (User.IsInRole("Manager") || User.IsInRole("Staff"))
+                                    {
+                                        <li>
+                                            <h6 class="dropdown-header text-danger fw-bold text-uppercase">Khu vực Quản lý</h6>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2 d-flex align-items-center text-danger" asp-area="Admin" asp-controller="AreaDashboard" asp-action="Index">
+                                                <i class="bi bi-geo-alt-fill text-danger opacity-75 me-3 fs-5"></i><span>Dashboard Khu vực</span>
+                                            </a>
+                                        </li>
                                     }
                                     <li>
                                         <a class="dropdown-item text-danger py-2 d-flex align-items-center" asp-controller="Auth" asp-action="Logout">
@@ -300,27 +327,272 @@
         // Custom global setup if needed, individual inputs are now handled by global-calendar.js
     </script>
     <!-- AI Chatbot Widget -->
-    <div id="chatbot-widget" style="position:fixed;bottom:90px;right:20px;width:370px;max-height:500px;z-index:9999;display:none;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.2);">
+    <div id="chatbot-widget" style="position:fixed;bottom:90px;right:20px;width:370px;max-height:520px;z-index:9999;display:none;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.2);">
         <div style="background:linear-gradient(135deg,#0f172a,#1e40af);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
             <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="bi bi-robot text-white fs-5"></i></div>
                 <div><div style="color:#fff;font-weight:700;font-size:.95rem;">SmartCar AI</div><div style="color:rgba(255,255,255,.6);font-size:.7rem;">Trợ lý ảo 24/7</div></div>
             </div>
-            <button onclick="document.getElementById('chatbot-widget').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.2rem;cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button onclick="clearChatHistory()" title="Xóa lịch sử chat" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:.85rem;cursor:pointer;padding:4px 8px;border-radius:8px;"><i class="bi bi-trash"></i></button>
+                <button onclick="document.getElementById('chatbot-widget').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.2rem;cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+            </div>
         </div>
-        <div id="chat-messages" style="height:320px;overflow-y:auto;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:10px;">
+        <div id="chat-messages" style="height:300px;overflow-y:auto;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:10px;">
             <div style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;">Xin chào! 👋 Tôi là trợ lý ảo SmartCar. Bạn cần hỗ trợ gì ạ?</div>
         </div>
-        <div style="padding:12px;background:#fff;border-top:1px solid #e2e8f0;display:flex;gap:8px;">
-            <input id="chat-input" type="text" placeholder="Nhập câu hỏi..." style="flex:1;border:1px solid #e2e8f0;border-radius:24px;padding:10px 16px;font-size:.85rem;outline:none;" onkeypress="if(event.key==='Enter')sendChat()" />
+        <div id="chat-quick-replies" style="padding:8px 12px 4px;background:#fff;border-top:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:6px;">
+            <button onclick="requestGuide('customer')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:6px 12px;border-radius:20px;font-size:.75rem;cursor:pointer;font-weight:600;white-space:nowrap;">
+                <i class="bi bi-book me-1"></i>Hướng dẫn sử dụng
+            </button>
+            <button onclick="requestGuide('booking')" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;padding:6px 12px;border-radius:20px;font-size:.75rem;cursor:pointer;font-weight:600;white-space:nowrap;">
+                <i class="bi bi-car-front me-1"></i>Đặt xe
+            </button>
+            <button onclick="requestGuide('payment')" style="background:#fefce8;border:1px solid #fef08a;color:#a16207;padding:6px 12px;border-radius:20px;font-size:.75rem;cursor:pointer;font-weight:600;white-space:nowrap;">
+                <i class="bi bi-credit-card me-1"></i>Thanh toán
+            </button>
+            <button onclick="requestGuide('ekyc')" style="background:#fdf4ff;border:1px solid #e9d5ff;color:#7e22ce;padding:6px 12px;border-radius:20px;font-size:.75rem;cursor:pointer;font-weight:600;white-space:nowrap;">
+                <i class="bi bi-shield-check me-1"></i>Xác thực eKYC
+            </button>
+        </div>
+        <div style="padding:10px 12px 12px;background:#fff;border-top:1px solid #e2e8f0;display:flex;gap:8px;">
+            <input id="chat-input" type="text" placeholder="Nhập câu hỏi..." style="flex:1;border:1px solid #e2e8f0;border-radius:24px;padding:10px 16px;font-size:.85rem;outline:none;" onkeypress="if(event.key==='Enter')sendChat()" oninput="checkGuideKeywords(this.value)" />
             <button onclick="sendChat()" style="width:40px;height:40px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="bi bi-send-fill"></i></button>
         </div>
     </div>
     <button onclick="var w=document.getElementById('chatbot-widget');w.style.display=w.style.display==='none'?'flex':'none';w.style.flexDirection='column';" style="position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:1.5rem;cursor:pointer;z-index:9998;box-shadow:0 6px 20px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;transition:transform .3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
         <i class="bi bi-chat-dots-fill"></i>
     </button>
+
+    <!-- Guide Modal -->
+    <div class="modal fade" id="guideModal" tabindex="-1" aria-labelledby="guideModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#1e40af);color:#fff;">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="guideModalLabel">
+                        <i class="bi bi-book-fill"></i> Hướng dẫn sử dụng
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="guideModalBody" style="max-height:65vh;overflow-y:auto;font-size:.9rem;line-height:1.7;">
+                    <!-- Guide content loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <a id="guideModalLink" href="#" target="_blank" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Mở trang Hướng dẫn
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function sendChat(){var i=document.getElementById('chat-input'),m=i.value.trim();if(!m)return;var c=document.getElementById('chat-messages');c.innerHTML+='<div style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:16px 16px 4px 16px;max-width:85%;margin-left:auto;font-size:.85rem;">'+m.replace(/</g,'&lt;')+'</div>';i.value='';c.scrollTop=c.scrollHeight;fetch('/api/Chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m})}).then(r=>r.json()).then(d=>{c.innerHTML+='<div style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;white-space:pre-line;">'+d.reply+'</div>';c.scrollTop=c.scrollHeight;}).catch(()=>{c.innerHTML+='<div style="background:#fee2e2;padding:10px 16px;border-radius:16px;max-width:85%;font-size:.85rem;color:#dc2626;">Lỗi kết nối. Vui lòng thử lại.</div>';c.scrollTop=c.scrollHeight;});}
+        var guideKeywords = {
+            customer: ['hướng dẫn', 'hdsd', 'hd', 'sử dụng', 'cách', 'hướng dẫn sử dụng', 'chỉ tôi', 'giúp tôi', 'tôi cần', 'làm sao', 'cách thuê', 'thuê xe', 'đặt xe', 'đăng ký', 'tài khoản', 'mật khẩu'],
+            booking: ['đặt', 'thuê', 'xe', 'chuyến', 'ngày', 'giờ', 'nhận xe', 'trả xe', 'lịch', 'car', 'rent', 'booking'],
+            payment: ['thanh toán', 'tiền', 'visa', 'napas', 'momo', 'zalo', 'chuyển khoản', 'hoàn tiền', 'refund', 'giá', 'phí'],
+            ekcy: ['ekyc', 'ekc', 'xác thực', 'cccd', 'cmnd', 'bằng lái', ' căn cước', 'căn cước', 'xác minh', 'định danh', 'license', 'identity']
+        };
+
+        var guideResponses = {
+            customer: {
+                title: 'Hướng dẫn sử dụng — Khách hàng',
+                text: 'Dưới đây là hướng dẫn sử dụng dành cho Khách hàng. Từ đăng ký, xác thực eKYC, tìm xe, đặt xe đến thanh toán và quản lý chuyến xe.',
+                link: '/Guide?role=customer'
+            },
+            booking: {
+                title: 'Hướng dẫn đặt xe',
+                text: 'Quy trình đặt xe: 1) Đăng nhập & xác thực eKYC, 2) Chọn xe phù hợp, 3) Chọn ngày giờ nhận/trả, 4) Chọn địa điểm, 5) Thêm dịch vụ bổ sung (bảo hiểm, GPS...), 6) Thanh toán & xác nhận.',
+                link: '/Guide?role=customer'
+            },
+            payment: {
+                title: 'Hướng dẫn thanh toán',
+                text: 'Chúng tôi hỗ trợ: Thẻ Visa/Mastercard, Thẻ ATM nội địa (Napas), Ví điện tử (MoMo, ZaloPay), Chuyển khoản ngân hàng. Thanh toán bảo mật qua cổng thanh toán. Hoàn tiền 3-5 ngày nếu hủy đơn đúng chính sách.',
+                link: '/Guide?role=customer'
+            },
+            ekcy: {
+                title: 'Hướng dẫn xác thực eKYC',
+                text: 'Để thuê xe, bạn cần xác thực eKYC: 1) Truy cập /Ekyc/Index, 2) Upload ảnh CCCD mặt trước & sau, 3) Upload ảnh bằng lái, 4) Upload ảnh chân dung (selfie), 5) Chờ Admin duyệt trong 24h.',
+                link: '/Guide?role=customer'
+            }
+        };
+
+        var guideModal = null;
+        document.addEventListener('DOMContentLoaded', function() {
+            guideModal = new bootstrap.Modal(document.getElementById('guideModal'));
+        });
+
+        function requestGuide(type) {
+            var c = document.getElementById('chat-messages');
+            var info = guideResponses[type];
+
+            var userMsg = type === 'customer' ? 'Tôi cần hướng dẫn sử dụng'
+                : type === 'booking' ? 'Hướng dẫn đặt xe'
+                : type === 'payment' ? 'Hướng dẫn thanh toán'
+                : 'Hướng dẫn xác thực eKYC';
+
+            c.innerHTML += '<div style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:16px 16px 4px 16px;max-width:85%;margin-left:auto;font-size:.85rem;">' + userMsg.replace(/</g,'&lt;') + '</div>';
+            c.scrollTop = c.scrollHeight;
+
+            var botHtml = '<div style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;">';
+            botHtml += '<div style="font-weight:700;margin-bottom:6px;color:#1d4ed8;"><i class="bi bi-book-fill me-1"></i>' + info.title + '</div>';
+            botHtml += '<div style="margin-bottom:10px;">' + info.text + '</div>';
+            botHtml += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+            botHtml += '<a href="' + info.link + '" target="_blank" class="btn btn-primary btn-sm" style="border-radius:8px;font-size:.8rem;font-weight:600;">';
+            botHtml += '<i class="bi bi-book me-1"></i>Xem Hướng dẫn</a>';
+            botHtml += '</div></div>';
+            c.innerHTML += botHtml;
+            c.scrollTop = c.scrollHeight;
+        }
+
+        function checkGuideKeywords(text) {
+            if (!text || text.trim().length < 3) return;
+        }
+
+        function openGuideModal(link, title) {
+            document.getElementById('guideModalLabel').innerHTML = '<i class="bi bi-book-fill"></i> ' + title;
+            document.getElementById('guideModalBody').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted small">Đang tải nội dung...</div></div>';
+            document.getElementById('guideModalLink').href = link;
+
+            fetch(link)
+                .then(function(r) { return r.text(); })
+                .then(function(text) {
+                    document.getElementById('guideModalBody').innerHTML = parseMarkdown(text);
+                })
+                .catch(function() {
+                    document.getElementById('guideModalBody').innerHTML = '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Không thể tải nội dung. Vui lòng <a href="' + link + '" target="_blank">mở trang Hướng dẫn</a>.</div>';
+                });
+
+            if (guideModal) guideModal.show();
+        }
+
+        function parseMarkdown(text) {
+            var html = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+
+                .replace(/^### (.+)$/gm, '<h5 class="mt-3 fw-bold">$1</h5>')
+                .replace(/^## (.+)$/gm, '<h4 class="mt-4 fw-bold text-primary">$1</h4>')
+                .replace(/^# (.+)$/gm, '<h3 class="fw-bold">$1</h3>')
+
+                .replace(/^> \*\*(.+?)\*\*(.*)$/gm, '<div class="alert alert-info mb-2"><strong>$1</strong>$2</div>')
+
+                .replace(/^---$/gm, '<hr class="my-3"/>')
+
+                .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+
+                .replace(/```([\s\S]*?)```/g, '<pre class="bg-dark text-light p-3 rounded-3 small"><code>$1</code></pre>')
+
+                .replace(/`([^`]+)`/g, '<code class="bg-light px-1 rounded">$1</code>')
+
+                .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
+                .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="mb-2">$&</ul>')
+
+                .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+
+                .replace(/\|(.+)\|/g, function(m) {
+                    var cells = m.split('|').filter(function(c) { return c.trim(); });
+                    if (cells.every(function(c) { return /^[\-\s]+$/.test(c.trim()); })) return '';
+                    return '<tr>' + cells.map(function(c) { return '<td>' + c.trim() + '</td>'; }).join('') + '</tr>';
+                })
+                .replace(/(<tr>.*<\/tr>\n?)+/g, '<table class="table table-bordered table-sm table-striped mb-2"><tbody>$&</tbody></table>')
+
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/^(?!<[huplto])/gm, '');
+
+            html = '<p>' + html + '</p>';
+            html = html.replace(/<p>\s*<\/p>/g, '');
+            html = html.replace(/<p>(<[huto])/g, '$1');
+            html = html.replace(/(<\/[huto][\s\S]*?>)<\/p>/g, '$1');
+
+            return html;
+        }
+
+        function getChatSessionId() {
+            var id = localStorage.getItem('chat_session_id');
+            if (!id) {
+                id = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('chat_session_id', id);
+            }
+            return id;
+        }
+
+        function sendChat() {
+            var i = document.getElementById('chat-input');
+            var m = i.value.trim();
+            if (!m) return;
+            var c = document.getElementById('chat-messages');
+
+            c.innerHTML += '<div style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:16px 16px 4px 16px;max-width:85%;margin-left:auto;font-size:.85rem;">' + m.replace(/</g,'&lt;') + '</div>';
+            i.value = '';
+            i.disabled = true;
+            c.scrollTop = c.scrollHeight;
+
+            var typingId = 'typing-' + Date.now();
+            c.innerHTML += '<div id="' + typingId + '" style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;color:#6b7280;"><span>SmartCar đang nhập</span><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div>';
+            c.scrollTop = c.scrollHeight;
+
+            var sessionId = getChatSessionId();
+            fetch('/api/Chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: m, sessionId: sessionId })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var typingEl = document.getElementById(typingId);
+                if (typingEl) typingEl.remove();
+
+                var replyDiv = document.createElement('div');
+                replyDiv.style.cssText = 'background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;white-space:pre-line;';
+                c.appendChild(replyDiv);
+
+                var replyText = d.reply;
+                var charIdx = 0;
+                var typeSpeed = 15;
+
+                function typeChar() {
+                    if (charIdx < replyText.length) {
+                        replyDiv.textContent += replyText.charAt(charIdx);
+                        charIdx++;
+                        c.scrollTop = c.scrollHeight;
+                        var delay = typeSpeed + Math.random() * 10;
+                        setTimeout(typeChar, delay);
+                    } else {
+                        i.disabled = false;
+                        i.focus();
+                    }
+                }
+                typeChar();
+            })
+            .catch(function() {
+                var typingEl = document.getElementById(typingId);
+                if (typingEl) typingEl.remove();
+                c.innerHTML += '<div style="background:#fee2e2;padding:10px 16px;border-radius:16px;max-width:85%;font-size:.85rem;color:#dc2626;">Lỗi kết nối. Vui lòng thử lại.</div>';
+                c.scrollTop = c.scrollHeight;
+                i.disabled = false;
+            });
+        }
+
+        function clearChatHistory() {
+            var c = document.getElementById('chat-messages');
+            var sessionId = getChatSessionId();
+            fetch('/api/Chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '/clear', sessionId: sessionId, clearHistory: true })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                c.innerHTML = '<div style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;">' + d.reply + '</div>';
+                c.scrollTop = c.scrollHeight;
+            })
+            .catch(function() {});
+        }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>

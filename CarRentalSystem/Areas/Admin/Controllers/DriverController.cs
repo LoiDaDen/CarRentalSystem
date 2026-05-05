@@ -212,5 +212,55 @@ Bên B không được tự ý tiết lộ thông tin khách hàng hoặc quy tr
             if (driver == null) return NotFound();
             return View(driver);
         }
+
+        // GET: Admin/Driver/Edit/5
+        public async Task<IActionResult> Edit(int id)
+        {
+            var driver = await _context.Drivers
+                .Include(d => d.Location)
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.DriverID == id);
+
+            if (driver == null) return NotFound();
+
+            ViewBag.Locations = await _context.Locations.OrderBy(l => l.Name).ToListAsync();
+            return View(driver);
+        }
+
+        // POST: Admin/Driver/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, string FullName, string Phone, string Email,
+            string LicenseType, int ExperienceYears, decimal DailyRate, decimal HourlyRate, int? LocationID)
+        {
+            var driver = await _context.Drivers
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.DriverID == id);
+
+            if (driver == null) return NotFound();
+
+            // Update driver fields
+            driver.FullName = string.IsNullOrWhiteSpace(FullName) ? driver.FullName : FullName;
+            driver.Phone = string.IsNullOrWhiteSpace(Phone) ? driver.Phone : Phone;
+            driver.Email = string.IsNullOrWhiteSpace(Email) ? driver.Email : Email;
+            driver.LicenseType = string.IsNullOrWhiteSpace(LicenseType) ? driver.LicenseType : LicenseType;
+            driver.ExperienceYears = ExperienceYears > 0 ? ExperienceYears : driver.ExperienceYears;
+            driver.DailyRate = DailyRate > 0 ? DailyRate : driver.DailyRate;
+            driver.HourlyRate = HourlyRate > 0 ? HourlyRate : driver.HourlyRate;
+            if (LocationID.HasValue) driver.LocationID = LocationID.Value;
+
+            // Also update linked User's name/phone if applicable
+            if (driver.User != null)
+            {
+                if (!string.IsNullOrWhiteSpace(FullName)) driver.User.Name = FullName;
+                if (!string.IsNullOrWhiteSpace(Phone)) driver.User.Phone = Phone;
+                if (!string.IsNullOrWhiteSpace(Email)) driver.User.Email = Email;
+            }
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã cập nhật thông tin tài xế {driver.FullName} thành công!";
+            return RedirectToAction(nameof(Index));
+        }
     }
 }

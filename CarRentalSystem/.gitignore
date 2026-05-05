@@ -1,0 +1,12 @@
+# Environment files with sensitive data
+.env
+.env.*
+!.env.example
+
+# Keep appsettings for reference but not with real secrets
+appsettings.*.json
+!appsettings.json
+
+# Build output
+bin/
+obj/

@@ -346,22 +346,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Auto-update end date when a package button is clicked
     document.querySelectorAll('.pkg-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
             const hours = parseInt(this.getAttribute('data-hours'));
             const startInput = document.getElementById('startDate');
             const endInput = document.getElementById('endDate');
+            const displayObj = document.getElementById('bookingCalendarDisplay');
             if (startInput && endInput && startInput.value) {
                 const start = new Date(startInput.value);
                 if (!isNaN(start)) {
                     const newEnd = new Date(start.getTime() + hours * 3600000);
                     if (endInput._flatpickr) {
                         endInput._flatpickr.setDate(newEnd, true);
-                    } else {
-                        const pad = num => String(num).padStart(2, '0');
-                        endInput.value = `${newEnd.getFullYear()}-${pad(newEnd.getMonth() + 1)}-${pad(newEnd.getDate())}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
+                    }
+                    const pad = num => String(num).padStart(2, '0');
+                    endInput.value = newEnd.getFullYear() + '-' + pad(newEnd.getMonth()+1) + '-' + pad(newEnd.getDate()) + 'T' + pad(newEnd.getHours()) + ':' + pad(newEnd.getMinutes());
+                    if (displayObj && startInput.value) {
+                        const s = new Date(startInput.value);
+                        const m1 = pad(s.getMonth()+1); const d1 = pad(s.getDate());
+                        const h1 = pad(s.getHours()) + ':' + pad(s.getMinutes());
+                        const m2 = pad(newEnd.getMonth()+1); const d2 = pad(newEnd.getDate());
+                        const h2 = pad(newEnd.getHours()) + ':' + pad(newEnd.getMinutes());
+                        displayObj.innerText = `${d1}/${m1} ${h1} - ${d2}/${m2} ${h2}`;
                     }
                     updatePrices();
-                                updateDeliveryInfoDisplay();
+                    updateDeliveryInfoDisplay();
                 }
             }
         });

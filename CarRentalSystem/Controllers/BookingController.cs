@@ -189,11 +189,21 @@ namespace CarRentalSystem.Controllers
             if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
 
             var transaction = await _context.BookingTransactions
-                .Include(t => t.Bookings).ThenInclude(b => b.Car)
                 .FirstOrDefaultAsync(t => t.TransactionID == id && t.UserID == userId);
-            
-            if (transaction == null || !transaction.Bookings.Any()) return NotFound();
-            
+
+            if (transaction == null) return NotFound();
+
+            // Neu chua co bookings (dang o trang thai Unpaid), lay tu snapshot
+            if (!transaction.Bookings.Any() && !string.IsNullOrEmpty(transaction.PendingCartSnapshot))
+            {
+                try
+                {
+                    var snapshot = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(transaction.PendingCartSnapshot);
+                    ViewBag.Snapshot = snapshot;
+                }
+                catch { }
+            }
+
             return View(transaction);
         }
 
@@ -231,18 +241,10 @@ namespace CarRentalSystem.Controllers
             var car = await _context.Cars.Include(c => c.Location).FirstOrDefaultAsync(c => c.CarID == booking.CarID);
             if (car == null) return NotFound();
 
-            if (booking.DeliveryFee > 0 && !string.IsNullOrEmpty(booking.DeliveryAddress) && car.Location != null)
+            if (booking.DeliveryFee > 0 && string.IsNullOrWhiteSpace(booking.DeliveryAddress))
             {
-                var regionName = car.Location.Name ?? "";
-                bool isValid = booking.DeliveryAddress.Contains(regionName, StringComparison.OrdinalIgnoreCase) ||
-                               (regionName.Contains("Hồ Chí Minh") && booking.DeliveryAddress.Contains("HCM", StringComparison.OrdinalIgnoreCase)) ||
-                               (regionName.Contains("Sài Gòn") && booking.DeliveryAddress.Contains("HCM", StringComparison.OrdinalIgnoreCase));
-
-                if (!isValid)
-                {
-                    TempData["BookingError"] = $"Lỗi: Tùy chọn giao xe tận nơi chỉ hỗ trợ trong phạm vi khu vực {regionName} (nơi xe đang bảo quản). Địa chỉ bạn nhập không thuộc khu vực này.";
-                    return RedirectToAction("Checkout", new { CarID = booking.CarID, StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"), EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"), PickupLocation = car.Location.Name, pickupLocationType = "owner" });
-                }
+                TempData["BookingError"] = "Vui lòng nhập địa chỉ giao xe khi chọn dịch vụ giao tận nơi.";
+                return RedirectToAction("Checkout", new { CarID = booking.CarID, StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"), EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"), PickupLocation = car.Location?.Name, pickupLocationType = "owner" });
             }
 
             // ═══════════════════════════════════════════════════
@@ -413,11 +415,56 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(MyBookings));
             }
 
-            // Only allow cancellation for Pending status (Task 1)
-            var cancellableStatuses = new[] { "Pending" };
+            // Only allow cancellation for Pending, Confirmed and Active status
+            var cancellableStatuses = new[] { "Pending", "Confirmed", "Active" };
             if (!cancellableStatuses.Contains(booking.BookingStatus?.Name))
             {
-                TempData["Error"] = "Không thể hủy đơn khi đã được xác nhận hoặc đang ở trạng thái hiện tại.";
+                TempData["Error"] = "Không thể hủy đơn ở trạng thái hiện tại.";
+                return RedirectToAction(nameof(MyBookings));
+            }
+
+            // Nếu đang Active, cập nhật trạng thái booking về Cancelled và hoàn cọc
+            if (booking.BookingStatus?.Name == "Active")
+            {
+                await _bookingService.UpdateBookingStatusAsync(id, "Cancelled");
+                booking.DepositStatus = "PendingRefund";
+                booking.ActualReturnDate = DateTime.UtcNow;
+                _context.Bookings.Update(booking);
+                
+                // Reset car status về Available
+                if (booking.Car != null)
+                {
+                    var availableStatus = await _context.CarStatuses.FirstOrDefaultAsync(s => s.Name == "Available");
+                    if (availableStatus != null)
+                    {
+                        booking.Car.CarStatusID = availableStatus.CarStatusID;
+                        _context.Cars.Update(booking.Car);
+                    }
+                }
+                
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Chuyến đi đã được hủy. Tiền cọc sẽ được hoàn trả sau 15 ngày.";
+                return RedirectToAction(nameof(MyBookings));
+            }
+
+            // Nếu đang Confirmed, hủy và giải phóng xe
+            if (booking.BookingStatus?.Name == "Confirmed")
+            {
+                await _bookingService.UpdateBookingStatusAsync(id, "Cancelled");
+                
+                // Reset car status về Available
+                if (booking.Car != null)
+                {
+                    var availableStatus = await _context.CarStatuses.FirstOrDefaultAsync(s => s.Name == "Available");
+                    if (availableStatus != null)
+                    {
+                        booking.Car.CarStatusID = availableStatus.CarStatusID;
+                        _context.Cars.Update(booking.Car);
+                    }
+                }
+                
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Chuyến đi đã được hủy thành công.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
@@ -814,22 +861,147 @@ namespace CarRentalSystem.Controllers
 
             if (transaction == null) return NotFound();
 
-            var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == "Pending");
-            if (pendingStatus != null)
+            // Neu chua co Bookings (tu CheckoutAll moi), tao bookings tu PendingCartSnapshot
+            if (!transaction.Bookings.Any() && !string.IsNullOrEmpty(transaction.PendingCartSnapshot))
             {
-                transaction.Status = "Pending";
-                foreach (var b in transaction.Bookings)
+                var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
+
+                var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending);
+                if (pendingStatus == null)
                 {
-                    if (b.BookingStatus?.Name == "Draft" || b.BookingStatus?.Name == "Pending")
-                    {
-                        b.BookingStatusID = pendingStatus.BookingStatusID;
-                    }
+                    pendingStatus = new BookingStatus { Name = BookingStatusConstants.Pending };
+                    _context.BookingStatuses.Add(pendingStatus);
+                    await _context.SaveChangesAsync();
                 }
-                _context.BookingTransactions.Update(transaction);
-                await _context.SaveChangesAsync();
+
+                try
+                {
+                    var snapshot = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(transaction.PendingCartSnapshot);
+                    var items = snapshot.GetProperty("items");
+
+                    // Tao DigitalContract truoc
+                    var contractNo = $"HD-Cart-{transaction.TransactionID}-{DateTime.UtcNow:MMddyy}";
+                    var minStart = DateTime.MaxValue;
+                    var maxEnd = DateTime.MinValue;
+                    var carsList = new List<string>();
+                    var carsModels = new List<string>();
+                    decimal baseTotal = 0;
+                    decimal totalDeposit = 0;
+
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        minStart = item.GetProperty("startDate").GetDateTime() < minStart ? item.GetProperty("startDate").GetDateTime() : minStart;
+                        maxEnd = item.GetProperty("endDate").GetDateTime() > maxEnd ? item.GetProperty("endDate").GetDateTime() : maxEnd;
+                        carsList.Add(item.GetProperty("licensePlate").GetString() ?? "N/A");
+                        carsModels.Add($"{item.GetProperty("carBrand").GetString()} {item.GetProperty("carName").GetString()}");
+                        baseTotal += item.GetProperty("totalPrice").GetDecimal();
+                        totalDeposit += item.GetProperty("defaultDeposit").GetDecimal();
+                    }
+
+                    var termsCarsStr = "";
+                    int idx = 1;
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        termsCarsStr += $"- Xe {idx++}: {item.GetProperty("carBrand").GetString()} {item.GetProperty("carName").GetString()}, BKS: {item.GetProperty("licensePlate").GetString()}, Gia: {item.GetProperty("totalPrice").GetDecimal():N0} VNĐ\n";
+                    }
+
+                    var newContract = new DigitalContract
+                    {
+                        TransactionID = transaction.TransactionID,
+                        ContractNo = contractNo,
+                        CustomerName = snapshot.GetProperty("userName").GetString() ?? "",
+                        CustomerIdentityCard = "",
+                        CustomerPhone = snapshot.GetProperty("userPhone").GetString() ?? "",
+                        CustomerAddress = snapshot.GetProperty("userAddress").GetString() ?? "",
+                        CarLicensePlate = string.Join(", ", carsList),
+                        CarModel = string.Join(" | ", carsModels),
+                        RentalStartDate = minStart,
+                        RentalEndDate = maxEnd,
+                        RentalPricePerDay = 0,
+                        TotalContractValue = transaction.TotalAmount,
+                        DepositAmount = totalDeposit,
+                        TermsAndConditions = $@"Sau khi ban bạc, thỏa thuận, hai bên thống nhất ký kết Hợp đồng thuê XE tự lái với các điều khoản như sau:
+
+ĐIỀU 1: NỘI DUNG HỢP ĐỒNG
+- Danh sách xe:
+{termsCarsStr}
+
+ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG, PHƯƠNG THỨC THANH TOÁN
+- Tong tien thue: {baseTotal:N0} VNĐ.
+- Tong cong: {transaction.TotalAmount:N0} VNĐ.
+- Tien coc: {totalDeposit:N0} VNĐ.
+
+ĐIỀU 3: TRÁCH NHIỆM CHUNG
+- Khong su dung xe thue vao muc dich vi pham phap luat.
+- Chịu toàn bộ chi phí nhiên liệu, cầu đường, đỗ xe.
+- Trả xe đúng thời gian và địa điểm.
+
+ĐIỀU 4: HIỆU LỰC HỢP ĐỒNG
+- Hợp đồng có giá trị từ {minStart:HH:mm dd/MM/yyyy} đến hết {maxEnd:HH:mm dd/MM/yyyy}.
+
+Hợp đồng điện tử này có giá trị pháp lý tương đương bản giấy.",
+                        IsSignedByCustomer = false,
+                        IsSignedByOwner = false
+                    };
+                    _context.DigitalContracts.Add(newContract);
+
+                    // Tao Booking cho tung item
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        var carId = item.GetProperty("carId").GetInt32();
+                        var days = item.GetProperty("days").GetInt32();
+
+                        var booking = new Booking
+                        {
+                            UserID = userId,
+                            CarID = carId,
+                            StartDate = item.GetProperty("startDate").GetDateTime(),
+                            EndDate = item.GetProperty("endDate").GetDateTime(),
+                            TotalPrice = item.GetProperty("totalPrice").GetDecimal(),
+                            DiscountAmount = 0,
+                            TotalHours = item.GetProperty("hours").GetInt32(),
+                            BookingStatusID = pendingStatus.BookingStatusID,
+                            DepositAmount = item.GetProperty("defaultDeposit").GetDecimal(),
+                            DepositStatus = DepositStatusConstants.Holding,
+                            TransactionID = transaction.TransactionID,
+                            PickupLocationID = item.GetProperty("locationId").GetInt32(),
+                            ReturnLocationID = item.GetProperty("locationId").GetInt32(),
+                            ContractTypeID = item.TryGetProperty("contractTypeId", out var ctid) && ctid.ValueKind != System.Text.Json.JsonValueKind.Null ? ctid.GetInt32() : null
+                        };
+                        _context.Bookings.Add(booking);
+                        await _context.SaveChangesAsync();
+
+                        // BookingAddOns
+                        if (item.TryGetProperty("addonDetails", out var addonDetails) && addonDetails.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            foreach (var ad in addonDetails.EnumerateArray())
+                            {
+                                _context.BookingAddOns.Add(new BookingAddOn
+                                {
+                                    BookingID = booking.BookingID,
+                                    AddOnID = ad.GetProperty("id").GetInt32(),
+                                    Quantity = 1,
+                                    TotalPrice = ad.GetProperty("total").GetDecimal()
+                                });
+                            }
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    TempData["Error"] = "Lỗi khi tạo đơn: " + ex.Message;
+                    return RedirectToAction("Index", "Cart");
+                }
             }
-            
-            TempData["Success"] = "Hệ thống đã ghi nhận thông tin chuyển khoản của giỏ hàng. Vui lòng chờ Admin xác nhận trong giây lát.";
+
+            // Cap nhat transaction
+            transaction.Status = BookingStatusConstants.Confirmed;
+            _context.BookingTransactions.Update(transaction);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Thanh toán thành công! Đơn thuê đã được xác nhận.";
             return RedirectToAction("SuccessTransaction", "Payment", new { transactionId = id });
         }
 

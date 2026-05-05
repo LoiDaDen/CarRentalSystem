@@ -18,15 +18,18 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         private readonly IBookingService _bookingService;
         private readonly ApplicationDbContext _context;
         private readonly IAreaService _areaService;
+        private readonly IEmailService _emailService;
 
         public BookingController(
             IBookingService bookingService,
             ApplicationDbContext context,
-            IAreaService areaService)
+            IAreaService areaService,
+            IEmailService emailService)
         {
             _bookingService = bookingService;
             _context = context;
             _areaService = areaService;
+            _emailService = emailService;
         }
 
         private int GetCurrentUserId()
@@ -137,6 +140,36 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> ConfirmDeposit(int id)
+        {
+            var role = GetCurrentRole();
+            var userId = GetCurrentUserId();
+
+            if (role == "Staff" || role == "Manager")
+            {
+                var booking = await _context.Bookings.Include(b => b.Car).FirstOrDefaultAsync(b => b.BookingID == id);
+                if (booking != null)
+                {
+                    var allowedLocs = await _areaService.GetLocationIdsForUserAsync(userId, role);
+                    if (!allowedLocs.Contains(booking.Car?.LocationID ?? 0))
+                        return Forbid();
+                }
+            }
+
+            var bookingToConfirm = await _bookingService.GetBookingByIdAsync(id);
+            if (bookingToConfirm == null)
+                return NotFound();
+
+            bookingToConfirm.DepositStatus = "Holding";
+            await _context.SaveChangesAsync();
+
+            _ = _emailService.SendBookingConfirmationEmailAsync(bookingToConfirm, bookingToConfirm.DepositAmount);
+
+            TempData["Success"] = "Đã xác nhận đã nhận tiền cọc. Email xác nhận đã được gửi đến khách hàng!";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
         public async Task<IActionResult> Cancel(int id, string reason)
         {
             var role = GetCurrentRole();
@@ -156,6 +189,72 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             await _bookingService.CancelBookingAsync(id, reason);
             TempData["Success"] = "Đã hủy đơn đặt xe thành công.";
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Confirm(int id)
+        {
+            var role = GetCurrentRole();
+            var userId = GetCurrentUserId();
+
+            if (role == "Staff" || role == "Manager")
+            {
+                var booking = await _context.Bookings.Include(b => b.Car).FirstOrDefaultAsync(b => b.BookingID == id);
+                if (booking != null)
+                {
+                    var allowedLocs = await _areaService.GetLocationIdsForUserAsync(userId, role);
+                    if (!allowedLocs.Contains(booking.Car?.LocationID ?? 0))
+                        return Forbid();
+                }
+            }
+
+            await _bookingService.UpdateBookingStatusAsync(id, BookingStatusConstants.Confirmed);
+            TempData["Success"] = "Đơn đặt xe đã được xác nhận thành công!";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> StartTrip(int id)
+        {
+            var role = GetCurrentRole();
+            var userId = GetCurrentUserId();
+
+            if (role == "Staff" || role == "Manager")
+            {
+                var booking = await _context.Bookings.Include(b => b.Car).FirstOrDefaultAsync(b => b.BookingID == id);
+                if (booking != null)
+                {
+                    var allowedLocs = await _areaService.GetLocationIdsForUserAsync(userId, role);
+                    if (!allowedLocs.Contains(booking.Car?.LocationID ?? 0))
+                        return Forbid();
+                }
+            }
+
+            await _bookingService.StartTripAsync(id);
+            TempData["Success"] = "Chuyến xe đã bắt đầu!";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EndTrip(int id)
+        {
+            var role = GetCurrentRole();
+            var userId = GetCurrentUserId();
+
+            if (role == "Staff" || role == "Manager")
+            {
+                var booking = await _context.Bookings.Include(b => b.Car).FirstOrDefaultAsync(b => b.BookingID == id);
+                if (booking != null)
+                {
+                    var allowedLocs = await _areaService.GetLocationIdsForUserAsync(userId, role);
+                    if (!allowedLocs.Contains(booking.Car?.LocationID ?? 0))
+                        return Forbid();
+                }
+            }
+
+            await _bookingService.EndTripAsync(id);
+            TempData["Success"] = "Chuyến xe đã kết thúc!";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         [HttpPost]

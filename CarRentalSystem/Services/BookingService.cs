@@ -15,6 +15,8 @@ namespace CarRentalSystem.Services
         Task CreateBookingAsync(Booking booking);
         void UpdateBooking(Booking booking);
         Task UpdateBookingStatusAsync(int id, string status);
+        Task StartTripAsync(int bookingId);
+        Task EndTripAsync(int bookingId);
         Task ConfirmPickupAsync(int bookingId, string? notes);
         Task CancelBookingAsync(int bookingId, string reason);
         Task ProcessPaymentAsync(Payment payment);
@@ -235,6 +237,38 @@ namespace CarRentalSystem.Services
                     _bookingRepo.Update(booking);
                     await _bookingRepo.SaveChangesAsync();
                 }
+            }
+        }
+
+        public async Task StartTripAsync(int bookingId)
+        {
+            var booking = await _bookingRepo.GetByIdAsync(bookingId);
+            if (booking != null)
+            {
+                booking.ActualPickupDate = DateTime.Now;
+                var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Active");
+                if (status != null)
+                {
+                    booking.BookingStatusID = status.BookingStatusID;
+                }
+                _bookingRepo.Update(booking);
+                await _bookingRepo.SaveChangesAsync();
+            }
+        }
+
+        public async Task EndTripAsync(int bookingId)
+        {
+            var booking = await _bookingRepo.GetByIdAsync(bookingId);
+            if (booking != null)
+            {
+                booking.ActualReturnDate = DateTime.Now;
+                var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == "Completed");
+                if (status != null)
+                {
+                    booking.BookingStatusID = status.BookingStatusID;
+                }
+                _bookingRepo.Update(booking);
+                await _bookingRepo.SaveChangesAsync();
             }
         }
 

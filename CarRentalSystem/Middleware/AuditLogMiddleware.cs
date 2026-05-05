@@ -1,139 +1,175 @@
-using CarRentalSystem.Data;
-using CarRentalSystem.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
+using System.IO;
+using System.Linq;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace CarRentalSystem.Middleware
 {
     /// <summary>
-    /// Middleware tự động ghi AuditLog cho mọi thao tác POST/PUT/DELETE.
-    /// Ghi lại: user, action, URL, IP, timestamp.
+    /// Middleware ghi AuditLog cho MỌI request HTTP.
+    /// Dùng file-based logging để debug + raw SQL INSERT để verify DB.
     /// </summary>
     public class AuditLogMiddleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<AuditLogMiddleware> _logger;
+        private readonly string _connectionString;
 
-        public AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMiddleware> logger)
+        private static readonly Regex StaticFilePattern = new Regex(
+            @"\.(css|js|map|ico|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|webp|avif)$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly string[] ExcludedPaths = new[]
+        {
+            "/health", "/hangfire", "/docs/", "/images/", "/css/", "/js/",
+            "/_content/", "/favicon", "/signalr", "/swagger", "/api/chat",
+        };
+
+        private static readonly string _debugFile = Path.Combine(AppContext.BaseDirectory, "audit_debug.log");
+
+        public AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMiddleware> logger, IConfiguration configuration)
         {
             _next = next;
             _logger = logger;
+            _connectionString = configuration.GetConnectionString("DefaultConnection") ?? "";
+
+            _logger.LogInformation("[AUDIT-DBG] Connection string: {Conn}", _connectionString);
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
-            // Chỉ log cho các request thay đổi dữ liệu
-            var method = context.Request.Method;
-            bool shouldLog = method == "POST" || method == "PUT" || method == "DELETE" || method == "PATCH";
-
             await _next(context);
 
-            // Log sau khi request xử lý xong (để biết status code)
-            if (shouldLog && context.Response.StatusCode < 500)
+            if (ShouldLog(context))
             {
-                try
-                {
-                    await LogAuditAsync(context, method);
-                }
-                catch (Exception ex)
-                {
-                    // Không để audit log lỗi ảnh hưởng request chính
-                    _logger.LogWarning(ex, "Failed to write audit log for {Path}", context.Request.Path);
-                }
+                await WriteAuditLogAsync(context);
             }
         }
 
-        private async Task LogAuditAsync(HttpContext context, string method)
+        private static bool ShouldLog(HttpContext context)
         {
-            using var scope = context.RequestServices.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            if (context.Response.StatusCode >= 400)
+                return false;
 
             var path = context.Request.Path.Value ?? "";
-            var userId = GetUserId(context);
-            var userName = context.User.FindFirst(ClaimTypes.Name)?.Value;
 
-            // Phân tích action & entity từ URL
-            var (action, entityType) = ParseActionFromPath(method, path);
+            if (StaticFilePattern.IsMatch(path))
+                return false;
 
-            var log = new AuditLog
+            if (ExcludedPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                return false;
+
+            if (path.Contains("__browserLink", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
+        }
+
+        private async Task WriteAuditLogAsync(HttpContext context)
+        {
+            try
             {
-                Action = action,
-                EntityType = entityType,
-                UserId = userId,
-                UserName = userName ?? "Anonymous",
-                Description = $"{method} {path} → {context.Response.StatusCode}",
-                IpAddress = GetClientIp(context),
-                UserAgent = context.Request.Headers["User-Agent"].ToString().Length > 500
-                    ? context.Request.Headers["User-Agent"].ToString()[..500]
-                    : context.Request.Headers["User-Agent"].ToString(),
-                RequestUrl = $"{method} {path}",
-                Timestamp = DateTime.UtcNow
-            };
+                var path = context.Request.Path.Value ?? "";
+                var method = context.Request.Method;
+                var userId = GetUserId(context);
+                var userName = context.User.FindFirst(ClaimTypes.Name)?.Value;
+                var (action, entityType) = ParseActionFromPath(method, path);
+                var ip = GetClientIp(context);
+                var ua = context.Request.Headers["User-Agent"].ToString();
+                var timestamp = DateTime.UtcNow;
 
-            db.AuditLogs.Add(log);
-            await db.SaveChangesAsync();
+                // 1. Ghi file (luôn chạy)
+                var fileLine = $"[{timestamp:yyyy-MM-dd HH:mm:ss}] {method} {path} | Status:{context.Response.StatusCode} | User:{userName ?? "Anonymous"} (ID:{userId}) | Action:{action} | Entity:{entityType} | IP:{ip}\n";
+                File.AppendAllText(_debugFile, fileLine);
+
+                // 2. Ghi DB bằng raw SQL
+                const string sql = @"
+                    INSERT INTO AuditLogs (Action, EntityType, EntityId, UserId, UserName,
+                        Description, IpAddress, UserAgent, RequestUrl, Timestamp, OldValues, NewValues)
+                    VALUES (@Action, @EntityType, NULL, @UserId, @UserName,
+                        @Description, @IpAddress, @UserAgent, @RequestUrl, @Timestamp, NULL, NULL);
+                    SELECT SCOPE_IDENTITY();";
+
+                await using var conn = new SqlConnection(_connectionString);
+                await conn.OpenAsync();
+
+                await using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@Action", action);
+                cmd.Parameters.AddWithValue("@EntityType", entityType);
+                cmd.Parameters.AddWithValue("@UserId", userId.HasValue ? userId.Value : (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@UserName", userName ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@Description", $"{method} {path} → {context.Response.StatusCode}");
+                cmd.Parameters.AddWithValue("@IpAddress", ip);
+                cmd.Parameters.AddWithValue("@UserAgent", ua.Length > 500 ? ua[..500] : ua);
+                cmd.Parameters.AddWithValue("@RequestUrl", $"{method} {path}");
+                cmd.Parameters.AddWithValue("@Timestamp", timestamp);
+
+                var result = await cmd.ExecuteScalarAsync();
+                _logger.LogInformation("[AUDIT-DB] INSERT success! NewID={NewId} Action={Action} Path={Path}", result, action, path);
+
+                // 3. Verify: đọc lại xem có data không
+                await using var verifyConn = new SqlConnection(_connectionString);
+                await verifyConn.OpenAsync();
+                await using var verifyCmd = new SqlCommand("SELECT COUNT(*) FROM AuditLogs", verifyConn);
+                var count = (int)(await verifyCmd.ExecuteScalarAsync() ?? 0);
+                _logger.LogInformation("[AUDIT-DB] Verify: Total AuditLogs in DB = {Count}", count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AUDIT-DB] FAILED to insert: {Msg}", ex.Message);
+            }
         }
 
         private static int? GetUserId(HttpContext context)
         {
-            var userIdClaim = context.User.FindFirst("UserID") ??
-                              context.User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int id))
-                return id;
-            return null;
+            var claim = context.User.FindFirst("UserID") ?? context.User.FindFirst(ClaimTypes.NameIdentifier);
+            return claim != null && int.TryParse(claim.Value, out int id) ? id : null;
         }
 
         private static string GetClientIp(HttpContext context)
         {
-            // Ưu tiên lấy IP thật từ proxy header
-            var forwardedFor = context.Request.Headers["X-Forwarded-For"].ToString();
-            if (!string.IsNullOrEmpty(forwardedFor))
-                return forwardedFor.Split(',')[0].Trim();
-
-            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var fwd = context.Request.Headers["X-Forwarded-For"].ToString();
+            return !string.IsNullOrEmpty(fwd) ? fwd.Split(',')[0].Trim() : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         }
 
         private static (string action, string entityType) ParseActionFromPath(string method, string path)
         {
-            // Phân tích thông minh từ URL patterns
-            var segments = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-
+            var segs = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
             string entityType = "System";
             string action = method switch
             {
+                "GET" => "View",
                 "POST" => "Create",
                 "PUT" or "PATCH" => "Update",
                 "DELETE" => "Delete",
                 _ => method
             };
 
-            // URL patterns: /Admin/Car/Create, /Booking/Checkout, /Auth/Login
-            if (segments.Length >= 2)
+            if (segs.Length >= 2)
             {
-                // Check for area pattern: /Admin/Booking/Create
-                if (segments[0].Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
-                    segments[0].Equals("Partner", StringComparison.OrdinalIgnoreCase))
+                if (segs[0].Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+                    segs[0].Equals("Partner", StringComparison.OrdinalIgnoreCase) ||
+                    segs[0].Equals("Driver", StringComparison.OrdinalIgnoreCase))
                 {
-                    entityType = segments.Length >= 2 ? segments[1] : segments[0];
-                    if (segments.Length >= 3)
-                        action = segments[2];
+                    entityType = segs[1];
+                    if (segs.Length >= 3) action = segs[2];
                 }
                 else
                 {
-                    entityType = segments[0];
-                    action = segments.Length >= 2 ? segments[1] : method;
+                    entityType = segs[0];
+                    if (segs.Length >= 2) action = segs[1];
                 }
             }
-            else if (segments.Length == 1)
+            else if (segs.Length == 1)
             {
-                entityType = segments[0];
+                entityType = segs[0];
             }
 
-            // Dọn dẹp: capitalize
             entityType = char.ToUpper(entityType[0]) + entityType[1..];
             action = char.ToUpper(action[0]) + action[1..];
 

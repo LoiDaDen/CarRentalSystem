@@ -186,7 +186,7 @@
                             <form asp-area="Driver" asp-controller="DriverDashboard" asp-action="StartTrip" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@driverBooking?.DriverBookingID" />
-                                <button type="submit" class="btn btn-success btn-lg rounded-pill px-5 fw-bold">
+                                <button type="submit" class="btn btn-success btn-lg rounded-pill px-5 fw-bold booking-action-btn">
                                     <i class="bi bi-play-fill me-2"></i>Bắt đầu
                                 </button>
                             </form>
@@ -210,7 +210,7 @@
                             <form asp-area="Driver" asp-controller="DriverDashboard" asp-action="CompleteTrip" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@driverBooking?.DriverBookingID" />
-                                <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold">
+                                <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold booking-action-btn">
                                     <i class="bi bi-check-lg me-2"></i>Hoàn thành
                                 </button>
                             </form>
@@ -362,3 +362,72 @@
     .badge-completed { background: rgba(100,116,139,0.12); color: #64748b; }
     .badge-cancelled { background: rgba(239,68,68,0.12); color: #dc2626; }
 </style>
+
+<!-- Cancelled trip overlay modal -->
+<div class="modal fade" id="tripCancelledModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0 rounded-top-4">
+                <h5 class="modal-title"><i class="bi bi-exclamation-octagon me-2"></i>Thông báo</h5>
+            </div>
+            <div class="modal-body text-center p-4">
+                <i class="bi bi-x-circle-fill text-danger display-3 mb-3"></i>
+                <h5 class="fw-bold text-dark mb-2">Chuyến đi đã bị hủy</h5>
+                <p class="text-muted mb-0">Khách hàng đã hủy chuyến đi này. Vui lòng quay về danh sách chuyến xe.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <a asp-area="Driver" asp-controller="DriverDashboard" asp-action="Index" class="btn btn-danger rounded-pill px-5 fw-bold">
+                    <i class="bi bi-arrow-left me-1"></i>Đã hiểu
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// Polling: check if booking was cancelled by customer every 5 seconds
+(function() {
+    var driverBookingId = @((driverBooking?.DriverBookingID ?? 0));
+    if (driverBookingId === 0) return;
+
+    var cancelledStatuses = ['Cancelled', 'Rejected', 'Rejected by Admin'];
+    var currentStatus = '@(driverBooking?.Status ?? "")';
+    var isPendingOrConfirmed = currentStatus === 'Pending' || currentStatus === 'Confirmed';
+
+    // Show cancelled modal if redirected from StartTrip with force flag
+    var forceCancelled = '@(TempData["ForceCancelled"] ?? "")';
+    if (forceCancelled === '1' && isPendingOrConfirmed) {
+        var modal = new bootstrap.Modal(document.getElementById('tripCancelledModal'));
+        modal.show();
+        return; // No need to poll
+    }
+
+    // Only poll for pending/confirmed trips
+    if (!isPendingOrConfirmed) return;
+
+    function pollStatus() {
+        fetch('@Url.Action("CheckBookingStatus", "DriverDashboard", new { area = "Driver" })?id=' + driverBookingId, {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.isCancelled) {
+                // Show cancellation modal
+                var modal = new bootstrap.Modal(document.getElementById('tripCancelledModal'));
+                modal.show();
+                // Disable all action buttons
+                document.querySelectorAll('.booking-action-btn').forEach(function(btn) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                });
+            }
+        })
+        .catch(function() {});
+    }
+
+    // Poll every 5 seconds
+    setInterval(pollStatus, 5000);
+})();
+</script>
+}

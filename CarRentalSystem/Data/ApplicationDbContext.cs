@@ -48,6 +48,7 @@ namespace CarRentalSystem.Data
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<BookingTransaction> BookingTransactions { get; set; }
+        public DbSet<PayOSTransaction> PayOSTransactions { get; set; }
         
         // Scheduling
         public DbSet<AvailabilitySchedule> AvailabilitySchedules { get; set; }
@@ -101,6 +102,22 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Payment>()
                 .Property(p => p.Amount)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .Property(t => t.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasIndex(t => t.OrderCode);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasIndex(t => t.BookingID);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasOne(t => t.Payment)
+                .WithMany()
+                .HasForeignKey(t => t.PaymentID)
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<RentalContract>()
                 .Property(r => r.StartKm)
@@ -516,6 +533,7 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<LongTermRental>().HasQueryFilter(ltr => !ltr.IsDeleted);
             modelBuilder.Entity<MaintenanceLog>().HasQueryFilter(ml => !ml.IsDeleted);
             modelBuilder.Entity<Payment>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<PayOSTransaction>().HasQueryFilter(t => !t.IsDeleted);
             modelBuilder.Entity<RentalContract>().HasQueryFilter(rc => !rc.IsDeleted);
             modelBuilder.Entity<Review>().HasQueryFilter(r => !r.IsDeleted);
             modelBuilder.Entity<Models.Route>().HasQueryFilter(r => !r.IsDeleted);
@@ -579,6 +597,9 @@ namespace CarRentalSystem.Data
                         break;
                     case Payment payment:
                         payment.IsDeleted = true;
+                        break;
+                    case PayOSTransaction payOSTransaction:
+                        payOSTransaction.IsDeleted = true;
                         break;
                     case RentalContract rentalContract:
                         rentalContract.IsDeleted = true;

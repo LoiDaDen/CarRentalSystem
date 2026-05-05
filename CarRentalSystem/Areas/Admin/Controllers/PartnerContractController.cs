@@ -23,10 +23,11 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         // GET: Admin/PartnerContract
         public async Task<IActionResult> Index(string? category, string? status)
         {
+            if (status == null) status = "active";
             ViewBag.Category = category;
             ViewBag.Status = status;
 
-            // ═══ Driver Contracts ═══
+            // ═══ Driver Contracts ═══ — default to active/pending/expired (NOT cancelled)
             var driverQuery = _context.DriverContracts
                 .Include(dc => dc.Driver)
                 .OrderByDescending(dc => dc.CreatedAt)
@@ -36,8 +37,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             else if (status == "active") driverQuery = driverQuery.Where(dc => dc.Status == "Active");
             else if (status == "expired") driverQuery = driverQuery.Where(dc => dc.Status == "Expired");
             else if (status == "cancelled") driverQuery = driverQuery.Where(dc => dc.Status == "Cancelled");
+            else driverQuery = driverQuery.Where(dc => dc.Status != "Cancelled"); // default: hide cancelled
 
-            // ═══ Partner Contracts ═══
+            // ═══ Partner Contracts ═══ — default to active/pending/expired (NOT cancelled)
             var partnerQuery = _context.PartnerContracts
                 .Include(pc => pc.PartnerUser)
                 .OrderByDescending(pc => pc.CreatedAt)
@@ -47,6 +49,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             else if (status == "active") partnerQuery = partnerQuery.Where(pc => pc.Status == "Active");
             else if (status == "expired") partnerQuery = partnerQuery.Where(pc => pc.Status == "Expired");
             else if (status == "cancelled") partnerQuery = partnerQuery.Where(pc => pc.Status == "Cancelled");
+            else partnerQuery = partnerQuery.Where(pc => pc.Status != "Cancelled"); // default: hide cancelled
 
             var driverContracts = category == "partner" ? new List<DriverContract>() : await driverQuery.ToListAsync();
             var partnerContracts = category == "driver" ? new List<PartnerContract>() : await partnerQuery.ToListAsync();

@@ -7,7 +7,10 @@
       "launchBrowser": true,
       "applicationUrl": "https://localhost:7285;http://localhost:5168",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PayOS__ClientId": "6e0a9271-bffb-4556-b40d-e071bd6a2c25",
+        "PayOS__ApiKey": "bb6cceab-b70b-48c6-bd5e-25fc2b3ea67a",
+        "PayOS__ChecksumKey": "97e0318e1992a275360a9719c887a48eb698b0f7326775971c33ba36c0a0382a"
       }
     },
     "http": {
@@ -16,7 +19,10 @@
       "launchBrowser": true,
       "applicationUrl": "http://localhost:5168",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PayOS__ClientId": "6e0a9271-bffb-4556-b40d-e071bd6a2c25",
+        "PayOS__ApiKey": "bb6cceab-b70b-48c6-bd5e-25fc2b3ea67a",
+        "PayOS__ChecksumKey": "97e0318e1992a275360a9719c887a48eb698b0f7326775971c33ba36c0a0382a"
       }
     }
   }

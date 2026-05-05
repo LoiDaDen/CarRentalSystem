@@ -104,20 +104,36 @@
                 <div class="mb-4">
                     <div class="filter-title">Loại xe</div>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="category" value="" id="catAll" @(string.IsNullOrEmpty(Context.Request.Query["category"]) ? "checked" : "") onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
+                        <input class="form-check-input" type="radio" name="category" value="" id="catAll" @(string.IsNullOrEmpty(Context.Request.Query["category"]) ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
                         <label class="form-check-label" for="catAll">Tất cả</label>
                     </div>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="category" value="Sedan 5 chỗ" id="catSedan" @(Context.Request.Query["category"] == "Sedan 5 chỗ" ? "checked" : "") onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
+                        <input class="form-check-input" type="radio" name="category" value="Sedan 5 chỗ" id="catSedan" @(Context.Request.Query["category"] == "Sedan 5 chỗ" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
                         <label class="form-check-label" for="catSedan">Sedan 5 chỗ</label>
                     </div>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="category" value="SUV 7 ch��" id="catSuv7" @(Context.Request.Query["category"] == "SUV 7 chỗ" ? "checked" : "") onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
+                        <input class="form-check-input" type="radio" name="category" value="SUV 5 chỗ" id="catSuv5" @(Context.Request.Query["category"] == "SUV 5 chỗ" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
+                        <label class="form-check-label" for="catSuv5">SUV 5 chỗ</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="category" value="SUV 7 chỗ" id="catSuv7" @(Context.Request.Query["category"] == "SUV 7 chỗ" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
                         <label class="form-check-label" for="catSuv7">SUV 7 chỗ</label>
                     </div>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="category" value="MPV 7 chỗ" id="catMpv" @(Context.Request.Query["category"] == "MPV 7 chỗ" ? "checked" : "") onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
+                        <input class="form-check-input" type="radio" name="category" value="MPV 7 chỗ" id="catMpv" @(Context.Request.Query["category"] == "MPV 7 chỗ" ? "checked" : "") onchange="document.getElementById('filterForm').submit()">
                         <label class="form-check-label" for="catMpv">MPV 7 chỗ</label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="filter-title">Khoảng giá / ngày</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm fw-bold" name="minPrice" placeholder="Từ (K)" value="@Context.Request.Query["minPrice"]" min="0" onchange="document.getElementById('filterForm').submit()">
+                        </div>
+                        <div class="col-6">
+                            <input type="number" class="form-control form-control-sm fw-bold" name="maxPrice" placeholder="Đến (K)" value="@Context.Request.Query["maxPrice"]" min="0" onchange="document.getElementById('filterForm').submit()">
+                        </div>
                     </div>
                 </div>
 
@@ -134,138 +150,57 @@
         <!-- RIGHT MAIN CONTENT -->
         <div class="col-lg-9">
             <!-- Top Brands & Sort -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="marquee-container flex-grow-1" style="max-width: 75%;">
-                    <div class="marquee-content">
-                        @* First Set *@
-                        <button type="submit" name="brandId" value="" class="btn-brand-filter @(string.IsNullOrEmpty(Context.Request.Query["brandId"]) ? "active" : "")">
-                            <i class="bi bi-grid-3x3-gap-fill me-1"></i> Tất cả hãng
-                        </button>
-                        @if(ViewBag.Brands != null)
-                        {
-                            foreach (var brand in ViewBag.Brands)
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="marquee-container flex-grow-1" style="max-width: 75%;">
+                        <div class="marquee-content">
+                            <button type="submit" name="brandId" value="" class="btn-brand-filter @(string.IsNullOrEmpty(Context.Request.Query["brandId"]) ? "active" : "")">
+                                <i class="bi bi-grid-3x3-gap-fill me-1"></i> Tất cả hãng
+                            </button>
+                            @if(ViewBag.Brands != null)
                             {
-                                var bId = brand.BrandID.ToString();
-                                var isAct = Context.Request.Query["brandId"] == bId ? "active" : "";
-                                <button type="submit" name="brandId" value="@bId" class="btn-brand-filter @isAct">
-                                    <img src="https://logo.clearbit.com/@GetBrandDomain(brand.Name)" onerror="this.style.display='none'" alt="@brand.Name" />
-                                    <span>@brand.Name</span>
-                                </button>
+                                foreach (var brand in ViewBag.Brands)
+                                {
+                                    var bId = brand.BrandID.ToString();
+                                    var isAct = Context.Request.Query["brandId"] == bId ? "active" : "";
+                                    <button type="submit" name="brandId" value="@bId" class="btn-brand-filter @isAct">
+                                        <img src="https://logo.clearbit.com/@GetBrandDomain(brand.Name)" onerror="this.style.display='none'" alt="@brand.Name" />
+                                        <span>@brand.Name</span>
+                                    </button>
+                                }
                             }
-                        }
-                        @* Duplicated Set for Seamless Infinite Scrolling *@
-                        <button type="submit" name="brandId" value="" class="btn-brand-filter @(string.IsNullOrEmpty(Context.Request.Query["brandId"]) ? "active" : "")">
-                            <i class="bi bi-grid-3x3-gap-fill me-1"></i> Tất cả hãng
-                        </button>
-                        @if(ViewBag.Brands != null)
-                        {
-                            foreach (var brand in ViewBag.Brands)
+                            @* Duplicated Set for Seamless Infinite Scrolling *@
+                            <button type="submit" name="brandId" value="" class="btn-brand-filter @(string.IsNullOrEmpty(Context.Request.Query["brandId"]) ? "active" : "")">
+                                <i class="bi bi-grid-3x3-gap-fill me-1"></i> Tất cả hãng
+                            </button>
+                            @if(ViewBag.Brands != null)
                             {
-                                var bId = brand.BrandID.ToString();
-                                var isAct = Context.Request.Query["brandId"] == bId ? "active" : "";
-                                <button type="submit" name="brandId" value="@bId" class="btn-brand-filter @isAct">
-                                    <img src="https://logo.clearbit.com/@GetBrandDomain(brand.Name)" onerror="this.style.display='none'" alt="@brand.Name" />
-                                    <span>@brand.Name</span>
-                                </button>
+                                foreach (var brand in ViewBag.Brands)
+                                {
+                                    var bId = brand.BrandID.ToString();
+                                    var isAct = Context.Request.Query["brandId"] == bId ? "active" : "";
+                                    <button type="submit" name="brandId" value="@bId" class="btn-brand-filter @isAct">
+                                        <img src="https://logo.clearbit.com/@GetBrandDomain(brand.Name)" onerror="this.style.display='none'" alt="@brand.Name" />
+                                        <span>@brand.Name</span>
+                                    </button>
+                                }
                             }
-                        }
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <select class="form-select fw-bold border-0 shadow-sm" name="sort" onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
+                            <option value="price_asc" selected="@(Context.Request.Query["sort"] == "price_asc")">Giá thấp đến cao</option>
+                            <option value="price_desc" selected="@(Context.Request.Query["sort"] == "price_desc")">Giá cao đến thấp</option>
+                            <option value="newest" selected="@(Context.Request.Query["sort"] == "newest" || string.IsNullOrEmpty(Context.Request.Query["sort"]))">Đề xuất (Mới nhất)</option>
+                        </select>
                     </div>
                 </div>
-                <div class="flex-shrink-0">
-                    <select class="form-select fw-bold border-0 shadow-sm" name="sort" onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
-                        <option value="price_asc" selected="@(Context.Request.Query["sort"] == "price_asc")">Giá thấp đến cao</option>
-                        <option value="price_desc" selected="@(Context.Request.Query["sort"] == "price_desc")">Giá cao đến thấp</option>
-                        <option value="newest" selected="@(Context.Request.Query["sort"] == "newest" || string.IsNullOrEmpty(Context.Request.Query["sort"]))">Đề xuất (Mới nhất)</option>
-                    </select>
-                </div>
-            </div>
 
             <!-- Car Grid -->
             <div class="row g-4" id="carGrid">
                 @{
-                    var initialCars = Model.Take(12).ToList();
+                    var carList = Model.ToList();
                 }
-                @foreach (var car in initialCars)
-                {
-                    var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
-                    var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
-                    var carReviewCount = carReviews.Count;
-                    var p4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
-                    var p8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
-                    var p12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
-                    var p24h = car.PricePerDay;
-                    var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
-                    <div class="col-6 col-md-4 col-lg-3">
-                        <a id="car-link-@car.CarID" href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24, startDate = Context.Request.Query["startDate"], endDate = Context.Request.Query["endDate"], contractId = ViewBag.ContractId })" class="text-decoration-none text-dark">
-                            <div class="card car-card h-100 bg-white shadow-sm" style="cursor: pointer;">
-                                <div class="position-relative">
-                                    @if (car.IsPremium)
-                                    {
-                                        <span class="badge bg-dark position-absolute top-0 start-0 m-2 px-2 py-1 rounded-pill z-2 shadow-sm" style="font-size: 0.7rem;"><i class="bi bi-gem text-warning"></i> Premium</span>
-                                    }
-                                    @if (isElectric)
-                                    {
-                                        <span class="badge position-absolute top-0 end-0 m-2 px-2 py-1 rounded-pill z-2 shadow-sm badge-electric" style="font-size: 0.7rem; background: rgba(13, 110, 253, 0.9); color: white;">
-                                            <i class="bi bi-lightning-charge-fill"></i> Điện
-                                        </span>
-                                    }
-                                    <img src="@(car.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800")" class="card-img-top car-card-img" alt="@car.CarName">
-                                </div>
-                                <div class="card-body p-2">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.65rem;">@car.CarBrand?.Name</span>
-                                        <div class="d-flex align-items-center gap-1 px-1 py-0 rounded-pill rating-badge" style="font-size: 0.6rem;">
-                                            @for (int s = 1; s <= 5; s++)
-                                            {
-                                                <i class="bi @(s <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.55rem;"></i>
-                                            }
-                                            <span class="fw-800 ms-1" style="color: #92400e; font-size: 0.6rem;">@carAvgRating.ToString("0.0")</span>
-                                        </div>
-                                    </div>
-                                    <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
-                                        <h6 class="fw-bolder mb-0 text-dark" style="font-size: 0.85rem; line-height: 1.2;">@car.CarName</h6>
-                                        @if(car.OwnerID == null)
-                                        {
-                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 badge-owner" style="font-size: 0.55rem; padding: 0.15rem 0.4rem;"><i class="bi bi-building"></i></span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 badge-owner" style="font-size: 0.55rem; padding: 0.15rem 0.4rem;"><i class="bi bi-person-badge"></i></span>
-                                        }
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2 mb-2 text-muted small fw-500" style="font-size: 0.65rem;">
-                                        <span><i class="bi bi-gear"></i> @car.Transmission</span>
-                                        <span><i class="bi bi-person"></i> @car.Seats</span>
-                                    </div>
-
-                                    <!-- Bảng giá tham khảo -->
-                                    <div class="mb-2">
-                                        <div class="small text-muted mb-1" style="font-size: 0.6rem;"><i class="bi bi-tags-fill me-1"></i>Bảng giá</div>
-                                        <div class="d-flex justify-content-between text-center">
-                                            <div>
-                                                <div class="text-success fw-bolder" style="font-size: 0.7rem;">@((p4h/1000).ToString("N0"))K</div>
-                                                <div class="text-muted" style="font-size: 0.55rem;">4h</div>
-                                            </div>
-                                            <div>
-                                                <div class="text-primary fw-bolder" style="font-size: 0.7rem;">@((p8h/1000).ToString("N0"))K</div>
-                                                <div class="text-muted" style="font-size: 0.55rem;">8h</div>
-                                            </div>
-                                            <div>
-                                                <div class="text-warning fw-bolder" style="font-size: 0.7rem;">@((p12h/1000).ToString("N0"))K</div>
-                                                <div class="text-muted" style="font-size: 0.55rem;">12h</div>
-                                            </div>
-                                            <div>
-                                                <div class="text-danger fw-bolder" style="font-size: 0.7rem;">@((p24h/1000).ToString("N0"))K</div>
-                                                <div class="text-muted" style="font-size: 0.55rem;">24h</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                }
-                @foreach (var car in Model)
+                @foreach (var car in carList)
                 {
                     var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
                     var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
@@ -346,7 +281,7 @@
                         </a>
                     </div>
                 }
-                @if (!Model.Any())
+                @if (!carList.Any())
                 {
                     <div class="col-12 text-center py-5">
                         <div class="py-5 bg-white rounded-4 shadow-sm border border-danger border-opacity-10">
@@ -399,6 +334,8 @@ function loadMoreCars() {
         sort: '@Context.Request.Query["sort"]',
         isPremium: '@Context.Request.Query["isPremium"]',
         contractId: '@Context.Request.Query["contractId"]',
+        minPrice: '@Context.Request.Query["minPrice"]',
+        maxPrice: '@Context.Request.Query["maxPrice"]',
         page: currentPage
     }, function(data) {
         if (data.cars && data.cars.length > 0) {

@@ -86,6 +86,57 @@
                                     <span class="badge fs-6 py-2 px-3 @statusBadge">@status</span>
                                 </div>
                             </div>
+
+                            @* ── Action buttons: chi hien khi don dang Cho duyet ── *@
+                            @if (status == "Pending")
+                            {
+                                <div class="d-flex gap-2 mt-3">
+                                    <form asp-area="Admin" asp-controller="Booking" asp-action="Confirm" method="post"
+                                          onsubmit="return confirm('Xac nhan don dat xe nay?');">
+                                        <input type="hidden" name="id" value="@booking.BookingID" />
+                                        <button type="submit" class="btn btn-success rounded-3 fw-bold px-4">
+                                            <i class="bi bi-check-circle me-2"></i>Xác nhận
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-outline-danger rounded-3 fw-bold px-4"
+                                            onclick="showCancelModal(@booking.BookingID)">
+                                        <i class="bi bi-x-circle me-2"></i>Hủy đơn
+                                    </button>
+                                </div>
+                            }
+
+                            @if (status == "Confirmed")
+                            {
+                                <div class="d-flex gap-2 mt-3">
+                                    <a asp-area="Admin" asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckIn" class="btn btn-outline-primary rounded-3 fw-bold px-4">
+                                        <i class="bi bi-camera me-2"></i>Biên bản nhận xe
+                                    </a>
+                                    <form asp-area="Admin" asp-controller="Booking" asp-action="StartTrip" method="post"
+                                          onsubmit="return confirm('Bắt đầu chuyến xe?');">
+                                        <input type="hidden" name="id" value="@booking.BookingID" />
+                                        <button type="submit" class="btn btn-primary rounded-3 fw-bold px-4">
+                                            <i class="bi bi-play-circle me-2"></i>Bắt đầu chuyến
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+
+                            @if (status == "Active")
+                            {
+                                <div class="d-flex gap-2 mt-3">
+                                    <a asp-area="Admin" asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckOut" class="btn btn-outline-warning rounded-3 fw-bold px-4">
+                                        <i class="bi bi-camera me-2"></i>Biên bản trả xe
+                                    </a>
+                                    <form asp-area="Admin" asp-controller="Booking" asp-action="EndTrip" method="post"
+                                          onsubmit="return confirm('Kết thúc chuyến xe?');">
+                                        <input type="hidden" name="id" value="@booking.BookingID" />
+                                        <button type="submit" class="btn btn-success rounded-3 fw-bold px-4">
+                                            <i class="bi bi-stop-circle me-2"></i>Kết thúc chuyến
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+
                             @if(!string.IsNullOrEmpty(booking.CancelReason))
                             {
                                 <div class="mb-2">
@@ -337,6 +388,46 @@
                             <label class="text-muted small">Đặt cọc</label>
                             <div class="fw-600">@booking.DepositAmount.ToString("N0") đ</div>
                         </div>
+
+                        var depositStatusClass = (booking.DepositStatus ?? "Pending") switch {
+                            "Holding" => "bg-success",
+                            "Refunded" => "bg-secondary",
+                            "Deducted" => "bg-danger",
+                            _ => "bg-warning text-dark"
+                        };
+                        var depositStatusText = (booking.DepositStatus ?? "Pending") switch {
+                            "Holding" => "Đã nhận tiền",
+                            "Refunded" => "Đã hoàn tiền",
+                            "Deducted" => "Đã khấu trừ",
+                            _ => "Chờ thanh toán"
+                        };
+                        <div class="mt-2">
+                            <label class="text-muted small">Trạng thái cọc</label>
+                            <div>
+                                <span class="badge @depositStatusClass">@depositStatusText</span>
+                            </div>
+                        </div>
+
+                        @if (booking.DepositStatus == "Pending")
+                        {
+                            <div class="mt-3">
+                                <form asp-area="Admin" asp-controller="Booking" asp-action="ConfirmDeposit" method="post" onsubmit="return confirm('Xác nhận đã nhận được tiền cọc từ khách hàng?');">
+                                    <input type="hidden" name="id" value="@booking.BookingID" />
+                                    <button type="submit" class="btn btn-success w-100 rounded-3 fw-bold">
+                                        <i class="bi bi-check-circle me-2"></i>Xác nhận đã nhận tiền cọc
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                        else if (booking.DepositStatus == "Holding")
+                        {
+                            <div class="mt-3">
+                                <div class="alert alert-success mb-0 py-2 px-3 rounded-3" style="font-size:0.82rem;">
+                                    <i class="bi bi-check-circle-fill me-1"></i>
+                                    Đã xác nhận nhận tiền cọc
+                                </div>
+                            </div>
+                        }
                     }
                 </div>
             </div>
@@ -346,15 +437,41 @@
     </div>
 </div>
 
+
+@* ── Cancel Booking Modal ── *@
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelModalLabel"><i class="bi bi-x-circle text-danger me-2"></i>Huy don dat xe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-area="Admin" asp-controller="Booking" asp-action="Cancel" method="post">
+                <div class="modal-body">
+                    <p class="text-muted">Vui long cho biet ly do huy don (bat buoc):</p>
+                    <input type="hidden" name="id" id="cancelBookingId" value="@booking.BookingID" />
+                    <textarea name="reason" id="cancelReasonInput" class="form-control" rows="3"
+                              placeholder="VD: Xe khong san sang, khach hang yeu cau huy..."
+                              required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Dong</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-2"></i>Xac nhan huy
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        function confirmCancel(bookingId) {
-            const reason = prompt("Vui lòng nhập lý do hủy đơn:");
-            if (reason) {
-                document.getElementById(`reason-${bookingId}`).value = reason;
-                return true;
-            }
-            return false;
+        function showCancelModal(bookingId) {
+            document.getElementById('cancelBookingId').value = bookingId;
+            document.getElementById('cancelReasonInput').value = '';
+            var modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+            modal.show();
         }
     </script>
 }

@@ -58,3 +58,8 @@ CarRentalSystem/wwwroot/uploads/ekyc/
 
 ## Misc files
 *.zip
+
+## Sensitive files
+.env
+.env.*
+!.env.example

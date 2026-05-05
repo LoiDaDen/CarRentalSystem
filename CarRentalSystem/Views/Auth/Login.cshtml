@@ -14,11 +14,21 @@
                 <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
             </div>
         }
-        
-        @if (TempData["ErrorMessage"] != null)
+
+        @{
+            var lockedParam = Context.Request.Query["locked"].ToString();
+            var blacklistedParam = Context.Request.Query["blacklisted"].ToString();
+        }
+        @if (lockedParam == "1")
         {
             <div class="alert alert-danger border-0 shadow-sm mb-4 py-3">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["ErrorMessage"]
+                <i class="bi bi-lock-fill me-2"></i> Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.
+            </div>
+        }
+        @if (blacklistedParam == "1")
+        {
+            <div class="alert alert-dark border-0 shadow-sm mb-4 py-3">
+                <i class="bi bi-slash-circle me-2"></i> Tài khoản của bạn đã bị chặn khỏi hệ thống. Vui lòng liên hệ quản trị viên.
             </div>
         }
 

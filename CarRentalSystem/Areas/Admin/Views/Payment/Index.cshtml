@@ -60,7 +60,16 @@
                                 <span class="badge @badgeClass rounded-pill px-3">@payment.PaymentStatus</span>
                             </td>
                             <td class="text-center pe-4">
-                                <a href="/Admin/Booking?search=@payment.BookingID" class="btn btn-sm btn-outline-dark rounded-pill">
+                                @if (payment.PaymentStatus == "Pending")
+                                {
+                                    <form asp-area="Admin" asp-controller="Payment" asp-action="ConfirmPayment" method="post" onsubmit="return confirm('Xác nhận đã nhận được thanh toán này?');" class="d-inline">
+                                        <input type="hidden" name="id" value="@payment.PaymentID" />
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill">
+                                            <i class="bi bi-check-circle me-1"></i>Xác nhận
+                                        </button>
+                                    </form>
+                                }
+                                <a href="/Admin/Booking/Details/@payment.BookingID" class="btn btn-sm btn-outline-dark rounded-pill">
                                     Xem đơn
                                 </a>
                             </td>
