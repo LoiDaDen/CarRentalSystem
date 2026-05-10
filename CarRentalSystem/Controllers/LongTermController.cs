@@ -62,9 +62,7 @@ namespace CarRentalSystem.Controllers
             ViewBag.ContractTypes = contracts;
             ViewBag.Locations = await _context.Locations.ToListAsync();
             
-            ViewBag.Drivers = await _context.Drivers
-                .Where(d => d.IsApproved && d.IsAvailable)
-                .ToListAsync();
+            // Don't load drivers here - they will be loaded dynamically based on selected car's location
 
             // Lấy region từ cookie
             var regionCookie = Request.Cookies["RegionID"];

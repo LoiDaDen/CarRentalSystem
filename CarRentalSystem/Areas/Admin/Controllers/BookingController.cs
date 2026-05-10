@@ -55,6 +55,14 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             var allBookings = await _bookingService.GetAllBookingsAsync();
 
+            // Load DriverBookings để hiển thị thông tin tài xế
+            var driverBookingIds = allBookings.Select(b => b.BookingID).ToList();
+            var driverBookings = await _context.DriverBookings
+                .Include(db => db.Driver)
+                .Where(db => driverBookingIds.Contains(db.BookingID))
+                .ToListAsync();
+            ViewBag.DriverBookings = driverBookings;
+
             // Staff/Manager: chỉ thấy booking trong khu vực của mình
             if (role == "Staff" || role == "Manager")
             {

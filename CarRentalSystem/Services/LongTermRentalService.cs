@@ -163,7 +163,11 @@ namespace CarRentalSystem.Services
             DateTime endDate,
             int termMonths)
         {
-            var result = new RentalPricingResult();
+            var result = new RentalPricingResult
+            {
+                StartDate = startDate,
+                EndDate = endDate
+            };
 
             // Tính số ngày chính xác
             var totalDays = (int)Math.Ceiling((endDate - startDate).TotalDays);
@@ -331,12 +335,13 @@ namespace CarRentalSystem.Services
 
                 // Tạo DigitalContract
                 var contractNo = GenerateContractNo(booking.BookingID);
+                var decryptedCccd = _piiEncryption.DecryptIfNotEmpty(user.CitizenId) ?? "000000000000";
                 var digitalContract = new DigitalContract
                 {
                     ContractNo = contractNo,
                     BookingID = booking.BookingID,
                     CustomerName = customerName ?? user.Name,
-                    CustomerIdentityCard = _piiEncryption.DecryptIfNotEmpty(user.CitizenId) ?? "000000000000",
+                    CustomerIdentityCard = decryptedCccd.Length > 20 ? decryptedCccd.Substring(0, 20) : decryptedCccd,
                     CustomerPhone = customerPhone ?? user.Phone,
                     CustomerAddress = user.Address ?? "Văn phòng công ty",
                     CarLicensePlate = car.LicensePlate,
@@ -475,48 +480,47 @@ namespace CarRentalSystem.Services
             RentalPricingResult pricing,
             int termMonths)
         {
-            var terms = $@"SAU KHI BÀN BẠC, THỎA THUẬN, HAI BÊN THỐNG NHẤT KÝ KẾT HỢP ĐỒNG THUÊ XE DÀI HẠN
+            const int MAX_LENGTH = 3500;
 
-ĐIỀU 1: THÔNG TIN XE
-- Hãng xe: {car.CarBrand?.Name}
-- Mẫu xe: {car.CarName}
-- Biển số: {car.LicensePlate}
-- Số ghế: {car.Seats}
-- Nhiên liệu: {car.FuelType}
-- Hộp số: {car.Transmission}
+            var terms = $@"SAU KHI BAN BAC, THOA THUAN, HAI BEN THONG NHAT KY KET HOP DONG THUE XE DAI HAN
 
-ĐIỀU 2: THỜI HẠN HỢP ĐỒNG
-- Ngày bắt đầu: {pricing.StartDate:dd/MM/yyyy}
-- Ngày kết thúc: {pricing.EndDate:dd/MM/yyyy}
-- Tổng thời hạn: {termMonths} tháng ({pricing.TotalDays} ngày)
+DIEU 1: THONG TIN XE
+- Hang xe: {car.CarBrand?.Name}
+- Mau xe: {car.CarName}
+- Bien so: {car.LicensePlate}
+- So ghe: {car.Seats}, Nhien lieu: {car.FuelType}, Hop so: {car.Transmission}
 
-ĐIỀU 3: GIÁ TRỊ VÀ THANH TOÁN
-- Đơn giá: {car.PricePerDay:N0} VNĐ/ngày
-- Số ngày thuê: {pricing.TotalDays} ngày
-- Giá gốc: {pricing.BasePrice:N0} VNĐ
-- Chiết khấu gói ({contractType.Name}): -{pricing.ContractDiscount:N0} VNĐ ({contractType.DiscountPercent}%)
-{(pricing.MembershipDiscount > 0 ? $"- Chiết khấu thành viên: -{pricing.MembershipDiscount:N0} VNĐ" : "")}
-- TỔNG CỘNG: {pricing.FinalPrice:N0} VNĐ
-- Tiền cọc: {pricing.DepositAmount:N0} VNĐ
-- Số tiền còn lại: {pricing.FinalPrice - pricing.DepositAmount:N0} VNĐ
+DIEU 2: THOI HAN
+- Tu: {pricing.StartDate:dd/MM/yyyy} den: {pricing.EndDate:dd/MM/yyyy}
+- Tong: {termMonths} thang ({pricing.TotalDays} ngay)
 
-ĐIỀU 4: LỊCH THANH TOÁN
-- Thanh toán hàng tháng: {pricing.MonthlyRate:N0} VNĐ/tháng
-- Thanh toán lần 2 trở đi trước ngày 05 hàng tháng
+DIEU 3: GIA TRI
+- Don gia: {car.PricePerDay:N0}VND/ngay, Tong: {pricing.TotalDays} ngay
+- Gia goc: {pricing.BasePrice:N0}VND
+- Chiet khau ({contractType.Name}): -{pricing.ContractDiscount:N0}VND ({contractType.DiscountPercent}%)
+{(pricing.MembershipDiscount > 0 ? $"- Thanh vien: -{pricing.MembershipDiscount:N0}VND" : "")}
+- TONG: {pricing.FinalPrice:N0}VND
+- Tien coc: {pricing.DepositAmount:N0}VND
 
-ĐIỀU 5: QUYỀN LỢI SAU BÁN
-{(contractType.FreeMaintenanceCount > 0 ? $"- Miễn phí {contractType.FreeMaintenanceCount} lần bảo dưỡng trong thời hạn hợp đồng" : "- Không có bảo dưỡng miễn phí")}
-{(contractType.FreeInsurance ? "- Miễn phí bảo hiểm trong thời hạn hợp đồng" : "")}
+DIEU 4: LICH THANH TOAN
+- Hang thang: {pricing.MonthlyRate:N0}VND, Lan 2+ truoc ngay 05/thang
 
-ĐIỀU 6: NGHĨA VỤ CỦA BÊN THUÊ
-- Bảo quản và sử dụng xe đúng cách
-- Thanh toán đúng hạn theo lịch trình
-- Báo cáo sự cố trong vòng 24 giờ
-- Không cho thuê lại xe dưới bất kỳ hình thức nào
+DIEU 5: QUYEN LOI
+{(contractType.FreeMaintenanceCount > 0 ? $"- Mien phi {contractType.FreeMaintenanceCount} lan bao duong" : "- Khong co bao duong mien phi")}
+{(contractType.FreeInsurance ? "- Mien phi bao hiem" : "")}
 
-ĐIỀU 7: HIỆU LỰC HỢP ĐỒNG
-- Hợp đồng có hiệu lực kể từ ngày ký và đặt cọc thành công
-- Hợp đồng được lưu trữ điện tử và có giá trị pháp lý";
+DIEU 6: NGHIA VU
+- Bao quan xe dung cach, Thanh toan dung han
+- Bao cao su cuoc trong 24h, Khong cho thue lai
+
+DIEU 7: HIEU LUC
+- Hieu luc khi dat coc thanh cong
+- Luu tru dien tu, co gia tri phap ly";
+
+            if (terms.Length > MAX_LENGTH)
+            {
+                terms = terms.Substring(0, MAX_LENGTH);
+            }
 
             return terms;
         }

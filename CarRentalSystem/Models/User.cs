@@ -18,7 +18,10 @@ namespace CarRentalSystem.Models
         [Required]
         public required string PasswordHash { get; set; }
         [MaxLength(20)]
-        public string Role { get; set; } = "Customer"; // Admin, Customer, Staff, Partner
+        public string Role { get; set; } = "Customer"; // Admin, Manager, Staff, Customer, Partner
+
+        public static readonly string[] AllRoles = { "Admin", "Manager", "Staff", "Customer", "Partner" };
+        public static readonly string[] ManageableRoles = { "Manager", "Staff", "Customer" }; // Roles that can be changed by Admin
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Booking>? Bookings { get; set; } = new List<Booking>();
@@ -64,6 +67,7 @@ namespace CarRentalSystem.Models
         public bool IsEmailVerified { get; set; } = false;
         [MaxLength(100)]
         public string? EmailVerificationToken { get; set; }
+        public DateTime? EmailVerificationTokenExpiry { get; set; }
 
         public bool IsVerified { get; set; } = false;
         
@@ -92,6 +96,14 @@ namespace CarRentalSystem.Models
         public string? PartnerAddress { get; set; }
         public double? PartnerLatitude { get; set; }
         public double? PartnerLongitude { get; set; }
+
+        // Partner Approval Status
+        public bool IsPartnerApproved { get; set; } = false;
+        public DateTime? PartnerApprovedAt { get; set; }
+
+        // Lưu role gốc để Admin/Staff đăng ký partner không mất quyền
+        [MaxLength(20)]
+        public string? OriginalRole { get; set; }
 
         // Phase 5: Membership & Loyalty
         public int? MembershipTierID { get; set; }

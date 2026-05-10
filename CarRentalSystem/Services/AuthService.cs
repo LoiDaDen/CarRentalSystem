@@ -42,25 +42,21 @@ namespace CarRentalSystem.Services
             if (string.IsNullOrEmpty(citizenId)) return false;
             var hash = ComputeHash(citizenId);
 
-            var users = await _userRepository.Query()
+            // Tối ưu: Filter ở database level thay vì load tất cả users vào memory
+            var exists = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
-                .ToListAsync();
+                .Where(u => u.CitizenIdHash == hash)
+                .AnyAsync();
 
-            foreach (var u in users)
-            {
-                // Kiem tra theo hash (tai khoan moi)
-                if (!string.IsNullOrEmpty(u.CitizenIdHash) && u.CitizenIdHash == hash)
-                    return true;
+            if (exists) return true;
 
-                // Kiem tra trong CitizenId cu (chua co hash) — so sanh truc tiep
-                if (string.IsNullOrEmpty(u.CitizenIdHash) && !string.IsNullOrEmpty(u.CitizenId))
-                {
-                    var decrypted = _piiEncryption.DecryptIfNotEmpty(u.CitizenId);
-                    if (!string.IsNullOrEmpty(decrypted) && decrypted.Trim() == citizenId.Trim())
-                        return true;
-                }
-            }
-            return false;
+            // Kiểm tra legacy accounts (chưa có hash) - giới hạn chỉ khi cần
+            var legacyExists = await _userRepository.Query()
+                .Where(u => u.UserID != excludeUserId)
+                .Where(u => u.CitizenIdHash == null && u.CitizenId != null)
+                .AnyAsync();
+
+            return legacyExists;
         }
 
         public async Task<bool> IsDrivingLicenseTakenAsync(string licenseNumber, int excludeUserId)
@@ -68,23 +64,21 @@ namespace CarRentalSystem.Services
             if (string.IsNullOrEmpty(licenseNumber)) return false;
             var hash = ComputeHash(licenseNumber);
 
-            var users = await _userRepository.Query()
+            // Tối ưu: Filter ở database level
+            var exists = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
-                .ToListAsync();
+                .Where(u => u.DrivingLicenseHash == hash)
+                .AnyAsync();
 
-            foreach (var u in users)
-            {
-                if (!string.IsNullOrEmpty(u.DrivingLicenseHash) && u.DrivingLicenseHash == hash)
-                    return true;
+            if (exists) return true;
 
-                if (string.IsNullOrEmpty(u.DrivingLicenseHash) && !string.IsNullOrEmpty(u.DrivingLicenseNumber))
-                {
-                    var decrypted = _piiEncryption.DecryptIfNotEmpty(u.DrivingLicenseNumber);
-                    if (!string.IsNullOrEmpty(decrypted) && decrypted.Trim() == licenseNumber.Trim())
-                        return true;
-                }
-            }
-            return false;
+            // Kiểm tra legacy accounts
+            var legacyExists = await _userRepository.Query()
+                .Where(u => u.UserID != excludeUserId)
+                .Where(u => u.DrivingLicenseHash == null && u.DrivingLicenseNumber != null)
+                .AnyAsync();
+
+            return legacyExists;
         }
 
         public async Task<bool> IsPhoneTakenAsync(string phone, int excludeUserId)
@@ -92,27 +86,29 @@ namespace CarRentalSystem.Services
             if (string.IsNullOrEmpty(phone)) return false;
             var hash = ComputeHash(phone);
 
-            var users = await _userRepository.Query()
+            // Tối ưu: Filter ở database level
+            var exists = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
-                .ToListAsync();
+                .Where(u => u.PhoneHash == hash)
+                .AnyAsync();
 
-            foreach (var u in users)
-            {
-                if (!string.IsNullOrEmpty(u.PhoneHash) && u.PhoneHash == hash)
-                    return true;
+            if (exists) return true;
 
-                // Phone co the la plaintext cu — so sanh truc tiep
-                if (string.IsNullOrEmpty(u.PhoneHash) && !string.IsNullOrEmpty(u.Phone)
-                    && u.Phone.Trim() == phone.Trim())
-                    return true;
-            }
-            return false;
+            // Kiểm tra legacy accounts (Phone lưu plaintext)
+            var legacyExists = await _userRepository.Query()
+                .Where(u => u.UserID != excludeUserId)
+                .Where(u => u.PhoneHash == null && u.Phone != null && u.Phone.Trim() == phone.Trim())
+                .AnyAsync();
+
+            return legacyExists;
         }
 
         public async Task<User> AuthenticateAsync(string email, string password)
         {
+            // Chỉ cho phép login bằng Email (không cho phép login bằng Name)
             var user = await _userRepository.Query()
-                .FirstOrDefaultAsync(u => u.Email == email || u.Name == email);
+                .FirstOrDefaultAsync(u => u.Email == email);
+
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
                 return user;

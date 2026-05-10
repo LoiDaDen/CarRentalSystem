@@ -32,6 +32,7 @@
                     <td>@alert.Description</td>
                     <td>
                         <form asp-action="Resolve" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@alert.AlertID" />
                             <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check2-all"></i> Mark Resolved</button>
                         </form>

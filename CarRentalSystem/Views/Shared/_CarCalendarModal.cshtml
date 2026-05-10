@@ -350,6 +350,45 @@
         font-size: 1.15rem;
         color: #0f172a;
         letter-spacing: -0.01em;
+        /* Force 24-hour format display */
+        font-variant-numeric: tabular-nums;
+    }
+    /* Webkit browser time picker styling */
+    .time-picker-box input[type="time"]::-webkit-calendar-picker-indicator {
+        opacity: 0.6;
+        cursor: pointer;
+    }
+    .time-picker-box input[type="time"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+    }
+    /* Firefox time picker */
+    .time-picker-box input[type="time"]::-moz-list-bullet {
+        list-style-type: none;
+    }
+
+    /* Custom time select styling */
+    .time-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.4rem 0.5rem;
+        font-weight: 700;
+        font-size: 1rem;
+        color: #0f172a;
+        background: #fff;
+        cursor: pointer;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+    .time-select:focus {
+        border-color: #10b981;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    .time-select:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f1f5f9;
+        color: #94a3b8;
     }
 
     /* ===== SUMMARY STRIP ===== */
@@ -497,14 +536,42 @@
                                 <span class="time-icon pickup"><i class="bi bi-clock"></i></span>
                                 Giờ nhận
                             </span>
-                            <input type="time" id="internalStartTime" value="07:00" />
+                            <div class="d-flex align-items-center gap-1">
+                                <select id="internalStartHour" class="time-select" style="width: 60px;">
+                                    @for (int h = 0; h < 24; h++)
+                                    {
+                                        <option value="@h.ToString("D2")">@h.ToString("D2")</option>
+                                    }
+                                </select>
+                                <span class="fw-bold">:</span>
+                                <select id="internalStartMinute" class="time-select" style="width: 60px;">
+                                    @for (int m = 0; m < 60; m++)
+                                    {
+                                        <option value="@m.ToString("D2")">@m.ToString("D2")</option>
+                                    }
+                                </select>
+                            </div>
                         </div>
                         <div class="time-picker-box">
                             <span class="time-label">
                                 <span class="time-icon return"><i class="bi bi-clock"></i></span>
                                 Giờ trả
                             </span>
-                            <input type="time" id="internalEndTime" value="11:00" />
+                            <div class="d-flex align-items-center gap-1">
+                                <select id="internalEndHour" class="time-select" style="width: 60px;">
+                                    @for (int h = 0; h < 24; h++)
+                                    {
+                                        <option value="@h.ToString("D2")">@h.ToString("D2")</option>
+                                    }
+                                </select>
+                                <span class="fw-bold">:</span>
+                                <select id="internalEndMinute" class="time-select" style="width: 60px;">
+                                    @for (int m = 0; m < 60; m++)
+                                    {
+                                        <option value="@m.ToString("D2")">@m.ToString("D2")</option>
+                                    }
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>

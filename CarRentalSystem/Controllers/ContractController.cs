@@ -32,6 +32,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(RentalContract contract)
         {
             var booking = await _bookingService.GetBookingByIdAsync(contract.BookingID);

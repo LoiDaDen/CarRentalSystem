@@ -25,14 +25,16 @@ namespace CarRentalSystem.Controllers
         private readonly IEmailService _emailService;
         private readonly IPiiEncryptionService _piiEncryption;
         private readonly ApplicationDbContext _context;
+        private readonly IRecaptchaService _recaptchaService;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService)
         {
             _authService = authService;
             _env = env;
             _emailService = emailService;
             _piiEncryption = piiEncryption;
             _context = context;
+            _recaptchaService = recaptchaService;
         }
 
         [HttpGet]
@@ -44,8 +46,24 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string email, string password)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Login(string email, string password, string? recaptchaToken)
         {
+            // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
+            // if (string.IsNullOrEmpty(recaptchaToken))
+            // {
+            //     ViewBag.Error = "Vui lòng xác nhận reCAPTCHA trước khi đăng nhập.";
+            //     return View();
+            // }
+
+            // var recaptchaResult = await _recaptchaService.VerifyAsync(recaptchaToken, "login");
+            // if (!recaptchaResult.Success)
+            // {
+            //     ViewBag.RecaptchaError = "Xác thực reCAPTCHA thất bại. Vui lòng thử lại.";
+            //     ViewBag.Error = "Đăng nhập không thành công do xác thực bảo mật thất bại.";
+            //     return View();
+            // }
+
             var user = await _authService.AuthenticateAsync(email, password);
             if (user == null)
             {
@@ -102,8 +120,24 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Register(User user)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(User user, string? recaptchaToken)
         {
+            // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
+            // if (string.IsNullOrEmpty(recaptchaToken))
+            // {
+            //     ViewBag.Error = "Vui lòng xác nhận reCAPTCHA trước khi đăng ký.";
+            //     return View(user);
+            // }
+
+            // var recaptchaResult = await _recaptchaService.VerifyAsync(recaptchaToken, "register");
+            // if (!recaptchaResult.Success)
+            // {
+            //     ViewBag.RecaptchaError = "Xác thực reCAPTCHA thất bại. Vui lòng thử lại.";
+            //     ViewBag.Error = "Đăng ký không thành công do xác thực bảo mật thất bại.";
+            //     return View(user);
+            // }
+
             ModelState.Remove("Role"); // Role is assigned programmatically
             if (!ModelState.IsValid)
             {
@@ -187,40 +221,258 @@ namespace CarRentalSystem.Controllers
 
             user.Role = "Customer"; // Default role
             user.IsEmailVerified = false;
-            user.EmailVerificationToken = System.Guid.NewGuid().ToString();
+
+            // Tạo OTP 6 số và thời hạn 5 phút
+            user.EmailVerificationToken = GenerateOtp();
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
 
             await _authService.RegisterAsync(user);
 
-            // Gửi email xác thực qua Hangfire Queue (không block user)
-            var verifyUrl = Url.Action("VerifyEmail", "Auth", new { userId = user.UserID, token = user.EmailVerificationToken }, Request.Scheme);
+            // Gửi email OTP qua Hangfire Queue (không block user)
             Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
-                job => job.SendVerificationEmail(user.Email, verifyUrl));
+                job => job.SendOtpEmail(user.Email, user.EmailVerificationToken));
 
-            // Chuyển hướng đến trang báo thành công
+            // Lưu email vào TempData để truyền sang trang xác thực OTP
             TempData["RegisteredEmail"] = user.Email;
-            return RedirectToAction("RegistrationSuccess");
+            return RedirectToAction("VerifyEmailStep2", new { email = user.Email });
         }
 
+        public async Task<IActionResult> RegistrationSuccess()
+        {
+            var email = TempData["RegisteredEmail"]?.ToString();
+            if (string.IsNullOrEmpty(email))
+                return RedirectToAction("Login");
+
+            ViewBag.RegisteredEmail = email;
+            return View();
+        }
+
+        /// <summary>
+        /// Trang 1: Nhập email để kiểm tra và gửi OTP
+        /// </summary>
         [HttpGet]
-        public IActionResult RegistrationSuccess()
+        public IActionResult VerifyEmailStep1()
         {
             return View();
         }
 
-        [HttpGet]
-        public async Task<IActionResult> VerifyEmail(int userId, string token)
+        /// <summary>
+        /// Xử lý kiểm tra email - Trang 1
+        /// Kiểm tra email có tồn tại và trạng thái xác thực
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CheckEmail(string email, string? recaptchaToken)
         {
-            if (userId <= 0 || string.IsNullOrEmpty(token))
+            // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
+            // if (string.IsNullOrEmpty(recaptchaToken))
+            // {
+            //     TempData["ErrorMessage"] = "Vui lòng xác nhận reCAPTCHA trước khi tiếp tục.";
+            //     return RedirectToAction("VerifyEmailStep1");
+            // }
+
+            // var recaptchaResult = await _recaptchaService.VerifyAsync(recaptchaToken, "verify_email");
+            // if (!recaptchaResult.Success)
+            // {
+            //     TempData["ErrorMessage"] = "Xác thực bảo mật thất bại. Vui lòng thử lại.";
+            //     return RedirectToAction("VerifyEmailStep1");
+            // }
+
+            if (string.IsNullOrEmpty(email))
             {
-                ViewBag.Error = "Link xác thực không hợp lệ.";
-                return View("VerifyEmailError");
+                TempData["ErrorMessage"] = "Vui lòng nhập địa chỉ email.";
+                return RedirectToAction("VerifyEmailStep1");
             }
 
-            var user = await _authService.GetUserByIdAsync(userId);
+            var user = await _authService.GetUserByEmailAsync(email);
+
             if (user == null)
             {
-                ViewBag.Error = "Tài khoản không tồn tại.";
-                return View("VerifyEmailError");
+                // Email không tồn tại trong hệ thống
+                TempData["ErrorMessage"] = "Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại.";
+                return RedirectToAction("VerifyEmailStep1");
+            }
+
+            if (user.IsEmailVerified)
+            {
+                // Email đã được xác thực
+                TempData["ErrorMessage"] = "Tài khoản này đã được xác thực trước đó. Vui lòng đăng nhập.";
+                return RedirectToAction("VerifyEmailStep1");
+            }
+
+            // Email tồn tại và chưa xác thực -> Tạo OTP và gửi email
+            var newOtp = GenerateOtp();
+            user.EmailVerificationToken = newOtp;
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            await _authService.UpdateUserAsync(user);
+
+            // Gửi email OTP qua Hangfire Queue
+            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                job => job.SendOtpEmail(user.Email, newOtp));
+
+            // Lưu email vào TempData và chuyển sang trang 2
+            TempData["RegisteredEmail"] = email;
+            return RedirectToAction("VerifyEmailStep2", new { email = email });
+        }
+
+        /// <summary>
+        /// Trang 2: Nhập mã OTP để xác thực
+        /// </summary>
+        [HttpGet]
+        public IActionResult VerifyEmailStep2(string? email)
+        {
+            // Ưu tiên lấy từ TempData, nếu không có thì lấy từ query string
+            var emailToUse = TempData["RegisteredEmail"]?.ToString() ?? email;
+            
+            if (string.IsNullOrEmpty(emailToUse))
+            {
+                return RedirectToAction("VerifyEmailStep1");
+            }
+            
+            // Lưu lại vào TempData để dùng cho POST
+            TempData["RegisteredEmail"] = emailToUse;
+            ViewBag.Email = emailToUse;
+            return View();
+        }
+
+        /// <summary>
+        /// Xử lý xác thực OTP - Trang 2
+        /// Sử dụng atomic update để tránh race condition (OTP chỉ được sử dụng 1 lần)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VerifyEmailStep2(string email, string otp)
+        {
+            ViewBag.Email = email;
+            TempData["RegisteredEmail"] = email;
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(otp))
+            {
+                ViewBag.Error = "Vui lòng nhập đầy đủ email và mã OTP.";
+                return View();
+            }
+
+            // Normalize OTP (trim whitespace)
+            var normalizedOtp = otp.Trim();
+
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                ViewBag.Error = "Email không tồn tại trong hệ thống.";
+                return View();
+            }
+
+            // Sử dụng atomic update để tránh race condition
+            // Chỉ update nếu: token khớp, chưa hết hạn, và chưa verified
+            var rowsAffected = await _context.Users
+                .Where(u => u.Email == email
+                    && !u.IsEmailVerified
+                    && u.EmailVerificationToken == normalizedOtp
+                    && u.EmailVerificationTokenExpiry != null
+                    && u.EmailVerificationTokenExpiry > DateTime.UtcNow)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(u => u.IsEmailVerified, true)
+                    .SetProperty(u => u.EmailVerificationToken, (string?)null)
+                    .SetProperty(u => u.EmailVerificationTokenExpiry, (DateTime?)null));
+
+            if (rowsAffected == 0)
+            {
+                // Token không hợp lệ, đã hết hạn, hoặc đã được sử dụng
+                var existingUser = await _authService.GetUserByEmailAsync(email);
+                if (existingUser?.IsEmailVerified == true)
+                {
+                    TempData["SuccessMessage"] = "Tài khoản của bạn đã được xác thực trước đó. Vui lòng đăng nhập.";
+                    return RedirectToAction("Login");
+                }
+                if (existingUser?.EmailVerificationTokenExpiry != null && existingUser.EmailVerificationTokenExpiry < DateTime.UtcNow)
+                {
+                    ViewBag.Error = "Mã OTP đã hết hạn. Vui lòng nhấn \"Gửi lại mã\" để nhận mã mới.";
+                }
+                else
+                {
+                    ViewBag.Error = "Mã OTP không đúng. Vui lòng kiểm tra lại email.";
+                }
+                return View();
+            }
+
+            TempData["SuccessMessage"] = "Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.";
+            return RedirectToAction("Login");
+        }
+
+        /// <summary>
+        /// Gửi lại mã OTP
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendOtpStep2(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                TempData["ErrorMessage"] = "Vui lòng nhập email.";
+                return RedirectToAction("VerifyEmailStep1");
+            }
+
+            TempData["RegisteredEmail"] = email;
+
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                TempData["ErrorMessage"] = "Email này không tồn tại trong hệ thống.";
+                return RedirectToAction("VerifyEmailStep1");
+            }
+
+            if (user.IsEmailVerified)
+            {
+                TempData["ErrorMessage"] = "Tài khoản này đã được xác thực. Vui lòng đăng nhập.";
+                return RedirectToAction("Login");
+            }
+
+            var newOtp = GenerateOtp();
+            user.EmailVerificationToken = newOtp;
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            await _authService.UpdateUserAsync(user);
+
+            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                job => job.SendOtpEmail(user.Email, newOtp));
+
+            TempData["SuccessMessage"] = "Mã OTP mới đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.";
+            return RedirectToAction("VerifyEmailStep2");
+        }
+
+        /// <summary>
+        /// Trang xác thực OTP - hiển thị sau khi đăng ký hoặc khi user nhấn "xác thực email"
+        /// </summary>
+        [HttpGet]
+        public IActionResult VerifyEmail()
+        {
+            // Lấy email từ TempData (đăng ký thành công)
+            var email = TempData["RegisteredEmail"]?.ToString();
+            ViewBag.Email = email;
+            return View();
+        }
+
+        /// <summary>
+        /// Xử lý xác thực OTP do người dùng nhập vào.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VerifyEmail(string email, string otp)
+        {
+            // Giữ email để hiển thị lại form nếu có lỗi
+            ViewBag.Email = email;
+            TempData["RegisteredEmail"] = email;
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(otp))
+            {
+                ViewBag.Error = "Vui lòng nhập đầy đủ email và mã OTP.";
+                return View();
+            }
+
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                ViewBag.Error = "Email không tồn tại trong hệ thống.";
+                return View();
             }
 
             if (user.IsEmailVerified)
@@ -229,43 +481,83 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Login");
             }
 
-            if (user.EmailVerificationToken == token)
+            // Kiểm tra OTP có khớp không
+            if (user.EmailVerificationToken != otp)
             {
-                user.IsEmailVerified = true;
-                user.EmailVerificationToken = null; // Xoá token sau khi dùng
-                await _authService.UpdateUserAsync(user);
-
-                TempData["SuccessMessage"] = "Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.";
-                return RedirectToAction("Login");
+                ViewBag.Error = "Mã OTP không đúng. Vui lòng kiểm tra lại email.";
+                return View();
             }
 
-            ViewBag.Error = "Token xác thực không hợp lệ hoặc đã hết hạn.";
-            return View("VerifyEmailError");
+            // Kiểm tra OTP đã hết hạn chưa
+            if (user.EmailVerificationTokenExpiry == null || user.EmailVerificationTokenExpiry < DateTime.UtcNow)
+            {
+                ViewBag.Error = "Mã OTP đã hết hạn. Vui lòng nhấn \"Gửi lại mã\" để nhận mã mới.";
+                return View();
+            }
+
+            // Xác thực thành công
+            user.IsEmailVerified = true;
+            user.EmailVerificationToken = null;
+            user.EmailVerificationTokenExpiry = null;
+            await _authService.UpdateUserAsync(user);
+
+            TempData["SuccessMessage"] = "Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.";
+            return RedirectToAction("Login");
         }
 
+        /// <summary>
+        /// Gửi lại mã OTP xác thực.
+        /// Chỉ gửi cho email có trong hệ thống và CHƯA xác thực.
+        /// </summary>
         [HttpPost]
-        public async Task<IActionResult> ResendVerificationEmail(string email)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendOtp(string email)
         {
             if (string.IsNullOrEmpty(email))
             {
                 TempData["ErrorMessage"] = "Vui lòng nhập email.";
+                return RedirectToAction("VerifyEmail");
+            }
+
+            // Giữ email để hiển thị lại trên form
+            TempData["RegisteredEmail"] = email;
+
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                // Email không tồn tại trong hệ thống
+                TempData["ErrorMessage"] = "Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại.";
+                return RedirectToAction("VerifyEmail");
+            }
+
+            if (user.IsEmailVerified)
+            {
+                // Tài khoản đã xác thực rồi
+                TempData["InfoMessage"] = "Tài khoản này đã được xác thực trước đó. Vui lòng đăng nhập.";
                 return RedirectToAction("Login");
             }
 
-            var user = await _authService.GetUserByEmailAsync(email);
-            if (user != null && !user.IsEmailVerified)
-            {
-                user.EmailVerificationToken = System.Guid.NewGuid().ToString();
-                await _authService.UpdateUserAsync(user);
+            // Tạo OTP 6 số mới
+            var newOtp = GenerateOtp();
+            user.EmailVerificationToken = newOtp;
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            await _authService.UpdateUserAsync(user);
 
-                var verifyUrl = Url.Action("VerifyEmail", "Auth", new { userId = user.UserID, token = user.EmailVerificationToken }, Request.Scheme);
-                Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
-                    job => job.SendVerificationEmail(user.Email, verifyUrl));
-            }
+            // Gửi email OTP qua Hangfire Queue
+            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                job => job.SendOtpEmail(user.Email, newOtp));
 
-            // Luôn báo thành công để tránh lộ thông tin email có tồn tại hay không
-            TempData["SuccessMessage"] = "Nếu email tồn tại trong hệ thống và chưa xác thực, một link xác thực mới đã được gửi đi.";
-            return RedirectToAction("Login");
+            TempData["SuccessMessage"] = "Mã OTP mới đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.";
+            return RedirectToAction("VerifyEmail");
+        }
+
+        private static string GenerateOtp()
+        {
+            using var rng = RandomNumberGenerator.Create();
+            var bytes = new byte[4];
+            rng.GetBytes(bytes);
+            var number = Math.Abs(BitConverter.ToInt32(bytes, 0)) % 1000000;
+            return number.ToString("D6");
         }
 
         public async Task<IActionResult> Logout()
@@ -308,6 +600,7 @@ namespace CarRentalSystem.Controllers
 
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Profile(User updatedUser, IFormFile? uploadIdFront, IFormFile? uploadIdBack, IFormFile? uploadLicense)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -361,6 +654,9 @@ namespace CarRentalSystem.Controllers
                     user.Name = updatedUser.Name;
                     user.Phone = newPhone;
 
+                    // Lưu plaintext CCCD để hash trước khi encrypt
+                    var plaintextCitizenId = updatedUser.CitizenId?.Trim() ?? "";
+
                     // 🔒 Encrypt PII at rest
                     user.CitizenId = _piiEncryption.EncryptIfNotEmpty(updatedUser.CitizenId);
                     user.DrivingLicenseNumber = _piiEncryption.EncryptIfNotEmpty(updatedUser.DrivingLicenseNumber);
@@ -368,8 +664,8 @@ namespace CarRentalSystem.Controllers
                     user.Gender = updatedUser.Gender;
                     user.Address = updatedUser.Address;
 
-                    // 🔐 Compute SHA-256 hash từ PLAINTEXT (khong phai ciphertext)
-                    user.CitizenIdHash = ComputeHash(updatedUser.CitizenId?.Trim());
+                    // 🔐 Compute SHA-256 hash từ PLAINTEXT (không phải ciphertext)
+                    user.CitizenIdHash = ComputeHash(plaintextCitizenId);
                     user.DrivingLicenseHash = ComputeHash(newGplx);
                     user.PhoneHash = ComputeHash(newPhone);
 

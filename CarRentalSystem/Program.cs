@@ -13,7 +13,19 @@ using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
 
-DotNetEnv.Env.Load(Path.Combine(builder.Environment.ContentRootPath, ".env"));
+// Load .env file (nếu tồn tại) - không crash nếu file không tồn tại
+var envFilePath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+if (File.Exists(envFilePath))
+{
+    try
+    {
+        DotNetEnv.Env.Load(envFilePath);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Warning: Could not load .env file: {ex.Message}");
+    }
+}
 
 // Add services to the container.
 builder.Services.AddControllersWithViews(options =>
@@ -26,7 +38,8 @@ builder.Services.AddControllersWithViews(options =>
 });
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-        .EnableSensitiveDataLogging());
+        // Chỉ enable sensitive data logging trong Development
+        .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
 
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ICarService, CarService>();
@@ -95,6 +108,12 @@ builder.Services.AddScoped<CarRentalSystem.Services.GroqChatService>();
 builder.Services.AddScoped<IQrCccdParserService, QrCccdParserService>();
 
 // ═══════════════════════════════════════════════════
+// 🤖 reCAPTCHA v2 — Chống bot trên form login/register
+// ═══════════════════════════════════════════════════
+builder.Services.AddHttpClient<IRecaptchaService, RecaptchaService>();
+builder.Services.AddScoped<IRecaptchaService, RecaptchaService>();
+
+// ═══════════════════════════════════════════════════
 // 🏥 HEALTH CHECKS — Monitoring endpoint /health
 // ═══════════════════════════════════════════════════
 builder.Services.AddHealthChecks()
@@ -122,6 +141,7 @@ builder.Services.AddScoped<EmailBackgroundJob>();
 builder.Services.AddScoped<ContractExpirationJob>();
 builder.Services.AddScoped<MaintenanceAlertJob>();
 builder.Services.AddScoped<DepositRefundJob>();
+builder.Services.AddScoped<CleanupUnverifiedAccountsJob>();
 
 builder.Services.AddAuthentication("Cookies")
     .AddCookie("Cookies", options =>
@@ -136,8 +156,11 @@ builder.Services.AddAuthentication("Cookies")
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
         options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-        options.Cookie.SameSite = SameSiteMode.Lax;
+        // Bảo mật: chỉ gửi cookie qua HTTPS trong Production
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Strict;
         options.Cookie.Name = "CarRental.Auth";
     });
 
@@ -167,6 +190,11 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.Name = "CarRental.Session";
+    // Bảo mật: chỉ gửi cookie qua HTTPS trong Production
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
 // ═══════════════════════════════════════════════════
@@ -223,14 +251,20 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// app.UseHttpsRedirection(); // Tạm thời tắt trong Development
+// Bật HTTPS redirection trong Production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+// Tắt ServeUnknownFileTypes để bảo mật
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
         Path.Combine(builder.Environment.ContentRootPath, "..", "docs")),
     RequestPath = "/docs",
-    ServeUnknownFileTypes = true,
+    ServeUnknownFileTypes = false, // Tắt để tránh directory traversal
     DefaultContentType = "text/plain"
 });
 app.UseRouting();
@@ -291,6 +325,12 @@ if (!app.Environment.IsEnvironment("Testing"))
         "deposit-refund-process",
         job => job.Execute(),
         Cron.Daily(9)); // Mỗi ngày lúc 9:00 AM
+
+    // Xóa tài khoản chưa xác thực email sau 24 giờ
+    RecurringJob.AddOrUpdate<CleanupUnverifiedAccountsJob>(
+        "cleanup-unverified-accounts",
+        job => job.ExecuteAsync(),
+        Cron.Hourly); // Chạy mỗi giờ
 }
 
 // ═══════════════════════════════════════════════════

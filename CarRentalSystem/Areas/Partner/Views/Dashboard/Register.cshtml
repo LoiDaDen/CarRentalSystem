@@ -135,18 +135,80 @@
                     </li>
                 </ul>
 
-                <form asp-area="Partner" asp-controller="Dashboard" asp-action="Register" method="post">
+                <form asp-area="Partner" asp-controller="Dashboard" asp-action="Register" method="post" id="registerForm">
                     <div class="form-check mb-4 p-3 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
                         <input class="form-check-input" type="checkbox" id="agreeTerms" name="agreeTerms" required>
                         <label class="form-check-label fw-bold" for="agreeTerms">
                             Tôi đã đọc, hiểu và đồng ý với tất cả <strong class="text-primary">Điều khoản Đối tác</strong> của SmartRental.
                         </label>
                     </div>
-                    <button type="submit" class="btn btn-warning btn-lg w-100 rounded-pill py-3 fw-800 shadow-sm">
-                        <i class="bi bi-building-add me-2"></i>Đăng ký làm Đối Tác ngay
-                    </button>
+
+                    <!-- Hợp đồng điện tử -->
+                    <div class="card border-primary mb-4" style="border-width: 2px;">
+                        <div class="card-header bg-primary text-white py-3">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text me-2"></i>HỢP ĐỒNG HỢP TÁC ĐỐI TÁC</h5>
+                        </div>
+                        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                            <div class="small">
+                                <p class="fw-bold text-center mb-3">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<br>Độc lập - Tự do - Hạnh phúc</p>
+
+                                <p class="fw-bold text-center">HỢP ĐỒNG HỢP TÁC ĐỐI TÁC CHO THUÊ XE</p>
+                                <p class="text-center text-muted">Số: ___________/2026/HĐHT-XT</p>
+
+                                <p><strong>ĐIỀU 1: CÁC BÊN THAM GIA HỢP ĐỒNG</strong></p>
+                                <p>BÊN A: Công ty TNHH Cho Thuê Xe CarRental<br>
+                                Địa chỉ: TP. Hồ Chí Minh, Việt Nam<br>
+                                (Sau đây gọi là "Bên A")</p>
+
+                                <p>BÊN B: Thông tin tài khoản của Quý khách<br>
+                                (Sau đây gọi là "Bên B")</p>
+
+                                <p><strong>ĐIỀU 2: NỘI DUNG HỢP TÁC</strong></p>
+                                <p>2.1. Bên B đồng ý ký gửi xe ô tô cho Bên A để thực hiện dịch vụ cho thuê xe tự lái trên nền tảng CarRental.</p>
+                                <p>2.2. Bên A có trách nhiệm tìm kiếm khách hàng, thực hiện quy trình cho thuê, quản lý tài sản và thu tiền từ khách hàng.</p>
+
+                                <p><strong>ĐIỀU 3: PHÂN CHIA DOANH THU</strong></p>
+                                <p>3.1. Doanh thu từ việc cho thuê xe sẽ được chia như sau:</p>
+                                <ul>
+                                    <li><strong>Bên B (Chủ xe):</strong> Nhận 80% doanh thu</li>
+                                    <li><strong>Bên A (Vận hành):</strong> Nhận 20% doanh thu (Phí quản lý, tìm khách và vận hành)</li>
+                                </ul>
+                                <p>3.2. Kỳ thanh toán: Bên A tổng kết và chuyển thanh toán cho Bên B vào ngày 05 hàng tháng.</p>
+
+                                <p><strong>ĐIỀU 4: TRÁCH NHIỆM</strong></p>
+                                <p>4.1. Bên B chịu trách nhiệm: Phí bảo hiểm vật chất xe, phí đường bộ, đăng kiểm, và các hư hỏng do hao mòn tự nhiên.</p>
+                                <p>4.2. Bên A chịu trách nhiệm: Chi phí marketing, nhân sự giao nhận xe, vệ sinh xe cơ bản.</p>
+
+                                <p><strong>ĐIỀU 5: THỜI HẠN VÀ CHẤM DỨT</strong></p>
+                                <p>5.1. Hợp đồng có hiệu lực kể từ ngày ký.</p>
+                                <p>5.2. Nếu một trong hai bên muốn chấm dứt, phải báo trước ít nhất 15 ngày.</p>
+
+                                <p><strong>ĐIỀU 6: ĐIỀU KHOẢN KHÁC</strong></p>
+                                <p>6.1. Xe phải được đăng kiểm hợp lệ và còn thời hạn bảo hiểm.</p>
+                                <p>6.2. Xe vi phạm nghiêm trọng sẽ bị gỡ khỏi sàn.</p>
+                                <p>6.3. Thanh toán cho Bên B trong vòng 48h sau khi hoàn tất chuyến.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Checkbox xác nhận ký hợp đồng -->
+                    <div class="form-check mb-4 p-3 rounded-3 border border-danger" style="background: #fef2f2;">
+                        <input class="form-check-input" type="checkbox" id="signContract" name="signContract" required>
+                        <label class="form-check-label fw-bold text-danger" for="signContract">
+                            <i class="bi bi-pen-fill me-1"></i>Tôi xác nhận đã đọc kỹ Hợp đồng Hợp tác Đối tác và đồng ý ký hợp đồng này bằng chữ ký điện tử.
+                        </label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-warning btn-lg rounded-pill py-3 fw-bold shadow-sm" id="btnRegister">
+                            <i class="bi bi-pen me-2"></i>Ký Hợp Đồng & Đăng Ký Đối Tác
+                        </button>
+                        <a asp-area="" asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary rounded-pill py-2">
+                            <i class="bi bi-x-lg me-2"></i>Hủy bỏ
+                        </a>
+                    </div>
                     <p class="text-center text-muted small mt-3 mb-0">
-                        <i class="bi bi-lock-fill me-1"></i>Thông tin của bạn được bảo mật tuyệt đối
+                        <i class="bi bi-info-circle me-1"></i>Nếu bạn không đồng ý ký hợp đồng, vui lòng nhấn "Hủy bỏ" để quay về trang chủ.
                     </p>
                 </form>
             </div>

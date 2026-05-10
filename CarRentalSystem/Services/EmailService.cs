@@ -11,6 +11,7 @@ namespace CarRentalSystem.Services
     public interface IEmailService
     {
         Task SendVerificationEmailAsync(string toEmail, string verificationLink);
+        Task SendOtpEmailAsync(string toEmail, string otp);
         Task SendBookingConfirmationEmailAsync(Booking booking, decimal paidAmount);
     }
 
@@ -34,12 +35,78 @@ namespace CarRentalSystem.Services
             string pass = smtpSettings["Pass"];
 
             string subject = "Xác thực tài khoản của bạn - Hệ Thống Thuê Xe";
+
+            // Encode verification link để tránh XSS
+            var encodedLink = System.Net.WebUtility.HtmlEncode(verificationLink);
             string body = $@"
                 <h3>Chào bạn,</h3>
                 <p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng click vào link bên dưới để xác thực email của bạn:</p>
-                <p><a href='{verificationLink}'>{verificationLink}</a></p>
+                <p><a href='{encodedLink}'>{encodedLink}</a></p>
                 <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.</p>
             ";
+
+            await SendEmailAsync(host, portStr, user, pass, toEmail, subject, body);
+        }
+
+        public async Task SendOtpEmailAsync(string toEmail, string otp)
+        {
+            var smtpSettings = _configuration.GetSection("SmtpSettings");
+            string host = smtpSettings["Host"];
+            string portStr = smtpSettings["Port"];
+            string user = smtpSettings["User"];
+            string pass = smtpSettings["Pass"];
+
+            string subject = "Mã xác thực OTP - Hệ Thống Thuê Xe";
+            string body = $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
+    <title>Xac thuc tai khoan</title>
+</head>
+<body style='margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;'>
+    <table width='100%' cellpadding='0' cellspacing='0' style='background:#f1f5f9;padding:30px 10px;'>
+        <tr>
+            <td align='center'>
+                <table width='500' cellpadding='0' cellspacing='0' style='background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08);'>
+                    <tr>
+                        <td style='background:linear-gradient(135deg,#0369a1 0%,#0ea5e9 50%,#38bdf8 100%);padding:32px 40px;text-align:center;'>
+                            <h1 style='color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:0.5px;'>CarRental</h1>
+                            <p style='color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;'>Xac thuc tai khoan cua ban</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='padding:30px 40px;text-align:center;'>
+                            <p style='margin:0 0 8px;font-size:15px;color:#1e293b;'>Cam on ban da dang ky tai khoan.</p>
+                            <p style='margin:0 0 24px;font-size:14px;color:#64748b;'>Su dung ma OTP ben duoi de xac thuc tai khoan cua ban:</p>
+                            <div style='background:#f0f9ff;border:2px dashed #0ea5e9;border-radius:12px;padding:20px 32px;display:inline-block;margin-bottom:20px;'>
+                                <span style='font-size:36px;font-weight:800;color:#0369a1;letter-spacing:8px;'>{otp}</span>
+                            </div>
+                            <p style='margin:0;font-size:13px;color:#dc2626;font-weight:600;'>&#9888; Ma nay chi co hieu luc trong <strong>5 phut</strong>.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='padding:0 40px 30px;'>
+                            <div style='background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px 18px;'>
+                                <p style='margin:0;font-size:12px;color:#92400e;line-height:1.6;'>
+                                    Neu ban khong thuc hien yeu cau nay, vui long bo qua email nay.<br/>
+                                    Khong chia se ma OTP cho bat ky ai.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='background:#0f172a;padding:20px 40px;text-align:center;'>
+                            <p style='margin:0;font-size:12px;color:#64748b;'>CarRental - He thong thue xe thong minh | 1900 1234</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
 
             await SendEmailAsync(host, portStr, user, pass, toEmail, subject, body);
         }
@@ -250,23 +317,21 @@ namespace CarRentalSystem.Services
         {
             if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user))
             {
-                _logger.LogWarning("SMTP Settings not found. Logging email instead:");
-                _logger.LogInformation("================ EMAIL ====================");
-                _logger.LogInformation("To: " + toEmail);
-                _logger.LogInformation("Subject: " + subject);
-                _logger.LogInformation("============================================");
-                await Task.CompletedTask;
-                return;
+                _logger.LogWarning("SMTP Settings not configured. Email will be logged but NOT sent:");
+                _logger.LogInformation("To: {Email}, Subject: {Subject}", toEmail, subject);
+                // KHÔNG silent return - throw exception để caller biết email không được gửi
+                throw new InvalidOperationException($"Email configuration missing. Cannot send email to {toEmail}");
             }
 
             try
             {
                 int port = int.TryParse(portStr, out int p) ? p : 587;
-                var client = new SmtpClient(host, port)
+                using var client = new SmtpClient(host, port)
                 {
                     EnableSsl = true,
                     UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(user, pass)
+                    Credentials = new NetworkCredential(user, pass),
+                    Timeout = 30000 // 30 seconds timeout
                 };
 
                 var mailMessage = new MailMessage
@@ -284,9 +349,9 @@ namespace CarRentalSystem.Services
             catch (Exception ex)
             {
                 _logger.LogError("Failed to send email to {Email}: {Error}", toEmail, ex.Message);
-                _logger.LogInformation("Fallback: Email to {Email}, Subject: {Subject}", toEmail, subject);
+                // Re-throw để caller xử lý
+                throw;
             }
         }
     }
 }
-

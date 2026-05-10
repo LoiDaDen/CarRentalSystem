@@ -37,6 +37,24 @@ namespace CarRentalSystem.Areas.Partner.Controllers
             return null;
         }
 
+        private async Task<IActionResult> RequirePartnerApproved()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+
+            var user = await _db.Users.FindAsync(userId);
+            if (user == null || (user.Role != "Partner" && user.Role != "Admin"))
+                return RedirectToAction("Register");
+
+            // Nếu là Partner nhưng chưa được duyệt → chuyển sang trang chờ
+            if (user.Role == "Partner" && !user.IsPartnerApproved)
+            {
+                return View("PendingApproval", user);
+            }
+
+            return null!; // OK - tiếp tục
+        }
+
         // ─── Saves an uploaded image file to wwwroot/uploads/cars/ ────────────────
         private async Task<string?> SaveCarImageAsync(IFormFile? imageFile)
         {
@@ -66,16 +84,11 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         // GET /Partner/Dashboard
         public async Task<IActionResult> Index()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-            {
-                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                return RedirectToAction("Login", "Auth", new { area = "" });
-            }
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
 
+            var userId = GetCurrentUserId();
             var user = await _db.Users.FindAsync(userId);
-            if (user == null || (user.Role != "Partner" && user.Role != "Admin"))
-                return RedirectToAction("Register");
 
             var myCars = await _db.Cars
                 .Include(c => c.CarStatus)
@@ -114,7 +127,7 @@ namespace CarRentalSystem.Areas.Partner.Controllers
 
         // POST /Partner/Dashboard/Register
         [HttpPost]
-        public async Task<IActionResult> Register(string agreeTerms)
+        public async Task<IActionResult> Register(string agreeTerms, string signContract)
         {
             var userId = GetCurrentUserId();
             if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
@@ -122,29 +135,88 @@ namespace CarRentalSystem.Areas.Partner.Controllers
             var user = await _db.Users.FindAsync(userId);
             if (user == null) return NotFound();
 
-            // 🔒 SECURITY: Đổi role thành Partner, Admin sẽ verify
-            if (user.Role == "Partner" || user.Role == "Admin")
+            // Kiểm tra đã đồng ý điều khoản
+            if (string.IsNullOrEmpty(agreeTerms))
+            {
+                TempData["Error"] = "Bạn phải đồng ý với điều khoản đối tác.";
+                return RedirectToAction("Register");
+            }
+
+            // Kiểm tra đã ký hợp đồng
+            if (string.IsNullOrEmpty(signContract))
+            {
+                TempData["Error"] = "Bạn phải ký hợp đồng hợp tác để trở thành đối tác.";
+                return RedirectToAction("Register");
+            }
+
+            // 🔒 SECURITY: Chỉ Customer mới được đăng ký làm Partner
+            if (user.Role == "Partner")
             {
                 TempData["Info"] = "Bạn đã có quyền Partner.";
                 return RedirectToAction("Index");
             }
 
-            // Đổi role để Admin filter tìm thấy
-            user.Role = "Partner";
-            user.IsVerified = false; // Đánh dấu = "pending partner approval"
-            user.PartnerAddress = "PENDING_PARTNER_APPROVAL"; // Flag cho Admin filter
+            // Nếu là Admin/Manager/Staff đăng ký làm partner - lưu role gốc để không mất quyền
+            if (user.Role == "Admin" || user.Role == "Manager" || user.Role == "Staff")
+            {
+                if (string.IsNullOrEmpty(user.OriginalRole))
+                {
+                    user.OriginalRole = user.Role;
+                }
+                // Không đổi role, chỉ đánh dấu partner pending
+            }
+            else
+            {
+                // Customer bình thường thì đổi role
+                user.Role = "Partner";
+            }
+
+            user.IsPartnerApproved = false; // Chờ Admin duyệt
+            user.IsVerified = false;
+
+            // Tạo hợp đồng đối tác
+            var contractCount = await _db.PartnerContracts.CountAsync() + 1;
+            var contractNo = $"{contractCount:D4}/{DateTime.UtcNow.Year}/HĐHT-XT";
+            var now = DateTime.UtcNow;
+
+            var contract = new PartnerContract
+            {
+                ContractNo = contractNo,
+                PartnerUserID = user.UserID,
+                PartyAName = "Công ty TNHH Cho Thuê Xe CarRental",
+                PartyAAddress = "TP. Hồ Chí Minh, Việt Nam",
+                PartyBFullName = user.Name,
+                PartyBCCCD = user.CitizenId ?? "",
+                PartyBRevenuePercent = 80.00m,
+                PartyARevenuePercent = 20.00m,
+                PaymentDay = 5,
+                PaymentCycle = "Hàng tháng",
+                ContractDurationMonths = 0, // Vĩnh viễn
+                NoticePeriodDays = 15,
+                Status = "Pending", // Chờ Admin duyệt
+                CreatedAt = now,
+                ExpiresAt = now.AddDays(7),
+                SignedByPartyA = true,
+                PartyASignDate = now,
+                SignedByPartyB = true, // Đã ký điện tử
+                PartyBSignDate = now,
+                TermsContent = GeneratePartnerContractTerms(user)
+            };
+
+            _db.PartnerContracts.Add(contract);
             await _db.SaveChangesAsync();
 
-            TempData["Success"] = "Yêu cầu trở thành Đối tác đã được gửi! Vui lòng hoàn tất hồ sơ eKYC và chờ Admin duyệt.";
+            TempData["Success"] = $"Bạn đã ký hợp đồng #{contractNo} thành công! Yêu cầu trở thành Đối tác đã được gửi. Vui lòng chờ Admin duyệt.";
             return RedirectToAction("Index", "Home", new { area = "" });
         }
 
         // GET /Partner/Dashboard/Profile
         public async Task<IActionResult> Profile()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
 
+            var userId = GetCurrentUserId();
             var user = await _db.Users.FindAsync(userId);
             if (user == null) return NotFound();
 
@@ -155,9 +227,10 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         [HttpPost]
         public async Task<IActionResult> Profile(string? phone, string? partnerAddress, double? partnerLatitude, double? partnerLongitude)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
 
+            var userId = GetCurrentUserId();
             var user = await _db.Users.FindAsync(userId);
             if (user == null) return NotFound();
 
@@ -175,10 +248,11 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         }
 
         // GET /Partner/Dashboard/AddCar
-        public IActionResult AddCar()
+        public async Task<IActionResult> AddCar()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
             ViewBag.Locations = _db.Locations.ToList();
             ViewBag.CarTypes = _db.CarTypes.ToList();
             ViewBag.Brands = _db.CarBrands.ToList();
@@ -190,12 +264,30 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         [HttpPost]
         public async Task<IActionResult> AddCar(Car car, string? CarAddress, string? Latitude, string? Longitude, IFormFile? imageFile)
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
+            var userId = GetCurrentUserId();
+
+            // Kiểm tra VIN đã tồn tại chưa
+            var existingVin = await _db.Cars.AnyAsync(c => c.VIN == car.VIN && !c.IsDeleted);
+            if (existingVin)
+            {
+                TempData["Error"] = "Xe với VIN này đã được đăng ký trong hệ thống.";
+                return RedirectToAction("AddCar");
+            }
+
+            // Kiểm tra LicensePlate đã tồn tại chưa
+            var existingPlate = await _db.Cars.AnyAsync(c => c.LicensePlate == car.LicensePlate && !c.IsDeleted);
+            if (existingPlate)
+            {
+                TempData["Error"] = "Xe với biển số này đã được đăng ký trong hệ thống.";
+                return RedirectToAction("AddCar");
+            }
+
             if (!string.IsNullOrEmpty(CarAddress)) car.CarAddress = CarAddress;
             if (double.TryParse(Latitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lat)) car.Latitude = lat;
             if (double.TryParse(Longitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng)) car.Longitude = lng;
-
-            var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
 
             car.OwnerID = userId;
             car.CommissionRate = 20m;
@@ -233,6 +325,9 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         // GET /Partner/Dashboard/MyCars
         public async Task<IActionResult> MyCars()
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
             var userId = GetCurrentUserId();
             var myCars = await _db.Cars
                 .Include(c => c.CarStatus)
@@ -246,6 +341,9 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         // GET /Partner/Dashboard/EditCar/{id}
         public async Task<IActionResult> EditCar(int id)
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
             var userId = GetCurrentUserId();
             var car = await _db.Cars.FirstOrDefaultAsync(c => c.CarID == id && c.OwnerID == userId);
             if (car == null) return NotFound();
@@ -260,11 +358,15 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         [HttpPost]
         public async Task<IActionResult> EditCar(Car car, string? CarAddress, string? Latitude, string? Longitude, IFormFile? imageFile)
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
+            var userId = GetCurrentUserId();
+
             if (!string.IsNullOrEmpty(CarAddress)) car.CarAddress = CarAddress;
             if (double.TryParse(Latitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lat)) car.Latitude = lat;
             if (double.TryParse(Longitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng)) car.Longitude = lng;
 
-            var userId = GetCurrentUserId();
             var existingCar = await _db.Cars.AsNoTracking().FirstOrDefaultAsync(c => c.CarID == car.CarID && c.OwnerID == userId);
             if (existingCar == null) return NotFound();
 
@@ -301,17 +403,14 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         // GET /Partner/Dashboard/Bookings
         public async Task<IActionResult> Bookings()
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
             var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
-
-            var user = await _db.Users.FindAsync(userId);
-            if (user == null || (user.Role != "Partner" && user.Role != "Admin"))
-                return RedirectToAction("Register");
-
             var myCarIds = await _db.Cars.Where(c => c.OwnerID == userId).Select(c => c.CarID).ToListAsync();
 
             var bookings = await _db.Bookings
-                .Include(b => b.Car).ThenInclude(c => c.CarBrand)
+                .Include(b => b.Car).ThenInclude(c => c!.CarBrand)
                 .Include(b => b.User)
                 .Include(b => b.BookingStatus)
                 .Where(b => myCarIds.Contains(b.CarID) && b.BookingStatus.Name != "Draft")
@@ -326,8 +425,10 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         // GET /Partner/Dashboard/Contract
         public async Task<IActionResult> Contract(string? status)
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
             var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
 
             var query = _db.PartnerContracts
                 .Where(pc => pc.PartnerUserID == userId)
@@ -348,8 +449,10 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         // GET /Partner/Dashboard/ContractDetails/5
         public async Task<IActionResult> ContractDetails(int id)
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
             var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
 
             var contract = await _db.PartnerContracts
                 .FirstOrDefaultAsync(pc => pc.PartnerContractID == id && pc.PartnerUserID == userId);
@@ -362,8 +465,10 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         [HttpPost]
         public async Task<IActionResult> SignContract(int id)
         {
+            var check = await RequirePartnerApproved();
+            if (check != null) return check;
+
             var userId = GetCurrentUserId();
-            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
 
             var contract = await _db.PartnerContracts
                 .FirstOrDefaultAsync(pc => pc.PartnerContractID == id && pc.PartnerUserID == userId);
@@ -409,13 +514,53 @@ namespace CarRentalSystem.Areas.Partner.Controllers
                 return RedirectToAction("Contract");
             }
 
+            // Lấy user để đổi role
+            var user = await _db.Users.FindAsync(userId);
+
+            // Hủy hợp đồng
             contract.Status = "Cancelled";
             contract.CancelledAt = DateTime.UtcNow;
             contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
+
+            // Đổi role về Customer
+            if (user != null)
+            {
+                user.Role = "Customer";
+                user.IsPartnerApproved = false;
+            }
+
             await _db.SaveChangesAsync();
 
-            TempData["Success"] = $"Đã hủy hợp đồng #{contract.ContractNo}.";
-            return RedirectToAction("Contract");
+            TempData["Info"] = $"Bạn đã hủy hợp đồng #{contract.ContractNo}. Tài khoản đã được chuyển về vai trò Khách hàng.";
+            return RedirectToAction("Index", "Home", new { area = "" });
+        }
+
+        private string GeneratePartnerContractTerms(User user)
+        {
+            return @"ĐIỀU 1: NỘI DUNG HỢP TÁC
+1.1. Bên B đồng ý ký gửi xe ô tô cho Bên A để thực hiện dịch vụ cho thuê xe tự lái.
+1.2. Bên A có trách nhiệm tìm kiếm khách hàng, thực hiện quy trình cho thuê, quản lý tài sản và thu tiền từ khách hàng.
+
+ĐIỀU 2: PHÂN CHIA DOANH THU (80/20)
+2.1. Tỷ lệ phân chia: Doanh thu thực tế từ việc cho thuê xe (sau khi trừ các mã giảm giá nếu có) sẽ được chia như sau:
+- Bên B (Chủ xe): Nhận 80% doanh thu.
+- Bên A (Vận hành): Nhận 20% doanh thu (Phí quản lý, tìm khách và vận hành).
+2.2. Kỳ thanh toán: Bên A tổng kết và chuyển thanh toán cho Bên B vào ngày 05 hàng tháng.
+
+ĐIỀU 3: CHI PHÍ VẬN HÀNH
+3.1. Bên B chịu trách nhiệm: Phí bảo hiểm vật chất xe, phí đường bộ, đăng kiểm, và các hư hỏng do hao mòn tự nhiên hoặc lỗi kỹ thuật của xe.
+3.2. Bên A chịu trách nhiệm: Chi phí marketing, nhân sự giao nhận xe, vệ sinh xe cơ bản sau mỗi lượt thuê.
+
+ĐIỀU 4: TRÁCH NHIỆM BẢO VỆ TÀI SẢN
+4.1. Bên A có trách nhiệm kiểm tra kỹ hồ sơ khách thuê (CCCD, GPLX, tài sản thế chấp) để giảm thiểu rủi ro.
+4.2. Trong trường hợp khách thuê gây ra va chạm/tai nạn:
+- Bên A hỗ trợ làm việc với bảo hiểm và khách thuê để bồi thường cho Bên B.
+- Nếu không có bảo hiểm, Bên A có trách nhiệm yêu cầu khách thuê đền bù trực tiếp cho Bên B theo giá trị thiệt hại thực tế.
+4.3. Phạt nguội: Bên A có trách nhiệm truy thu tiền phạt từ khách thuê nếu phát sinh vi phạm trong thời gian thuê.
+
+ĐIỀU 5: THỜI HẠN VÀ CHẤM DỨT
+5.1. Thời hạn hợp đồng: Vĩnh viễn kể từ ngày ký.
+5.2. Nếu một trong hai bên muốn chấm dứt hợp đồng, phải báo trước cho bên kia ít nhất 15 ngày.";
         }
     }
 }

@@ -78,7 +78,7 @@ namespace CarRentalSystem.Services
         {
             bool hasChanges = false;
             var cancelStatus = await _statusRepo.Query()
-                .FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Cancelled || s.Name == BookingStatusConstants.Canceled);
+                .FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Cancelled);
             if (cancelStatus == null) return bookings;
 
             foreach (var b in bookings)
@@ -203,7 +203,7 @@ namespace CarRentalSystem.Services
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
             if (booking == null) return;
 
-            var cancelledStatus = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Cancelled || s.Name == BookingStatusConstants.Canceled);
+            var cancelledStatus = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Cancelled);
             if (cancelledStatus != null) booking.BookingStatusID = cancelledStatus.BookingStatusID;
 
             booking.CancelReason = reason;
@@ -227,17 +227,13 @@ namespace CarRentalSystem.Services
 
         public async Task UpdateBookingStatusAsync(int id, string statusName)
         {
-            var booking = await _bookingRepo.GetByIdAsync(id);
-            if (booking != null)
-            {
-                var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == statusName);
-                if (status != null)
-                {
-                    booking.BookingStatusID = status.BookingStatusID;
-                    _bookingRepo.Update(booking);
-                    await _bookingRepo.SaveChangesAsync();
-                }
-            }
+            var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == statusName);
+            if (status == null) return;
+
+            // Use ExecuteUpdateAsync for atomic update to prevent race conditions
+            await _bookingRepo.Query()
+                .Where(b => b.BookingID == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(b => b.BookingStatusID, status.BookingStatusID));
         }
 
         public async Task StartTripAsync(int bookingId)

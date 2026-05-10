@@ -210,9 +210,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
                 var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
                 var carReviewCount = carReviews.Count;
-                var p4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
-                var p8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
-                var p12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
                 var p24h = car.PricePerDay;
                 var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
                 <div class="col-lg-3 col-md-4 col-sm-6">
@@ -252,28 +249,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                                 <hr class="opacity-10 my-2">
 
-                                <!-- Bảng giá tham khảo -->
+                                <!-- Bảng giá -->
                                 <div class="mb-2">
                                     <div class="small text-muted mb-1"><i class="bi bi-tags-fill me-1"></i>Bảng giá</div>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-0 text-center">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">4h</th>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">8h</th>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">12h</th>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">24h</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td class="py-1 px-2 fw-bold text-success" style="font-size: 0.8rem;">@((p4h/1000).ToString("N0"))K</td>
-                                                    <td class="py-1 px-2 fw-bold text-primary" style="font-size: 0.8rem;">@((p8h/1000).ToString("N0"))K</td>
-                                                    <td class="py-1 px-2 fw-bold text-warning" style="font-size: 0.8rem;">@((p12h/1000).ToString("N0"))K</td>
-                                                    <td class="py-1 px-2 fw-bold text-danger" style="font-size: 0.8rem;">@((p24h/1000).ToString("N0"))K</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                    <div class="text-center">
+                                        <div class="fw-bold" style="font-size: 1rem; color: var(--blue-600);">@((p24h/1000).ToString("N0"))K</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">0h - 24h</div>
                                     </div>
                                 </div>
 
@@ -304,9 +285,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
                 var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
                 var carReviewCount = carReviews.Count;
-                var p4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m;
-                var p8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m;
-                var p12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m;
                 var p24h = car.PricePerDay;
                 var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
                 <div class="col-lg-4 col-md-6">
@@ -339,28 +317,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                                 <hr class="opacity-10 my-2">
 
-                                <!-- Bảng giá tham khảo -->
+                                <!-- Bảng giá -->
                                 <div class="mb-2">
                                     <div class="small text-muted mb-1"><i class="bi bi-tags-fill me-1"></i>Bảng giá</div>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-0 text-center">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">4h</th>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">8h</th>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">12h</th>
-                                                    <th class="py-1 px-2" style="font-size: 0.7rem;">24h</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td class="py-1 px-2 fw-bold text-success" style="font-size: 0.8rem;">@((p4h/1000).ToString("N0"))K</td>
-                                                    <td class="py-1 px-2 fw-bold text-primary" style="font-size: 0.8rem;">@((p8h/1000).ToString("N0"))K</td>
-                                                    <td class="py-1 px-2 fw-bold text-warning" style="font-size: 0.8rem;">@((p12h/1000).ToString("N0"))K</td>
-                                                    <td class="py-1 px-2 fw-bold text-danger" style="font-size: 0.8rem;">@((p24h/1000).ToString("N0"))K</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                    <div class="text-center">
+                                        <div class="fw-bold" style="font-size: 1rem; color: var(--blue-600);">@((p24h/1000).ToString("N0"))K</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">0h - 24h</div>
                                     </div>
                                 </div>
 

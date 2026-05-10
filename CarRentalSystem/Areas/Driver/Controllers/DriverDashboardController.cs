@@ -251,6 +251,29 @@ namespace CarRentalSystem.Areas.Driver.Controllers
 
             if (driverBooking == null) return NotFound();
 
+            // ═══ KIỂM TRA TÀI XẾ CÓ ACTIVE KHÔNG ═══
+            // Tài xế bị khóa không được phép hoàn thành chuyến đi
+            if (driver.IsLocked)
+            {
+                TempData["Error"] = "Tài khoản tài xế của bạn đã bị khóa. Không thể hoàn thành chuyến đi.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Tài xế bị blacklist không được phép hoàn thành chuyến đi
+            if (driver.IsBlacklisted)
+            {
+                TempData["Error"] = "Tài khoản tài xế đang bị đưa vào danh sách đen. Không thể hoàn thành chuyến đi.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Tài xế không active (IsAvailable = false) không được phép hoàn thành chuyến đi mới
+            // Nhưng cho phép hoàn thành chuyến đã đang active
+            if (!driver.IsAvailable && driverBooking.Status == "Confirmed")
+            {
+                TempData["Error"] = "Bạn đang trong chế độ không hoạt động. Vui lòng bật trạng thái sẵn sàng để nhận chuyến.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
             if (driverBooking.Status != "Active")
             {
                 TempData["Error"] = "Chỉ có thể hoàn thành chuyến đi đang hoạt động.";
@@ -365,6 +388,59 @@ namespace CarRentalSystem.Areas.Driver.Controllers
                 isCancelled,
                 message = isCancelled ? "Chuyến đi đã bị hủy bởi khách hàng." : null
             });
+        }
+
+        // POST: Chấm dứt hợp đồng tài xế - chuyển về Customer
+        [HttpPost]
+        public async Task<IActionResult> TerminateContract(string? reason)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+
+            var driver = await _db.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
+            if (driver == null)
+            {
+                TempData["Error"] = "Bạn không phải là tài xế.";
+                return RedirectToAction("Index", "Home", new { area = "" });
+            }
+
+            // Kiểm tra không có chuyến đang hoạt động
+            var activeBookings = await _db.DriverBookings
+                .AnyAsync(db => db.DriverID == driver.DriverID && (db.Status == "Active" || db.Status == "Confirmed"));
+
+            if (activeBookings)
+            {
+                TempData["Error"] = "Bạn không thể chấm dứt hợp đồng khi đang có chuyến xe đang hoạt động.";
+                return RedirectToAction("Index");
+            }
+
+            // Lấy user để đổi role
+            var user = await _db.Users.FindAsync(userId);
+
+            // Cập nhật DriverContract nếu có
+            var driverContract = await _db.DriverContracts
+                .FirstOrDefaultAsync(dc => dc.DriverID == driver.DriverID && dc.Status == "Active");
+
+            if (driverContract != null)
+            {
+                driverContract.Status = "Cancelled";
+                driverContract.CancelledAt = DateTime.UtcNow;
+                driverContract.CancelReason = reason ?? "Tài xế tự nguyện chấm dứt hợp đồng";
+            }
+
+            // Xóa Driver record (deactive)
+            driver.IsApproved = false;
+
+            // Đổi role về Customer
+            if (user != null)
+            {
+                user.Role = "Customer";
+            }
+
+            await _db.SaveChangesAsync();
+
+            TempData["Info"] = "Bạn đã chấm dứt hợp đồng tài xế. Tài khoản đã được chuyển về vai trò Khách hàng.";
+            return RedirectToAction("Index", "Home", new { area = "" });
         }
     }
 }

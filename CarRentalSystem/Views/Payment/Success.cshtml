@@ -49,19 +49,19 @@
             </div>
         </div>
 
-        <div class="alert alert-warning py-3 mb-4 text-start d-flex align-items-center" role="alert" style="background-color: #fffbeb; border-color: #fde68a;">
-            <i class="bi bi-shield-lock text-warning fs-3 me-3"></i>
+        <div class="alert alert-info py-3 mb-4 text-start d-flex align-items-center" role="alert">
+            <i class="bi bi-clock text-info fs-3 me-3"></i>
             <div>
-                <h6 class="fw-bold mb-1">Bước tiếp theo: Ký Hợp Đồng Thuê Xe</h6>
-                <p class="small mb-0 text-muted">Vui lòng tiến hành ký điện tử minh bạch để xác nhận các điều khoản trước khi bạn nhận xe.</p>
+                <h6 class="fw-bold mb-1">Chờ xác nhận từ Admin</h6>
+                <p class="small mb-0 text-muted">Đơn của bạn đang được xử lý. Chúng tôi sẽ thông báo khi đơn được xác nhận thành công.</p>
             </div>
         </div>
 
         <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
-            <a asp-controller="Booking" asp-action="Contract" asp-route-id="@Model.BookingID" class="btn btn-warning btn-lg px-4 rounded-pill shadow fw-bold text-dark border-0" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">
-                <i class="bi bi-pen me-2"></i>TIẾN HÀNH KÝ HỢP ĐỒNG
+            <a asp-controller="Car" asp-action="Index" class="btn btn-outline-primary btn-lg px-4 rounded-pill shadow">
+                <i class="bi bi-car-front me-2"></i>Xem xe khác
             </a>
-            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-outline-primary btn-lg px-4 rounded-pill shadow">
+            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-primary btn-lg px-4 rounded-pill shadow fw-bold">
                 <i class="bi bi-view-list me-2"></i>Chuyến xe của tôi
             </a>
         </div>

@@ -62,18 +62,20 @@ namespace CarRentalSystem.Services
                 return new PayOSCreatePaymentResult(false, null, "Đơn này đã được thanh toán cọc trước đó.", null);
             }
 
-            if (booking.DepositAmount <= 0)
+            // Tính toán số tiền cọc (20% tổng giá) - kiểm tra trước khi lưu
+            var calculatedDepositAmount = Math.Round(booking.TotalPrice * 0.2m, 0, MidpointRounding.AwayFromZero);
+            if (calculatedDepositAmount <= 0)
             {
-                booking.DepositAmount = Math.Round(booking.TotalPrice * 0.2m, 0, MidpointRounding.AwayFromZero);
-                _context.Bookings.Update(booking);
-                await _context.SaveChangesAsync();
+                return new PayOSCreatePaymentResult(false, null, "Số tiền cọc không hợp lệ. Tổng giá trị đơn hàng phải lớn hơn 0.", null);
             }
 
-            var depositAmount = (long)booking.DepositAmount;
-            if (depositAmount <= 0)
-            {
-                return new PayOSCreatePaymentResult(false, null, "Số tiền cọc không hợp lệ.", null);
-            }
+            // Cập nhật số tiền cọc vào booking
+            booking.DepositAmount = calculatedDepositAmount;
+            _context.Bookings.Update(booking);
+            await _context.SaveChangesAsync();
+
+            // Sử dụng biến local thay vì đọc lại từ booking
+            var depositAmount = (long)calculatedDepositAmount;
 
             var payment = booking.Payment ?? await _context.Payments.FirstOrDefaultAsync(p => p.BookingID == booking.BookingID);
             if (payment == null)
@@ -228,6 +230,8 @@ namespace CarRentalSystem.Services
 
                 booking.DepositAmount = paidAmount;
                 booking.DepositStatus = "Holding";
+                // KHÔNG tự động xác nhận - chờ Admin duyệt
+                // booking status vẫn giữ Pending
 
                 transaction.Amount = paidAmount;
                 transaction.Status = PaidStatus;
@@ -238,10 +242,8 @@ namespace CarRentalSystem.Services
                 _context.PayOSTransactions.Update(transaction);
                 await _context.SaveChangesAsync();
 
-                await _bookingService.UpdateBookingStatusAsync(bookingId, "Confirmed");
-
                 _ = _emailService.SendBookingConfirmationEmailAsync(booking, paidAmount);
-                return new PayOSWebhookResult(true, true, "Payment confirmed", bookingId, paidAmount);
+                return new PayOSWebhookResult(true, true, "Payment confirmed - pending admin approval", bookingId, paidAmount);
             }
 
             payment.PaymentStatus = FailedStatus;

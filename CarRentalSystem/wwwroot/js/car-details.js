@@ -45,12 +45,12 @@ document.addEventListener('DOMContentLoaded', function () {
                                     const durationSec = route.duration;
                                     
                                     // Thời gian giao xe = Thời gian chạy xe + 1 giờ chuẩn bị
+                                    const now = new Date();
                                     const totalHoursNeeded = 1 + (durationSec / 3600);
                                     deliveryDurationMinutes = durationSec / 60;
                                     estimatedDeliveryTime = new Date(now.getTime() + totalHoursNeeded * 3600000);
-                                    
+
                                     // Tính thời điểm sớm nhất có thể giao xe
-                                    const now = new Date();
                                     const minStart = new Date(now.getTime() + totalHoursNeeded * 3600000);
                                     
                                     const startInput = document.getElementById('startDate');
@@ -101,7 +101,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             .then(res => res.json())
                             .then(data => {
                                 if (data && data.address) {
-                                    const displayName = data.display_name;
+                                    // San pham display_name de tranh XSS
+                                    const displayName = data.display_name
+                                        ? data.display_name.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                                        : coordsStr;
                                     if (pickupCoords) pickupCoords.value = displayName;
                                     if (finalLoc) finalLoc.value = displayName;
                                 } else {
@@ -143,9 +146,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if(ownerDeliverySection) ownerDeliverySection.style.display = 'none';
             document.getElementById('finalPickupLocation').value = carData.address;
             deliveryDistanceKm = 0;
+            deliveryDurationMinutes = 0;
         }
         updatePrices();
-                                updateDeliveryInfoDisplay();
+        updateDeliveryInfoDisplay();
     }
 
     if (locCustomer && locOwner) {
@@ -394,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Initial price update
     updatePrices();
-                                updateDeliveryInfoDisplay();
+    updateDeliveryInfoDisplay();
 
     const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {
@@ -461,8 +465,14 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.append('estimatedPrice', estimatedPrice);
 
             try {
+                // Lấy AntiForgery token để gửi kèm request
+                const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
                 const res = await fetch('/Cart/AddToCart', {
                     method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': csrfToken || ''
+                    },
                     body: formData
                 });
                 const data = await res.json();

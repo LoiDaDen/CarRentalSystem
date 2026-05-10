@@ -8,20 +8,25 @@ namespace CarRentalSystem.Models
     {
         [Key]
         public int ReviewID { get; set; }
-        
+
+        [Required]
+        [ForeignKey("Car")]
         public int CarID { get; set; }
-        [ForeignKey("CarID")]
         public Car? Car { get; set; }
-        
+
+        [Required]
+        [ForeignKey("User")]
         public int UserID { get; set; }
-        [ForeignKey("UserID")]
         public User? User { get; set; }
-        
-        [Range(1, 5)]
+
+        [Required]
+        [Range(1, 5, ErrorMessage = "Điểm đánh giá phải từ 1 đến 5 sao")]
         public int Rating { get; set; }
+
+        [MaxLength(2000)]
         public string? Comment { get; set; }
         public bool IsApproved { get; set; } = false;
-        
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Phase 10: Soft Delete

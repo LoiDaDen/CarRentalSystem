@@ -559,7 +559,9 @@ else
                      data-price-per-day="@(item.Car?.PricePerDay ?? 600000)"
                      data-driver-id="@(item.DriverID ?? 0)"
                      data-driver-rate="@driverRate"
-                     data-package-id="@(item.ContractTypeID ?? contractTypes?.FirstOrDefault()?.ContractTypeID ?? 0)">
+                     data-package-id="@(item.ContractTypeID ?? contractTypes?.FirstOrDefault()?.ContractTypeID ?? 0)"
+                     data-location-id="@(item.Car?.Location?.LocationID ?? 0)"
+                     data-location-name="@item.Car?.Location?.Name">
 
                     <!-- Delete button on card corner -->
                     <button class="car-row-delete" onclick="removeFromCart(@item.CartItemID)" title="Xóa xe này">
@@ -567,7 +569,7 @@ else
                     </button>
 
                     <!-- Image — click to open inspection popup -->
-                    <div class="car-img-col" onclick="openInspection('@Html.Raw(carName.Replace("'", "\\'"))', '@carImage')">
+                    <div class="car-img-col" onclick="openInspection('@Html.Encode(carName).Replace("'", "\\'")', '@carImage')">
                         <img src="@carImage" alt="@carName" class="car-main-img"
                              onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=200&fit=crop'">
                         <div class="car-img-checkbox" onclick="event.stopPropagation()">
@@ -718,6 +720,7 @@ else
                     <i class="bi bi-info-circle me-1"></i>Gom vào <strong>1 hợp đồng</strong> duy nhất.
                 </div>
                 <form asp-controller="Cart" asp-action="CheckoutAll" method="post">
+                    @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-bold mb-2" id="checkoutBtn" style="font-size: 0.95rem;">
                         <i class="bi bi-credit-card me-2"></i>Thanh toán (@Model.CartItems.Count xe)
                     </button>
@@ -848,12 +851,13 @@ else
             const body = document.getElementById('driverPopupBody');
             body.innerHTML = '<div class="drv-loading"><div class="spinner"></div><div>Đang tải danh sách tài xế...</div></div>';
 
+            const card = document.getElementById(`car-card-${itemId}`);
+            const locationId = card?.dataset?.locationId || '0';
+
             try {
-                if (!driversCache) {
-                    const res = await fetch('/Driver/GetDriversList');
-                    driversCache = await res.json();
-                }
-                renderDriverList(driversCache, itemId);
+                const res = await fetch(`/Driver/GetDriversList?locationId=${locationId}`);
+                const drivers = await res.json();
+                renderDriverList(drivers, itemId);
             } catch (e) {
                 body.innerHTML = '<div class="drv-loading"><i class="bi bi-exclamation-circle" style="font-size:2rem;color:#ef4444;"></i><div style="margin-top:8px;color:#ef4444;">Lỗi tải dữ liệu</div></div>';
             }
@@ -870,6 +874,7 @@ else
             const body = document.getElementById('driverPopupBody');
             const card = document.getElementById(`car-card-${itemId}`);
             const currentDriverId = parseInt(card?.dataset?.driverId || '0');
+            const locationName = card?.dataset?.locationName || 'khu vực này';
 
             let html = '';
 
@@ -882,6 +887,15 @@ else
                 </div>
                 ${currentDriverId === 0 ? '<span style="color:#65a30d;font-weight:700;font-size:0.75rem;"><i class="bi bi-check-circle-fill me-1"></i>Đang chọn</span>' : ''}
             </div>`;
+
+            // Show message if no drivers available
+            if (!drivers || drivers.length === 0) {
+                html += `<div style="text-align:center; padding: 40px 20px; color: #64748b;">
+                    <i class="bi bi-car-front" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p style="margin-top: 12px; font-weight: 600;">Không có tài xế ở ${locationName}</p>
+                    <p style="font-size: 0.85rem;">Vui lòng chọn "Tự lái" hoặc liên hệ hotline.</p>
+                </div>`;
+            }
 
             // Driver cards
             drivers.forEach(d => {

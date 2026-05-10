@@ -272,6 +272,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(AreaEditViewModel vm)
         {
+            var currentUserId = GetCurrentUserId();
+
             if (!await CanEditAreaAsync(vm.AreaID))
                 return Forbid();
 
@@ -307,6 +309,26 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             area.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Sync AreaStaff — đảm bảo Manager luôn có trong AreaStaff
+            if (vm.ManagerID.HasValue)
+            {
+                var existingAssignment = await _context.AreaStaffs
+                    .AnyAsync(asx => asx.AreaID == area.AreaID
+                                   && asx.UserID == vm.ManagerID.Value
+                                   && !asx.IsDeleted);
+                if (!existingAssignment)
+                {
+                    _context.AreaStaffs.Add(new AreaStaff
+                    {
+                        AreaID = area.AreaID,
+                        UserID = vm.ManagerID.Value,
+                        RoleInArea = "manager",
+                        AssignedAt = DateTime.UtcNow,
+                        AssignedBy = currentUserId
+                    });
+                }
+            }
 
             // Sync AreaLocations
             var currentLocs = await _context.AreaLocations
@@ -577,31 +599,51 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeletePermanent(int id)
         {
+            // Lấy area đã bị soft delete
             var area = await _context.Areas
                 .IgnoreQueryFilters()
-                .Include(a => a.AreaLocations!)
-                .Include(a => a.AreaStaffs!)
                 .FirstOrDefaultAsync(a => a.AreaID == id && a.IsDeleted);
 
             if (area == null)
                 return NotFound();
 
-            // Xóa vĩnh viễn AreaLocations
-            if (area.AreaLocations != null)
-                _context.AreaLocations.RemoveRange(area.AreaLocations);
+            var areaName = area.Name;
+            var areaCode = area.Code;
 
-            // Xóa vĩnh viễn AreaStaffs
-            if (area.AreaStaffs != null)
-                _context.AreaStaffs.RemoveRange(area.AreaStaffs);
+            try
+            {
+                // Sử dụng ExecuteDelete để xóa trực tiếp trong DB (bypass EF tracking)
+                // Xóa AreaStaffs trước (vì có FK đến Areas)
+                await _context.AreaStaffs
+                    .IgnoreQueryFilters()
+                    .Where(asx => asx.AreaID == id)
+                    .ExecuteDeleteAsync();
 
-            _context.Areas.Remove(area);
-            await _context.SaveChangesAsync();
+                // Xóa AreaLocations (vì có FK đến Areas)
+                await _context.AreaLocations
+                    .IgnoreQueryFilters()
+                    .Where(al => al.AreaID == id)
+                    .ExecuteDeleteAsync();
 
-            await WriteAuditLogAsync("DeletePermanent", "Area", area.AreaID,
-                JsonSerializer.Serialize(new { area.Name, area.Code }), null,
-                $"Xóa vĩnh viễn khu vực: {area.Name} ({area.Code})");
+                // Xóa Area
+                await _context.Areas
+                    .IgnoreQueryFilters()
+                    .Where(a => a.AreaID == id)
+                    .ExecuteDeleteAsync();
 
-            TempData["Success"] = $"Khu vực \"{area.Name}\" đã bị xóa vĩnh viễn.";
+                // Log audit
+                await WriteAuditLogAsync("DeletePermanent", "Area", id,
+                    JsonSerializer.Serialize(new { areaName, areaCode }), null,
+                    $"Xóa vĩnh viễn khu vực: {areaName} ({areaCode})");
+
+                TempData["Success"] = $"Khu vực \"{areaName}\" đã bị xóa vĩnh viễn.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xóa vĩnh viễn khu vực ID: {AreaId}", id);
+                TempData["Error"] = "Đã xảy ra lỗi khi xóa vĩnh viễn khu vực. Vui lòng thử lại.";
+            }
+
             return RedirectToAction(nameof(Trash));
         }
 

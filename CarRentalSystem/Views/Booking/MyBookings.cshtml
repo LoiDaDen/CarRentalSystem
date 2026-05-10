@@ -22,8 +22,9 @@
         <div class="d-flex align-items-center">
             <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
             <div>
-                <h6 class="mb-0 fw-bold text-dark">Thông báo quan trọng từ hệ thống</h6>
-                <p class="mb-0 small opacity-75">@Html.Raw(TempData["Warning"])</p>
+                <h6 class="mb-0 fw-bold text-dark">Thong bao quan trong tu he thong</h6>
+                @* San pham TempData de tranh XSS *@
+                <p class="mb-0 small opacity-75">@TempData["Warning"]</p>
             </div>
         </div>
     </div>
@@ -73,6 +74,11 @@ else
                 "Cancelled" => "Đã hủy",
                 _ => statusName
             };
+
+            // Khai báo handover records cho toàn bộ card
+            var handoverRecords = ViewBag.HandoverRecords as List<CarRentalSystem.Models.HandoverRecord> ?? new List<CarRentalSystem.Models.HandoverRecord>();
+            var cardCheckInRecord = handoverRecords.FirstOrDefault(h => h.BookingID == booking.BookingID && h.Type == "CheckIn");
+            var cardCheckOutRecord = handoverRecords.FirstOrDefault(h => h.BookingID == booking.BookingID && h.Type == "CheckOut");
 
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm booking-card overflow-hidden @(statusName == "Cancelled" ? "opacity-75" : "")">
@@ -197,9 +203,16 @@ else
                                                     <i class="bi bi-key me-1"></i>Nhận xe
                                                 </button>
                                             }
+                                            else if (cardCheckInRecord == null)
+                                            {
+                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Bạn cần tạo biên bản nhận xe trước">
+                                                    <i class="bi bi-key me-1"></i>Nhận xe
+                                                </button>
+                                            }
                                             else
                                             {
                                                 <form asp-controller="Booking" asp-action="CustomerConfirmPickup" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
                                                     <input type="hidden" name="id" value="@booking.BookingID" />
                                                     <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm fw-bold">
                                                         <i class="bi bi-key me-1"></i>NHẬN XE NGAY
@@ -216,10 +229,10 @@ else
                                                 <i class="bi bi-exclamation-triangle-fill me-1"></i>SOS
                                             </button>
                                         }
-                                        @if (statusName == "Pending")
+                                        @if (statusName == "Pending" || statusName == "Confirmed")
                                         {
                                             <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#cancelModal-@booking.BookingID">
-                                                <i class="bi bi-x-circle me-1"></i>Hủy
+                                                <i class="bi bi-x-circle me-1"></i>Huy
                                             </button>
                                         }
                                         @if (statusName == "Active" || statusName == "Completed")
@@ -237,6 +250,32 @@ else
                                                 </a>
                                             }
                                         }
+                                        @* Nút tạo biên bản nhận xe (sau khi ký hợp đồng, trước khi nhận xe) *@
+                                        @if (statusName == "Confirmed" && cardCheckInRecord == null && booking.DigitalContract?.IsSignedByCustomer == true)
+                                        {
+                                            <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckIn" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-bold">
+                                                <i class="bi bi-clipboard-plus me-1"></i>Tạo biên bản nhận xe
+                                            </a>
+                                        }
+                                        @if (cardCheckInRecord != null)
+                                        {
+                                            <a asp-controller="Handover" asp-action="ViewRecord" asp-route-id="@cardCheckInRecord.HandoverID" class="btn btn-outline-success btn-sm rounded-pill px-3">
+                                                <i class="bi bi-clipboard-check me-1"></i>Biên bản nhận xe
+                                            </a>
+                                        }
+                                        @* Nút tạo biên bản trả xe (khi đang thuê, trước khi trả xe) *@
+                                        @if (statusName == "Active" && cardCheckOutRecord == null)
+                                        {
+                                            <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckOut" class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm fw-bold">
+                                                <i class="bi bi-clipboard-plus me-1"></i>Tạo biên bản trả xe
+                                            </a>
+                                        }
+                                        @if (cardCheckOutRecord != null)
+                                        {
+                                            <a asp-controller="Handover" asp-action="ViewRecord" asp-route-id="@cardCheckOutRecord.HandoverID" class="btn btn-outline-warning btn-sm rounded-pill px-3">
+                                                <i class="bi bi-clipboard-minus me-1"></i>Biên bản trả xe
+                                            </a>
+                                        }
                                         <a asp-controller="Car" asp-action="Details" asp-route-id="@booking.CarID" class="btn btn-outline-dark btn-sm rounded-pill px-3">Chi tiết</a>
                                     </div>
                                 </div>
@@ -247,7 +286,7 @@ else
             </div>
 
             <!-- Cancel Modal -->
-            @if (statusName == "Pending")
+            @if (statusName == "Pending" || statusName == "Confirmed")
             {
                 <div class="modal fade" id="cancelModal-@booking.BookingID" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
@@ -259,6 +298,7 @@ else
                             <div class="modal-body p-4">
                                 <p class="text-muted">Bạn muốn hủy đơn <strong>#@booking.BookingID</strong> - <strong>@booking.Car?.CarBrand?.Name @booking.Car?.CarName</strong>?</p>
                                 <form asp-controller="Booking" asp-action="CancelBooking" method="post">
+                                    @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@booking.BookingID" />
                                     <div class="mb-3">
                                         <label class="form-label fw-bold small">Lý do hủy (tùy chọn)</label>
@@ -293,8 +333,8 @@ else
                                 <a href="tel:113" class="btn btn-outline-danger btn-lg w-100 mb-3 fw-bold rounded-pill text-start shadow-sm pt-3 pb-3">
                                     <i class="bi bi-telephone-fill me-3 ms-2 fs-5"></i>Gọi Cảnh sát (113)
                                 </a>
-                                <a href="tel:0900000000" class="btn btn-outline-warning btn-lg w-100 mb-3 fw-bold rounded-pill text-start text-dark shadow-sm pt-3 pb-3">
-                                    <i class="bi bi-tools me-3 ms-2 fs-5"></i>Cứu hộ Roadside Assistance
+                                <a href="tel:19001234" class="btn btn-outline-warning btn-lg w-100 mb-3 fw-bold rounded-pill text-start text-dark shadow-sm pt-3 pb-3">
+                                    <i class="bi bi-tools me-3 ms-2 fs-5"></i>Cuu ho Roadside Assistance
                                 </a>
                                 <a href="tel:19001234" class="btn btn-outline-primary btn-lg w-100 fw-bold rounded-pill text-start shadow-sm pt-3 pb-3">
                                     <i class="bi bi-headset fs-5 me-3 ms-2 text-primary"></i>Tổng đài SmartRental (Hotline)
@@ -330,18 +370,37 @@ else
                                     }
                                 </div>
 
-                                <form asp-controller="Booking" asp-action="CustomerConfirmReturn" method="post">
-                                    <input type="hidden" name="id" value="@booking.BookingID" />
-
-                                    <div class="alert alert-info border-0 rounded-4 small mb-4 py-3">
-                                        <i class="bi bi-info-circle-fill me-2"></i>Sau khi bấm "Xác nhận trả xe", hệ thống sẽ tự động tính toán chi phí trễ hạn hoặc lố KM (nêu có).
+                                @if (cardCheckOutRecord == null)
+                                {
+                                    <div class="alert alert-warning border-0 rounded-4 mb-4 py-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                                            <div>
+                                                <h6 class="mb-1 fw-bold">Ban can tao bien ban tra xe truoc!</h6>
+                                                <p class="mb-0 small opacity-75">Vui long chup anh xe va dien thong tin bien ban tra xe truoc khi xac nhan tra xe.</p>
+                                            </div>
+                                        </div>
+                                        <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckOut" class="btn btn-warning mt-3 w-100 rounded-pill fw-bold">
+                                            <i class="bi bi-clipboard-plus me-2"></i>Tao bien ban tra xe ngay
+                                        </a>
                                     </div>
+                                }
+                                else
+                                {
+                                    <form asp-controller="Booking" asp-action="CustomerConfirmReturn" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@booking.BookingID" />
 
-                                    <div class="d-grid gap-2">
-                                        <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold pt-3 pb-3 shadow-sm">Xác nhận trả xe <i class="bi bi-chevron-right ms-2 small"></i></button>
-                                        <button type="button" class="btn btn-link text-muted text-decoration-none fw-600" data-bs-dismiss="modal">Để sau</button>
-                                    </div>
-                                </form>
+                                        <div class="alert alert-info border-0 rounded-4 small mb-4 py-3">
+                                            <i class="bi bi-info-circle-fill me-2"></i>Sau khi bam "Xac nhan tra xe", he thong se tu dong tinh toan chi phi tre han hoac lo KM (neu co).
+                                        </div>
+
+                                        <div class="d-grid gap-2">
+                                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold pt-3 pb-3 shadow-sm">Xac nhan tra xe <i class="bi bi-chevron-right ms-2 small"></i></button>
+                                            <button type="button" class="btn btn-link text-muted text-decoration-none fw-600" data-bs-dismiss="modal">De sau</button>
+                                        </div>
+                                    </form>
+                                }
                             </div>
                         </div>
                     </div>

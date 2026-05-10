@@ -58,6 +58,7 @@
     </div>
 
     <form asp-controller="Handover" asp-action="Submit" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
         <input type="hidden" name="BookingID" value="@booking?.BookingID" />
         <input type="hidden" name="Type" value="@ViewBag.Type" />
 

@@ -281,24 +281,102 @@
                                             @if(!string.IsNullOrEmpty(user.DrivingLicenseUrl)) { <img src="@user.DrivingLicenseUrl" class="img-fluid rounded border" /> } else { <span class="text-muted small">Chưa có</span> }
                                         </div>
                                     </div>
-                                    <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
-                                        <div class="d-flex flex-wrap gap-2">
-                                            @if (user.Role != "Admin")
+                                    <div class="mt-4 pt-3 border-top">
+                                        <h6 class="fw-bold mb-3"><i class="bi bi-person-badge me-2 text-primary"></i>Phân quyền người dùng</h6>
+                                        <div class="d-flex flex-wrap gap-2 mb-3">
+                                            <!-- Nâng lên Manager -->
+                                            @if (user.Role == "Customer" || user.Role == "Staff")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Manager" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-arrow-up-circle me-1"></i>Thăng Quản lý
+                                                    </button>
+                                                </form>
+                                            }
+
+                                            <!-- Nâng lên Staff -->
+                                            @if (user.Role == "Customer")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Staff" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-info btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-arrow-up-circle me-1"></i>Thăng Nhân viên
+                                                    </button>
+                                                </form>
+                                            }
+
+                                            <!-- Hạ xuống Staff (từ Manager) -->
+                                            @if (user.Role == "Manager")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Staff" method="post" class="d-inline"
+                                                      onsubmit="return confirm('Hạ @user.Name xuống Nhân viên? Hệ thống sẽ kiểm tra khu vực để đảm bảo có ít nhất 1 Quản lý.');">
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-arrow-down-circle me-1"></i>Hạ Nhân viên
+                                                    </button>
+                                                </form>
+                                            }
+
+                                            <!-- Hạ xuống Customer (từ Staff/Manager) -->
+                                            @if (user.Role == "Staff")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Customer" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-arrow-down-circle me-1"></i>Hạ Khách hàng
+                                                    </button>
+                                                </form>
+                                            }
+
+                                            @if (user.Role == "Manager")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Customer" method="post" class="d-inline"
+                                                      onsubmit="return confirm('Hạ @user.Name xuống Khách hàng? Hệ thống sẽ kiểm tra khu vực để đảm bảo có ít nhất 1 Quản lý.');">
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-arrow-down-circle me-1"></i>Hạ Khách hàng
+                                                    </button>
+                                                </form>
+                                            }
+
+                                            <!-- Thăng Admin (không cho phép từ Manager/Staff vì cần giữ người quản lý khu vực) -->
+                                            @if (user.Role == "Customer" || user.Role == "Partner")
                                             {
                                                 <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Admin" method="post" class="d-inline">
-                                                    <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill fw-500">
+                                                    <button type="submit" class="btn btn-danger btn-sm rounded-pill fw-500">
                                                         <i class="bi bi-shield-fill me-1"></i>Thăng Admin
                                                     </button>
                                                 </form>
                                             }
-                                            @if (user.Role == "Admin")
+
+                                            <!-- Thăng Partner lên Manager (giữ quyền Partner gốc) -->
+                                            @if (user.Role == "Partner" && user.OriginalRole != "Manager")
                                             {
-                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Customer" method="post" class="d-inline">
-                                                    <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill fw-500">
-                                                        <i class="bi bi-person-fill me-1"></i>Hạ xuống Customer
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Manager" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-person-check me-1"></i>Thăng Quản lý
                                                     </button>
                                                 </form>
                                             }
+
+                                            <!-- Thăng Partner lên Staff (giữ quyền Partner gốc) -->
+                                            @if (user.Role == "Partner" && user.OriginalRole != "Staff" && user.OriginalRole != "Manager")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Staff" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-info btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-person-badge me-1"></i>Thăng Nhân viên
+                                                    </button>
+                                                </form>
+                                            }
+
+                                            <!-- Hạ xuống Partner (từ Staff/Manager có OriginalRole là Partner) -->
+                                            @if ((user.Role == "Staff" || user.Role == "Manager") && user.OriginalRole == "Partner")
+                                            {
+                                                <form asp-action="SetRole" asp-route-id="@user.UserID" asp-route-role="Partner" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm rounded-pill fw-500">
+                                                        <i class="bi bi-arrow-down-circle me-1"></i>Hạ về Partner
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+
+                                        <div class="d-flex flex-wrap gap-2">
                                             <form asp-action="ToggleLock" asp-route-id="@user.UserID" method="post" class="d-inline">
                                                 <button type="submit" class="btn @(user.IsLocked ? "btn-warning" : "btn-outline-warning text-dark") btn-sm rounded-pill fw-500">
                                                     <i class="bi @(user.IsLocked ? "bi-unlock" : "bi-lock") me-1"></i>@(user.IsLocked ? "Mở khóa" : "Khóa tạm")
@@ -309,8 +387,6 @@
                                                     <i class="bi bi-slash-circle me-1"></i>@(user.IsBlacklisted ? "Gỡ Blacklist" : "Blacklist")
                                                 </button>
                                             </form>
-                                        </div>
-                                        <div class="d-inline mb-0">
                                             @if (user.IsVerified)
                                             {
                                                 <span class="btn btn-light text-success px-4 fw-bold rounded-pill h-100 border border-success"><i class="bi bi-robot me-1"></i>Đã được AI xác thực</span>

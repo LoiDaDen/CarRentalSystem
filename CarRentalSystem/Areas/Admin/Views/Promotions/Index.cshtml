@@ -23,9 +23,14 @@
         <h2 class="fw-800 mb-1" style="letter-spacing: -1px;">Mã Khuyến Mãi</h2>
         <p class="text-muted mb-0">Tạo mới và quản lý các chiến dịch giảm giá, voucher.</p>
     </div>
-    <a asp-area="Admin" asp-controller="Promotions" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
-        <i class="bi bi-tag-fill me-2"></i>Thêm mã mới
-    </a>
+    <div class="d-flex gap-2">
+        <a asp-area="Admin" asp-controller="Promotions" asp-action="TrashBin" class="btn btn-outline-secondary shadow-sm px-4 py-2 rounded-3 fw-bold">
+            <i class="bi bi-trash3 me-2"></i>Thùng rác
+        </a>
+        <a asp-area="Admin" asp-controller="Promotions" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
+            <i class="bi bi-tag-fill me-2"></i>Thêm mã mới
+        </a>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
@@ -116,6 +121,7 @@
                                         <div class="d-flex gap-2">
                                             <button type="button" class="btn btn-light flex-grow-1 rounded-3 fw-bold" data-bs-dismiss="modal">Hủy</button>
                                             <form asp-action="Delete" asp-route-id="@p.PromotionID" method="post" class="flex-grow-1">
+                                                @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">Xóa</button>
                                             </form>
                                         </div>

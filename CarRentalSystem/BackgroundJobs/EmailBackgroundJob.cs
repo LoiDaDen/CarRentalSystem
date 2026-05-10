@@ -26,7 +26,7 @@ namespace CarRentalSystem.BackgroundJobs
         public async Task SendVerificationEmail(string email, string verificationLink)
         {
             _logger.LogInformation("🚀 [Hangfire] Bắt đầu gửi email xác thực đến: {Email}", email);
-            
+
             try
             {
                 await _emailService.SendVerificationEmailAsync(email, verificationLink);
@@ -35,7 +35,27 @@ namespace CarRentalSystem.BackgroundJobs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ [Hangfire] Gửi email xác thực THẤT BẠI đến: {Email}. Hangfire sẽ tự retry.", email);
-                throw; // Để Hangfire bắt exception và tự thực hiện retry
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Gửi email chứa mã OTP 6 số để xác thực tài khoản.
+        /// Mã OTP có hiệu lực trong 5 phút.
+        /// </summary>
+        public async Task SendOtpEmail(string email, string otp)
+        {
+            _logger.LogInformation("🚀 [Hangfire] Bắt đầu gửi OTP đến: {Email}", email);
+
+            try
+            {
+                await _emailService.SendOtpEmailAsync(email, otp);
+                _logger.LogInformation("✅ [Hangfire] Gửi OTP thành công đến: {Email}", email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [Hangfire] Gửi OTP THẤT BẠI đến: {Email}. Hangfire sẽ tự retry.", email);
+                throw;
             }
         }
     }

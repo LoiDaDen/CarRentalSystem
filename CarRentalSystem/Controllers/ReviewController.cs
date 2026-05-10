@@ -18,10 +18,18 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(int CarID, int Rating, string? Comment)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            // Validate rating range (1-5)
+            if (Rating < 1 || Rating > 5)
+            {
+                TempData["Error"] = "Điểm đánh giá phải từ 1 đến 5 sao.";
+                return RedirectToAction("Details", "Car", new { id = CarID });
+            }
 
             // Check user actually rented this car
             var hasRented = await _db.Bookings.AnyAsync(b => b.UserID == userId && b.CarID == CarID && b.BookingStatus != null && b.BookingStatus.Name == "Completed");
@@ -31,12 +39,20 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Car", new { id = CarID });
             }
 
+            // Check if user already reviewed this car
+            var alreadyReviewed = await _db.Reviews.AnyAsync(r => r.CarID == CarID && r.UserID == userId);
+            if (alreadyReviewed)
+            {
+                TempData["Error"] = "Bạn đã đánh giá xe này rồi.";
+                return RedirectToAction("Details", "Car", new { id = CarID });
+            }
+
             var review = new Review
             {
                 CarID = CarID,
                 UserID = userId,
                 Rating = Math.Clamp(Rating, 1, 5),
-                Comment = Comment,
+                Comment = Comment?.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
 

@@ -160,10 +160,22 @@ namespace CarRentalSystem.Controllers
             // Generate a temporary booking code for display
             ViewBag.TempBookingCode = DateTime.UtcNow.Ticks.ToString();
 
-            // Fetch available drivers for selection
-            ViewBag.Drivers = await _context.Drivers
-                .Where(d => d.IsApproved && d.IsAvailable)
-                .ToListAsync();
+            // Fetch available drivers for selection (filtered by car's location)
+            var driversQuery = _context.Drivers
+                .Where(d => d.IsApproved && d.IsAvailable);
+
+            if (car != null && car.LocationID > 0)
+            {
+                driversQuery = driversQuery.Where(d => d.LocationID == car.LocationID);
+            }
+            else
+            {
+                driversQuery = driversQuery.Where(d => false); // No drivers if car has no location
+            }
+
+            ViewBag.Drivers = await driversQuery.ToListAsync();
+            ViewBag.CarLocationID = car?.LocationID ?? 0;
+            ViewBag.CarLocationName = car?.Location?.Name ?? "";
 
             return View(booking);
         }
@@ -208,6 +220,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Book(Booking booking, int? SelectedDriverID, decimal DriverFee)
         {
             // Validate input trước khi xử lý
@@ -217,7 +230,7 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
-            if (booking.StartDate.Date < DateTime.Today)
+            if (booking.StartDate.Date < DateTime.UtcNow.Date)
             {
                 TempData["BookingError"] = "Không thể đặt xe cho ngày trong quá khứ.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
@@ -340,8 +353,10 @@ namespace CarRentalSystem.Controllers
                         booking.DiscountAmount += discount;
                         booking.TotalPrice -= discount;
                         
-                        promo.UsedCount++;
-                        _context.Promotions.Update(promo);
+                        // Sử dụng atomic update để tránh race condition khi nhiều user cùng dùng promo
+                        await _context.Promotions
+                            .Where(p => p.PromotionID == promo.PromotionID && p.UsedCount < p.UsageLimit)
+                            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UsedCount, p => p.UsedCount + 1));
                     }
                 }
 
@@ -395,19 +410,32 @@ namespace CarRentalSystem.Controllers
                 var allBookings = await _bookingService.GetUserBookingsAsync(userId);
                 // Filter out draft bookings (unpaid) to enforce "payment-first" visibility
                 var bookings = allBookings.Where(b => b.BookingStatus?.Name != "Draft").ToList();
+
+                // Load HandoverRecords for each booking
+                var bookingIds = bookings.Select(b => b.BookingID).ToList();
+                var handoverRecords = await _context.HandoverRecords
+                    .Where(h => bookingIds.Contains(h.BookingID) && !h.IsDeleted)
+                    .ToListAsync();
+
+                ViewBag.HandoverRecords = handoverRecords;
+
                 return View(bookings);
             }
             return Unauthorized();
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelBooking(int id, string? reason)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
 
-            var bookings = await _bookingService.GetUserBookingsAsync(userId);
-            var booking = bookings.FirstOrDefault(b => b.BookingID == id);
+            // Use atomic update to prevent race conditions
+            var booking = await _context.Bookings
+                .Include(b => b.Car)
+                .Include(b => b.BookingStatus)
+                .FirstOrDefaultAsync(b => b.BookingID == id && b.UserID == userId);
 
             if (booking == null)
             {
@@ -423,48 +451,62 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(MyBookings));
             }
 
-            // Nếu đang Active, cập nhật trạng thái booking về Cancelled và hoàn cọc
+            // Get Available status ID
+            var availableStatus = await _context.CarStatuses.FirstOrDefaultAsync(s => s.Name == "Available");
+            if (availableStatus == null)
+            {
+                TempData["Error"] = "Lỗi hệ thống. Vui lòng thử lại.";
+                return RedirectToAction(nameof(MyBookings));
+            }
+
+            // Atomic update based on current status
             if (booking.BookingStatus?.Name == "Active")
             {
-                await _bookingService.UpdateBookingStatusAsync(id, "Cancelled");
-                booking.DepositStatus = "PendingRefund";
-                booking.ActualReturnDate = DateTime.UtcNow;
-                _context.Bookings.Update(booking);
-                
-                // Reset car status về Available
+                // Update booking status to Cancelled and car status atomically
+                await _context.Bookings
+                    .Where(b => b.BookingID == id && b.UserID == userId && b.BookingStatus != null && b.BookingStatus.Name == "Active")
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(b => b.DepositStatus, "PendingRefund")
+                        .SetProperty(b => b.ActualReturnDate, DateTime.UtcNow));
+
+                // Reset car status to Available
                 if (booking.Car != null)
                 {
-                    var availableStatus = await _context.CarStatuses.FirstOrDefaultAsync(s => s.Name == "Available");
-                    if (availableStatus != null)
-                    {
-                        booking.Car.CarStatusID = availableStatus.CarStatusID;
-                        _context.Cars.Update(booking.Car);
-                    }
+                    await _context.Cars
+                        .Where(c => c.CarID == booking.CarID)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(c => c.CarStatusID, availableStatus.CarStatusID));
                 }
-                
-                await _context.SaveChangesAsync();
+
+                // Update booking status
+                await _bookingService.UpdateBookingStatusAsync(id, "Cancelled");
+
                 TempData["Success"] = "Chuyến đi đã được hủy. Tiền cọc sẽ được hoàn trả sau 15 ngày.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
-            // Nếu đang Confirmed, hủy và giải phóng xe
             if (booking.BookingStatus?.Name == "Confirmed")
             {
-                await _bookingService.UpdateBookingStatusAsync(id, "Cancelled");
+                // Lấy status ID của Cancelled và Refunded trước
+                var cancelledStatus = await _context.BookingStatuses.FirstOrDefaultAsync(st => st.Name == "Cancelled");
                 
-                // Reset car status về Available
+                // Update booking status to Cancelled, cập nhật deposit status và car status atomically
+                await _context.Bookings
+                    .Where(b => b.BookingID == id && b.UserID == userId && b.BookingStatus != null && b.BookingStatus.Name == "Confirmed")
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(b => b.BookingStatusID, cancelledStatus.BookingStatusID)
+                        .SetProperty(b => b.DepositStatus, "Refunded")); // Hoàn cọc cho booking Confirmed
+
+                // Reset car status to Available
                 if (booking.Car != null)
                 {
-                    var availableStatus = await _context.CarStatuses.FirstOrDefaultAsync(s => s.Name == "Available");
-                    if (availableStatus != null)
-                    {
-                        booking.Car.CarStatusID = availableStatus.CarStatusID;
-                        _context.Cars.Update(booking.Car);
-                    }
+                    await _context.Cars
+                        .Where(c => c.CarID == booking.CarID)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(c => c.CarStatusID, availableStatus.CarStatusID));
                 }
-                
-                await _context.SaveChangesAsync();
-                TempData["Success"] = "Chuyến đi đã được hủy thành công.";
+
+                TempData["Success"] = "Chuyến đi đã được hủy. Tiền cọc sẽ được hoàn trả trong 15 ngày.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
@@ -474,6 +516,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CustomerConfirmPickup(int id)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -499,7 +542,18 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(Contract), new { id = booking.BookingID });
             }
 
-            // 2. Start Trip
+            // 2. BẮT BUỘC: Kiểm tra biên bản nhận xe (CheckIn) đã được tạo chưa
+            var checkInRecord = await _context.HandoverRecords
+                .Where(h => h.BookingID == id && h.Type == "CheckIn" && !h.IsDeleted)
+                .FirstOrDefaultAsync();
+
+            if (checkInRecord == null)
+            {
+                TempData["Error"] = "Bạn phải tạo biên bản nhận xe trước khi xác nhận nhận xe. Vui lòng chụp ảnh xe và điền thông tin biên bản.";
+                return RedirectToAction("Capture", "Handover", new { bookingId = id, type = "CheckIn" });
+            }
+
+            // 3. Start Trip
             booking.ActualPickupDate = DateTime.UtcNow;
             
             var activeStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == "Active" || s.Name.Contains("thuê") || s.Name.Contains("đi"));
@@ -531,21 +585,21 @@ namespace CarRentalSystem.Controllers
             // Save status changes
             await _context.SaveChangesAsync();
 
-            // 3. Initialize Rental Contract with current car odometer
+            // 4. Initialize Rental Contract with current car odometer from CheckIn record
             if (booking.RentalContract == null)
             {
                 booking.RentalContract = new RentalContract
                 {
                     BookingID = booking.BookingID,
                     BasePrice = booking.TotalPrice,
-                    StartKm = booking.Car?.CurrentOdometer ?? 0,
-                    EndKm = booking.Car?.CurrentOdometer ?? 0
+                    StartKm = checkInRecord.Odo > 0 ? checkInRecord.Odo : (booking.Car?.CurrentOdometer ?? 0),
+                    EndKm = checkInRecord.Odo > 0 ? checkInRecord.Odo : (booking.Car?.CurrentOdometer ?? 0)
                 };
                 _context.RentalContracts.Add(booking.RentalContract);
             }
             else
             {
-                booking.RentalContract.StartKm = booking.Car?.CurrentOdometer ?? 0;
+                booking.RentalContract.StartKm = checkInRecord.Odo > 0 ? checkInRecord.Odo : (booking.Car?.CurrentOdometer ?? 0);
             }
 
             await _context.SaveChangesAsync();
@@ -555,6 +609,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CustomerConfirmReturn(int id)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -572,7 +627,17 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(MyBookings));
             }
 
+            // BẮT BUỘC: Kiểm tra biên bản trả xe (CheckOut) đã được tạo chưa
+            var checkOutRecord = await _context.HandoverRecords
+                .Where(h => h.BookingID == id && h.Type == "CheckOut" && !h.IsDeleted)
+                .OrderByDescending(h => h.RecordDate)
+                .FirstOrDefaultAsync();
 
+            if (checkOutRecord == null)
+            {
+                TempData["Error"] = "Bạn phải tạo biên bản trả xe trước khi xác nhận trả xe. Vui lòng chụp ảnh xe và điền thông tin biên bản.";
+                return RedirectToAction("Capture", "Handover", new { bookingId = id, type = "CheckOut" });
+            }
 
             // 1. Record Return Date
             booking.ActualReturnDate = DateTime.UtcNow;
@@ -608,21 +673,16 @@ namespace CarRentalSystem.Controllers
             // ═══════════════════════════════════════════════════
             // 📊 CẬP NHẬT ODOMETER TỪ HANDOVER RECORD
             // ═══════════════════════════════════════════════════
-            var checkoutRecord = await _context.HandoverRecords
-                .Where(h => h.BookingID == id && h.Type == "CheckOut")
-                .OrderByDescending(h => h.RecordDate)
-                .FirstOrDefaultAsync();
-            
-            if (checkoutRecord != null && booking.Car != null)
+            // Sử dụng Odo từ biên bản CheckOut (đã bắt buộc ở trên)
+            if (booking.Car != null)
             {
-                booking.Car.CurrentOdometer = checkoutRecord.Odo;
+                booking.Car.CurrentOdometer = checkOutRecord.Odo;
             }
 
             // 3. Calculate Mileage & Fees in RentalContract
             if (booking.RentalContract != null)
             {
-                if (checkoutRecord != null)
-                    booking.RentalContract.EndKm = checkoutRecord.Odo;
+                booking.RentalContract.EndKm = checkOutRecord.Odo;
                 
                 booking.RentalContract.TotalKm = booking.RentalContract.EndKm - booking.RentalContract.StartKm;
                 booking.RentalContract.FinalPrice = booking.TotalPrice;
@@ -772,6 +832,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SignContract(int id, string customerName, string customerIdentityCard, string customerPhone, string customerAddress, string customerCompanyName, string customerDepartmentCode, string paymentMethod, string customerBankAccount)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -826,6 +887,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmManualPayment(int id)
         {
             var booking = await _bookingService.GetBookingByIdAsync(id);
@@ -833,23 +895,29 @@ namespace CarRentalSystem.Controllers
 
             // Change from Draft to Pending (Awaiting Approval)
             await _bookingService.UpdateBookingStatusAsync(id, "Pending");
-            
-            // Log a pending payment record
-            var payment = new Payment
+
+            // Kiểm tra đã có Payment chưa, nếu chưa thì tạo mới
+            var existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.BookingID == id);
+            if (existingPayment == null)
             {
-                BookingID = id,
-                Amount = booking.TotalPrice * 0.2m,
-                PaymentMethod = "Manual Transfer",
-                PaymentStatus = "Pending",
-                PaymentDate = DateTime.UtcNow
-            };
-            await _bookingService.ProcessPaymentAsync(payment);
+                // Log a pending payment record
+                var payment = new Payment
+                {
+                    BookingID = id,
+                    Amount = booking.TotalPrice * 0.2m,
+                    PaymentMethod = "Manual Transfer",
+                    PaymentStatus = "Pending",
+                    PaymentDate = DateTime.UtcNow
+                };
+                await _bookingService.ProcessPaymentAsync(payment);
+            }
 
             TempData["Success"] = "Hệ thống đã ghi nhận thông tin chuyển khoản của bạn. Vui lòng chờ Admin xác nhận đơn hàng trong giây lát.";
             return RedirectToAction("Success", "Payment", new { bookingId = id });
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmManualPaymentTransaction(int id)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -970,6 +1038,28 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                         };
                         _context.Bookings.Add(booking);
                         await _context.SaveChangesAsync();
+
+                        // ═══ Tạo DriverBooking nếu có chọn tài xế ═══
+                        if (item.TryGetProperty("driverId", out var driverIdProp) && 
+                            driverIdProp.ValueKind == System.Text.Json.JsonValueKind.Number &&
+                            driverIdProp.GetInt32() > 0)
+                        {
+                            var driverId = driverIdProp.GetInt32();
+                            var driver = await _context.Drivers.FindAsync(driverId);
+                            if (driver != null)
+                            {
+                                var driverBooking = new DriverBooking
+                                {
+                                    BookingID = booking.BookingID,
+                                    DriverID = driverId,
+                                    DriverFee = driver.DailyRate * item.GetProperty("days").GetInt32(),
+                                    Status = "Pending",
+                                    CreatedAt = DateTime.UtcNow
+                                };
+                                _context.DriverBookings.Add(driverBooking);
+                                await _context.SaveChangesAsync();
+                            }
+                        }
 
                         // BookingAddOns
                         if (item.TryGetProperty("addonDetails", out var addonDetails) && addonDetails.ValueKind == System.Text.Json.JsonValueKind.Array)

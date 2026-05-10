@@ -10,6 +10,7 @@ let g_flatpickrInst = null;
 let g_targetStartInput = null;
 let g_targetEndInput = null;
 let g_onConfirmCallback = null;
+let g_startDateSelected = null; // Ngày bắt đầu đã chọn
 
 // Danh sách ngày lễ cố định Việt Nam (DD/MM)
 const FIXED_HOLIDAYS = {
@@ -43,7 +44,7 @@ function getTetDates(year) {
 function isHoliday(dateOrStr) {
     // flatpickr có thể truyền string thay vì Date object vào onDayCreate
     const date = typeof dateOrStr === 'string' ? new Date(dateOrStr) : dateOrStr;
-    if (!(date instanceof Date) || isNaN(date.getTime())) return null;
+    if (!(date instanceof Date) || isNaN(date.getTime())) return false;
 
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -55,7 +56,7 @@ function isHoliday(dateOrStr) {
     const tet = getTetDates(y);
     if (date >= tet.start && date <= tet.end) return tet.name;
 
-    return null;
+    return false;
 }
 
 function isWeekend(dateOrStr) {
@@ -67,8 +68,14 @@ function isWeekend(dateOrStr) {
 function updateSummaryDisplay(dates) {
     if (!dates || dates.length === 0) return;
 
-    const startTime = document.getElementById('internalStartTime')?.value || '07:00';
-    const endTime = document.getElementById('internalEndTime')?.value || '11:00';
+    // Get values from select dropdowns (24h format)
+    const startHour = document.getElementById('internalStartHour')?.value || '07';
+    const startMinute = document.getElementById('internalStartMinute')?.value || '00';
+    const endHour = document.getElementById('internalEndHour')?.value || '11';
+    const endMinute = document.getElementById('internalEndMinute')?.value || '00';
+
+    const startTime = `${startHour}:${startMinute}`;
+    const endTime = `${endHour}:${endMinute}`;
 
     if (dates[0]) {
         const el = document.getElementById('summaryStartDisplay');
@@ -90,6 +97,66 @@ function formatDateWithTime(dateObj, timeStr) {
     return `${y}-${m}-${d}T${timeStr}`;
 }
 
+/**
+ * Disable giờ/phút đã qua so với giờ Việt Nam (UTC+7)
+ * @param {Date} selectedDate - Ngày đã chọn trên calendar
+ * @param {string} type - 'start' hoặc 'end'
+ */
+function disablePastTimes(selectedDate, type) {
+    const now = new Date();
+    // Chuyển sang giờ Việt Nam (UTC+7)
+    const nowVN = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const todayVN = new Date(nowVN.getFullYear(), nowVN.getMonth(), nowVN.getDate());
+
+    const hourEl = document.getElementById(`internal${type.charAt(0).toUpperCase() + type.slice(1)}Hour`);
+    const minuteEl = document.getElementById(`internal${type.charAt(0).toUpperCase() + type.slice(1)}Minute`);
+
+    if (!hourEl || !minuteEl) return;
+
+    const selectedDayVN = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+
+    // Nếu chọn ngày hôm nay → disable giờ đã qua
+    if (selectedDayVN.getTime() === todayVN.getTime()) {
+        const currentHour = nowVN.getHours();
+        const currentMinute = nowVN.getMinutes();
+
+        // Disable các giờ đã qua
+        hourEl.querySelectorAll('option').forEach(opt => {
+            const hour = parseInt(opt.value);
+            opt.disabled = hour < currentHour;
+        });
+
+        // Disable các phút đã qua trong giờ hiện tại
+        minuteEl.querySelectorAll('option').forEach(opt => {
+            const minute = parseInt(opt.value);
+            const hour = parseInt(hourEl.value);
+            opt.disabled = (hour === currentHour && minute < currentMinute);
+        });
+    } else {
+        // Ngày khác hôm nay → enable tất cả
+        hourEl.querySelectorAll('option').forEach(opt => opt.disabled = false);
+        minuteEl.querySelectorAll('option').forEach(opt => opt.disabled = false);
+    }
+
+    // Đảm bảo giá trị được chọn không bị disabled
+    if (hourEl.selectedOptions[0]?.disabled) {
+        hourEl.value = String(nowVN.getHours()).padStart(2, '0');
+    }
+    if (minuteEl.selectedOptions[0]?.disabled) {
+        minuteEl.value = String(nowVN.getMinutes()).padStart(2, '0');
+    }
+}
+
+/**
+ * Cập nhật trạng thái disable cho tất cả time dropdowns
+ */
+function updateTimeOptions() {
+    if (g_startDateSelected) {
+        disablePastTimes(g_startDateSelected, 'start');
+    }
+    disablePastTimes(new Date(), 'end');
+}
+
 function formatDisplayCustom(dateObj, timeStr) {
     const m = String(dateObj.getMonth() + 1).padStart(2, '0');
     const d = String(dateObj.getDate()).padStart(2, '0');
@@ -97,11 +164,18 @@ function formatDisplayCustom(dateObj, timeStr) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Time input listeners
-    document.getElementById('internalStartTime')?.addEventListener('change', function () {
+    // Time input listeners for select dropdowns
+    document.getElementById('internalStartHour')?.addEventListener('change', function () {
+        updateTimeOptions();
         if (g_flatpickrInst) updateSummaryDisplay(g_flatpickrInst.selectedDates);
     });
-    document.getElementById('internalEndTime')?.addEventListener('change', function () {
+    document.getElementById('internalStartMinute')?.addEventListener('change', function () {
+        if (g_flatpickrInst) updateSummaryDisplay(g_flatpickrInst.selectedDates);
+    });
+    document.getElementById('internalEndHour')?.addEventListener('change', function () {
+        if (g_flatpickrInst) updateSummaryDisplay(g_flatpickrInst.selectedDates);
+    });
+    document.getElementById('internalEndMinute')?.addEventListener('change', function () {
         if (g_flatpickrInst) updateSummaryDisplay(g_flatpickrInst.selectedDates);
     });
 
@@ -113,8 +187,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const startTime = document.getElementById('internalStartTime')?.value || '07:00';
-        const endTime = document.getElementById('internalEndTime')?.value || '11:00';
+        // Get values from select dropdowns (24h format)
+        const startHour = document.getElementById('internalStartHour')?.value || '07';
+        const startMinute = document.getElementById('internalStartMinute')?.value || '00';
+        const endHour = document.getElementById('internalEndHour')?.value || '11';
+        const endMinute = document.getElementById('internalEndMinute')?.value || '00';
+
+        const startTime = `${startHour}:${startMinute}`;
+        const endTime = `${endHour}:${endMinute}`;
 
         const startStr = formatDateWithTime(dates[0], startTime);
         const endStr = formatDateWithTime(dates[1], endTime);
@@ -141,13 +221,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Responsive: adjust showMonths on resize
+    // Responsive: adjust showMonths on resize (with debounce)
+    let resizeTimeout;
     window.addEventListener('resize', function () {
-        // g_flatpickrInst có thể là null nếu calendar chưa mở hoặc đã destroy
-        if (g_flatpickrInst && typeof g_flatpickrInst.set === 'function') {
-            const newMonths = window.innerWidth > 576 ? 2 : 1;
-            g_flatpickrInst.set('showMonths', newMonths);
-        }
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function () {
+            // g_flatpickrInst có thể là null nếu calendar chưa mở hoặc đã destroy
+            if (g_flatpickrInst && typeof g_flatpickrInst.set === 'function') {
+                const newMonths = window.innerWidth > 576 ? 2 : 1;
+                g_flatpickrInst.set('showMonths', newMonths);
+            }
+        }, 250);
     });
 });
 
@@ -175,30 +259,46 @@ window.openCarCalendar = function (opts) {
     // --- 1. Parse ngày mặc định ---
     let d1, d2;
     if (opts.defaultStart) {
-        d1 = new Date(opts.defaultStart);
+        const parsed = new Date(opts.defaultStart);
+        if (!isNaN(parsed.getTime())) d1 = parsed;
     } else if (g_targetStartInput && g_targetStartInput.value) {
         const p = new Date(g_targetStartInput.value);
         if (!isNaN(p.getTime())) d1 = p;
     }
     if (opts.defaultEnd) {
-        d2 = new Date(opts.defaultEnd);
+        const parsed = new Date(opts.defaultEnd);
+        if (!isNaN(parsed.getTime())) d2 = parsed;
     } else if (g_targetEndInput && g_targetEndInput.value) {
         const p = new Date(g_targetEndInput.value);
         if (!isNaN(p.getTime())) d2 = p;
     }
 
-    if (!d1 || isNaN(d1.getTime())) {
-        d1 = new Date(Date.now() + 2 * 3600 * 1000);
+    // Validate year - prevent invalid dates like year 2001
+    // Sử dụng giờ Việt Nam (UTC+7) làm mốc
+    const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
+
+    if (!d1 || isNaN(d1.getTime()) || d1.getFullYear() < nowVN.getFullYear()) {
+        d1 = new Date(nowVN.getTime() + 2 * 3600 * 1000); // Tối thiểu 2 tiếng sau
     }
-    if (!d2 || isNaN(d2.getTime())) {
+    if (!d2 || isNaN(d2.getTime()) || d2.getFullYear() < nowVN.getFullYear()) {
         d2 = new Date(d1.getTime() + 24 * 3600 * 1000);
     }
 
     // --- 2. Pre-set time inputs ---
-    const tStart = document.getElementById('internalStartTime');
-    const tEnd = document.getElementById('internalEndTime');
-    if (tStart) tStart.value = String(d1.getHours()).padStart(2, '0') + ':' + String(d1.getMinutes()).padStart(2, '0');
-    if (tEnd) tEnd.value = String(d2.getHours()).padStart(2, '0') + ':' + String(d2.getMinutes()).padStart(2, '0');
+    const startHourEl = document.getElementById('internalStartHour');
+    const startMinuteEl = document.getElementById('internalStartMinute');
+    const endHourEl = document.getElementById('internalEndHour');
+    const endMinuteEl = document.getElementById('internalEndMinute');
+
+    if (startHourEl) startHourEl.value = String(d1.getHours()).padStart(2, '0');
+    if (startMinuteEl) startMinuteEl.value = String(d1.getMinutes()).padStart(2, '0');
+    if (endHourEl) endHourEl.value = String(d2.getHours()).padStart(2, '0');
+    if (endMinuteEl) endMinuteEl.value = String(d2.getMinutes()).padStart(2, '0');
+
+    // Disable giờ đã qua theo giờ Việt Nam
+    g_startDateSelected = d1;
+    disablePastTimes(d1, 'start');
+    disablePastTimes(d2, 'end');
 
     // --- 3. Build disabled dates list ---
     const disabledDates = (opts.disabledDates || []).map(function (d) { return new Date(d); });
@@ -254,6 +354,14 @@ window.openCarCalendar = function (opts) {
             disable: cfgDisabled,
             onChange: function (selectedDates) {
                 updateSummaryDisplay(selectedDates);
+                // Cập nhật disable time khi ngày thay đổi
+                if (selectedDates && selectedDates.length > 0) {
+                    g_startDateSelected = selectedDates[0];
+                    disablePastTimes(selectedDates[0], 'start');
+                    if (selectedDates.length > 1) {
+                        disablePastTimes(selectedDates[1], 'end');
+                    }
+                }
             },
             onDayCreate: function (dObj, dStr, fp, dayElem) {
                 const date = dayElem.dateObj;
@@ -278,6 +386,11 @@ window.openCarCalendar = function (opts) {
                 }
             }
         });
+
+        // Disable giờ đã qua sau khi tạo flatpickr xong
+        g_startDateSelected = cfgD1;
+        disablePastTimes(cfgD1, 'start');
+        disablePastTimes(cfgD2, 'end');
 
         updateSummaryDisplay([cfgD1, cfgD2]);
     }, { once: true });

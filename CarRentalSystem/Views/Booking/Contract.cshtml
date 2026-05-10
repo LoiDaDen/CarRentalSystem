@@ -158,6 +158,7 @@
                         <p class="small text-muted mb-4">Bằng việc nhấn "Đồng ý và Ký hợp đồng", tôi xác nhận đã đọc, hiểu rõ và đồng ý với tất cả các điều khoản nêu trên.</p>
                         
                         <form asp-action="SignContract" method="post" id="signForm">
+                            @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@Model.DigitalContractID" />
                             <div class="form-check text-start d-inline-block mb-4">
                                 <input class="form-check-input" type="checkbox" id="agreeTerms" required>

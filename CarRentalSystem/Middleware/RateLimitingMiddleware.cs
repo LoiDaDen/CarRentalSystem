@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 namespace CarRentalSystem.Middleware
 {
     /// <summary>
-    /// 🚦 Rate Limiting Middleware — Chống brute force attacks
+    /// Rate Limiting Middleware — Chống brute force attacks
     /// Giới hạn số lần request trong khoảng thời gian nhất định.
     /// Áp dụng cho login endpoint và API endpoints.
     /// </summary>
@@ -13,8 +13,8 @@ namespace CarRentalSystem.Middleware
         private readonly RequestDelegate _next;
         private readonly ILogger<RateLimitingMiddleware> _logger;
 
-        // Track requests per IP: IP -> (count, windowStart)
-        private static readonly ConcurrentDictionary<string, RateLimitEntry> _clients = new();
+        // Track failed login attempts per IP: IP -> (count, windowStart)
+        private static readonly ConcurrentDictionary<string, RateLimitEntry> _failedLoginAttempts = new();
 
         // Cấu hình: tối đa 5 lần login failed / 15 phút
         private const int LoginMaxAttempts = 5;
@@ -23,6 +23,9 @@ namespace CarRentalSystem.Middleware
         // Cấu hình: tối đa 60 API calls / phút
         private const int ApiMaxAttempts = 60;
         private static readonly TimeSpan ApiWindow = TimeSpan.FromMinutes(1);
+
+        // Key để lưu trạng thái login trong HttpContext.Items
+        private const string LoginFailedKey = "LoginFailedAttempt";
 
         public RateLimitingMiddleware(RequestDelegate next, ILogger<RateLimitingMiddleware> logger)
         {
@@ -34,33 +37,38 @@ namespace CarRentalSystem.Middleware
         {
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
             var method = context.Request.Method;
-            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            // 🔒 Rate limit login POST requests
+            // Lấy IP từ X-Forwarded-For header (khi deploy sau proxy/load balancer)
+            var clientIp = GetClientIpAddress(context);
+
+            // Rate limit login POST requests - kiểm tra TRƯỚC khi xử lý
             if (path.Contains("/auth/login") && method == "POST")
             {
                 var key = $"login:{clientIp}";
-                if (IsRateLimited(key, LoginMaxAttempts, LoginWindow))
+                if (IsLoginRateLimited(key))
                 {
-                    _logger.LogWarning("🚫 Rate limit exceeded for login from IP: {IP}", clientIp);
+                    _logger.LogWarning("Rate limit exceeded for login from IP: {IP}", clientIp);
                     context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                     context.Response.Headers["Retry-After"] = LoginWindow.TotalSeconds.ToString();
                     context.Response.ContentType = "text/html; charset=utf-8";
                     await context.Response.WriteAsync(
-                        "<h2>⚠️ Quá nhiều lần đăng nhập thất bại</h2>" +
-                        $"<p>Vui lòng thử lại sau {LoginWindow.TotalMinutes} phút.</p>" +
-                        "<p><a href='/'>← Về trang chủ</a></p>");
+                        "<h2>Qua nhieu lan dang nhap that bai</h2>" +
+                        $"<p>Vui long thu lai sau {LoginWindow.TotalMinutes} phut.</p>" +
+                        "<p><a href='/'>Ve trang chu</a></p>");
                     return;
                 }
+
+                // Đánh dấu để theo dõi sau khi xử lý
+                context.Items[LoginFailedKey] = true; // Mặc định là failed cho đến khi chứng minh ngược lại
             }
 
-            // 🔒 Rate limit API endpoints
+            // Rate limit API endpoints
             if (path.StartsWith("/api/"))
             {
                 var key = $"api:{clientIp}";
                 if (IsRateLimited(key, ApiMaxAttempts, ApiWindow))
                 {
-                    _logger.LogWarning("🚫 API rate limit exceeded from IP: {IP}, Path: {Path}", clientIp, path);
+                    _logger.LogWarning("API rate limit exceeded from IP: {IP}, Path: {Path}", clientIp, path);
                     context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                     context.Response.Headers["Retry-After"] = ApiWindow.TotalSeconds.ToString();
                     context.Response.ContentType = "application/json";
@@ -71,13 +79,122 @@ namespace CarRentalSystem.Middleware
 
             await _next(context);
 
-            // Sau khi Login thất bại (redirect lại login page), increment counter
-            if (path.Contains("/auth/login") && method == "POST" && context.Response.StatusCode == 200)
+            // Xử lý sau khi login - chỉ đếm FAILED attempts
+            if (path.Contains("/auth/login") && method == "POST")
             {
-                // Nếu response là View (không redirect) → login thất bại
-                // Khi login thành công, ASP.NET redirect 302
-                // Không cần làm gì thêm vì counter đã increment ở IsRateLimited
+                var key = $"login:{clientIp}";
+
+                // Kiểm tra nếu là response thành công (redirect về trang chính hoặc dashboard)
+                var statusCode = context.Response.StatusCode;
+                var location = context.Response.Headers.Location.FirstOrDefault();
+
+                bool isSuccess = statusCode == 302 &&
+                                 (string.IsNullOrEmpty(location) ||
+                                  location.Contains("/home", StringComparison.OrdinalIgnoreCase) ||
+                                  location.Contains("/booking", StringComparison.OrdinalIgnoreCase));
+
+                if (isSuccess)
+                {
+                    // Login thành công - reset counter cho IP này
+                    _failedLoginAttempts.TryRemove(key, out _);
+                    _logger.LogInformation("Login successful, reset failed attempts for IP: {IP}", clientIp);
+                }
+                else if (context.Items.ContainsKey(LoginFailedKey) && (bool)context.Items[LoginFailedKey]!)
+                {
+                    // Login thất bại - tăng counter
+                    IncrementFailedLoginAttempt(key, clientIp);
+                }
             }
+        }
+
+        /// <summary>
+        /// Kiểm tra xem IP có bị rate limit cho login không (chỉ dựa trên failed attempts)
+        /// </summary>
+        private bool IsLoginRateLimited(string key)
+        {
+            var now = DateTime.UtcNow;
+
+            if (_failedLoginAttempts.TryGetValue(key, out var entry))
+            {
+                if (now - entry.WindowStart > LoginWindow)
+                {
+                    // Window đã hết, xóa entry cũ
+                    _failedLoginAttempts.TryRemove(key, out _);
+                    return false;
+                }
+                return entry.Count >= LoginMaxAttempts;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Tăng số lần failed login attempt
+        /// </summary>
+        private void IncrementFailedLoginAttempt(string key, string clientIp)
+        {
+            var now = DateTime.UtcNow;
+
+            _failedLoginAttempts.AddOrUpdate(key,
+                // New entry
+                _ => new RateLimitEntry { Count = 1, WindowStart = now },
+                // Update existing
+                (_, existing) =>
+                {
+                    if (now - existing.WindowStart > LoginWindow)
+                    {
+                        // Reset window nếu đã hết hạn
+                        return new RateLimitEntry { Count = 1, WindowStart = now };
+                    }
+                    existing.Count++;
+                    return existing;
+                });
+
+            _logger.LogWarning("Failed login attempt #{Count} from IP: {IP}", GetFailedAttemptCount(key), clientIp);
+
+            // Cleanup stale entries định kỳ
+            if (_failedLoginAttempts.Count > 5000)
+            {
+                CleanupStaleEntries(now);
+            }
+        }
+
+        private int GetFailedAttemptCount(string key)
+        {
+            if (_failedLoginAttempts.TryGetValue(key, out var entry))
+            {
+                return entry.Count;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Lấy IP thực của client, hỗ trợ X-Forwarded-For header từ proxy
+        /// </summary>
+        private static string GetClientIpAddress(HttpContext context)
+        {
+            // Kiểm tra X-Forwarded-For header (nhiều proxy có thể gửi nhiều IPs)
+            var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(forwardedFor))
+            {
+                var ips = forwardedFor.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                if (ips.Length > 0)
+                {
+                    var clientIp = ips[0].Trim();
+                    if (!string.IsNullOrEmpty(clientIp))
+                        return clientIp;
+                }
+            }
+
+            // Kiểm tra X-Real-IP header (nginx)
+            var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(realIp))
+            {
+                return realIp.Trim();
+            }
+
+            // Fallback về RemoteIpAddress
+            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         }
 
         private bool IsRateLimited(string key, int maxAttempts, TimeSpan window)
@@ -99,8 +216,8 @@ namespace CarRentalSystem.Middleware
                     return existing;
                 });
 
-            // Cleanup stale entries periodically
-            if (_clients.Count > 10000)
+            // Cleanup stale entries
+            if (_clients.Count > 5000)
             {
                 CleanupStaleEntries(now);
             }
@@ -110,14 +227,27 @@ namespace CarRentalSystem.Middleware
 
         private void CleanupStaleEntries(DateTime now)
         {
-            var staleKeys = _clients
+            // Cleanup cho failed login attempts
+            var staleLoginKeys = _failedLoginAttempts
+                .Where(kvp => now - kvp.Value.WindowStart > LoginWindow * 2)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in staleLoginKeys)
+                _failedLoginAttempts.TryRemove(key, out _);
+
+            // Cleanup cho API rate limit
+            var staleApiKeys = _clients
                 .Where(kvp => now - kvp.Value.WindowStart > TimeSpan.FromHours(1))
                 .Select(kvp => kvp.Key)
                 .ToList();
 
-            foreach (var key in staleKeys)
+            foreach (var key in staleApiKeys)
                 _clients.TryRemove(key, out _);
         }
+
+        // ConcurrentDictionary cho API rate limiting
+        private static readonly ConcurrentDictionary<string, RateLimitEntry> _clients = new();
 
         private class RateLimitEntry
         {

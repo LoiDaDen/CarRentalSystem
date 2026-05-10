@@ -1,0 +1,351 @@
+@{
+    ViewData["Title"] = "Nhập Mã Xác Thực";
+    var errorMessage = ViewBag.Error;
+    var successMessage = TempData["SuccessMessage"]?.ToString();
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-lg border-0" style="border-radius: 20px; overflow: hidden; margin-top: 60px;">
+                <!-- Progress Indicator -->
+                <div class="px-4 pt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="step completed">
+                            <div class="step-circle">
+                                <i class="bi bi-check"></i>
+                            </div>
+                            <span class="step-label">Email</span>
+                        </div>
+                        <div class="step-line"></div>
+                        <div class="step active">
+                            <div class="step-circle">
+                                <i class="bi bi-key"></i>
+                            </div>
+                            <span class="step-label">Mã OTP</span>
+                        </div>
+                        <div class="step-line"></div>
+                        <div class="step">
+                            <div class="step-circle">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+                            <span class="step-label">Hoàn tất</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h3 class="mb-0">
+                        <i class="bi bi-key me-2"></i>Nhập Mã Xác Thực
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Alert -->
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show animate__animated animate__shakeX" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Html.Encode(errorMessage)
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show animate__animated animate__bounceIn" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>@Html.Encode(successMessage)
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <!-- Email Display -->
+                    <div class="email-display text-center mb-4 animate__animated animate__fadeIn">
+                        <div class="pulse-animation mb-3">
+                            <i class="bi bi-envelope-check" style="font-size: 3rem; color: #667eea;"></i>
+                        </div>
+                        <p class="text-muted mb-2">Mã xác thực đã được gửi đến</p>
+                        <div class="email-box">
+                            <i class="bi bi-at me-2"></i>@Html.Encode(ViewBag.Email)
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-clock me-1"></i>Mã có hiệu lực trong <strong>5 phút</strong>
+                        </small>
+                    </div>
+
+                    <form asp-action="VerifyEmailStep2" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="email" value="@ViewBag.Email">
+
+                        <div class="otp-input-container mb-4">
+                            <label for="otp" class="form-label fw-semibold text-center d-block">
+                                <i class="bi bi-shield-lock me-1"></i>Nhập mã OTP
+                            </label>
+                            <div class="otp-inputs d-flex justify-content-center gap-2">
+                                <input type="text" class="form-control otp-digit text-center" maxlength="1" id="otp1" required autofocus>
+                                <input type="text" class="form-control otp-digit text-center" maxlength="1" id="otp2">
+                                <input type="text" class="form-control otp-digit text-center" maxlength="1" id="otp3">
+                                <input type="text" class="form-control otp-digit text-center" maxlength="1" id="otp4">
+                                <input type="text" class="form-control otp-digit text-center" maxlength="1" id="otp5">
+                                <input type="text" class="form-control otp-digit text-center" maxlength="1" id="otp6">
+                            </div>
+                            <input type="hidden" name="otp" id="otpHidden">
+                            <div class="form-text text-center mt-2">Vui lòng nhập 6 chữ số được gửi đến email của bạn.</div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary btn-lg" id="verifyBtn">
+                                <span class="verify-text">
+                                    <i class="bi bi-check-circle me-2"></i>Xác Thực
+                                </span>
+                                <span class="loading-text d-none">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    Đang xác thực...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p class="text-muted mb-2">Bạn chưa nhận được mã?</p>
+                        <form asp-action="ResendOtpStep2" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="email" value="@ViewBag.Email">
+                            <button type="submit" class="btn btn-outline-primary" id="resendBtn">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Gửi lại mã OTP
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-footer text-center py-3 bg-light">
+                    <small class="text-muted">
+                        <a asp-action="VerifyEmailStep1" class="text-decoration-none">
+                            <i class="bi bi-arrow-left me-1"></i>Quay lại nhập email
+                        </a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Card Animation */
+    .card {
+        animation: slideUp 0.5s ease-out;
+    }
+    
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Step Progress */
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #e9ecef;
+        color: #6c757d;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .step.active .step-circle {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        animation: pulse 2s infinite;
+    }
+    
+    .step.completed .step-circle {
+        background: #198754;
+        color: white;
+    }
+    
+    .step-label {
+        font-size: 11px;
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    .step.active .step-label,
+    .step.completed .step-label {
+        color: #667eea;
+    }
+    
+    .step-line {
+        flex: 1;
+        height: 2px;
+        background: #e9ecef;
+        margin: 0 10px;
+        margin-bottom: 24px;
+    }
+    
+    @@keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    
+    /* Email Box */
+    .email-box {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 600;
+        color: #667eea;
+        display: inline-block;
+    }
+    
+    .pulse-animation {
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    @@keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    /* OTP Inputs */
+    .otp-digit {
+        width: 50px;
+        height: 60px;
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 12px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+    }
+    
+    .otp-digit:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+        background: white;
+        transform: scale(1.1);
+    }
+    
+    /* Button */
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 12px;
+        padding: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:active {
+        transform: translateY(-1px);
+    }
+    
+    .btn-outline-primary {
+        border-color: #667eea;
+        color: #667eea;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+</style>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <script>
+        // OTP Input Handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const otpInputs = document.querySelectorAll('.otp-digit');
+            const otpHidden = document.getElementById('otpHidden');
+            
+            function updateHiddenInput() {
+                otpHidden.value = Array.from(otpInputs).map(input => input.value).join('');
+            }
+            
+            otpInputs.forEach((input, index) => {
+                input.addEventListener('input', function(e) {
+                    const value = e.target.value.replace(/\D/g, '').substring(0, 1);
+                    e.target.value = value;
+                    
+                    if (value && index < otpInputs.length - 1) {
+                        otpInputs[index + 1].focus();
+                    }
+                    
+                    updateHiddenInput();
+                    
+                    // Auto submit when all filled
+                    if (otpHidden.value.length === 6) {
+                        document.querySelector('form').querySelector('button[type="submit"]').focus();
+                    }
+                });
+                
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                        otpInputs[index - 1].focus();
+                    }
+                });
+                
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').substring(0, 6);
+                    
+                    for (let i = 0; i < pastedData.length && i < otpInputs.length; i++) {
+                        otpInputs[i].value = pastedData[i];
+                    }
+                    
+                    if (pastedData.length > 0) {
+                        const focusIndex = Math.min(pastedData.length, otpInputs.length - 1);
+                        otpInputs[focusIndex].focus();
+                    }
+                    
+                    updateHiddenInput();
+                });
+            });
+            
+            // Form submit animation
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function() {
+                const btn = document.getElementById('verifyBtn');
+                btn.querySelector('.verify-text').classList.add('d-none');
+                btn.querySelector('.loading-text').classList.remove('d-none');
+                btn.disabled = true;
+            });
+            
+            // Resend button animation
+            document.getElementById('resendBtn').addEventListener('click', function() {
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Đang gửi...';
+                this.disabled = true;
+            });
+        });
+    </script>
+}

@@ -101,8 +101,10 @@ namespace CarRentalSystem.Controllers
             // Filter out cars that are booked in this period
             if (startDate.HasValue && endDate.HasValue && startDate.Value < endDate.Value)
             {
+                // Lọc các booking chưa hoàn thành hoặc đã hủy
+                var nonActiveStatuses = new[] { "Cancelled", "Completed" };
                 carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b =>
-                    b.BookingStatusID != 4 &&
+                    b.BookingStatus != null && !nonActiveStatuses.Contains(b.BookingStatus.Name) &&
                     (
                       (startDate.Value >= b.StartDate && startDate.Value < b.EndDate) ||
                       (endDate.Value > b.StartDate && endDate.Value <= b.EndDate) ||
@@ -165,6 +167,15 @@ namespace CarRentalSystem.Controllers
                 {
                     var currentUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
                     ViewBag.MembershipTier = currentUser?.MembershipTier;
+
+                    // Kiểm tra user đã thuê xe này chưa (booking đã hoàn thành)
+                    var hasRentedThisCar = await _context.Bookings
+                        .AnyAsync(b => b.UserID == userId && b.CarID == id && b.BookingStatus != null && b.BookingStatus.Name == "Completed");
+                    ViewBag.HasRentedThisCar = hasRentedThisCar;
+
+                    // Kiểm tra user đã đánh giá xe này chưa
+                    var hasReviewedThisCar = await _context.Reviews.AnyAsync(r => r.UserID == userId && r.CarID == id);
+                    ViewBag.HasReviewedThisCar = hasReviewedThisCar;
                 }
             }
 
@@ -252,6 +263,7 @@ namespace CarRentalSystem.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Car car, IFormFile imageFile)
         {
             if (ModelState.IsValid)
@@ -293,33 +305,53 @@ namespace CarRentalSystem.Controllers
         }
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddReview(int carId, int rating, string comment)
         {
             var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (userIdStr != null && int.TryParse(userIdStr, out int userId))
+            if (userIdStr == null || !int.TryParse(userIdStr, out int userId))
             {
-                // Check if user has actually rented and completed the rental for this car
-                bool hasCompletedBooking = await _context.Bookings
-                    .Include(b => b.BookingStatus)
-                    .AnyAsync(b => b.UserID == userId && b.CarID == carId && b.BookingStatus != null && b.BookingStatus.Name == BookingStatusConstants.Completed);
-
-                if (!hasCompletedBooking)
-                {
-                    TempData["BookingError"] = "Bạn chỉ có thể đánh giá chiếc xe này sau khi đã hoàn tất chuyến đi bằng xe này.";
-                    return RedirectToAction(nameof(Details), new { id = carId });
-                }
-
-                var review = new Review
-                {
-                    CarID = carId,
-                    UserID = userId,
-                    Rating = rating,
-                    Comment = comment,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _carService.AddReviewAsync(review);
-                TempData["SuccessMessage"] = "Ảm ơn bạn đã để lại đánh giá!";
+                return Unauthorized();
             }
+
+            // Validate rating range (1-5)
+            if (rating < 1 || rating > 5)
+            {
+                TempData["BookingError"] = "Điểm đánh giá phải từ 1 đến 5 sao.";
+                return RedirectToAction(nameof(Details), new { id = carId });
+            }
+
+            // Check if user has actually rented and completed the rental for this car
+            bool hasCompletedBooking = await _context.Bookings
+                .Include(b => b.BookingStatus)
+                .AnyAsync(b => b.UserID == userId && b.CarID == carId && b.BookingStatus != null && b.BookingStatus.Name == BookingStatusConstants.Completed);
+
+            if (!hasCompletedBooking)
+            {
+                TempData["BookingError"] = "Bạn chỉ có thể đánh giá chiếc xe này sau khi đã hoàn tất chuyến đi bằng xe này.";
+                return RedirectToAction(nameof(Details), new { id = carId });
+            }
+
+            // Check if user already reviewed this car
+            bool alreadyReviewed = await _context.Reviews
+                .AnyAsync(r => r.CarID == carId && r.UserID == userId);
+
+            if (alreadyReviewed)
+            {
+                TempData["BookingError"] = "Bạn đã đánh giá chiếc xe này rồi.";
+                return RedirectToAction(nameof(Details), new { id = carId });
+            }
+
+            var review = new Review
+            {
+                CarID = carId,
+                UserID = userId,
+                Rating = rating,
+                Comment = comment?.Trim() ?? string.Empty,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _carService.AddReviewAsync(review);
+            TempData["SuccessMessage"] = "Cảm ơn bạn đã để lại đánh giá!";
             return RedirectToAction(nameof(Details), new { id = carId });
         }
 
@@ -331,6 +363,7 @@ namespace CarRentalSystem.Controllers
             var bookings = _context.Bookings
                 .Include(b => b.BookingStatus)
                 .Where(b => b.CarID == carId &&
+                    b.BookingStatus != null &&
                     (b.BookingStatus.Name == BookingStatusConstants.Confirmed ||
                      b.BookingStatus.Name == BookingStatusConstants.Pending ||
                      b.BookingStatus.Name == BookingStatusConstants.Active ||
@@ -473,8 +506,9 @@ namespace CarRentalSystem.Controllers
 
             if (startDate != null && endDate != null && DateTime.TryParse(startDate, out var sDate) && DateTime.TryParse(endDate, out var eDate) && sDate < eDate)
             {
+                var nonActiveStatuses = new[] { "Cancelled", "Completed" };
                 carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b =>
-                    b.BookingStatusID != 4 &&
+                    b.BookingStatus != null && !nonActiveStatuses.Contains(b.BookingStatus.Name) &&
                     ((sDate >= b.StartDate && sDate < b.EndDate) ||
                      (eDate > b.StartDate && eDate <= b.EndDate) ||
                      (sDate <= b.StartDate && eDate >= b.EndDate))
@@ -505,7 +539,7 @@ namespace CarRentalSystem.Controllers
                 .ToListAsync();
 
             var result = cars.Select(c => new {
-                c.CarID,
+                carId = c.CarID,
                 c.CarName,
                 brandName = c.CarBrand?.Name ?? "",
                 c.Transmission,
@@ -519,6 +553,8 @@ namespace CarRentalSystem.Controllers
                 imageUrl = c.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800",
                 avgRating = c.Reviews != null && c.Reviews.Any() ? c.Reviews.Where(r => r.IsApproved).Average(r => r.Rating) : 5.0,
                 reviewCount = c.Reviews?.Count(r => r.IsApproved) ?? 0,
+                locationId = c.LocationID,
+                locationName = c.Location?.Name ?? "",
                 p4h = Math.Round(c.PricePerDay * 0.25m / 10000m) * 10000m,
                 p8h = Math.Round(c.PricePerDay * 0.40m / 10000m) * 10000m,
                 p12h = Math.Round(c.PricePerDay * 0.55m / 10000m) * 10000m,

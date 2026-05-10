@@ -102,6 +102,7 @@
                 <div class="card-body p-4 p-md-5 bg-white">
                     <h5 class="fw-bolder mb-4 text-dark text-uppercase" style="letter-spacing: 0.5px;">NHU CẦU THUÊ CỦA BẠN</h5>
                     <form asp-action="SubmitRequest" method="post" id="rentalForm">
+                        @Html.AntiForgeryToken()
                         <!-- Section 1: Thông tin cơ bản -->
                         <div class="row g-4 mb-5">
                             <div class="col-md-3">
@@ -374,71 +375,21 @@
 
 </div>
 
-@if (ViewBag.Drivers != null)
-{
+<!-- Driver popup - populated dynamically by JS based on selected car's location -->
 <div class="driver-popup-overlay" id="driverOverlay" onclick="closeDriverPopup(event)">
     <div class="driver-popup" onclick="event.stopPropagation()">
         <div class="driver-popup-header">
             <div>
                 <h5>Tùy chọn Tài xế</h5>
-                <div class="subtitle">Tăng thêm sự thoải mái cho chuyến đi của bạn</div>
+                <div class="subtitle">Vui lòng chọn xe trước</div>
             </div>
             <button class="btn-close btn-close-white" onclick="closeDriverPopup()"></button>
         </div>
         <div class="driver-popup-body" id="driverPopupBody">
-            <div class="drv-selfdrive active" id="drv-0" onclick="selectDriverNew('', 'drv-0', 'Tự lái (Không kèm tài xế)', 'Bạn sẽ tự điều khiển phương tiện', '', 0)">
-                <div class="drv-selfdrive-icon"><i class="bi bi-steering-wheel"></i></div>
-                <div class="drv-card-info">
-                    <div class="drv-card-name">Tự lái (Không kèm tài xế)</div>
-                    <div class="drv-card-meta"><span><i class="bi bi-check-circle me-1"></i>Bạn sẽ tự điều khiển phương tiện</span></div>
-                </div>
-                <div class="drv-card-price">
-                    <div class="price-val">0đ</div>
-                </div>
-                <div class="ms-2 active-indicator" style="display: block; color:#65a30d; font-weight:bold; font-size: 1.2rem;">
-                    <i class="bi bi-check-circle-fill"></i>
-                </div>
-            </div>
-
-            @foreach (var driver in (IEnumerable<Driver>)ViewBag.Drivers)
-            {
-                <div class="drv-card" id="drv-@driver.DriverID" onclick="selectDriverNew('@driver.DriverID', 'drv-@driver.DriverID', '@driver.FullName', '@driver.ExperienceYears năm KN - Bằng @driver.LicenseType', '@driver.AvatarUrl', @driver.DailyRate)">
-                    @if (!string.IsNullOrEmpty(driver.AvatarUrl))
-                    {
-                        <img src="@driver.AvatarUrl" class="drv-card-avatar" alt="Avatar" />
-                    }
-                    else
-                    {
-                        <div class="drv-card-avatar-placeholder"><i class="bi bi-person-fill"></i></div>
-                    }
-                    <div class="drv-card-info">
-                        <div class="drv-card-name">@driver.FullName</div>
-                        <div class="drv-card-meta">
-                            <span><i class="bi bi-geo-alt"></i> @driver.Location?.Name</span>
-                            <span><i class="bi bi-award"></i> @driver.ExperienceYears năm KN</span>
-                            <span><i class="bi bi-card-checklist"></i> Bằng @driver.LicenseType</span>
-                        </div>
-                        <div class="drv-card-stars">
-                            @for (int s = 0; s < (int)Math.Round((double)driver.Rating); s++)
-                            {
-                                <i class="bi bi-star-fill"></i>
-                            }
-                            <span class="drv-card-rating-text">@driver.Rating.ToString("0.0")</span>
-                        </div>
-                    </div>
-                    <div class="drv-card-price">
-                        <div class="price-val">@driver.DailyRate.ToString("N0")đ</div>
-                        <div class="price-unit">/ngày</div>
-                    </div>
-                    <div class="ms-2 active-indicator" style="display: none; color:#3b82f6; font-weight:bold; font-size: 1.2rem;">
-                        <i class="bi bi-check-circle-fill"></i>
-                    </div>
-                </div>
-            }
+            <!-- Dynamically populated by openDriverPopup() -->
         </div>
     </div>
 </div>
-}
 
 @section Scripts {
     <script>
@@ -636,9 +587,9 @@
                 
                 html += `
                 <div class="col-md-6 col-lg-4">
-                    <div class="card shadow-sm rounded-3 h-100 car-card ${selectedClass}" 
+                    <div class="card shadow-sm rounded-3 h-100 car-card ${selectedClass}"
                          style="cursor: pointer; transition: all 0.2s; ${selectedStyle}"
-                         onclick="selectCar(${car.carId}, '${car.brandName}', '${car.carName}', this)"
+                         onclick="selectCar(${car.carId}, '${car.brandName}', '${car.carName}', ${car.locationId || 0}, '${car.locationName || ''}', this)"
                          onmouseover="if(!this.classList.contains('selected')){this.style.borderColor='#10b981'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.2)'}"
                          onmouseout="if(!this.classList.contains('selected')){this.style.borderColor='#dee2e6'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)'}">
                         <div class="position-relative">
@@ -691,8 +642,12 @@
         }
 
         // Select a car
-        function selectCar(carId, brandName, carName, element) {
+        function selectCar(carId, brandName, carName, locationId, locationName, element) {
             selectedCarId = carId;
+            
+            // Store car's location for driver filtering
+            window.selectedCarLocationId = locationId;
+            window.selectedCarLocationName = locationName || 'khu vực này';
             
             // Update hidden fields
             document.getElementById('selectedCarId').value = carId;
@@ -984,9 +939,93 @@
             updatePriceEstimate();
         }
 
-        function openDriverPopup() {
-            document.getElementById('driverOverlay').classList.add('show');
+        async function openDriverPopup() {
+            const overlay = document.getElementById('driverOverlay');
+            overlay.classList.add('show');
             document.body.style.overflow = 'hidden';
+            
+            const body = document.getElementById('driverPopupBody');
+            
+            // Lay locationId tu xe da chon, neu khong co thi lay tu dropdown trong form
+            let locationId = window.selectedCarLocationId;
+            let locationName = window.selectedCarLocationName || 'khu vực này';
+            
+            // Neu locationId khong hop le (0 hoac null), lay tu dropdown trong form
+            if (!locationId || locationId === 0 || locationId === '0') {
+                const formLocationSelect = document.getElementById('locationSelect');
+                if (formLocationSelect && formLocationSelect.value) {
+                    const selectedOption = formLocationSelect.options[formLocationSelect.selectedIndex];
+                    locationId = selectedOption.getAttribute('data-location-id') || '';
+                    locationName = formLocationSelect.value; // Ten khu vuc
+                }
+            }
+            
+            // Update header to show location
+            const subtitle = document.querySelector('#driverOverlay .driver-popup-header .subtitle');
+            if (subtitle) {
+                subtitle.textContent = `Tài xế ở ${locationName}`;
+            }
+            
+            // Build self-drive option
+            let html = `<div class="drv-selfdrive active" id="drv-0" onclick="selectDriverNew('', 'drv-0', 'Tự lái (Không kèm tài xế)', 'Bạn sẽ tự điều khiển phương tiện', '', 0)">
+                <div class="drv-selfdrive-icon"><i class="bi bi-steering-wheel"></i></div>
+                <div class="drv-card-info">
+                    <div class="drv-card-name">Tự lái (Không kèm tài xế)</div>
+                    <div class="drv-card-meta"><span><i class="bi bi-check-circle me-1"></i>Bạn sẽ tự điều khiển phương tiện</span></div>
+                </div>
+                <div class="drv-card-price">
+                    <div class="price-val">0đ</div>
+                </div>
+                <div class="ms-2 active-indicator" style="display: block; color:#65a30d; font-weight:bold; font-size: 1.2rem;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>`;
+            
+            try {
+                const res = await fetch(`/Driver/GetDriversList?locationId=${locationId}`);
+                const drivers = await res.json();
+                
+                if (!drivers || drivers.length === 0) {
+                    html += `<div style="text-align:center; padding: 40px 20px; color: #64748b;">
+                        <i class="bi bi-car-front" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p style="margin-top: 12px; font-weight: 600;">Không có tài xế ở ${locationName}</p>
+                        <p style="font-size: 0.85rem;">Vui lòng chọn "Tự lái" hoặc liên hệ hotline.</p>
+                    </div>`;
+                } else {
+                    drivers.forEach(d => {
+                        html += `<div class="drv-card" id="drv-${d.driverID}" onclick="selectDriverNew('${d.driverID}', 'drv-${d.driverID}', '${d.fullName}', '${d.experienceYears} năm KN - Bằng ${d.licenseType}', '${d.avatarUrl || ''}', ${d.dailyRate})">
+                            ${d.avatarUrl 
+                                ? `<img src="${d.avatarUrl}" class="drv-card-avatar" alt="Avatar" />` 
+                                : `<div class="drv-card-avatar-placeholder"><i class="bi bi-person-fill"></i></div>`}
+                            <div class="drv-card-info">
+                                <div class="drv-card-name">${d.fullName}</div>
+                                <div class="drv-card-meta">
+                                    <span><i class="bi bi-geo-alt"></i> ${d.location}</span>
+                                    <span><i class="bi bi-award"></i> ${d.experienceYears} năm KN</span>
+                                </div>
+                                <div class="drv-card-stars">
+                                    ${'<i class="bi bi-star-fill"></i>'.repeat(Math.round(d.rating))}
+                                    <span class="drv-card-rating-text">${d.rating.toFixed(1)}</span>
+                                </div>
+                            </div>
+                            <div class="drv-card-price">
+                                <div class="price-val">${d.dailyRate.toLocaleString('vi-VN')}đ</div>
+                                <div class="price-unit">/ngày</div>
+                            </div>
+                            <div class="ms-2 active-indicator" style="display: none; color:#3b82f6; font-weight:bold; font-size: 1.2rem;">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                        </div>`;
+                    });
+                }
+            } catch (e) {
+                html += `<div style="text-align:center; padding: 40px 20px; color: #ef4444;">
+                    <i class="bi bi-exclamation-circle" style="font-size: 3rem;"></i>
+                    <p style="margin-top: 12px;">Lỗi tải danh sách tài xế</p>
+                </div>`;
+            }
+            
+            body.innerHTML = html;
         }
         
         function closeDriverPopup(e) {

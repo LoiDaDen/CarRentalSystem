@@ -80,14 +80,23 @@ namespace CarRentalSystem.Controllers
             return View(driver);
         }
 
-        // API: Get all available drivers with their reviews summary (for Cart popup)
+        // API: Get drivers list (optionally filtered by location)
         [HttpGet]
-        public async Task<IActionResult> GetDriversList()
+        public async Task<IActionResult> GetDriversList(int? locationId = null)
         {
-            var drivers = await _context.Drivers
+            var query = _context.Drivers
                 .Include(d => d.Location)
                 .Include(d => d.DriverReviews)
-                .Where(d => d.IsAvailable && d.IsApproved)
+                .Where(d => d.IsAvailable && d.IsApproved);
+
+            // Filter by location if provided and valid (> 0)
+            if (locationId.HasValue && locationId.Value > 0)
+            {
+                query = query.Where(d => d.LocationID == locationId.Value);
+            }
+            // else: no valid locationId provided - return ALL available drivers (don't return empty!)
+
+            var drivers = await query
                 .OrderByDescending(d => d.Rating)
                 .ThenByDescending(d => d.TotalTrips)
                 .Select(d => new
@@ -102,7 +111,8 @@ namespace CarRentalSystem.Controllers
                     d.DailyRate,
                     d.HourlyRate,
                     d.Description,
-                    Location = d.Location != null ? d.Location.Name : "Toàn quốc",
+                    Location = d.Location != null ? d.Location.Name : "Chưa có khu vực",
+                    d.LocationID,
                     ReviewCount = d.DriverReviews != null ? d.DriverReviews.Count : 0
                 })
                 .ToListAsync();
@@ -161,25 +171,41 @@ namespace CarRentalSystem.Controllers
         // POST: Create driver review (only for users who have rented this driver)
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateReview(int driverId, int rating, string? comment)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
 
-            // Check user actually used this driver
+            // Validate rating
+            if (rating < 1 || rating > 5)
+            {
+                TempData["Error"] = "Điểm đánh giá phải từ 1 đến 5 sao.";
+                return RedirectToAction(nameof(Profile), new { id = driverId });
+            }
+
+            // Check driver exists and is approved
+            var driverExists = await _context.Drivers.AnyAsync(d => d.DriverID == driverId && d.IsApproved);
+            if (!driverExists)
+            {
+                TempData["Error"] = "Tài xế không tồn tại hoặc chưa được phê duyệt.";
+                return RedirectToAction(nameof(Profile), new { id = driverId });
+            }
+
+            // Check user actually used this driver (only completed bookings count)
             var hasUsedDriver = await _context.DriverBookings
                 .AnyAsync(db => db.DriverID == driverId
                     && db.Booking != null
                     && db.Booking.UserID == userId
-                    && (db.Status == "Completed" || db.Status == "Active"));
+                    && db.Status == "Completed");
 
             if (!hasUsedDriver)
             {
-                TempData["Error"] = "Bạn chỉ có thể đánh giá tài xế mà bạn đã thuê.";
+                TempData["Error"] = "Bạn chỉ có thể đánh giá tài xế sau khi chuyến đi đã hoàn thành.";
                 return RedirectToAction(nameof(Profile), new { id = driverId });
             }
 
-            // Check if already reviewed
+            // Check if already reviewed (atomic with insert to prevent race condition)
             var alreadyReviewed = await _context.DriverReviews
                 .AnyAsync(r => r.DriverID == driverId && r.UserID == userId);
 
@@ -193,8 +219,8 @@ namespace CarRentalSystem.Controllers
             {
                 DriverID = driverId,
                 UserID = userId,
-                Rating = Math.Clamp(rating, 1, 5),
-                Comment = comment,
+                Rating = rating,
+                Comment = comment?.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -237,11 +263,31 @@ namespace CarRentalSystem.Controllers
         // Driver Registration submit
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(Driver driver)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out int userId))
                 return Unauthorized();
+
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(driver.FullName))
+            {
+                TempData["Error"] = "Họ tên tài xế là bắt buộc.";
+                return RedirectToAction(nameof(Register));
+            }
+
+            if (string.IsNullOrWhiteSpace(driver.Phone))
+            {
+                TempData["Error"] = "Số điện thoại là bắt buộc.";
+                return RedirectToAction(nameof(Register));
+            }
+
+            if (string.IsNullOrWhiteSpace(driver.LicenseNumber))
+            {
+                TempData["Error"] = "Số giấy phép lái xe là bắt buộc.";
+                return RedirectToAction(nameof(Register));
+            }
 
             // Check if already registered
             var existing = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
@@ -255,9 +301,9 @@ namespace CarRentalSystem.Controllers
             if (user == null) return NotFound();
 
             driver.UserID = userId;
-            driver.FullName = string.IsNullOrEmpty(driver.FullName) ? user.Name : driver.FullName;
-            driver.Phone = string.IsNullOrEmpty(driver.Phone) ? user.Phone : driver.Phone;
-            driver.Email = string.IsNullOrEmpty(driver.Email) ? user.Email : driver.Email;
+            driver.FullName = driver.FullName.Trim();
+            driver.Phone = driver.Phone.Trim();
+            driver.Email = driver.Email?.Trim() ?? user.Email;
             driver.IsApproved = false;
             driver.IsAvailable = false;
             driver.Rating = 5.0m;
@@ -316,6 +362,7 @@ namespace CarRentalSystem.Controllers
         // POST: Driver/SignContract/5
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SignContract(int id)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -353,6 +400,7 @@ namespace CarRentalSystem.Controllers
         // POST: Driver/CancelContract/5
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelContract(int id, string? reason)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -372,10 +420,19 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(MyProfile));
             }
 
-            contract.Status = "Cancelled";
-            contract.CancelledAt = DateTime.UtcNow;
-            contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
-            await _context.SaveChangesAsync();
+            // Use atomic update to prevent race conditions
+            var rowsAffected = await _context.DriverContracts
+                .Where(dc => dc.DriverContractID == id && dc.DriverID == driver.DriverID && dc.Status == "Active")
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(dc => dc.Status, "Cancelled")
+                    .SetProperty(dc => dc.CancelledAt, DateTime.UtcNow)
+                    .SetProperty(dc => dc.CancelReason, reason ?? "Bên B yêu cầu hủy hợp đồng"));
+
+            if (rowsAffected == 0)
+            {
+                TempData["Error"] = "Không thể hủy hợp đồng. Trạng thái có thể đã thay đổi.";
+                return RedirectToAction(nameof(MyProfile));
+            }
 
             TempData["Success"] = $"Đã hủy hợp đồng #{contract.ContractNo}.";
             return RedirectToAction(nameof(MyProfile));

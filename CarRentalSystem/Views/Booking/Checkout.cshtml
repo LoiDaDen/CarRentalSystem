@@ -93,6 +93,7 @@
 <div class="container py-5 page-checkout">
     <div class="row g-4">
         <form asp-action="Book" method="post" id="checkoutForm" class="w-100">
+            @Html.AntiForgeryToken()
             <input type="hidden" asp-for="CarID" />
             <input type="hidden" asp-for="StartDate" />
             <input type="hidden" asp-for="EndDate" />
@@ -171,12 +172,16 @@
 
                     <div class="p-3 border rounded-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toán khi nhận xe</div>
-                            <span class="fw-bold text-dark" id="balanceAmountDisplay">@((Model.TotalPrice * 0.8m + Model.DepositAmount).ToString("N0")) đ</span>
+                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toan khi nhan xe</div>
+                            @{
+                                var remainingAmount = Model.TotalPrice - Model.DepositAmount - Model.DiscountAmount;
+                                if (remainingAmount < 0) remainingAmount = 0;
+                            }
+                            <span class="fw-bold text-dark" id="balanceAmountDisplay">@remainingAmount.ToString("N0") đ</span>
                         </div>
                         <ul class="small text-muted mb-0 ps-4 list-unstyled">
-                            <li class="d-flex justify-content-between mb-1"><span>Tiền thuê (còn lại)</span> <span id="rentalRemainingDisplay">@((Model.TotalPrice * 0.8m).ToString("N0")) đ</span></li>
-                            <li class="d-flex justify-content-between mb-1"><span>Tài sản Đặt cọc / Thế chấp</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tien thue (con lai)</span> <span id="rentalRemainingDisplay">@remainingAmount.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tai san Dat coc / The chap</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
                         </ul>
                         <div id="voucherDiscountRow" class="d-flex justify-content-between mb-1 text-success fw-bold d-none">
                             <span><i class="bi bi-ticket-perforated me-1"></i>Giảm voucher</span>
@@ -348,7 +353,14 @@
         <div class="driver-popup-header">
             <div>
                 <h5>Tùy chọn Tài xế</h5>
-                <div class="subtitle">Tăng thêm sự thoải mái cho chuyến đi của bạn</div>
+                @if (ViewBag.CarLocationName != null && ViewBag.CarLocationName != "")
+                {
+                    <div class="subtitle">Tài xế ở <strong>@ViewBag.CarLocationName</strong></div>
+                }
+                else
+                {
+                    <div class="subtitle">Tăng thêm sự thoải mái cho chuyến đi của bạn</div>
+                }
             </div>
             <button class="btn-close btn-close-white" onclick="closeDriverPopup()"></button>
         </div>

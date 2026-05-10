@@ -159,7 +159,21 @@
                             <tr style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
                                 <td class="fw-bold py-3"><i class="bi bi-star-fill me-1 text-warning"></i>24 giờ <span class="badge bg-danger ms-1">HOT</span></td>
                                 <td class="fw-800 text-danger py-3 fs-5">@Model.Pricing.Price24h.ToString("N0") đ</td>
-                                <td class="text-danger py-3 fw-bold">-@(Math.Round((1 - Model.Pricing.Price24h / (Model.Pricing.Price4h * 6)) * 100))% 🔥</td>
+                                <td class="text-danger py-3 fw-bold">
+                                    @{
+                                        var discountPercent = Model.Pricing.Price4h > 0
+                                            ? Math.Round((1 - Model.Pricing.Price24h / (Model.Pricing.Price4h * 6)) * 100)
+                                            : 0;
+                                    }
+                                    @if (discountPercent > 0)
+                                    {
+                                        @:-@discountPercent% 🔥
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
                             </tr>
                             <tr class="table-light">
                                 <td class="fw-bold py-3 text-muted"><i class="bi bi-plus-circle me-1"></i>Phụ thu / giờ thêm</td>
@@ -305,25 +319,44 @@
 
                     @if (User.Identity != null && User.Identity.IsAuthenticated)
                     {
-                        <form asp-controller="Review" asp-action="Create" method="post" class="mt-4 p-3 bg-light rounded-3">
-                            <h6 class="fw-bold mb-3">Để lại đánh giá của bạn</h6>
-                            <input type="hidden" name="CarID" value="@Model.Car.CarID" />
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Đánh giá sao</label>
-                                <select name="Rating" class="form-select" required>
-                                    <option value="5">⭐⭐⭐⭐⭐ Xuất sắc</option>
-                                    <option value="4">⭐⭐⭐⭐ Tốt</option>
-                                    <option value="3">⭐⭐⭐ Bình thường</option>
-                                    <option value="2">⭐⭐ Chưa hài lòng</option>
-                                    <option value="1">⭐ Rất tệ</option>
-                                </select>
+                        if (ViewBag.HasRentedThisCar == true)
+                        {
+                            if (ViewBag.HasReviewedThisCar == true)
+                            {
+                                <div class="alert alert-info mt-4 mb-0">
+                                    <i class="bi bi-check-circle me-2"></i>Bạn đã đánh giá xe này rồi.
+                                </div>
+                            }
+                            else
+                            {
+                                <form asp-controller="Review" asp-action="Create" method="post" class="mt-4 p-3 bg-light rounded-3">
+                                    @Html.AntiForgeryToken()
+                                    <h6 class="fw-bold mb-3">Để lại đánh giá của bạn</h6>
+                                    <input type="hidden" name="CarID" value="@Model.Car.CarID" />
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Đánh giá sao</label>
+                                        <select name="Rating" class="form-select" required>
+                                            <option value="5">⭐⭐⭐⭐⭐ Xuất sắc</option>
+                                            <option value="4">⭐⭐⭐⭐ Tốt</option>
+                                            <option value="3">⭐⭐⭐ Bình thường</option>
+                                            <option value="2">⭐⭐ Chưa hài lòng</option>
+                                            <option value="1">⭐ Rất tệ</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Nhận xét (tùy chọn)</label>
+                                        <textarea name="Comment" class="form-control" rows="2" placeholder="Chia sẻ trải nghiệm của bạn..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm fw-bold px-4">Gửi đánh giá</button>
+                                </form>
+                            }
+                        }
+                        else
+                        {
+                            <div class="alert alert-secondary mt-4 mb-0">
+                                <i class="bi bi-info-circle me-2"></i>Chỉ khách hàng đã thuê xe mới có thể đánh giá.
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Nhận xét (tùy chọn)</label>
-                                <textarea name="Comment" class="form-control" rows="2" placeholder="Chia sẻ trải nghiệm của bạn..."></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm fw-bold px-4">Gửi đánh giá</button>
-                        </form>
+                        }
                     }
                 </div>
 
@@ -673,8 +706,8 @@
             lng: @(Model.Car.Longitude ?? 106.6994),
             brand: '@Model.Car.CarBrand?.Name',
             name: '@Model.Car.CarName',
-            address: '@Html.Raw(Model.Car.CarAddress ?? Model.LocationName)',
-            region: '@Html.Raw(Model.Car.Location?.Name ?? Model.LocationName)'
+            address: '@Html.Encode(Model.Car.CarAddress ?? Model.LocationName)',
+            region: '@Html.Encode(Model.Car.Location?.Name ?? Model.LocationName)'
         };
 
         // === AVAILABILITY CALENDAR ===
@@ -699,11 +732,11 @@
 
             if (queryStart) {
                 const pd = new Date(queryStart);
-                if (!isNaN(pd.getTime())) defaultStart = pd;
+                if (!isNaN(pd.getTime()) && pd.getFullYear() >= 2024) defaultStart = pd;
             }
             if (queryEnd) {
                 const pd = new Date(queryEnd);
-                if (!isNaN(pd.getTime())) defaultEnd = pd;
+                if (!isNaN(pd.getTime()) && pd.getFullYear() >= 2024) defaultEnd = pd;
             } else if (queryStart) {
                 defaultEnd = new Date(defaultStart.getTime() + 4 * 3600 * 1000);
             }

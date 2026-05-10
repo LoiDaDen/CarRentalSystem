@@ -56,6 +56,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult SetRegion(int? locationId, string returnUrl)
         {
             if (locationId.HasValue)

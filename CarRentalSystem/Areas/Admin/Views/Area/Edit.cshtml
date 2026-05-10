@@ -111,7 +111,15 @@
 </div>
 
 <form asp-area="Admin" asp-controller="Area" asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
     <input type="hidden" asp-for="AreaID" />
+    @if (assignedLocationIds.Any())
+    {
+        foreach (var locId in assignedLocationIds)
+        {
+            <input type="hidden" name="LocationIds" value="@locId" />
+        }
+    }
 
     <div asp-validation-summary="All" class="text-danger fw-bold mb-3"></div>
 
@@ -287,9 +295,21 @@
         <a asp-area="Admin" asp-controller="Area" asp-action="Index" class="btn btn-light rounded-3 px-5 py-2 fw-bold border">
             <i class="bi bi-x-lg me-2"></i>Hủy
         </a>
-        <button type="submit" class="btn btn-warning rounded-3 px-5 py-2 fw-bold shadow-sm text-dark">
+        <button type="button" class="btn btn-warning rounded-3 px-5 py-2 fw-bold shadow-sm text-dark" id="saveBtn" onclick="testSubmit()">
             <i class="bi bi-check2 me-2"></i>Lưu thay đổi
         </button>
+
+        <script>
+            function testSubmit() {
+                console.log('=== TEST SUBMIT ===');
+                var form = document.querySelector('form');
+                console.log('Form found:', !!form);
+                console.log('Form action:', form ? form.action : 'N/A');
+                if (form) {
+                    form.submit();
+                }
+            }
+        </script>
     </div>
 </form>
 
@@ -452,16 +472,18 @@
 
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    if (!selectedLocationId) {
-                        e.preventDefault();
-                        input.classList.add('is-invalid');
-                    } else {
+                    console.log('Form submitting...', new Date().toISOString());
+                    console.log('Form action:', form.action);
+                    console.log('LocationIds will be sent:', document.querySelectorAll('input[name="LocationIds"]').length);
+                    // Chỉ thêm địa điểm mới nếu đã chọn, không ngăn form submit
+                    if (selectedLocationId) {
                         var hidden = document.createElement('input');
                         hidden.type = 'hidden';
-                        hidden.name = 'LocationID';
+                        hidden.name = 'LocationIds';
                         hidden.value = selectedLocationId;
                         form.appendChild(hidden);
                     }
+                    // Luôn cho submit, không ngăn
                 });
             }
 
@@ -533,5 +555,32 @@
                 marker = L.marker([lat, lng]).addTo(map);
             });
         }
+    </script>
+
+    <script>
+        // ── Debug form submit ─────────────────────────────────────────
+        (function() {
+            var mainForm = document.querySelector('form[action*="Area/Edit"]');
+            if (mainForm) {
+                mainForm.addEventListener('submit', function(e) {
+                    console.log('[MAIN FORM] Submitting...');
+                    console.log('[MAIN FORM] Action:', mainForm.action);
+                    console.log('[MAIN FORM] Status input value:', document.getElementById('statusInputEdit')?.value);
+                    console.log('[MAIN FORM] Manager value:', document.getElementById('managerSelect')?.value);
+                });
+            }
+
+            // Backup submit - đảm bảo form luôn submit
+            var saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function(e) {
+                    // Đảm bảo Status được sync trước khi submit
+                    var statusToggle = document.getElementById('statusToggle');
+                    if (statusToggle && document.getElementById('statusInputEdit')) {
+                        document.getElementById('statusInputEdit').value = statusToggle.checked ? 'active' : 'inactive';
+                    }
+                });
+            }
+        })();
     </script>
 }

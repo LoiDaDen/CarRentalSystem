@@ -56,12 +56,14 @@
                         <i class="bi bi-camera"></i> Biên bản nhận xe
                     </a>
                     <form asp-action="CustomerConfirmPickup" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@Model.BookingID" />
                         <button type="submit" class="btn btn-success">
                             <i class="bi bi-check-circle"></i> Xác nhận nhận xe
                         </button>
                     </form>
                     <form asp-action="CancelBooking" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@Model.BookingID" />
                         <input type="hidden" name="reason" value="Khách hàng hủy chuyến" />
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Bạn chắc chắn muốn hủy chuyến?')">
@@ -75,12 +77,14 @@
                         <i class="bi bi-camera"></i> Biên bản trả xe
                     </a>
                     <form asp-action="CustomerConfirmReturn" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@Model.BookingID" />
                         <button type="submit" class="btn btn-success" onclick="return confirm('Bạn chắc chắn muốn kết thúc chuyến đi?')">
                             <i class="bi bi-check-circle-fill"></i> Xác nhận kết thúc chuyến
                         </button>
                     </form>
                     <form asp-action="CancelBooking" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@Model.BookingID" />
                         <input type="hidden" name="reason" value="Khách hàng hủy chuyến" />
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Bạn chắc chắn muốn hủy chuyến? Phí hủy có thể áp dụng.')">
@@ -91,6 +95,7 @@
                 @if (Model.BookingStatus?.Name == "Pending")
                 {
                     <form asp-action="CancelBooking" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@Model.BookingID" />
                         <input type="hidden" name="reason" value="Khách hàng tự hủy" />
                         <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Bạn chắc chắn muốn hủy đơn này?')">

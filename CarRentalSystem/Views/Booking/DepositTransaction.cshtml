@@ -95,6 +95,7 @@
                 <div class="row g-2 mt-4">
                     <div class="col-md-12">
                         <form asp-controller="Booking" asp-action="ConfirmManualPaymentTransaction" method="post">
+                            @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@Model.TransactionID" />
                             <button type="submit" class="btn btn-outline-success w-100 py-3 fw-bold rounded-3">
                                 <i class="bi bi-check-circle me-2"></i>TÔI ĐÃ CHUYỂN KHOẢN

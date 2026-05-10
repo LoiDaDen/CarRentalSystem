@@ -7,13 +7,12 @@ namespace CarRentalSystem.Models
     public static class BookingStatusConstants
     {
         public const string Draft = "Draft";
-        public const string Unpaid = "Unpaid"; // Chua thanh toan
+        public const string Unpaid = "Unpaid";
         public const string Pending = "Pending";
         public const string Confirmed = "Confirmed";
         public const string Active = "Active";
         public const string Completed = "Completed";
-        public const string Cancelled = "Cancelled";
-        public const string Canceled = "Canceled"; // Alternative spelling
+        public const string Cancelled = "Cancelled"; // Chuẩn hóa: dùng "Cancelled" (tiếng Anh/Anh)
     }
 
     public static class CarStatusConstants

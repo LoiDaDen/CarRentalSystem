@@ -43,6 +43,7 @@
                         @if (booking.BookingStatus?.Name == "Pending")
                         {
                             <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@booking.BookingID" />
                                 <input type="hidden" name="status" value="Confirmed" />
                                 <button type="submit" class="btn btn-sm btn-success" title="Confirm Booking"><i class="bi bi-check-lg"></i></button>
@@ -51,12 +52,14 @@
                         else if (booking.BookingStatus?.Name == "Confirmed")
                         {
                             <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@booking.BookingID" />
                                 <input type="hidden" name="status" value="Completed" />
                                 <button type="submit" class="btn btn-sm btn-primary" title="Mark as Completed"><i class="bi bi-flag-fill"></i></button>
                             </form>
                         }
                         <form asp-action="UpdateStatus" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@booking.BookingID" />
                             <input type="hidden" name="status" value="Cancelled" />
                             <button type="submit" class="btn btn-sm btn-danger" title="Cancel Booking"><i class="bi bi-x-lg"></i></button>

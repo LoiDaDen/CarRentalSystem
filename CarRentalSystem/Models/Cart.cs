@@ -9,14 +9,16 @@ namespace CarRentalSystem.Models
     {
         [Key]
         public int CartID { get; set; }
-        
+
+        [Required]
+        [ForeignKey("User")]
         public int UserID { get; set; }
-        [ForeignKey("UserID")]
         public User? User { get; set; }
-        
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
         public DateTime ExpiresAt { get; set; } // e.g., 15 mins hold time
-        
+
         public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
     }
 }

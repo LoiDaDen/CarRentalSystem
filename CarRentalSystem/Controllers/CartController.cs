@@ -31,6 +31,9 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CartItems)
                     .ThenInclude(ci => ci.Car)
                         .ThenInclude(car => car.CarBrand)
+                .Include(c => c.CartItems)
+                    .ThenInclude(ci => ci.Car)
+                        .ThenInclude(car => car.Location)
                 .FirstOrDefaultAsync(c => c.UserID == userId);
 
             if (cart == null)
@@ -84,6 +87,22 @@ namespace CarRentalSystem.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> AddToCart(int carId, DateTime startDate, DateTime endDate, bool withDriver, decimal estimatedPrice)
         {
+            // Validate input
+            if (carId <= 0)
+            {
+                return Json(new { success = false, message = "ID xe không hợp lệ." });
+            }
+
+            if (startDate >= endDate)
+            {
+                return Json(new { success = false, message = "Ngày bắt đầu phải trước ngày kết thúc." });
+            }
+
+            if (startDate < DateTime.UtcNow.AddHours(-1))
+            {
+                return Json(new { success = false, message = "Không thể đặt xe trong quá khứ." });
+            }
+
             var userId = GetUserId();
             var cart = await _context.Carts.Include(c => c.CartItems).FirstOrDefaultAsync(c => c.UserID == userId);
 
@@ -99,6 +118,37 @@ namespace CarRentalSystem.Controllers
             if (existing != null)
             {
                 return Json(new { success = false, message = "Xe này đã có trong giỏ hàng với cùng khoảng thời gian." });
+            }
+
+            // Kiểm tra car có tồn tại và available không
+            var car = await _context.Cars
+                .Include(c => c.CarStatus)
+                .FirstOrDefaultAsync(c => c.CarID == carId);
+
+            if (car == null)
+            {
+                return Json(new { success = false, message = "Xe không tồn tại." });
+            }
+
+            if (car.CarStatus?.Name != "Available")
+            {
+                return Json(new { success = false, message = "Xe này hiện không có sẵn để thuê." });
+            }
+
+            // Kiểm tra car không bị booking trong khoảng thời gian này
+            var hasBooking = await _context.Bookings
+                .Include(b => b.BookingStatus)
+                .AnyAsync(b => b.CarID == carId &&
+                    b.BookingStatus != null &&
+                    b.BookingStatus.Name != "Cancelled" &&
+                    b.BookingStatus.Name != "Completed" &&
+                    b.BookingStatus.Name != "Rejected" &&
+                    startDate < b.EndDate &&
+                    endDate > b.StartDate);
+
+            if (hasBooking)
+            {
+                return Json(new { success = false, message = "Xe này đã có người đặt trong khoảng thời gian bạn chọn." });
             }
 
             var newItem = new CartItem

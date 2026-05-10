@@ -22,6 +22,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Resolve(int id)
         {
             await _trackingService.ResolveAlertAsync(id);

@@ -403,6 +403,7 @@
                             <i class="bi bi-arrow-left me-2"></i>Quay lại xem hợp đồng
                         </button>
                         <form asp-action="ConfirmAndDeposit" method="post" class="flex-grow-1" id="confirmForm">
+                            @Html.AntiForgeryToken()
                             <input type="hidden" name="carId" value="@car.CarID" />
                             <input type="hidden" name="contractId" value="@contract.ContractTypeID" />
                             <input type="hidden" name="duration" value="@duration" />

@@ -76,7 +76,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> PartnerRequests()
         {
             var requests = await _context.Users
-                .Where(u => u.Role == "Partner" && !u.IsVerified)
+                .Where(u => u.Role == "Partner" && !u.IsPartnerApproved)
                 .OrderByDescending(u => u.CreatedAt)
                 .ToListAsync();
             return View(requests);
@@ -86,12 +86,152 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> SetRole(int id, string role)
         {
             var user = await _context.Users.FindAsync(id);
-            if (user != null)
+            if (user == null)
             {
-                user.Role = role;
-                await _context.SaveChangesAsync();
-                TempData["Success"] = $"Đã cập nhật vai trò của {user.Name} thành {role}.";
+                TempData["Error"] = "Không tìm thấy người dùng.";
+                return RedirectToAction(nameof(Index));
             }
+
+            // Không cho phép thay đổi role của Admin
+            if (user.Role == "Admin")
+            {
+                TempData["Error"] = "Không thể thay đổi vai trò của Admin.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Nếu đổi từ Manager xuống Staff - kiểm tra area đó còn Manager khác không
+            if (user.Role == "Manager" && role != "Manager")
+            {
+                // Đếm xem user này là Manager của những area nào
+                var managedAreas = await _context.Areas
+                    .Where(a => a.ManagerID == user.UserID && a.Status == "active")
+                    .ToListAsync();
+
+                foreach (var area in managedAreas)
+                {
+                    // Đếm số Manager khác trong area (không tính user đang bị hạ role)
+                    var otherManagersCount = await _context.Users
+                        .CountAsync(u => u.Role == "Manager" && u.UserID != user.UserID &&
+                            _context.AreaStaffs.Any(asg => asg.UserID == u.UserID &&
+                                asg.AreaID == area.AreaID && asg.RoleInArea == "Manager" && !asg.IsDeleted));
+
+                    // Nếu không có Manager nào khác, kiểm tra ManagerID
+                    if (otherManagersCount == 0 && area.ManagerID == user.UserID)
+                    {
+                        TempData["Error"] = $"Không thể hạ vai trò của {user.Name} vì khu vực '{area.Name}' cần ít nhất 1 Quản lý. Hãy bổ nhiệm Quản lý khác trước.";
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
+            }
+
+            // ═══ XỬ LÝ THĂNG PARTNER LÊN STAFF/MANAGER ═══
+// Partner có OriginalRole (đã đăng ký làm partner khi là Admin/Staff/Manager)
+// Hoặc Partner bình thường được thăng lên Staff/Manager - vẫn giữ quyền Partner gốc
+if (user.Role == "Partner" && (role == "Staff" || role == "Manager"))
+{
+    // Lưu role gốc là Partner để có thể quay lại
+    if (string.IsNullOrEmpty(user.OriginalRole))
+    {
+        user.OriginalRole = user.Role; // Lưu "Partner" làm role gốc
+    }
+    // Role sẽ được đổi sang Staff/Manager, nhưng vẫn có quyền Partner qua OriginalRole
+}
+
+            // Thực hiện đổi role
+            var oldRole = user.Role;
+            user.Role = role;
+
+            // Nếu đổi lên Manager - cập nhật AreaManager
+            if (role == "Manager")
+            {
+                // Lấy area mà user đang phụ trách
+                var userAreaStaff = await _context.AreaStaffs
+                    .Where(asg => asg.UserID == user.UserID && !asg.IsDeleted)
+                    .ToListAsync();
+
+                if (userAreaStaff.Any())
+                {
+                    foreach (var asg in userAreaStaff)
+                    {
+                        asg.RoleInArea = "Manager";
+                        // Nếu area chưa có Manager thì set
+                        var area = await _context.Areas.FindAsync(asg.AreaID);
+                        if (area != null && area.ManagerID == null)
+                        {
+                            area.ManagerID = user.UserID;
+                        }
+                    }
+                }
+                else
+                {
+                    // Nếu user chưa thuộc area nào, lấy area đầu tiên
+                    var firstArea = await _context.Areas.Where(a => a.Status == "active").FirstOrDefaultAsync();
+                    if (firstArea != null)
+                    {
+                        _context.AreaStaffs.Add(new AreaStaff
+                        {
+                            UserID = user.UserID,
+                            AreaID = firstArea.AreaID,
+                            RoleInArea = "Manager",
+                            AssignedAt = DateTime.UtcNow
+                        });
+                        if (firstArea.ManagerID == null)
+                        {
+                            firstArea.ManagerID = user.UserID;
+                        }
+                    }
+                }
+            }
+
+            // Nếu đổi từ Manager xuống - cập nhật lại AreaManager
+            if (oldRole == "Manager" && role != "Manager")
+            {
+                var managedAreas = await _context.Areas
+                    .Where(a => a.ManagerID == user.UserID && a.Status == "active")
+                    .ToListAsync();
+
+                foreach (var area in managedAreas)
+                {
+                    area.ManagerID = null; // Xóa Manager cũ
+                    // Tìm Manager khác trong area
+                    var newManager = await _context.AreaStaffs
+                        .Where(asg => asg.AreaID == area.AreaID && asg.RoleInArea == "Manager" && !asg.IsDeleted && asg.UserID != user.UserID)
+                        .Include(asg => asg.User)
+                        .FirstOrDefaultAsync();
+
+                    if (newManager != null)
+                    {
+                        area.ManagerID = newManager.UserID;
+                    }
+                    else
+                    {
+                        // Tìm Staff nào đó trong area để assign làm Manager
+                        var staffInArea = await _context.AreaStaffs
+                            .Where(asg => asg.AreaID == area.AreaID && !asg.IsDeleted && asg.UserID != user.UserID)
+                            .Include(asg => asg.User)
+                            .FirstOrDefaultAsync();
+
+                        if (staffInArea != null)
+                        {
+                            area.ManagerID = staffInArea.UserID;
+                            staffInArea.RoleInArea = "Manager";
+                            TempData["Info"] = $"Đã tự động bổ nhiệm {staffInArea.User?.Name} làm Quản lý khu vực {area.Name}.";
+                        }
+                    }
+                }
+
+                // Cập nhật RoleInArea trong AreaStaff
+                var areaStaffs = await _context.AreaStaffs
+                    .Where(asg => asg.UserID == user.UserID && asg.RoleInArea == "Manager" && !asg.IsDeleted)
+                    .ToListAsync();
+                foreach (var asg in areaStaffs)
+                {
+                    asg.RoleInArea = "Staff";
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Đã cập nhật vai trò của {user.Name} thành {role}.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -109,14 +249,16 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 return RedirectToAction(nameof(PartnerRequests));
             }
 
-            if (user.IsVerified)
+            if (user.IsPartnerApproved)
             {
                 TempData["Info"] = $"{user.Name} đã được phê duyệt trước đó.";
                 return RedirectToAction(nameof(PartnerRequests));
             }
 
-            // Bước 1: Duyệt eKYC
-            user.IsVerified = true;
+            // Bước 1: Duyệt Partner
+            user.IsPartnerApproved = true;
+            user.PartnerApprovedAt = DateTime.UtcNow;
+            user.IsVerified = true; // Đồng thời duyệt eKYC
             await _context.SaveChangesAsync();
 
             // Bước 2: Kiểm tra đã có HĐ chưa, nếu chưa thì tạo mới
@@ -275,9 +417,12 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var user = await _context.Users.FindAsync(id);
             if (user != null)
             {
-                // Constraint: Cannot blacklist if there are active bookings
-                bool hasActiveBookings = await _context.Bookings.AnyAsync(b => b.UserID == id && (b.BookingStatus.Name == "Confirmed" || b.BookingStatus.Name == "Active"));
-                if (hasActiveBookings && !user.IsBlacklisted) // Only check constraint when blacklisting, allow un-blacklisting
+                // Constraint: Không thể blacklist nếu có booking đang hoạt động (không phải Completed/Cancelled)
+                bool hasActiveBookings = await _context.Bookings
+                    .AnyAsync(b => b.UserID == id && 
+                        b.BookingStatus.Name != "Completed" && 
+                        b.BookingStatus.Name != "Cancelled");
+                if (hasActiveBookings && !user.IsBlacklisted)
                 {
                     TempData["Error"] = "Không thể đưa tài khoản này vào danh sách đen vì người dùng đang có chuyến đi chưa hoàn tất. Vui lòng xử lý chuyến đi trước.";
                     return RedirectToAction(nameof(Index));
@@ -297,9 +442,12 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var user = await _context.Users.FindAsync(id);
             if (user != null)
             {
-                // Constraint: Cannot block if there are active bookings
-                bool hasActiveBookings = await _context.Bookings.AnyAsync(b => b.UserID == id && (b.BookingStatus.Name == "Confirmed" || b.BookingStatus.Name == "Active"));
-                if (hasActiveBookings && !user.IsLocked) // Only check constraint when locking
+                // Constraint: Không thể khóa nếu có booking đang hoạt động (không phải Completed/Cancelled)
+                bool hasActiveBookings = await _context.Bookings
+                    .AnyAsync(b => b.UserID == id && 
+                        b.BookingStatus.Name != "Completed" && 
+                        b.BookingStatus.Name != "Cancelled");
+                if (hasActiveBookings && !user.IsLocked)
                 {
                     TempData["Error"] = "Không thể khóa tài khoản này vì người dùng đang có chuyến đi chưa hoàn tất.";
                     return RedirectToAction(nameof(Index));

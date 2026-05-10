@@ -327,6 +327,9 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<DigitalContract>()
                 .Property(dc => dc.DepositAmount)
                 .HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<DigitalContract>()
+                .Property(dc => dc.TermsAndConditions)
+                .HasMaxLength(8000);
 
             // ═══ Driver Contract Configuration ═══
             modelBuilder.Entity<DriverContract>()

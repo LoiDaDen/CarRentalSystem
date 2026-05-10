@@ -67,6 +67,7 @@ namespace CarRentalSystem.Models
         public decimal DepositAmount { get; set; }
 
         [Required]
+        [MaxLength(8000)]
         public string TermsAndConditions { get; set; }
 
         public bool IsSignedByCustomer { get; set; }

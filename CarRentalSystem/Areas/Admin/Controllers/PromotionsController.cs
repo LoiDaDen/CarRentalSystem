@@ -22,8 +22,20 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var promotions = await _context.Promotions.OrderByDescending(p => p.PromotionID).ToListAsync();
+            var promotions = await _context.Promotions
+                .Where(p => !p.IsDeleted)
+                .OrderByDescending(p => p.PromotionID)
+                .ToListAsync();
             return View(promotions);
+        }
+
+        public async Task<IActionResult> TrashBin()
+        {
+            var deletedPromotions = await _context.Promotions
+                .Where(p => p.IsDeleted)
+                .OrderByDescending(p => p.DeletedAt)
+                .ToListAsync();
+            return View(deletedPromotions);
         }
 
         [HttpGet]
@@ -99,11 +111,48 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var promotion = await _context.Promotions.FindAsync(id);
             if (promotion != null)
             {
-                _context.Promotions.Remove(promotion);
+                promotion.IsDeleted = true;
+                promotion.DeletedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Đã xóa mã khuyến mãi.";
+                TempData["Success"] = "Đã chuyển vào thùng rác.";
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var promotion = await _context.Promotions.FindAsync(id);
+            if (promotion != null)
+            {
+                promotion.IsDeleted = false;
+                promotion.DeletedAt = null;
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Đã khôi phục mã khuyến mãi.";
+            }
+            return RedirectToAction(nameof(TrashBin));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> PermanentDelete(int id)
+        {
+            var promotion = await _context.Promotions.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(p => p.PromotionID == id && p.IsDeleted);
+
+            if (promotion != null)
+            {
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM Promotions WHERE PromotionID = {0}", id);
+                TempData["Success"] = "Đã xóa vĩnh viễn.";
+            }
+            return RedirectToAction(nameof(TrashBin));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EmptyTrash()
+        {
+            await _context.Database.ExecuteSqlRawAsync("DELETE FROM Promotions WHERE IsDeleted = 1");
+            TempData["Success"] = "Đã xóa vĩnh viễn tất cả mã khuyến mãi trong thùng rác.";
+            return RedirectToAction(nameof(TrashBin));
         }
 
         [HttpPost]

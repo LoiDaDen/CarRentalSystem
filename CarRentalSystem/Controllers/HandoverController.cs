@@ -25,6 +25,46 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Index(int bookingId)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var booking = await _context.Bookings
+                .Include(b => b.Car)
+                .ThenInclude(c => c.CarBrand)
+                .FirstOrDefaultAsync(b => b.BookingID == bookingId && b.UserID == userId);
+
+            if (booking == null) return NotFound("Không tìm thấy chuyến đi.");
+
+            var handoverRecords = await _context.HandoverRecords
+                .Where(h => h.BookingID == bookingId && !h.IsDeleted)
+                .OrderBy(h => h.RecordDate)
+                .ToListAsync();
+
+            ViewBag.Booking = booking;
+            ViewBag.HandoverRecords = handoverRecords;
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewRecord(int id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var record = await _context.HandoverRecords
+                .Include(h => h.Booking)
+                .ThenInclude(b => b.Car)
+                .ThenInclude(c => c.CarBrand)
+                .FirstOrDefaultAsync(h => h.HandoverID == id && h.Booking.UserID == userId);
+
+            if (record == null) return NotFound("Không tìm thấy biên bản.");
+
+            return View(record);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Capture(int bookingId, string type)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -43,6 +83,7 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Submit(int BookingID, string Type, int Odo, string FuelLevel, 
             IFormFile? imgFront, IFormFile? imgBack, IFormFile? imgLeft, IFormFile? imgRight, IFormFile? imgInside, string? SignatureBase64)
         {
