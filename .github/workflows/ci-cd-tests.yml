@@ -39,24 +39,32 @@ jobs:
         file: ./Dockerfile
 
     - name: "🔍 Trivy: Docker Image Vulnerability Scan"
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@v0.28.0
       with:
         image-ref: 'carrental-scan:latest'
         format: 'sarif'
         output: 'trivy-results.sarif'
         severity: 'CRITICAL,HIGH,MEDIUM'
         exit-code: '0'
-        hide-progress: false
+
+    - name: "🔍 Check if Image SARIF exists"
+      id: check_image_sarif
+      run: |
+        if [ -f "trivy-results.sarif" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: "🔍 Upload Trivy SARIF to GitHub Security"
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      if: steps.check_image_sarif.outputs.exists == 'true'
       with:
         sarif_file: 'trivy-results.sarif'
         category: 'trivy-image-scan'
 
     - name: "🔍 Trivy: Scan source code for vulnerabilities"
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@v0.28.0
       with:
         scan-type: 'fs'
         scan-ref: '.'
@@ -64,11 +72,19 @@ jobs:
         output: 'trivy-fs-results.sarif'
         severity: 'CRITICAL,HIGH'
         exit-code: '0'
-        hide-progress: false
+
+    - name: "🔍 Check if FS SARIF exists"
+      id: check_fs_sarif
+      run: |
+        if [ -f "trivy-fs-results.sarif" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: "🔍 Upload Trivy FS SARIF to GitHub Security"
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      if: steps.check_fs_sarif.outputs.exists == 'true'
       with:
         sarif_file: 'trivy-fs-results.sarif'
         category: 'trivy-fs-scan'
