@@ -205,6 +205,12 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
 });
 
+builder.Services.AddCors(options => {
+    options.AddDefaultPolicy(policy => {
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 AuditLogServiceAccessor.ScopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
@@ -268,6 +274,7 @@ app.UseStaticFiles(new StaticFileOptions
     DefaultContentType = "text/plain"
 });
 app.UseRouting();
+app.UseCors();
 
 // ═══════════════════════════════════════════════
 // 🚦 RATE LIMITING — Chống brute force & API abuse
