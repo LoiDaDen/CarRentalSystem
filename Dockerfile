@@ -4,43 +4,24 @@
 # Stage 2: Runtime (self-contained)
 # ============================================================
 
-# ── Stage 1: Build ──────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# ── Stage 1: Publish ───────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS publish
 WORKDIR /src
 
-# Copy .csproj files first for better Docker layer caching
-COPY ["CarRentalSystem/CarRentalSystem.csproj", "CarRentalSystem/"]
-COPY ["CarRentalSystem.Tests/CarRentalSystem.Tests.csproj", "CarRentalSystem.Tests/"]
-
-# Restore dependencies (cached as a separate layer)
-RUN dotnet restore "CarRentalSystem/CarRentalSystem.csproj"
-RUN dotnet restore "CarRentalSystem.Tests/CarRentalSystem.Tests.csproj"
-
-# Copy everything else and build
+# Copy everything and publish
 COPY . .
-WORKDIR "/src/CarRentalSystem"
-
-# Build in Release mode
-RUN dotnet build "CarRentalSystem.csproj" \
-    --configuration Release \
-    --no-restore \
-    --output /app/build
-
-# ── Stage 2: Publish ───────────────────────────────────
-FROM build AS publish
 WORKDIR "/src/CarRentalSystem"
 
 RUN dotnet publish "CarRentalSystem.csproj" \
     --configuration Release \
-    --no-build \
     --output /app/publish \
     --self-contained true \
     --runtime linux-x64 \
     -p:PublishSingleFile=false \
     -p:IncludeNativeLibrariesForSelfExtract=true
 
-# ── Stage 3: Runtime ───────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# ── Stage 2: Runtime ───────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
 # ── Install SQL Server command-line tools for ef migrations ──
