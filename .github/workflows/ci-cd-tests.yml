@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'
   TEST_PROJECT_PATH: 'CarRentalSystem.Tests'
   MSBuildEnableWorkloadResolver: false
   DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: true
