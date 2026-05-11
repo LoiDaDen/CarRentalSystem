@@ -23,6 +23,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IWebHostEnvironment> _mockEnv;
         private readonly Mock<IEmailService> _mockEmailService;
         private readonly Mock<IPiiEncryptionService> _mockPiiEncryption;
+        private readonly Mock<IRecaptchaService> _mockRecaptchaService;
+        private readonly CarRentalSystem.Data.ApplicationDbContext _context;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
@@ -31,8 +33,22 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockEnv = new Mock<IWebHostEnvironment>();
             _mockEmailService = new Mock<IEmailService>();
             _mockPiiEncryption = new Mock<IPiiEncryptionService>();
+            _mockRecaptchaService = new Mock<IRecaptchaService>();
 
-            _controller = new AuthController(_mockAuthService.Object, _mockEnv.Object, _mockEmailService.Object, _mockPiiEncryption.Object);
+            // Use InMemory database for ApplicationDbContext if needed, or mock it
+            var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<CarRentalSystem.Data.ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: System.Guid.NewGuid().ToString())
+                .Options;
+            _context = new CarRentalSystem.Data.ApplicationDbContext(options);
+
+            _controller = new AuthController(
+                _mockAuthService.Object, 
+                _mockEnv.Object, 
+                _mockEmailService.Object, 
+                _mockPiiEncryption.Object,
+                _context,
+                _mockRecaptchaService.Object);
+
             _controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
@@ -72,7 +88,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                             .ReturnsAsync((User?)null);
 
             // Act
-            var result = await _controller.Login("test@user.com", "wrongpass") as ViewResult;
+            var result = await _controller.Login("test@user.com", "wrongpass", null) as ViewResult;
 
             // Assert
             result.Should().NotBeNull();
@@ -90,7 +106,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                             .ReturnsAsync(user);
 
             // Act
-            var result = await _controller.Login("test@test.com", "pass") as ViewResult;
+            var result = await _controller.Login("test@test.com", "pass", null) as ViewResult;
 
             // Assert
             result.Should().NotBeNull();
@@ -111,7 +127,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             var newUser = new User { Email = "fail@test.com", Name = "Test", PasswordHash = "x" };
 
             // Act
-            var result = await _controller.Register(newUser) as ViewResult;
+            var result = await _controller.Register(newUser, null) as ViewResult;
 
             // Assert
             result.Should().NotBeNull();
@@ -128,7 +144,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockAuthService.Setup(s => s.GetUserByEmailAsync("exist@test.com")).ReturnsAsync(existingUser);
 
             // Act
-            var result = await _controller.Register(new User { Email = "exist@test.com", Name = "Test", PasswordHash = "x" }) as ViewResult;
+            var result = await _controller.Register(new User { Email = "exist@test.com", Name = "Test", PasswordHash = "x" }, null) as ViewResult;
 
             // Assert
             result.Should().NotBeNull();

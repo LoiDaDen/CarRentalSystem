@@ -24,7 +24,8 @@ namespace CarRentalSystem.Tests.IntegrationTests
             _context = MockRepositoryHelper.CreateSeededDbContext();
 
             var userRepo = new Repository<User>(_context);
-            _authService = new AuthService(userRepo);
+            var mockPii = new Mock<IPiiEncryptionService>();
+            _authService = new AuthService(userRepo, mockPii.Object);
         }
 
         // =============================================

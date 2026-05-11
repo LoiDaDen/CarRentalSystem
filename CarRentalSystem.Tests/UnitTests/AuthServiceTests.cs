@@ -51,7 +51,8 @@ namespace CarRentalSystem.Tests.UnitTests
             };
 
             var userRepo = MockRepositoryHelper.Create(_users);
-            _authService = new AuthService(userRepo.Object);
+            var mockPii = new Mock<IPiiEncryptionService>();
+            _authService = new AuthService(userRepo.Object, mockPii.Object);
         }
 
         // =============================================
