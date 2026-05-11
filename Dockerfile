@@ -60,20 +60,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV PATH="$PATH:/opt/mssql-tools18/bin"
 
-# Create non-root user for security
-RUN groupadd --gid 1000 appgroup \
-    && useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
-
+# Use the built-in 'app' user provided by Microsoft (.NET 8+)
 # Copy published output
 COPY --from=publish /app/publish .
 
-# Copy EF Core tools
-RUN dotnet tool install --global dotnet-ef --version 10.0.* || true
-ENV PATH="$PATH:/root/.dotnet/tools"
+# Copy EF Core tools (optional, usually not needed in runtime unless doing migrations)
+# RUN dotnet tool install --global dotnet-ef --version 10.0.* || true
+# ENV PATH="$PATH:/root/.dotnet/tools"
 
-# Set ownership
-RUN chown -R 1000:1000 /app
-USER appuser
+# Set ownership to the built-in 'app' user
+RUN chown -R app:app /app
+USER app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
