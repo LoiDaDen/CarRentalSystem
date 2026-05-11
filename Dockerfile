@@ -5,7 +5,7 @@
 # ============================================================
 
 # ── Stage 1: Publish ───────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS publish
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 WORKDIR /src
 
 # Copy everything and publish
@@ -21,7 +21,7 @@ RUN dotnet publish "CarRentalSystem.csproj" \
     -p:IncludeNativeLibrariesForSelfExtract=true
 
 # ── Stage 2: Runtime ───────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # ── Install SQL Server command-line tools for ef migrations ──
