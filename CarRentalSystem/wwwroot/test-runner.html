@@ -1,538 +1,856 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <title>🧪 CarRental — Full Auto Test Runner</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #0a0a16; color: #e0e0e0; min-height: 100vh; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a16;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
 
         .header {
             background: linear-gradient(135deg, #0f1629 0%, #1a1a3e 50%, #0f1629 100%);
-            padding: 20px 32px; border-bottom: 1px solid rgba(99,102,241,0.2);
-            display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 50;
+            padding: 20px 32px;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
             backdrop-filter: blur(10px);
         }
-        .logo { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #6366f1, #a855f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .badge { padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }
-        .badge.waiting { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
-        .badge.running { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); animation: pulse 1s infinite; }
-        .badge.done { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
-        .badge.fail { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-        .progress-bar { flex: 1; height: 6px; background: #1e1e3a; border-radius: 3px; overflow: hidden; margin: 0 12px; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); border-radius: 3px; transition: width 0.3s; width: 0%; }
+        .logo {
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .badge {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.waiting {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .badge.running {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            animation: pulse 1s infinite;
+        }
+
+        .badge.done {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .badge.fail {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.5
+            }
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: #1e1e3a;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 0 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            border-radius: 3px;
+            transition: width 0.3s;
+            width: 0%;
+        }
 
         .btn {
             background: linear-gradient(135deg, #6366f1, #7c3aed);
-            color: #fff; border: none; padding: 10px 28px; border-radius: 8px;
-            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+            color: #fff;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
         }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
 
         .stats-bar {
-            display: flex; gap: 12px; padding: 16px 32px; background: rgba(15,22,41,0.8);
-            border-bottom: 1px solid rgba(99,102,241,0.1);
+            display: flex;
+            gap: 12px;
+            padding: 16px 32px;
+            background: rgba(15, 22, 41, 0.8);
+            border-bottom: 1px solid rgba(99, 102, 241, 0.1);
         }
-        .stat { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #111827; border-radius: 8px; border: 1px solid #1e293b; }
-        .stat .num { font-size: 22px; font-weight: 800; }
-        .stat .lbl { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-        .stat.total .num { color: #818cf8; }
-        .stat.pass .num { color: #4ade80; }
-        .stat.fail .num { color: #f87171; }
-        .stat.skip .num { color: #fbbf24; }
-        .stat.time .num { color: #38bdf8; font-size: 16px; }
 
-        .main { display: flex; height: calc(100vh - 130px); }
-        .test-panel { flex: 1; overflow-y: auto; padding: 16px 24px; }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #111827;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+        }
+
+        .stat .num {
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .stat .lbl {
+            font-size: 10px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat.total .num {
+            color: #818cf8;
+        }
+
+        .stat.pass .num {
+            color: #4ade80;
+        }
+
+        .stat.fail .num {
+            color: #f87171;
+        }
+
+        .stat.skip .num {
+            color: #fbbf24;
+        }
+
+        .stat.time .num {
+            color: #38bdf8;
+            font-size: 16px;
+        }
+
+        .main {
+            display: flex;
+            height: calc(100vh - 130px);
+        }
+
+        .test-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 24px;
+        }
+
         .preview-panel {
-            width: 42%; border-left: 1px solid rgba(99,102,241,0.15);
-            display: flex; flex-direction: column; background: #0d1117;
+            width: 42%;
+            border-left: 1px solid rgba(99, 102, 241, 0.15);
+            display: flex;
+            flex-direction: column;
+            background: #0d1117;
         }
-        .preview-header {
-            padding: 10px 16px; background: #161b22; border-bottom: 1px solid #21262d;
-            display: flex; align-items: center; gap: 8px; font-size: 12px;
-        }
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .dot.r { background: #f87171; } .dot.y { background: #fbbf24; } .dot.g { background: #4ade80; }
-        .url-bar { flex: 1; background: #0d1117; padding: 4px 12px; border-radius: 4px; color: #38bdf8; font-size: 11px; font-family: monospace; border: 1px solid #21262d; }
-        .preview-panel iframe { flex: 1; border: none; background: #fff; }
 
-        .group { margin-bottom: 20px; }
-        .group-header {
-            font-size: 13px; font-weight: 700; color: #94a3b8; margin-bottom: 8px;
-            display: flex; align-items: center; gap: 8px; padding: 4px 0;
-            border-bottom: 1px solid rgba(148,163,184,0.1);
+        .preview-header {
+            padding: 10px 16px;
+            background: #161b22;
+            border-bottom: 1px solid #21262d;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
         }
-        .group-header .count { font-size: 10px; background: #1e293b; padding: 2px 8px; border-radius: 10px; }
-        .group-stats { margin-left: auto; font-size: 10px; }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot.r {
+            background: #f87171;
+        }
+
+        .dot.y {
+            background: #fbbf24;
+        }
+
+        .dot.g {
+            background: #4ade80;
+        }
+
+        .url-bar {
+            flex: 1;
+            background: #0d1117;
+            padding: 4px 12px;
+            border-radius: 4px;
+            color: #38bdf8;
+            font-size: 11px;
+            font-family: monospace;
+            border: 1px solid #21262d;
+        }
+
+        .preview-panel iframe {
+            flex: 1;
+            border: none;
+            background: #fff;
+        }
+
+        .group {
+            margin-bottom: 20px;
+        }
+
+        .group-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .group-header .count {
+            font-size: 10px;
+            background: #1e293b;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .group-stats {
+            margin-left: auto;
+            font-size: 10px;
+        }
 
         .t-item {
-            background: #111827; border-radius: 6px; padding: 10px 14px; margin-bottom: 4px;
-            display: flex; align-items: center; gap: 10px;
-            border: 1px solid #1e293b; transition: all 0.2s; font-size: 13px;
+            background: #111827;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #1e293b;
+            transition: all 0.2s;
+            font-size: 13px;
         }
-        .t-item.running { border-color: #f59e0b; background: linear-gradient(90deg, rgba(245,158,11,0.06), #111827); }
-        .t-item.passed { border-color: rgba(34,197,94,0.3); background: linear-gradient(90deg, rgba(34,197,94,0.04), #111827); }
-        .t-item.failed { border-color: rgba(239,68,68,0.3); background: linear-gradient(90deg, rgba(239,68,68,0.04), #111827); }
-        .t-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
-        .t-item.waiting .t-icon { background: #1e293b; }
-        .t-item.running .t-icon { background: rgba(245,158,11,0.2); animation: pulse 0.6s infinite; }
-        .t-item.passed .t-icon { background: rgba(34,197,94,0.2); }
-        .t-item.failed .t-icon { background: rgba(239,68,68,0.2); }
-        .t-name { flex: 1; }
-        .t-name .method { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-right: 4px; }
-        .t-name .method.get { background: rgba(34,197,94,0.15); color: #4ade80; }
-        .t-name .method.post { background: rgba(245,158,11,0.15); color: #fbbf24; }
-        .t-name .method.api { background: rgba(56,189,248,0.15); color: #38bdf8; }
-        .t-name .desc { color: #64748b; font-size: 10px; display: block; margin-top: 1px; }
-        .t-time { font-size: 11px; color: #64748b; min-width: 50px; text-align: right; font-family: monospace; }
-        .t-status { font-size: 11px; font-weight: 600; min-width: 45px; text-align: right; }
-        .t-item.passed .t-status { color: #4ade80; }
-        .t-item.failed .t-status { color: #f87171; }
+
+        .t-item.running {
+            border-color: #f59e0b;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.06), #111827);
+        }
+
+        .t-item.passed {
+            border-color: rgba(34, 197, 94, 0.3);
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.04), #111827);
+        }
+
+        .t-item.failed {
+            border-color: rgba(239, 68, 68, 0.3);
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.04), #111827);
+        }
+
+        .t-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .t-item.waiting .t-icon {
+            background: #1e293b;
+        }
+
+        .t-item.running .t-icon {
+            background: rgba(245, 158, 11, 0.2);
+            animation: pulse 0.6s infinite;
+        }
+
+        .t-item.passed .t-icon {
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .t-item.failed .t-icon {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .t-name {
+            flex: 1;
+        }
+
+        .t-name .method {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-right: 4px;
+        }
+
+        .t-name .method.get {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+        }
+
+        .t-name .method.post {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+        }
+
+        .t-name .method.api {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+        }
+
+        .t-name .desc {
+            color: #64748b;
+            font-size: 10px;
+            display: block;
+            margin-top: 1px;
+        }
+
+        .t-time {
+            font-size: 11px;
+            color: #64748b;
+            min-width: 50px;
+            text-align: right;
+            font-family: monospace;
+        }
+
+        .t-status {
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .t-item.passed .t-status {
+            color: #4ade80;
+        }
+
+        .t-item.failed .t-status {
+            color: #f87171;
+        }
     </style>
 </head>
+
 <body>
-<div class="header">
-    <span class="logo">🧪 CarRental Test Runner</span>
-    <span class="badge waiting" id="badge">READY</span>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-    <span id="progressText" style="font-size:12px;color:#64748b;min-width:50px">0/0</span>
-    <button class="btn" id="btnStart" onclick="runAllTests()">▶ Bắt đầu Test</button>
-</div>
-
-<div class="stats-bar">
-    <div class="stat total"><div><div class="num" id="sTotal">0</div><div class="lbl">Total</div></div></div>
-    <div class="stat pass"><div><div class="num" id="sPass">0</div><div class="lbl">Passed</div></div></div>
-    <div class="stat fail"><div><div class="num" id="sFail">0</div><div class="lbl">Failed</div></div></div>
-    <div class="stat skip"><div><div class="num" id="sSkip">0</div><div class="lbl">Skipped</div></div></div>
-    <div class="stat time"><div><div class="num" id="sTime">0.0s</div><div class="lbl">Elapsed</div></div></div>
-</div>
-
-<div class="main">
-    <div class="test-panel" id="testPanel"></div>
-    <div class="preview-panel">
-        <div class="preview-header">
-            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-            <span class="url-bar" id="urlBar">about:blank</span>
+    <div class="header">
+        <span class="logo">🧪 CarRental Test Runner</span>
+        <span class="badge waiting" id="badge">READY</span>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
         </div>
-        <iframe id="preview" src="about:blank"></iframe>
+        <span id="progressText" style="font-size:12px;color:#64748b;min-width:50px">0/0</span>
+        <button class="btn" id="btnStart" onclick="runAllTests()">▶ Bắt đầu Test</button>
     </div>
-</div>
 
-<script>
-const B = 'http://localhost:5168';
-const ok = (h, s) => s === 200;
-const ok2 = (h, s) => s === 200 || s === 302;
-const has = (text) => (h, s) => s === 200 && h.includes(text);
-const len = (min) => (h, s) => s === 200 && h.length > min;
-const is404 = (h, s) => s === 404;
+    <div class="stats-bar">
+        <div class="stat total">
+            <div>
+                <div class="num" id="sTotal">0</div>
+                <div class="lbl">Total</div>
+            </div>
+        </div>
+        <div class="stat pass">
+            <div>
+                <div class="num" id="sPass">0</div>
+                <div class="lbl">Passed</div>
+            </div>
+        </div>
+        <div class="stat fail">
+            <div>
+                <div class="num" id="sFail">0</div>
+                <div class="lbl">Failed</div>
+            </div>
+        </div>
+        <div class="stat skip">
+            <div>
+                <div class="num" id="sSkip">0</div>
+                <div class="lbl">Skipped</div>
+            </div>
+        </div>
+        <div class="stat time">
+            <div>
+                <div class="num" id="sTime">0.0s</div>
+                <div class="lbl">Elapsed</div>
+            </div>
+        </div>
+    </div>
 
-const tests = [
-    // ═══════════════════════════════════════
-    // 🏠 TRANG CHỦ
-    // ═══════════════════════════════════════
-    { g:'🏠 Trang chủ (Home)', m:'GET', n:'Trang chủ load OK', u:'/', c:has('CarRental'), d:'Chứa title "CarRental"' },
-    { g:'🏠 Trang chủ (Home)', m:'GET', n:'Có section xe nổi bật', u:'/', c:len(1000), d:'Content > 1KB' },
-    { g:'🏠 Trang chủ (Home)', m:'GET', n:'Có CSS stylesheet', u:'/', c:has('<link'), d:'Có tag <link>' },
-    { g:'🏠 Trang chủ (Home)', m:'GET', n:'Có JavaScript', u:'/', c:has('<script'), d:'Có tag <script>' },
-    { g:'🏠 Trang chủ (Home)', m:'GET', n:'Có navigation bar', u:'/', c:has('nav'), d:'Có tag <nav>' },
+    <div class="main">
+        <div class="test-panel" id="testPanel"></div>
+        <div class="preview-panel">
+            <div class="preview-header">
+                <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+                <span class="url-bar" id="urlBar">about:blank</span>
+            </div>
+            <iframe id="preview" src="about:blank"></iframe>
+        </div>
+    </div>
 
-    // ═══════════════════════════════════════
-    // 🔑 AUTH MODULE
-    // ═══════════════════════════════════════
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'GET', n:'Trang Login load', u:'/Auth/Login', c:ok, d:'HTTP 200' },
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'GET', n:'Login có form Email', u:'/Auth/Login', c:has('Email'), d:'Chứa "Email"' },
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'GET', n:'Login có form Password', u:'/Auth/Login', c:has('assword'), d:'Chứa "Password"' },
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'GET', n:'Trang Register load', u:'/Auth/Register', c:ok, d:'HTTP 200' },
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'GET', n:'Register có trường Email', u:'/Auth/Register', c:has('Email'), d:'Chứa "Email"' },
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'GET', n:'Trang RegistrationSuccess', u:'/Auth/RegistrationSuccess', c:ok, d:'HTTP 200' },
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'GET', n:'Trang AccessDenied', u:'/Auth/AccessDenied', c:ok, d:'HTTP 200' },
-    { g:'🔑 Auth — Đăng nhập / Đăng ký', m:'POST', n:'Login sai thông tin → trả lỗi', u:'/Auth/Login', c:ok2, d:'POST với body rỗng', body:'email=wrong&password=wrong' },
+    <script>
+        const B = 'https://localhost:7285';
+        const ok = (h, s) => s === 200;
+        const ok2 = (h, s) => s === 200 || s === 302;
+        const has = (text) => (h, s) => s === 200 && h.includes(text);
+        const len = (min) => (h, s) => s === 200 && h.length > min;
+        const is404 = (h, s) => s === 404;
 
-    // ═══════════════════════════════════════
-    // 🚗 CAR MODULE — CRUD
-    // ═══════════════════════════════════════
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Danh sách xe (Index)', u:'/Car', c:ok, d:'HTTP 200' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Danh sách xe có content', u:'/Car', c:len(2000), d:'Content > 2KB' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Chi tiết xe ID=1', u:'/Car/Details/1', c:ok, d:'HTTP 200' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Chi tiết xe ID=2', u:'/Car/Details/2', c:ok, d:'HTTP 200' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Chi tiết xe ID=3', u:'/Car/Details/3', c:ok, d:'HTTP 200' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Chi tiết xe ID=4', u:'/Car/Details/4', c:ok, d:'HTTP 200' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Chi tiết xe ID=5', u:'/Car/Details/5', c:ok, d:'HTTP 200' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Xe không tồn tại → 404', u:'/Car/Details/99999', c:is404, d:'HTTP 404' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Lọc xe theo brand', u:'/Car?brandId=1', c:ok, d:'HTTP 200 + filter' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Lọc xe theo location', u:'/Car?locationId=1', c:ok, d:'HTTP 200 + filter' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'GET', n:'Tìm kiếm xe', u:'/Car?search=Toyota', c:ok, d:'HTTP 200 + search' },
-    { g:'🚗 Car — Danh sách & Chi tiết', m:'API', n:'API BusyDates xe 1', u:'/Car/BusyDates?carId=1', c:ok2, d:'JSON busy dates' },
+        const tests = [
+            // ═══════════════════════════════════════
+            // 🏠 TRANG CHỦ
+            // ═══════════════════════════════════════
+            { g: '🏠 Trang chủ (Home)', m: 'GET', n: 'Trang chủ load OK', u: '/', c: has('CarRental'), d: 'Chứa title "CarRental"' },
+            { g: '🏠 Trang chủ (Home)', m: 'GET', n: 'Có section xe nổi bật', u: '/', c: len(1000), d: 'Content > 1KB' },
+            { g: '🏠 Trang chủ (Home)', m: 'GET', n: 'Có CSS stylesheet', u: '/', c: has('<link'), d: 'Có tag <link>' },
+            { g: '🏠 Trang chủ (Home)', m: 'GET', n: 'Có JavaScript', u: '/', c: has('<script'), d: 'Có tag <script>' },
+            { g: '🏠 Trang chủ (Home)', m: 'GET', n: 'Có navigation bar', u: '/', c: has('nav'), d: 'Có tag <nav>' },
 
-    // ═══════════════════════════════════════
-    // 🗺️ BẢN ĐỒ TÌM KIẾM
-    // ═══════════════════════════════════════
-    { g:'🗺️ Bản đồ & Map Search', m:'GET', n:'MapSearch load', u:'/Car/MapSearch', c:ok, d:'HTTP 200' },
-    { g:'🗺️ Bản đồ & Map Search', m:'GET', n:'MapSearch có Leaflet', u:'/Car/MapSearch', c:has('leaflet'), d:'Chứa "leaflet"' },
-    { g:'🗺️ Bản đồ & Map Search', m:'GET', n:'MapSearch with feature', u:'/Car/MapSearch?feature=premium', c:ok, d:'HTTP 200' },
+            // ═══════════════════════════════════════
+            // 🔑 AUTH MODULE
+            // ═══════════════════════════════════════
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'GET', n: 'Trang Login load', u: '/Auth/Login', c: ok, d: 'HTTP 200' },
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'GET', n: 'Login có form Email', u: '/Auth/Login', c: has('Email'), d: 'Chứa "Email"' },
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'GET', n: 'Login có form Password', u: '/Auth/Login', c: has('assword'), d: 'Chứa "Password"' },
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'GET', n: 'Trang Register load', u: '/Auth/Register', c: ok, d: 'HTTP 200' },
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'GET', n: 'Register có trường Email', u: '/Auth/Register', c: has('Email'), d: 'Chứa "Email"' },
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'GET', n: 'Trang RegistrationSuccess', u: '/Auth/RegistrationSuccess', c: ok, d: 'HTTP 200' },
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'GET', n: 'Trang AccessDenied', u: '/Auth/AccessDenied', c: ok, d: 'HTTP 200' },
+            { g: '🔑 Auth — Đăng nhập / Đăng ký', m: 'POST', n: 'Login sai thông tin → trả lỗi', u: '/Auth/Login', c: ok2, d: 'POST với body rỗng', body: 'email=wrong&password=wrong' },
 
-    // ═══════════════════════════════════════
-    // 🛒 GIỎ HÀNG (Cart)
-    // ═══════════════════════════════════════
-    { g:'🛒 Giỏ hàng (Cart)', m:'GET', n:'Trang giỏ hàng load', u:'/Cart', c:ok, d:'HTTP 200' },
-    { g:'🛒 Giỏ hàng (Cart)', m:'API', n:'API GetCartCount', u:'/Cart/GetCartCount', c:ok2, d:'Trả số lượng cart' },
+            // ═══════════════════════════════════════
+            // 🚗 CAR MODULE — CRUD
+            // ═══════════════════════════════════════
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Danh sách xe (Index)', u: '/Car', c: ok, d: 'HTTP 200' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Danh sách xe có content', u: '/Car', c: len(2000), d: 'Content > 2KB' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Chi tiết xe ID=1', u: '/Car/Details/1', c: ok, d: 'HTTP 200' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Chi tiết xe ID=2', u: '/Car/Details/2', c: ok, d: 'HTTP 200' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Chi tiết xe ID=3', u: '/Car/Details/3', c: ok, d: 'HTTP 200' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Chi tiết xe ID=4', u: '/Car/Details/4', c: ok, d: 'HTTP 200' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Chi tiết xe ID=5', u: '/Car/Details/5', c: ok, d: 'HTTP 200' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Xe không tồn tại → 404', u: '/Car/Details/99999', c: is404, d: 'HTTP 404' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Lọc xe theo brand', u: '/Car?brandId=1', c: ok, d: 'HTTP 200 + filter' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Lọc xe theo location', u: '/Car?locationId=1', c: ok, d: 'HTTP 200 + filter' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'GET', n: 'Tìm kiếm xe', u: '/Car?search=Toyota', c: ok, d: 'HTTP 200 + search' },
+            { g: '🚗 Car — Danh sách & Chi tiết', m: 'API', n: 'API BusyDates xe 1', u: '/Car/BusyDates?carId=1', c: ok2, d: 'JSON busy dates' },
 
-    // ═══════════════════════════════════════
-    // 📋 BOOKING MODULE
-    // ═══════════════════════════════════════
-    { g:'📋 Booking — Đặt xe', m:'GET', n:'MyBookings (cần auth)', u:'/Booking/MyBookings', c:ok2, d:'200 hoặc redirect login' },
-    { g:'📋 Booking — Đặt xe', m:'GET', n:'Booking Manage', u:'/Booking/Manage', c:ok2, d:'200 hoặc redirect' },
-    { g:'📋 Booking — Đặt xe', m:'GET', n:'Booking Details ID=1', u:'/Booking/Details/1', c:ok2, d:'200 hoặc redirect/404' },
+            // ═══════════════════════════════════════
+            // 🗺️ BẢN ĐỒ TÌM KIẾM
+            // ═══════════════════════════════════════
+            { g: '🗺️ Bản đồ & Map Search', m: 'GET', n: 'MapSearch load', u: '/Car/MapSearch', c: ok, d: 'HTTP 200' },
+            { g: '🗺️ Bản đồ & Map Search', m: 'GET', n: 'MapSearch có Leaflet', u: '/Car/MapSearch', c: has('leaflet'), d: 'Chứa "leaflet"' },
+            { g: '🗺️ Bản đồ & Map Search', m: 'GET', n: 'MapSearch with feature', u: '/Car/MapSearch?feature=premium', c: ok, d: 'HTTP 200' },
 
-    // ═══════════════════════════════════════
-    // 💳 PAYMENT MODULE
-    // ═══════════════════════════════════════
-    { g:'💳 Payment — Thanh toán', m:'GET', n:'Payment Success (no booking)', u:'/Payment/Success?bookingId=0', c:ok2, d:'200 hoặc redirect' },
-    { g:'💳 Payment — Thanh toán', m:'GET', n:'Payment Cancel (no booking)', u:'/Payment/Cancel?bookingId=0', c:ok2, d:'200 hoặc redirect' },
+            // ═══════════════════════════════════════
+            // 🛒 GIỎ HÀNG (Cart)
+            // ═══════════════════════════════════════
+            { g: '🛒 Giỏ hàng (Cart)', m: 'GET', n: 'Trang giỏ hàng load', u: '/Cart', c: ok, d: 'HTTP 200' },
+            { g: '🛒 Giỏ hàng (Cart)', m: 'API', n: 'API GetCartCount', u: '/Cart/GetCartCount', c: ok2, d: 'Trả số lượng cart' },
 
-    // ═══════════════════════════════════════
-    // 📄 HỢP ĐỒNG (Contract)
-    // ═══════════════════════════════════════
-    { g:'📄 Hợp đồng (Contract)', m:'GET', n:'Contract Create (cần bookingId)', u:'/Contract/Create?bookingId=1', c:ok2, d:'200 hoặc redirect' },
+            // ═══════════════════════════════════════
+            // 📋 BOOKING MODULE
+            // ═══════════════════════════════════════
+            { g: '📋 Booking — Đặt xe', m: 'GET', n: 'MyBookings (cần auth)', u: '/Booking/MyBookings', c: ok2, d: '200 hoặc redirect login' },
+            { g: '📋 Booking — Đặt xe', m: 'GET', n: 'Booking Manage', u: '/Booking/Manage', c: ok2, d: '200 hoặc redirect' },
+            { g: '📋 Booking — Đặt xe', m: 'GET', n: 'Booking Details ID=1', u: '/Booking/Details/1', c: ok2, d: '200 hoặc redirect/404' },
 
-    // ═══════════════════════════════════════
-    // 🚐 DRIVER MODULE
-    // ═══════════════════════════════════════
-    { g:'🚐 Driver — Tài xế', m:'GET', n:'Danh sách tài xế', u:'/Driver', c:ok, d:'HTTP 200' },
-    { g:'🚐 Driver — Tài xế', m:'GET', n:'Tài xế lọc location', u:'/Driver?locationId=1', c:ok, d:'HTTP 200 + filter' },
-    { g:'🚐 Driver — Tài xế', m:'GET', n:'Tài xế Profile ID=1', u:'/Driver/Profile/1', c:ok2, d:'200 hoặc 404' },
-    { g:'🚐 Driver — Tài xế', m:'GET', n:'Đăng ký tài xế (cần auth)', u:'/Driver/Register', c:ok2, d:'200 hoặc redirect' },
+            // ═══════════════════════════════════════
+            // 💳 PAYMENT MODULE
+            // ═══════════════════════════════════════
+            { g: '💳 Payment — Thanh toán', m: 'GET', n: 'Payment Success (no booking)', u: '/Payment/Success?bookingId=0', c: ok2, d: '200 hoặc redirect' },
+            { g: '💳 Payment — Thanh toán', m: 'GET', n: 'Payment Cancel (no booking)', u: '/Payment/Cancel?bookingId=0', c: ok2, d: '200 hoặc redirect' },
 
-    // ═══════════════════════════════════════
-    // 🏷️ MEMBERSHIP & VOUCHER
-    // ═══════════════════════════════════════
-    { g:'🏷️ Membership & Voucher', m:'GET', n:'Trang Membership', u:'/Membership', c:ok2, d:'200 hoặc redirect' },
-    { g:'🏷️ Membership & Voucher', m:'API', n:'API Check Voucher', u:'/Voucher/Check?code=TEST&totalPrice=100000', c:ok2, d:'JSON response' },
+            // ═══════════════════════════════════════
+            // 📄 HỢP ĐỒNG (Contract)
+            // ═══════════════════════════════════════
+            { g: '📄 Hợp đồng (Contract)', m: 'GET', n: 'Contract Create (cần bookingId)', u: '/Contract/Create?bookingId=1', c: ok2, d: '200 hoặc redirect' },
 
-    // ═══════════════════════════════════════
-    // 📅 LONG-TERM RENTAL
-    // ═══════════════════════════════════════
-    { g:'📅 Thuê dài hạn (LongTerm)', m:'GET', n:'Trang thuê dài hạn', u:'/LongTerm', c:ok, d:'HTTP 200' },
-    { g:'📅 Thuê dài hạn (LongTerm)', m:'GET', n:'Form yêu cầu thuê', u:'/LongTerm/RequestForm', c:ok2, d:'200 hoặc redirect' },
+            // ═══════════════════════════════════════
+            // 🚐 DRIVER MODULE
+            // ═══════════════════════════════════════
+            { g: '🚐 Driver — Tài xế', m: 'GET', n: 'Danh sách tài xế', u: '/Driver', c: ok, d: 'HTTP 200' },
+            { g: '🚐 Driver — Tài xế', m: 'GET', n: 'Tài xế lọc location', u: '/Driver?locationId=1', c: ok, d: 'HTTP 200 + filter' },
+            { g: '🚐 Driver — Tài xế', m: 'GET', n: 'Tài xế Profile ID=1', u: '/Driver/Profile/1', c: ok2, d: '200 hoặc 404' },
+            { g: '🚐 Driver — Tài xế', m: 'GET', n: 'Đăng ký tài xế (cần auth)', u: '/Driver/Register', c: ok2, d: '200 hoặc redirect' },
 
-    // ═══════════════════════════════════════
-    // 🤖 CHATBOT
-    // ═══════════════════════════════════════
-    { g:'🤖 Chat — AI Chatbot', m:'POST', n:'Chat API gửi message', u:'/Chat/Send', c:ok2, d:'POST JSON', body:JSON.stringify({message:'Xin chào'}), json:true },
+            // ═══════════════════════════════════════
+            // 🏷️ MEMBERSHIP & VOUCHER
+            // ═══════════════════════════════════════
+            { g: '🏷️ Membership & Voucher', m: 'GET', n: 'Trang Membership', u: '/Membership', c: ok2, d: '200 hoặc redirect' },
+            { g: '🏷️ Membership & Voucher', m: 'API', n: 'API Check Voucher', u: '/Voucher/Check?code=TEST&totalPrice=100000', c: ok2, d: 'JSON response' },
 
-    // ═══════════════════════════════════════
-    // 📡 TRACKING MODULE
-    // ═══════════════════════════════════════
-    { g:'📡 Tracking — Theo dõi xe', m:'GET', n:'Tracking Map', u:'/Tracking/Map', c:ok2, d:'200 hoặc redirect' },
-    { g:'📡 Tracking — Theo dõi xe', m:'API', n:'API GetCarLocation 1', u:'/Tracking/GetCarLocation?carId=1', c:ok2, d:'JSON location' },
+            // ═══════════════════════════════════════
+            // 📅 LONG-TERM RENTAL
+            // ═══════════════════════════════════════
+            { g: '📅 Thuê dài hạn (LongTerm)', m: 'GET', n: 'Trang thuê dài hạn', u: '/LongTerm', c: ok, d: 'HTTP 200' },
+            { g: '📅 Thuê dài hạn (LongTerm)', m: 'GET', n: 'Form yêu cầu thuê', u: '/LongTerm/RequestForm', c: ok2, d: '200 hoặc redirect' },
 
-    // ═══════════════════════════════════════
-    // ⚠️ ALERTS
-    // ═══════════════════════════════════════
-    { g:'⚠️ Alerts — Cảnh báo', m:'GET', n:'Alert Index', u:'/Alert', c:ok2, d:'200 hoặc redirect' },
+            // ═══════════════════════════════════════
+            // 🤖 CHATBOT
+            // ═══════════════════════════════════════
+            { g: '🤖 Chat — AI Chatbot', m: 'POST', n: 'Chat API gửi message', u: '/Chat/Send', c: ok2, d: 'POST JSON', body: JSON.stringify({ message: 'Xin chào' }), json: true },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Dashboard
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Dashboard', m:'GET', n:'Admin Dashboard', u:'/Admin/Dashboard', c:ok2, d:'200 hoặc redirect' },
+            // ═══════════════════════════════════════
+            // 📡 TRACKING MODULE
+            // ═══════════════════════════════════════
+            { g: '📡 Tracking — Theo dõi xe', m: 'GET', n: 'Tracking Map', u: '/Tracking/Map', c: ok2, d: '200 hoặc redirect' },
+            { g: '📡 Tracking — Theo dõi xe', m: 'API', n: 'API GetCarLocation 1', u: '/Tracking/GetCarLocation?carId=1', c: ok2, d: 'JSON location' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Car CRUD
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Quản lý xe (CRUD)', m:'GET', n:'Manage All Cars', u:'/Admin/Car/Manage', c:ok2, d:'Danh sách xe' },
-    { g:'🔧 Admin — Quản lý xe (CRUD)', m:'GET', n:'Manage filter Brand', u:'/Admin/Car/Manage?brandId=1', c:ok2, d:'Filter by brand' },
-    { g:'🔧 Admin — Quản lý xe (CRUD)', m:'GET', n:'Manage filter Location', u:'/Admin/Car/Manage?locationId=1', c:ok2, d:'Filter by location' },
-    { g:'🔧 Admin — Quản lý xe (CRUD)', m:'GET', n:'Create Car form', u:'/Admin/Car/Create', c:ok2, d:'Form thêm xe' },
-    { g:'🔧 Admin — Quản lý xe (CRUD)', m:'GET', n:'Edit Car ID=1', u:'/Admin/Car/Edit/1', c:ok2, d:'Form sửa xe' },
-    { g:'🔧 Admin — Quản lý xe (CRUD)', m:'GET', n:'Edit Car ID=2', u:'/Admin/Car/Edit/2', c:ok2, d:'Form sửa xe' },
+            // ═══════════════════════════════════════
+            // ⚠️ ALERTS
+            // ═══════════════════════════════════════
+            { g: '⚠️ Alerts — Cảnh báo', m: 'GET', n: 'Alert Index', u: '/Alert', c: ok2, d: '200 hoặc redirect' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Booking
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Quản lý Booking', m:'GET', n:'Booking Index', u:'/Admin/Booking', c:ok2, d:'Danh sách booking' },
-    { g:'🔧 Admin — Quản lý Booking', m:'GET', n:'Booking filter Pending', u:'/Admin/Booking?status=Pending', c:ok2, d:'Filter Pending' },
-    { g:'🔧 Admin — Quản lý Booking', m:'GET', n:'Booking filter Confirmed', u:'/Admin/Booking?status=Confirmed', c:ok2, d:'Filter Confirmed' },
-    { g:'🔧 Admin — Quản lý Booking', m:'API', n:'API Recent Notifications', u:'/Admin/Booking/GetRecentNotifications', c:ok2, d:'JSON notifications' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Dashboard
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Dashboard', m: 'GET', n: 'Admin Dashboard', u: '/Admin/Dashboard', c: ok2, d: '200 hoặc redirect' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Users
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Quản lý Users', m:'GET', n:'User Management', u:'/Admin/User', c:ok2, d:'Danh sách users' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Car CRUD
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Quản lý xe (CRUD)', m: 'GET', n: 'Manage All Cars', u: '/Admin/Car/Manage', c: ok2, d: 'Danh sách xe' },
+            { g: '🔧 Admin — Quản lý xe (CRUD)', m: 'GET', n: 'Manage filter Brand', u: '/Admin/Car/Manage?brandId=1', c: ok2, d: 'Filter by brand' },
+            { g: '🔧 Admin — Quản lý xe (CRUD)', m: 'GET', n: 'Manage filter Location', u: '/Admin/Car/Manage?locationId=1', c: ok2, d: 'Filter by location' },
+            { g: '🔧 Admin — Quản lý xe (CRUD)', m: 'GET', n: 'Create Car form', u: '/Admin/Car/Create', c: ok2, d: 'Form thêm xe' },
+            { g: '🔧 Admin — Quản lý xe (CRUD)', m: 'GET', n: 'Edit Car ID=1', u: '/Admin/Car/Edit/1', c: ok2, d: 'Form sửa xe' },
+            { g: '🔧 Admin — Quản lý xe (CRUD)', m: 'GET', n: 'Edit Car ID=2', u: '/Admin/Car/Edit/2', c: ok2, d: 'Form sửa xe' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Lookups (Danh mục)
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Lookups (Danh mục)', m:'GET', n:'Lookups Index', u:'/Admin/Lookups', c:ok2, d:'Quản lý danh mục' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Booking
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Quản lý Booking', m: 'GET', n: 'Booking Index', u: '/Admin/Booking', c: ok2, d: 'Danh sách booking' },
+            { g: '🔧 Admin — Quản lý Booking', m: 'GET', n: 'Booking filter Pending', u: '/Admin/Booking?status=Pending', c: ok2, d: 'Filter Pending' },
+            { g: '🔧 Admin — Quản lý Booking', m: 'GET', n: 'Booking filter Confirmed', u: '/Admin/Booking?status=Confirmed', c: ok2, d: 'Filter Confirmed' },
+            { g: '🔧 Admin — Quản lý Booking', m: 'API', n: 'API Recent Notifications', u: '/Admin/Booking/GetRecentNotifications', c: ok2, d: 'JSON notifications' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Reports
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Báo cáo (Reports)', m:'GET', n:'Reports Dashboard', u:'/Admin/Reports', c:ok2, d:'Báo cáo thống kê' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Users
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Quản lý Users', m: 'GET', n: 'User Management', u: '/Admin/User', c: ok2, d: 'Danh sách users' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Digital Contracts
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Hợp đồng số', m:'GET', n:'DigitalContract Index', u:'/Admin/DigitalContract', c:ok2, d:'Danh sách hợp đồng' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Lookups (Danh mục)
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Lookups (Danh mục)', m: 'GET', n: 'Lookups Index', u: '/Admin/Lookups', c: ok2, d: 'Quản lý danh mục' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Drivers
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Quản lý Tài xế', m:'GET', n:'Driver Index', u:'/Admin/Driver', c:ok2, d:'Danh sách tài xế' },
-    { g:'🔧 Admin — Quản lý Tài xế', m:'GET', n:'Driver filter Approved', u:'/Admin/Driver?status=Approved', c:ok2, d:'Filter Approved' },
-    { g:'🔧 Admin — Quản lý Tài xế', m:'GET', n:'Driver Details ID=1', u:'/Admin/Driver/Details/1', c:ok2, d:'Chi tiết tài xế' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Reports
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Báo cáo (Reports)', m: 'GET', n: 'Reports Dashboard', u: '/Admin/Reports', c: ok2, d: 'Báo cáo thống kê' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Car Approval
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Duyệt xe Partner', m:'GET', n:'CarApproval Index', u:'/Admin/CarApproval', c:ok2, d:'Danh sách xe chờ duyệt' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Digital Contracts
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Hợp đồng số', m: 'GET', n: 'DigitalContract Index', u: '/Admin/DigitalContract', c: ok2, d: 'Danh sách hợp đồng' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Contacts
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Liên hệ', m:'GET', n:'Contacts Index', u:'/Admin/Contacts', c:ok2, d:'Danh sách liên hệ' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Drivers
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Quản lý Tài xế', m: 'GET', n: 'Driver Index', u: '/Admin/Driver', c: ok2, d: 'Danh sách tài xế' },
+            { g: '🔧 Admin — Quản lý Tài xế', m: 'GET', n: 'Driver filter Approved', u: '/Admin/Driver?status=Approved', c: ok2, d: 'Filter Approved' },
+            { g: '🔧 Admin — Quản lý Tài xế', m: 'GET', n: 'Driver Details ID=1', u: '/Admin/Driver/Details/1', c: ok2, d: 'Chi tiết tài xế' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Promotions
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Khuyến mãi', m:'GET', n:'Promotions Index', u:'/Admin/Promotions', c:ok2, d:'Danh sách khuyến mãi' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Car Approval
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Duyệt xe Partner', m: 'GET', n: 'CarApproval Index', u: '/Admin/CarApproval', c: ok2, d: 'Danh sách xe chờ duyệt' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Maintenance
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Bảo trì', m:'GET', n:'Maintenance Index', u:'/Admin/Maintenance', c:ok2, d:'Lịch sử bảo trì' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Contacts
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Liên hệ', m: 'GET', n: 'Contacts Index', u: '/Admin/Contacts', c: ok2, d: 'Danh sách liên hệ' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Payment
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Thanh toán', m:'GET', n:'Payment Index', u:'/Admin/Payment', c:ok2, d:'Danh sách thanh toán' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Promotions
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Khuyến mãi', m: 'GET', n: 'Promotions Index', u: '/Admin/Promotions', c: ok2, d: 'Danh sách khuyến mãi' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Reviews
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Đánh giá', m:'GET', n:'Reviews Index', u:'/Admin/Reviews', c:ok2, d:'Danh sách đánh giá' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Maintenance
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Bảo trì', m: 'GET', n: 'Maintenance Index', u: '/Admin/Maintenance', c: ok2, d: 'Lịch sử bảo trì' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Alerts
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Cảnh báo', m:'GET', n:'Admin Alert Index', u:'/Admin/Alert', c:ok2, d:'Danh sách cảnh báo' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Payment
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Thanh toán', m: 'GET', n: 'Payment Index', u: '/Admin/Payment', c: ok2, d: 'Danh sách thanh toán' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Tracking
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Tracking GPS', m:'GET', n:'Admin Tracking Map', u:'/Admin/Tracking', c:ok2, d:'Bản đồ tracking' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Reviews
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Đánh giá', m: 'GET', n: 'Reviews Index', u: '/Admin/Reviews', c: ok2, d: 'Danh sách đánh giá' },
 
-    // ═══════════════════════════════════════
-    // 🔧 ADMIN — Membership
-    // ═══════════════════════════════════════
-    { g:'🔧 Admin — Hội viên', m:'GET', n:'Membership Management', u:'/Admin/Membership', c:ok2, d:'Quản lý hội viên' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Alerts
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Cảnh báo', m: 'GET', n: 'Admin Alert Index', u: '/Admin/Alert', c: ok2, d: 'Danh sách cảnh báo' },
 
-    // ═══════════════════════════════════════
-    // 🤝 PARTNER AREA
-    // ═══════════════════════════════════════
-    { g:'🤝 Partner — Đối tác', m:'GET', n:'Partner Dashboard', u:'/Partner/Dashboard', c:ok2, d:'200 hoặc redirect' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Tracking
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Tracking GPS', m: 'GET', n: 'Admin Tracking Map', u: '/Admin/Tracking', c: ok2, d: 'Bản đồ tracking' },
 
-    // ═══════════════════════════════════════
-    // 📄 STATIC FILES & ASSETS
-    // ═══════════════════════════════════════
-    { g:'📄 Static Files & Assets', m:'GET', n:'favicon.ico', u:'/favicon.ico', c:ok2, d:'Favicon load' },
-    { g:'📄 Static Files & Assets', m:'GET', n:'CSS có trong trang', u:'/', c:has('css'), d:'Trang chứa "css"' },
-    { g:'📄 Static Files & Assets', m:'GET', n:'JS có trong trang', u:'/', c:has('.js'), d:'Trang chứa ".js"' },
+            // ═══════════════════════════════════════
+            // 🔧 ADMIN — Membership
+            // ═══════════════════════════════════════
+            { g: '🔧 Admin — Hội viên', m: 'GET', n: 'Membership Management', u: '/Admin/Membership', c: ok2, d: 'Quản lý hội viên' },
 
-    // ═══════════════════════════════════════
-    // 🔀 EDGE CASES & ERROR HANDLING
-    // ═══════════════════════════════════════
-    { g:'🔀 Edge Cases & Errors', m:'GET', n:'URL không tồn tại → 404', u:'/khong-ton-tai-xyz', c:is404, d:'HTTP 404' },
-    { g:'🔀 Edge Cases & Errors', m:'GET', n:'Car ID âm → error', u:'/Car/Details/-1', c:(h,s) => s === 404 || s === 400, d:'400 hoặc 404' },
-    { g:'🔀 Edge Cases & Errors', m:'GET', n:'Car ID string → error', u:'/Car/Details/abc', c:(h,s) => s !== 500, d:'Không 500' },
-];
+            // ═══════════════════════════════════════
+            // 🤝 PARTNER AREA
+            // ═══════════════════════════════════════
+            { g: '🤝 Partner — Đối tác', m: 'GET', n: 'Partner Dashboard', u: '/Partner/Dashboard', c: ok2, d: '200 hoặc redirect' },
 
-let passed=0, failed=0, skipped=0, done=0, startTime=0;
+            // ═══════════════════════════════════════
+            // 📄 STATIC FILES & ASSETS
+            // ═══════════════════════════════════════
+            { g: '📄 Static Files & Assets', m: 'GET', n: 'favicon.ico', u: '/favicon.ico', c: ok2, d: 'Favicon load' },
+            { g: '📄 Static Files & Assets', m: 'GET', n: 'CSS có trong trang', u: '/', c: has('css'), d: 'Trang chứa "css"' },
+            { g: '📄 Static Files & Assets', m: 'GET', n: 'JS có trong trang', u: '/', c: has('.js'), d: 'Trang chứa ".js"' },
 
-function render() {
-    const groups = {};
-    tests.forEach((t,i) => { if(!groups[t.g]) groups[t.g]=[]; groups[t.g].push({...t, i}); });
-    let html = '';
-    for (const [g, items] of Object.entries(groups)) {
-        html += `<div class="group"><div class="group-header">${g} <span class="count">${items.length}</span><span class="group-stats" id="gs-${g.replace(/[^a-zA-Z]/g,'')}"></span></div>`;
-        items.forEach(t => {
-            const mc = t.m === 'POST' ? 'post' : t.m === 'API' ? 'api' : 'get';
-            html += `<div class="t-item waiting" id="t${t.i}">
+            // ═══════════════════════════════════════
+            // 🔀 EDGE CASES & ERROR HANDLING
+            // ═══════════════════════════════════════
+            { g: '🔀 Edge Cases & Errors', m: 'GET', n: 'URL không tồn tại → 404', u: '/khong-ton-tai-xyz', c: is404, d: 'HTTP 404' },
+            { g: '🔀 Edge Cases & Errors', m: 'GET', n: 'Car ID âm → error', u: '/Car/Details/-1', c: (h, s) => s === 404 || s === 400, d: '400 hoặc 404' },
+            { g: '🔀 Edge Cases & Errors', m: 'GET', n: 'Car ID string → error', u: '/Car/Details/abc', c: (h, s) => s !== 500, d: 'Không 500' },
+        ];
+
+        let passed = 0, failed = 0, skipped = 0, done = 0, startTime = 0;
+
+        function render() {
+            const groups = {};
+            tests.forEach((t, i) => { if (!groups[t.g]) groups[t.g] = []; groups[t.g].push({ ...t, i }); });
+            let html = '';
+            for (const [g, items] of Object.entries(groups)) {
+                html += `<div class="group"><div class="group-header">${g} <span class="count">${items.length}</span><span class="group-stats" id="gs-${g.replace(/[^a-zA-Z]/g, '')}"></span></div>`;
+                items.forEach(t => {
+                    const mc = t.m === 'POST' ? 'post' : t.m === 'API' ? 'api' : 'get';
+                    html += `<div class="t-item waiting" id="t${t.i}">
                 <div class="t-icon">⏳</div>
                 <span class="t-name"><span class="method ${mc}">${t.m}</span>${t.n}<span class="desc">${t.u} → ${t.d}</span></span>
                 <span class="t-time" id="tm${t.i}">—</span>
                 <span class="t-status" id="st${t.i}">Chờ</span>
             </div>`;
-        });
-        html += '</div>';
-    }
-    document.getElementById('testPanel').innerHTML = html;
-    document.getElementById('sTotal').textContent = tests.length;
-}
-
-function updateStats() {
-    document.getElementById('sPass').textContent = passed;
-    document.getElementById('sFail').textContent = failed;
-    document.getElementById('sSkip').textContent = skipped;
-    document.getElementById('sTime').textContent = ((Date.now()-startTime)/1000).toFixed(1)+'s';
-    document.getElementById('progressFill').style.width = (done/tests.length*100)+'%';
-    document.getElementById('progressText').textContent = done+'/'+tests.length;
-}
-
-let lastLoadedUrl = '';
-let liveTimer = null;
-let currentAbortCtrl = null;
-
-async function runTest(i) {
-    const t = tests[i];
-    const el = document.getElementById('t'+i);
-    const tm = document.getElementById('tm'+i);
-    const st = document.getElementById('st'+i);
-    el.className = 't-item running';
-    el.querySelector('.t-icon').textContent = '🔄';
-    st.textContent = '...';
-    el.scrollIntoView({behavior:'smooth', block:'center'});
-
-    document.getElementById('urlBar').textContent = B + t.u;
-
-    const s = Date.now();
-    try {
-        const ctrl = new AbortController();
-        currentAbortCtrl = ctrl;
-        const timer = setTimeout(() => ctrl.abort(), 4000); 
-        
-        const opts = { 
-            signal: ctrl.signal,
-            cache: 'no-store' 
-        };
-        
-        if (t.body) {
-            opts.method = 'POST';
-            if (t.json) {
-                opts.headers = {'Content-Type':'application/json'};
-                opts.body = t.body;
-            } else {
-                opts.headers = {'Content-Type':'application/x-www-form-urlencoded'};
-                opts.body = t.body;
+                });
+                html += '</div>';
             }
+            document.getElementById('testPanel').innerHTML = html;
+            document.getElementById('sTotal').textContent = tests.length;
         }
 
-        const fetchUrl = B + t.u + (t.u.includes('?') ? '&' : '?') + '_nc=' + Date.now() + i;
-
-        const r = await fetch(fetchUrl, opts);
-        clearTimeout(timer);
-        const h = await r.text();
-        const d = Date.now()-s;
-        tm.textContent = d+'ms';
-        if (t.c(h, r.status)) {
-            el.className = 't-item passed'; el.querySelector('.t-icon').textContent = '✅';
-            st.textContent = 'HTTP '+r.status; passed++;
-        } else {
-            el.className = 't-item failed'; el.querySelector('.t-icon').textContent = '❌';
-            st.textContent = 'HTTP '+r.status; failed++;
+        function updateStats() {
+            document.getElementById('sPass').textContent = passed;
+            document.getElementById('sFail').textContent = failed;
+            document.getElementById('sSkip').textContent = skipped;
+            document.getElementById('sTime').textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+            document.getElementById('progressFill').style.width = (done / tests.length * 100) + '%';
+            document.getElementById('progressText').textContent = done + '/' + tests.length;
         }
-        
-        if (!t.body && t.m !== 'POST') {
-            if (lastLoadedUrl !== t.u) {
-                document.getElementById('preview').src = fetchUrl;
-                lastLoadedUrl = t.u;
+
+        let lastLoadedUrl = '';
+        let liveTimer = null;
+        let currentAbortCtrl = null;
+
+        async function runTest(i) {
+            const t = tests[i];
+            const el = document.getElementById('t' + i);
+            const tm = document.getElementById('tm' + i);
+            const st = document.getElementById('st' + i);
+            el.className = 't-item running';
+            el.querySelector('.t-icon').textContent = '🔄';
+            st.textContent = '...';
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            document.getElementById('urlBar').textContent = B + t.u;
+
+            const s = Date.now();
+            try {
+                const ctrl = new AbortController();
+                currentAbortCtrl = ctrl;
+                const timer = setTimeout(() => ctrl.abort(), 4000);
+
+                const opts = {
+                    signal: ctrl.signal,
+                    cache: 'no-store'
+                };
+
+                if (t.body) {
+                    opts.method = 'POST';
+                    if (t.json) {
+                        opts.headers = { 'Content-Type': 'application/json' };
+                        opts.body = t.body;
+                    } else {
+                        opts.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+                        opts.body = t.body;
+                    }
+                }
+
+                const fetchUrl = B + t.u + (t.u.includes('?') ? '&' : '?') + '_nc=' + Date.now() + i;
+
+                const r = await fetch(fetchUrl, opts);
+                clearTimeout(timer);
+                const h = await r.text();
+                const d = Date.now() - s;
+                tm.textContent = d + 'ms';
+                if (t.c(h, r.status)) {
+                    el.className = 't-item passed'; el.querySelector('.t-icon').textContent = '✅';
+                    st.textContent = 'HTTP ' + r.status; passed++;
+                } else {
+                    el.className = 't-item failed'; el.querySelector('.t-icon').textContent = '❌';
+                    st.textContent = 'HTTP ' + r.status; failed++;
+                }
+
+                if (!t.body && t.m !== 'POST') {
+                    if (lastLoadedUrl !== t.u) {
+                        document.getElementById('preview').src = fetchUrl;
+                        lastLoadedUrl = t.u;
+                    }
+                }
+            } catch (e) {
+                tm.textContent = (Date.now() - s) + 'ms';
+                el.className = 't-item failed'; el.querySelector('.t-icon').textContent = '❌';
+                st.textContent = e.name === 'AbortError' ? 'TIMEOUT' : 'ERROR'; failed++;
             }
+            done++;
+            updateStats();
         }
-    } catch(e) {
-        tm.textContent = (Date.now()-s)+'ms';
-        el.className = 't-item failed'; el.querySelector('.t-icon').textContent = '❌';
-        st.textContent = e.name === 'AbortError' ? 'TIMEOUT' : 'ERROR'; failed++;
-    }
-    done++;
-    updateStats(); 
-}
 
-async function runGroup(groupName) {
-    // Chỉ lấy các tests thuộc group này
-    const groupTests = tests.filter(t => t.g === groupName);
-    
-    document.getElementById('badge').className = 'badge running';
-    document.getElementById('badge').textContent = '🔄 TESTING MODULE...';
-    
-    // Ghi đè startTime cho mượt
-    if (done === 0) startTime = Date.now();
-    
-    for (const t of groupTests) {
-        await runTest(t.i);
-        await new Promise(r=>setTimeout(r,150));
-    }
-    
-    document.getElementById('badge').className = 'badge waiting';
-    document.getElementById('badge').textContent = '✅ MODULE XONG';
-}
+        async function runGroup(groupName) {
+            // Chỉ lấy các tests thuộc group này
+            const groupTests = tests.filter(t => t.g === groupName);
 
-async function runAllTests() {
-    document.getElementById('btnStart').disabled = true;
-    document.getElementById('btnStart').textContent = '⏳ Đang chạy...';
-    document.getElementById('badge').className = 'badge running';
-    document.getElementById('badge').textContent = '🔄 TESTING ALL...';
-    passed=0; failed=0; skipped=0; done=0; startTime = Date.now();
-    updateStats();
+            document.getElementById('badge').className = 'badge running';
+            document.getElementById('badge').textContent = '🔄 TESTING MODULE...';
 
-    // Reset UI
-    tests.forEach((t, i) => {
-        const el = document.getElementById('t'+i);
-        el.className = 't-item waiting';
-        el.querySelector('.t-icon').textContent = '⏳';
-        document.getElementById('tm'+i).textContent = '—';
-        document.getElementById('st'+i).textContent = 'Chờ';
-    });
+            // Ghi đè startTime cho mượt
+            if (done === 0) startTime = Date.now();
 
-    for (let i=0; i<tests.length; i++) {
-        await runTest(i);
-        await new Promise(r=>setTimeout(r,150));
-    }
+            for (const t of groupTests) {
+                await runTest(t.i);
+                await new Promise(r => setTimeout(r, 150));
+            }
 
-    const el = ((Date.now()-startTime)/1000).toFixed(1);
-    const b = document.getElementById('badge');
-    b.className = failed===0 ? 'badge done' : 'badge fail';
-    b.textContent = failed===0 ? `✅ ALL ${passed} PASSED (${el}s)` : `❌ ${failed} FAILED`;
-    document.getElementById('btnStart').disabled = false;
-    document.getElementById('btnStart').textContent = '🔄 Chạy lại toàn bộ';
-}
+            document.getElementById('badge').className = 'badge waiting';
+            document.getElementById('badge').textContent = '✅ MODULE XONG';
+        }
 
-function render() {
-    const groups = {};
-    tests.forEach((t,i) => { 
-        t.i = i; // Save index
-        if(!groups[t.g]) groups[t.g]=[]; 
-        groups[t.g].push(t); 
-    });
-    let html = '';
-    for (const [g, items] of Object.entries(groups)) {
-        // Thêm nút chạy riêng cho từng group
-        html += `<div class="group"><div class="group-header" style="justify-content: space-between;">
+        async function runAllTests() {
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnStart').textContent = '⏳ Đang chạy...';
+            document.getElementById('badge').className = 'badge running';
+            document.getElementById('badge').textContent = '🔄 TESTING ALL...';
+            passed = 0; failed = 0; skipped = 0; done = 0; startTime = Date.now();
+            updateStats();
+
+            // Reset UI
+            tests.forEach((t, i) => {
+                const el = document.getElementById('t' + i);
+                el.className = 't-item waiting';
+                el.querySelector('.t-icon').textContent = '⏳';
+                document.getElementById('tm' + i).textContent = '—';
+                document.getElementById('st' + i).textContent = 'Chờ';
+            });
+
+            for (let i = 0; i < tests.length; i++) {
+                await runTest(i);
+                await new Promise(r => setTimeout(r, 150));
+            }
+
+            const el = ((Date.now() - startTime) / 1000).toFixed(1);
+            const b = document.getElementById('badge');
+            b.className = failed === 0 ? 'badge done' : 'badge fail';
+            b.textContent = failed === 0 ? `✅ ALL ${passed} PASSED (${el}s)` : `❌ ${failed} FAILED`;
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnStart').textContent = '🔄 Chạy lại toàn bộ';
+        }
+
+        function render() {
+            const groups = {};
+            tests.forEach((t, i) => {
+                t.i = i; // Save index
+                if (!groups[t.g]) groups[t.g] = [];
+                groups[t.g].push(t);
+            });
+            let html = '';
+            for (const [g, items] of Object.entries(groups)) {
+                // Thêm nút chạy riêng cho từng group
+                html += `<div class="group"><div class="group-header" style="justify-content: space-between;">
             <div style="display:flex;align-items:center;gap:8px;">${g} <span class="count">${items.length}</span></div>
             <button onclick="runGroup('${g}')" style="background:#1e293b;border:1px solid #334155;color:#38bdf8;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;">▶ Chạy Module Này</button>
         </div>`;
-        items.forEach(t => {
-            const mc = t.m === 'POST' ? 'post' : t.m === 'API' ? 'api' : 'get';
-            html += `<div class="t-item waiting" id="t${t.i}">
+                items.forEach(t => {
+                    const mc = t.m === 'POST' ? 'post' : t.m === 'API' ? 'api' : 'get';
+                    html += `<div class="t-item waiting" id="t${t.i}">
                 <div class="t-icon">⏳</div>
                 <span class="t-name"><span class="method ${mc}">${t.m}</span>${t.n}<span class="desc">${t.u} → ${t.d}</span></span>
                 <span class="t-time" id="tm${t.i}">—</span>
                 <span class="t-status" id="st${t.i}">Chờ</span>
             </div>`;
-        });
-        html += '</div>';
-    }
-    document.getElementById('testPanel').innerHTML = html;
-    document.getElementById('sTotal').textContent = tests.length;
-}
+                });
+                html += '</div>';
+            }
+            document.getElementById('testPanel').innerHTML = html;
+            document.getElementById('sTotal').textContent = tests.length;
+        }
 
-render();
-// Bỏ tự động chạy để bạn tự bấm module cần test
-// setTimeout(() => runAllTests(), 500);
-</script>
+        render();
+        // Bỏ tự động chạy để bạn tự bấm module cần test
+        // setTimeout(() => runAllTests(), 500);
+    </script>
 </body>
+
 </html>
