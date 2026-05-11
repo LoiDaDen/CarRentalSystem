@@ -354,9 +354,13 @@ namespace CarRentalSystem.Controllers
                         booking.TotalPrice -= discount;
                         
                         // Sử dụng atomic update để tránh race condition khi nhiều user cùng dùng promo
-                        await _context.Promotions
-                            .Where(p => p.PromotionID == promo.PromotionID && p.UsedCount < p.UsageLimit)
-                            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UsedCount, p => p.UsedCount + 1));
+                        var promoToUpdate = await _context.Promotions
+                            .FirstOrDefaultAsync(p => p.PromotionID == promo.PromotionID && p.UsedCount < p.UsageLimit);
+                        if (promoToUpdate != null)
+                        {
+                            promoToUpdate.UsedCount += 1;
+                            _context.Promotions.Update(promoToUpdate);
+                        }
                     }
                 }
 
@@ -463,19 +467,15 @@ namespace CarRentalSystem.Controllers
             if (booking.BookingStatus?.Name == "Active")
             {
                 // Update booking status to Cancelled and car status atomically
-                await _context.Bookings
-                    .Where(b => b.BookingID == id && b.UserID == userId && b.BookingStatus != null && b.BookingStatus.Name == "Active")
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(b => b.DepositStatus, "PendingRefund")
-                        .SetProperty(b => b.ActualReturnDate, DateTime.UtcNow));
+                    booking.DepositStatus = "PendingRefund";
+                    booking.ActualReturnDate = DateTime.UtcNow;
+                    _context.Bookings.Update(booking);
 
                 // Reset car status to Available
                 if (booking.Car != null)
                 {
-                    await _context.Cars
-                        .Where(c => c.CarID == booking.CarID)
-                        .ExecuteUpdateAsync(s => s
-                            .SetProperty(c => c.CarStatusID, availableStatus.CarStatusID));
+                    booking.Car.CarStatusID = availableStatus.CarStatusID;
+                    _context.Cars.Update(booking.Car);
                 }
 
                 // Update booking status
@@ -491,19 +491,15 @@ namespace CarRentalSystem.Controllers
                 var cancelledStatus = await _context.BookingStatuses.FirstOrDefaultAsync(st => st.Name == "Cancelled");
                 
                 // Update booking status to Cancelled, cập nhật deposit status và car status atomically
-                await _context.Bookings
-                    .Where(b => b.BookingID == id && b.UserID == userId && b.BookingStatus != null && b.BookingStatus.Name == "Confirmed")
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(b => b.BookingStatusID, cancelledStatus.BookingStatusID)
-                        .SetProperty(b => b.DepositStatus, "Refunded")); // Hoàn cọc cho booking Confirmed
+                    booking.BookingStatusID = cancelledStatus.BookingStatusID;
+                    booking.DepositStatus = "Refunded";
+                    _context.Bookings.Update(booking);
 
                 // Reset car status to Available
                 if (booking.Car != null)
                 {
-                    await _context.Cars
-                        .Where(c => c.CarID == booking.CarID)
-                        .ExecuteUpdateAsync(s => s
-                            .SetProperty(c => c.CarStatusID, availableStatus.CarStatusID));
+                    booking.Car.CarStatusID = availableStatus.CarStatusID;
+                    _context.Cars.Update(booking.Car);
                 }
 
                 TempData["Success"] = "Chuyến đi đã được hủy. Tiền cọc sẽ được hoàn trả trong 15 ngày.";

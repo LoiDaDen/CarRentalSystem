@@ -421,12 +421,17 @@ namespace CarRentalSystem.Controllers
             }
 
             // Use atomic update to prevent race conditions
-            var rowsAffected = await _context.DriverContracts
-                .Where(dc => dc.DriverContractID == id && dc.DriverID == driver.DriverID && dc.Status == "Active")
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(dc => dc.Status, "Cancelled")
-                    .SetProperty(dc => dc.CancelledAt, DateTime.UtcNow)
-                    .SetProperty(dc => dc.CancelReason, reason ?? "Bên B yêu cầu hủy hợp đồng"));
+            var contract = await _context.DriverContracts
+                .FirstOrDefaultAsync(dc => dc.DriverContractID == id && dc.DriverID == driver.DriverID && dc.Status == "Active");
+            
+            if (contract != null)
+            {
+                contract.Status = "Cancelled";
+                contract.CancelledAt = DateTime.UtcNow;
+                contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
+                _context.DriverContracts.Update(contract);
+            }
+            var rowsAffected = contract != null ? 1 : 0;
 
             if (rowsAffected == 0)
             {

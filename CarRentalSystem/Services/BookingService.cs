@@ -227,13 +227,16 @@ namespace CarRentalSystem.Services
 
         public async Task UpdateBookingStatusAsync(int id, string statusName)
         {
+            var booking = await _bookingRepo.Query()
+                .FirstOrDefaultAsync(b => b.BookingID == id);
+            if (booking == null) return;
+
             var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == statusName);
             if (status == null) return;
 
-            // Use ExecuteUpdateAsync for atomic update to prevent race conditions
-            await _bookingRepo.Query()
-                .Where(b => b.BookingID == id)
-                .ExecuteUpdateAsync(s => s.SetProperty(b => b.BookingStatusID, status.BookingStatusID));
+            booking.BookingStatusID = status.BookingStatusID;
+            _bookingRepo.Update(booking);
+            await _bookingRepo.SaveChangesAsync();
         }
 
         public async Task StartTripAsync(int bookingId)

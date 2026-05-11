@@ -50,13 +50,14 @@ namespace CarRentalSystem.Services
 
             if (exists) return true;
 
-            // Kiểm tra legacy accounts (chưa có hash) - giới hạn chỉ khi cần
-            var legacyExists = await _userRepository.Query()
+            // Kiểm tra legacy accounts (chưa có hash)
+            // Trong thực tế, CitizenId cũ có thể đã mã hóa. Ở đây ta kiểm tra cả plaintext và decrypted.
+            var legacyUsers = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
                 .Where(u => u.CitizenIdHash == null && u.CitizenId != null)
-                .AnyAsync();
+                .ToListAsync();
 
-            return legacyExists;
+            return legacyUsers.Any(u => u.CitizenId == citizenId || _piiEncryption.DecryptIfNotEmpty(u.CitizenId) == citizenId);
         }
 
         public async Task<bool> IsDrivingLicenseTakenAsync(string licenseNumber, int excludeUserId)
@@ -103,11 +104,11 @@ namespace CarRentalSystem.Services
             return legacyExists;
         }
 
-        public async Task<User> AuthenticateAsync(string email, string password)
+        public async Task<User> AuthenticateAsync(string identifier, string password)
         {
-            // Chỉ cho phép login bằng Email (không cho phép login bằng Name)
+            // Cho phép login bằng cả Email hoặc Tên người dùng (Username)
             var user = await _userRepository.Query()
-                .FirstOrDefaultAsync(u => u.Email == email);
+                .FirstOrDefaultAsync(u => u.Email == identifier || u.Name == identifier);
 
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
