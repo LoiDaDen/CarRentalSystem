@@ -39,7 +39,7 @@ jobs:
         file: ./Dockerfile
 
     - name: "🔍 Trivy: Docker Image Vulnerability Scan"
-      uses: aquasecurity/trivy-action@v0.28.0
+      uses: aquasecurity/trivy-action@master
       with:
         image-ref: 'carrental-scan:latest'
         format: 'sarif'
@@ -64,7 +64,7 @@ jobs:
         category: 'trivy-image-scan'
 
     - name: "🔍 Trivy: Scan source code for vulnerabilities"
-      uses: aquasecurity/trivy-action@v0.28.0
+      uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
         scan-ref: '.'
