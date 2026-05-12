@@ -85,22 +85,22 @@ namespace CarRentalSystem.Controllers
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
-        public async Task<IActionResult> AddToCart(int carId, DateTime startDate, DateTime endDate, bool withDriver, decimal estimatedPrice)
+        public async Task<IActionResult> AddToCart(int carId, DateTime startDate, DateTime endDate, bool withDriver, decimal? estimatedPrice)
         {
             // Validate input
             if (carId <= 0)
             {
-                return Json(new { success = false, message = "ID xe không hợp lệ." });
+                return Json(new { success = false, message = "ID xe khong hop le." });
             }
 
             if (startDate >= endDate)
             {
-                return Json(new { success = false, message = "Ngày bắt đầu phải trước ngày kết thúc." });
+                return Json(new { success = false, message = "Ngay bat dau phai truoc ngay ket thuc." });
             }
 
             if (startDate < DateTime.UtcNow.AddHours(-1))
             {
-                return Json(new { success = false, message = "Không thể đặt xe trong quá khứ." });
+                return Json(new { success = false, message = "Khong the dat xe trong qua khu." });
             }
 
             var userId = GetUserId();
@@ -117,25 +117,25 @@ namespace CarRentalSystem.Controllers
             var existing = cart.CartItems.FirstOrDefault(ci => ci.CarID == carId && ci.StartDate == startDate && ci.EndDate == endDate);
             if (existing != null)
             {
-                return Json(new { success = false, message = "Xe này đã có trong giỏ hàng với cùng khoảng thời gian." });
+                return Json(new { success = false, message = "Xe nay da co trong gio hang voi cung khoang thoi gian." });
             }
 
-            // Kiểm tra car có tồn tại và available không
+            // Kiem tra car co ton tai va available khong
             var car = await _context.Cars
                 .Include(c => c.CarStatus)
                 .FirstOrDefaultAsync(c => c.CarID == carId);
 
             if (car == null)
             {
-                return Json(new { success = false, message = "Xe không tồn tại." });
+                return Json(new { success = false, message = "Xe khong ton tai." });
             }
 
             if (car.CarStatus?.Name != "Available")
             {
-                return Json(new { success = false, message = "Xe này hiện không có sẵn để thuê." });
+                return Json(new { success = false, message = "Xe nay hien khong co san de thue." });
             }
 
-            // Kiểm tra car không bị booking trong khoảng thời gian này
+            // Kiem tra car khong bi booking trong khoang thoi gian nay
             var hasBooking = await _context.Bookings
                 .Include(b => b.BookingStatus)
                 .AnyAsync(b => b.CarID == carId &&
@@ -148,8 +148,14 @@ namespace CarRentalSystem.Controllers
 
             if (hasBooking)
             {
-                return Json(new { success = false, message = "Xe này đã có người đặt trong khoảng thời gian bạn chọn." });
+                return Json(new { success = false, message = "Xe nay da co nguoi dat trong khoang thoi gian ban chon." });
             }
+
+            // =========================================
+            // RECALCULATE PRICE PHIA SERVER
+            // BO qua client estimatedPrice
+            // =========================================
+            var calculatedPrice = CalculateCartItemPrice(car, startDate, endDate, withDriver);
 
             var newItem = new CartItem
             {
@@ -158,7 +164,7 @@ namespace CarRentalSystem.Controllers
                 StartDate = startDate,
                 EndDate = endDate,
                 WithDriver = withDriver,
-                EstimatedPrice = estimatedPrice
+                EstimatedPrice = calculatedPrice // Server-side calculated price
             };
 
             _context.CartItems.Add(newItem);
@@ -207,18 +213,22 @@ namespace CarRentalSystem.Controllers
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
-        public async Task<IActionResult> UpdateCartItemDates(int cartItemId, DateTime startDate, DateTime endDate, decimal estimatedPrice)
+        public async Task<IActionResult> UpdateCartItemDates(int cartItemId, DateTime startDate, DateTime endDate, decimal? estimatedPrice)
         {
             var userId = GetUserId();
             var item = await _context.CartItems
+                .Include(ci => ci.Car)
                 .Include(ci => ci.Cart)
                 .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
 
             if (item != null)
             {
+                // Recalculate price phia server
+                var calculatedPrice = CalculateCartItemPrice(item.Car, startDate, endDate, item.WithDriver);
+
                 item.StartDate = startDate;
                 item.EndDate = endDate;
-                item.EstimatedPrice = estimatedPrice;
+                item.EstimatedPrice = calculatedPrice; // Server-side price
                 _context.CartItems.Update(item);
                 await _context.SaveChangesAsync();
 
@@ -229,7 +239,7 @@ namespace CarRentalSystem.Controllers
                 return Json(new { success = true, cartTotal = cartTotal });
             }
 
-            return Json(new { success = false, message = "Không tìm thấy xe trong giỏ hàng." });
+            return Json(new { success = false, message = "Khong tim thay xe trong gio hang." });
         }
         [HttpPost]
         [IgnoreAntiforgeryToken]
@@ -432,21 +442,45 @@ namespace CarRentalSystem.Controllers
             var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
             if (user == null) return RedirectToAction("Login", "Auth");
 
-            // ===== 1. Validate: tat ca cac xe deu phai cach nhau >= 1 tieng =====
+            // =========================================
+            // SECURITY: Kiem tra Blacklist va eKYC truoc khi checkout
+            // =========================================
+            if (user.IsBlacklisted)
+            {
+                TempData["Error"] = "Tai khoan cua ban da bi khoa. Vui long lien he ho tro.";
+                return RedirectToAction("Index");
+            }
+            if (!user.IsVerified)
+            {
+                TempData["Error"] = "Vui long xac thuc danh tinh (eKYC) truoc khi dat xe.";
+                return RedirectToAction("Profile", "Auth");
+            }
+
+            // ===== 1. Validate: Tat ca cac xe trong cart phai khong overlap voi nhau =====
             var items = cart.CartItems.ToList();
             for (int i = 0; i < items.Count; i++)
             {
                 for (int j = i + 1; j < items.Count; j++)
                 {
-                    // Neu cung xe, kiem tra khoang cach thoi gian
+                    // Neu cung xe, kiem tra overlap
                     if (items[i].CarID == items[j].CarID)
                     {
+                        // Two bookings overlap if: startA < endB AND endA > startB
+                        bool overlap = items[i].StartDate < items[j].EndDate && items[i].EndDate > items[j].StartDate;
+                        if (overlap)
+                        {
+                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' co 2 don overlap nhau. Vui long chon khoang thoi gian khac.";
+                            return RedirectToAction("Index");
+                        }
+
+                        // Minimum 1-hour gap required between bookings
+                        // Gap exists if one ends >= 1 hour before the other starts
                         var gapHours = Math.Min(
                             (items[i].StartDate - items[j].EndDate).TotalHours,
                             (items[j].StartDate - items[i].EndDate).TotalHours);
-                        if (gapHours >= 0 && gapHours < 1)
+                        if (gapHours < 1 && gapHours > -1) // -1 to 1 means they're close
                         {
-                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' có 2 đơn đặt cách nhau chỉ {gapHours:F1} giờ. Vui lòng đảm bảo khoảng cách tối thiểu 1 tiếng giữa các đơn cùng xe.";
+                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' cac don phai cach nhau it nhat 1 tieng.";
                             return RedirectToAction("Index");
                         }
                     }
@@ -455,19 +489,23 @@ namespace CarRentalSystem.Controllers
 
             // ===== 2. Kiem tra overlap voi booking da ton tai =====
             var overlapErrors = new List<string>();
+            var excludedStatuses = new[] { "Cancelled", "Completed", "Rejected" };
+
             foreach (var item in items)
             {
-                bool isOverlapped = await _context.Bookings
+                // Correct overlap check: Two bookings overlap if startA < endB AND endA > startB
+                // With 1-hour gap requirement: new booking must end at least 1 hour before existing starts
+                bool hasOverlap = await _context.Bookings
                     .Include(b => b.BookingStatus)
                     .AnyAsync(b => b.CarID == item.CarID &&
                         b.BookingStatus != null &&
-                        b.BookingStatus.Name != "Cancelled" && b.BookingStatus.Name != "Completed" &&
-                        !(((item.StartDate >= b.EndDate.AddHours(1)) || (item.EndDate <= b.StartDate.AddHours(-1)) ||
-                          (item.StartDate <= b.StartDate.AddHours(-1) && item.EndDate >= b.EndDate.AddHours(1)))));
+                        !excludedStatuses.Contains(b.BookingStatus.Name) &&
+                        item.StartDate < b.EndDate.AddHours(-1) && // Starts before existing ends (minus 1hr gap)
+                        item.EndDate.AddHours(1) > b.StartDate);   // Ends after existing starts (plus 1hr gap)
 
-                if (isOverlapped)
+                if (hasOverlap)
                 {
-                    overlapErrors.Add($"'{item.Car?.CarName}' đã có người đặt trong khoảng thời gian bạn chọn (cần cách ít nhất 1 tiếng).");
+                    overlapErrors.Add($"'{item.Car?.CarName}' da co nguoi dat trong khoang thoi gian ban chon (can cach it nhat 1 tieng).");
                 }
             }
 
@@ -563,8 +601,51 @@ namespace CarRentalSystem.Controllers
             _context.CartItems.RemoveRange(cart.CartItems);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"Đơn hàng #{transaction.TransactionID} đã được tạo. Vui lòng thanh toán tiền cọc {totalDeposit.ToString("N0")}đ để xác nhận.";
+            TempData["Success"] = $"Don hang #{transaction.TransactionID} da duoc tao. Vui long thanh toan tien coc {totalDeposit.ToString("N0")}d de xac nhan.";
             return RedirectToAction("DepositTransaction", "Booking", new { id = transaction.TransactionID });
+        }
+
+        // =========================================
+        // Helper: Tinh gia cart item phia server
+        // =========================================
+        private static decimal CalculateCartItemPrice(Car? car, DateTime startDate, DateTime endDate, bool withDriver)
+        {
+            if (car == null) return 0;
+
+            var hours = (int)Math.Ceiling((endDate - startDate).TotalHours);
+            var days = Math.Max(1, (int)Math.Ceiling(hours / 24.0));
+
+            decimal pricePerDay = car.PricePerDay;
+            decimal pricePerHour = car.PricePerHour > 0 ? car.PricePerHour : 50000m;
+            decimal p4 = pricePerDay * 0.4m;
+            decimal p8 = pricePerDay * 0.7m;
+            decimal p12 = pricePerDay * 0.85m;
+            decimal p24 = pricePerDay;
+            decimal basePrice = 0;
+
+            if (hours <= 0) return 0;
+            if (hours <= 4) basePrice = Math.Min(hours * pricePerHour, p4);
+            else if (hours <= 8) basePrice = Math.Min(p4 + (hours - 4) * pricePerHour, p8);
+            else if (hours <= 12) basePrice = Math.Min(p8 + (hours - 8) * pricePerHour, p12);
+            else if (hours <= 24) basePrice = Math.Min(p12 + (hours - 12) * pricePerHour, p24);
+            else
+            {
+                int fullDays = hours / 24;
+                int rem = hours % 24;
+                decimal remP = rem <= 4 ? Math.Min(rem * pricePerHour, p4)
+                    : rem <= 8 ? Math.Min(p4 + (rem - 4) * pricePerHour, p8)
+                    : rem <= 12 ? Math.Min(p8 + (rem - 8) * pricePerHour, p12)
+                    : Math.Min(p12 + (rem - 12) * pricePerHour, p24);
+                basePrice = (fullDays * p24) + remP;
+            }
+
+            // Add driver cost if needed
+            if (withDriver)
+            {
+                basePrice += pricePerDay * 0.3m * days; // Approximate driver cost
+            }
+
+            return Math.Round(basePrice);
         }
 
         private int GetUserId()

@@ -1,9 +1,13 @@
 using CarRentalSystem.Data;
+using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -15,11 +19,16 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IPiiEncryptionService _piiEncryption;
+        private readonly IConfiguration _configuration;
 
-        public UserController(ApplicationDbContext context, IPiiEncryptionService piiEncryption)
+        public UserController(
+            ApplicationDbContext context,
+            IPiiEncryptionService piiEncryption,
+            IConfiguration configuration)
         {
             _context = context;
             _piiEncryption = piiEncryption;
+            _configuration = configuration;
         }
 
         public async Task<IActionResult> Index(string? search, string? role)
@@ -63,13 +72,28 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [HttpPost]
         public IActionResult VerifyAdminPin(string pin)
         {
-            const string ADMIN_PIN = "123456";
-            if (pin == ADMIN_PIN)
+            // Load PIN tu config/environment
+            var adminPin = _configuration["Admin:Pin"]
+                ?? Environment.GetEnvironmentVariable("ADMIN_PIN");
+
+            // Development fallback - chi trong Dev environment
+            if (string.IsNullOrEmpty(adminPin) && HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+            {
+                adminPin = "123456"; // Dev only fallback
+            }
+
+            if (string.IsNullOrEmpty(adminPin))
+            {
+                TempData["PinError"] = "He thong chua cau hinh Admin PIN. Vui long lien he quan tri.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (pin == adminPin)
             {
                 HttpContext.Session.SetString("AdminPinVerified", "true");
                 return RedirectToAction(nameof(Index));
             }
-            TempData["PinError"] = "Mã PIN không chính xác!";
+            TempData["PinError"] = "Ma PIN khong chinh xac!";
             return RedirectToAction(nameof(Index));
         }
 
@@ -255,10 +279,15 @@ if (user.Role == "Partner" && (role == "Staff" || role == "Manager"))
                 return RedirectToAction(nameof(PartnerRequests));
             }
 
+            if (!user.IsVerified || user.VerificationStatus != "Verified")
+            {
+                TempData["Error"] = $"Doi tac {user.Name} chua duoc duyet eKYC. Vui long duyet eKYC truoc khi duyet doi tac.";
+                return RedirectToAction(nameof(PartnerRequests));
+            }
+
             // Bước 1: Duyệt Partner
             user.IsPartnerApproved = true;
             user.PartnerApprovedAt = DateTime.UtcNow;
-            user.IsVerified = true; // Đồng thời duyệt eKYC
             await _context.SaveChangesAsync();
 
             // Bước 2: Kiểm tra đã có HĐ chưa, nếu chưa thì tạo mới
@@ -303,7 +332,33 @@ if (user.Role == "Partner" && (role == "Staff" || role == "Manager"))
                 TempData["Success"] = $"Đã duyệt eKYC của {user.Name}. Hợp đồng đã tồn tại.";
             }
 
+            var activeContract = await _context.PartnerContracts
+                .Where(pc => pc.PartnerUserID == user.UserID && (pc.Status == "Pending" || pc.Status == "Active"))
+                .OrderByDescending(pc => pc.CreatedAt)
+                .FirstOrDefaultAsync();
+            if (activeContract != null)
+            {
+                var contractUrl = Url.Action("ContractDetails", "Dashboard", new { area = "Partner", id = activeContract.PartnerContractID }, Request.Scheme) ?? "";
+                BackgroundJob.Enqueue<EmailBackgroundJob>(job => job.SendApprovalEmail(user.Email, user.Name, "partner", activeContract.ContractNo, activeContract.ExpiresAt, contractUrl, "vi"));
+                SchedulePartnerContractReminders(activeContract.PartnerContractID, activeContract.ExpiresAt, contractUrl);
+            }
+
             return RedirectToAction(nameof(PartnerRequests));
+        }
+
+        private static void SchedulePartnerContractReminders(int contractId, DateTime expiresAt, string contractUrl)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var days in new[] { 3, 1 })
+            {
+                var runAt = expiresAt.AddDays(-days);
+                if (runAt > now)
+                {
+                    BackgroundJob.Schedule<EmailBackgroundJob>(
+                        job => job.SendPartnerContractReminder(contractId, days, contractUrl, "vi"),
+                        runAt - now);
+                }
+            }
         }
 
         // ═══ BỎ DUYỆT ĐỐI TÁC ═══
@@ -313,7 +368,8 @@ if (user.Role == "Partner" && (role == "Staff" || role == "Manager"))
             var user = await _context.Users.FindAsync(id);
             if (user == null) return NotFound();
 
-            user.IsVerified = false;
+            user.IsPartnerApproved = false;
+            user.PartnerApprovedAt = null;
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"Đã bỏ duyệt Đối tác {user.Name}.";
@@ -328,10 +384,11 @@ if (user.Role == "Partner" && (role == "Staff" || role == "Manager"))
             if (user != null)
             {
                 user.IsVerified = !user.IsVerified;
+                user.VerificationStatus = user.IsVerified ? "Verified" : "Pending";
                 await _context.SaveChangesAsync();
 
                 // ═══ Tự động tạo HĐ Đối tác khi verify Partner ═══
-                if (user.IsVerified && user.Role == "Partner")
+                if (_configuration.GetValue<bool>("Partner:CreateContractOnEkycVerify") && user.IsVerified && user.Role == "Partner")
                 {
                     // Kiểm tra đã có HĐ Active chưa
                     var existingContract = await _context.PartnerContracts

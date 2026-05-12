@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <NoWarn>$(NoWarn);CS8600;CS8602;CS8620;CS8621;CS8625;CS8714</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

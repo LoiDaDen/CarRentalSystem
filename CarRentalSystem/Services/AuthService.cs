@@ -50,14 +50,15 @@ namespace CarRentalSystem.Services
 
             if (exists) return true;
 
-            // Kiểm tra legacy accounts (chưa có hash)
-            // Trong thực tế, CitizenId cũ có thể đã mã hóa. Ở đây ta kiểm tra cả plaintext và decrypted.
-            var legacyUsers = await _userRepository.Query()
+            // Kiểm tra legacy accounts chưa có hash bằng giá trị thực, tránh coi mọi bản ghi legacy là trùng.
+            var legacyCitizenIds = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
                 .Where(u => u.CitizenIdHash == null && u.CitizenId != null)
+                .Select(u => u.CitizenId)
                 .ToListAsync();
 
-            return legacyUsers.Any(u => u.CitizenId == citizenId || _piiEncryption.DecryptIfNotEmpty(u.CitizenId) == citizenId);
+            return legacyCitizenIds.Any(stored =>
+                string.Equals(_piiEncryption.DecryptIfNotEmpty(stored)?.Trim(), citizenId.Trim(), StringComparison.Ordinal));
         }
 
         public async Task<bool> IsDrivingLicenseTakenAsync(string licenseNumber, int excludeUserId)
@@ -73,13 +74,15 @@ namespace CarRentalSystem.Services
 
             if (exists) return true;
 
-            // Kiểm tra legacy accounts
-            var legacyExists = await _userRepository.Query()
+            // Kiểm tra legacy accounts chưa có hash bằng giá trị thực.
+            var legacyLicenseNumbers = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
                 .Where(u => u.DrivingLicenseHash == null && u.DrivingLicenseNumber != null)
-                .AnyAsync();
+                .Select(u => u.DrivingLicenseNumber)
+                .ToListAsync();
 
-            return legacyExists;
+            return legacyLicenseNumbers.Any(stored =>
+                string.Equals(_piiEncryption.DecryptIfNotEmpty(stored)?.Trim(), licenseNumber.Trim(), StringComparison.Ordinal));
         }
 
         public async Task<bool> IsPhoneTakenAsync(string phone, int excludeUserId)
@@ -104,11 +107,11 @@ namespace CarRentalSystem.Services
             return legacyExists;
         }
 
-        public async Task<User> AuthenticateAsync(string identifier, string password)
+        public async Task<User> AuthenticateAsync(string email, string password)
         {
-            // Cho phép login bằng cả Email hoặc Tên người dùng (Username)
+            // Chỉ cho phép login bằng Email (không cho phép login bằng Name)
             var user = await _userRepository.Query()
-                .FirstOrDefaultAsync(u => u.Email == identifier || u.Name == identifier);
+                .FirstOrDefaultAsync(u => u.Email == email);
 
             if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {

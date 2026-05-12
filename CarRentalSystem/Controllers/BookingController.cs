@@ -1,5 +1,6 @@
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
+using CarRentalSystem.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -15,13 +16,29 @@ namespace CarRentalSystem.Controllers
         private readonly IBookingService _bookingService;
         private readonly ICarService _carService;
         private readonly IAuthService _authService;
+        private readonly IReservationService _reservationService;
+        private readonly IBookingQuoteService _quoteService;
+        private readonly IPayOSPaymentService _payOSPaymentService;
+        private readonly IDeliveryScopeService _deliveryScopeService;
         private readonly Data.ApplicationDbContext _context;
 
-        public BookingController(IBookingService bookingService, ICarService carService, IAuthService authService, Data.ApplicationDbContext context)
+        public BookingController(
+            IBookingService bookingService,
+            ICarService carService,
+            IAuthService authService,
+            IReservationService reservationService,
+            IBookingQuoteService quoteService,
+            IPayOSPaymentService payOSPaymentService,
+            IDeliveryScopeService deliveryScopeService,
+            Data.ApplicationDbContext context)
         {
             _bookingService = bookingService;
             _carService = carService;
             _authService = authService;
+            _reservationService = reservationService;
+            _quoteService = quoteService;
+            _payOSPaymentService = payOSPaymentService;
+            _deliveryScopeService = deliveryScopeService;
             _context = context;
         }
 
@@ -43,13 +60,27 @@ namespace CarRentalSystem.Controllers
                     if (!user.IsVerified)
                     {
                         TempData["BookingError"] = "Vui lòng Xác thực danh tính (eKYC) bằng cách cập nhật CCCD trước khi đặt xe.";
-                        return RedirectToAction("Profile", "Auth");
+                        TempData["ShowEkycModal"] = "true";
+                        TempData["EkycReturnUrl"] = $"{Request.Path}{Request.QueryString}";
+                        return RedirectToAction("Details", "Car", new { id = CarID });
                     }
                 }
             }
 
             var car = await _carService.GetCarByIdAsync(CarID);
             if (car == null) return NotFound();
+
+            if (pickupLocationType == "owner")
+            {
+                var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
+                var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
+                var scope = _deliveryScopeService.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, PickupLocation);
+                if (!scope.IsWithinScope)
+                {
+                    TempData["BookingError"] = scope.MessageVi;
+                    return RedirectToAction("Details", "Car", new { id = CarID });
+                }
+            }
 
             // Phase 3: Maintenance blocking
             if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value < DateTime.UtcNow)
@@ -65,7 +96,10 @@ namespace CarRentalSystem.Controllers
             }
 
             // 🔒 DB-level overlap check (không load toàn bộ bookings vào RAM)
-            bool isOverlapped = await _context.Bookings
+            var availability = await _reservationService.CheckCarAvailabilityAsync(CarID, StartDate, EndDate);
+            bool isOverlapped = !availability.IsAvailable;
+            /*
+            bool legacyIsOverlapped = await _context.Bookings
                 .Include(b => b.BookingStatus)
                 .AnyAsync(b => b.CarID == CarID &&
                     b.BookingStatus != null &&
@@ -73,6 +107,7 @@ namespace CarRentalSystem.Controllers
                     ((StartDate >= b.StartDate && StartDate < b.EndDate) ||
                      (EndDate > b.StartDate && EndDate <= b.EndDate) ||
                      (StartDate <= b.StartDate && EndDate >= b.EndDate)));
+            */
 
             if (isOverlapped)
             {
@@ -157,6 +192,28 @@ namespace CarRentalSystem.Controllers
                 ViewBag.MembershipTier = usr?.MembershipTier;
             }
 
+            if (int.TryParse(userIdString, out int quoteUserId))
+            {
+                var quote = await _quoteService.BuildQuoteAsync(new BookingQuoteRequest
+                {
+                    UserID = quoteUserId,
+                    CarID = CarID,
+                    StartDate = StartDate,
+                    EndDate = EndDate,
+                    InsuranceTier = "Basic",
+                    DeliveryFee = 0m,
+                    SelectedAddons = SelectedAddons
+                });
+
+                booking.TotalPrice = quote.TotalPrice;
+                booking.TotalHours = quote.TotalHours;
+                booking.DepositAmount = quote.CollateralAmount;
+                booking.ReservationFee = quote.HoldingFee;
+                booking.DiscountAmount = quote.DiscountAmount;
+                booking.AddOnFee = quote.AddOnFee;
+                ViewBag.Quote = quote;
+            }
+
             // Generate a temporary booking code for display
             ViewBag.TempBookingCode = DateTime.UtcNow.Ticks.ToString();
 
@@ -221,7 +278,7 @@ namespace CarRentalSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Book(Booking booking, int? SelectedDriverID, decimal DriverFee)
+        public async Task<IActionResult> Book(Booking booking, int? SelectedDriverID, decimal DriverFee, List<string>? SelectedAddons)
         {
             // Validate input trước khi xử lý
             if (booking.EndDate <= booking.StartDate)
@@ -260,6 +317,82 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Checkout", new { CarID = booking.CarID, StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"), EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"), PickupLocation = car.Location?.Name, pickupLocationType = "owner" });
             }
 
+            if (booking.DeliveryFee > 0)
+            {
+                var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
+                var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
+                var scope = _deliveryScopeService.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, booking.DeliveryAddress);
+                if (!scope.IsWithinScope)
+                {
+                    TempData["BookingError"] = scope.MessageVi;
+                    return RedirectToAction("Checkout", new { CarID = booking.CarID, StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"), EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"), PickupLocation = car.Location?.Name, pickupLocationType = "owner" });
+                }
+            }
+
+            try
+            {
+                var quote = await _quoteService.BuildQuoteAsync(new BookingQuoteRequest
+                {
+                    UserID = booking.UserID,
+                    CarID = booking.CarID,
+                    StartDate = booking.StartDate,
+                    EndDate = booking.EndDate,
+                    InsuranceTier = booking.InsuranceTier,
+                    DeliveryFee = booking.DeliveryFee,
+                    DeliveryAddress = booking.DeliveryAddress,
+                    SelectedAddons = SelectedAddons,
+                    SelectedDriverID = SelectedDriverID,
+                    PromotionID = booking.PromotionID
+                });
+
+                var availability = await _reservationService.CheckCarAvailabilityAsync(booking.CarID, booking.StartDate, booking.EndDate);
+                if (!availability.IsAvailable)
+                {
+                    TempData["BookingError"] = availability.Reason ?? "Xe nay da duoc giu hoac dat trong thoi gian ban chon.";
+                    return RedirectToAction("Details", "Car", new { id = booking.CarID });
+                }
+
+                var holdResult = await _reservationService.CreateHoldAsync(booking.UserID, booking.CarID, booking.StartDate, booking.EndDate, quote);
+                if (!holdResult.IsSuccess || holdResult.Hold == null)
+                {
+                    TempData["BookingError"] = holdResult.ErrorMessage ?? "Khong the giu xe. Vui long thu lai.";
+                    return RedirectToAction("Details", "Car", new { id = booking.CarID });
+                }
+
+                var domain = $"{Request.Scheme}://{Request.Host}";
+                var payOSResult = await _payOSPaymentService.CreateHoldPaymentAsync(holdResult.Hold, quote, domain);
+                if (!payOSResult.IsSuccess || payOSResult.Transaction == null)
+                {
+                    await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "PayOS create payment failed.");
+                    TempData["BookingError"] = payOSResult.ErrorMessage ?? "Khong the tao thanh toan PayOS.";
+                    return RedirectToAction("Details", "Car", new { id = booking.CarID });
+                }
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "Tao QR PayOS",
+                    EntityType = "Thanh toan",
+                    EntityId = holdResult.Hold.BookingHoldID,
+                    UserId = booking.UserID,
+                    UserName = User.Identity?.Name,
+                    Description = $"Khach tao phieu giu cho #{holdResult.Hold.BookingHoldID}, so tien PayOS {quote.HoldingFee:N0} VND. Chua tao don thue.",
+                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent = Request.Headers["User-Agent"].ToString(),
+                    RequestUrl = "POST /Booking/Book",
+                    Timestamp = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction("Hold", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
+            }
+            catch (Exception ex)
+            {
+                TempData["BookingError"] = "Da xay ra loi khi tao thanh toan giu cho: " + ex.Message;
+                return RedirectToAction("Details", "Car", new { id = booking.CarID });
+            }
+        }
+
+        /*
             // ═══════════════════════════════════════════════════
             // 🔒 DB TRANSACTION — Atomic booking creation
             // Chống race condition (double booking) + data consistency
@@ -370,7 +503,7 @@ namespace CarRentalSystem.Controllers
                 if (booking.TotalHours == 0) booking.TotalHours = 1;
 
                 booking.DepositAmount = car.DefaultDeposit;
-                booking.DepositStatus = "Holding";
+                booking.DepositStatus = DepositStatusConstants.Unpaid;
                 
                 booking.PickupLocationID = car.LocationID;
                 booking.ReturnLocationID = car.LocationID;
@@ -396,7 +529,7 @@ namespace CarRentalSystem.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return RedirectToAction(nameof(Deposit), new { id = booking.BookingID });
+                return RedirectToAction("CreatePayment", "Payment", new { bookingId = booking.BookingID });
             }
             catch (Exception)
             {
@@ -405,6 +538,7 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
         }
+        */
 
         public async Task<IActionResult> MyBookings()
         {
@@ -412,8 +546,11 @@ namespace CarRentalSystem.Controllers
             if (int.TryParse(userIdString, out int userId))
             {
                 var allBookings = await _bookingService.GetUserBookingsAsync(userId);
-                // Filter out draft bookings (unpaid) to enforce "payment-first" visibility
-                var bookings = allBookings.Where(b => b.BookingStatus?.Name != "Draft").ToList();
+                // Hide unpaid payment holds; only show real bookings after payment is confirmed.
+                var hiddenStatuses = new[] { BookingStatusConstants.Draft, BookingStatusConstants.Unpaid };
+                var bookings = allBookings
+                    .Where(b => b.BookingStatus == null || !hiddenStatuses.Contains(b.BookingStatus.Name))
+                    .ToList();
 
                 // Load HandoverRecords for each booking
                 var bookingIds = bookings.Select(b => b.BookingID).ToList();
@@ -886,8 +1023,18 @@ namespace CarRentalSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmManualPayment(int id)
         {
+            // =========================================
+            // SECURITY: Verify ownership
+            // =========================================
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
             var booking = await _bookingService.GetBookingByIdAsync(id);
             if (booking == null) return NotFound();
+
+            // Check ownership or Admin
+            if (booking.UserID != userId && !User.IsInRole("Admin"))
+                return Forbid();
 
             // Change from Draft to Pending (Awaiting Approval)
             await _bookingService.UpdateBookingStatusAsync(id, "Pending");
@@ -940,10 +1087,36 @@ namespace CarRentalSystem.Controllers
 
                 try
                 {
+                    // =========================================
+                    // SECURITY: Wrap in transaction with recheck
+                    // =========================================
+                    using var dbTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
                     var snapshot = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(transaction.PendingCartSnapshot);
                     var items = snapshot.GetProperty("items");
+                    var excludedStatuses = new[] { "Cancelled", "Completed", "Rejected" };
 
-                    // Tao DigitalContract truoc
+                    // Recheck each item for availability
+                    foreach (var item in items.EnumerateArray())
+                    {
+                        var carId = item.GetProperty("carId").GetInt32();
+                        var startDate = item.GetProperty("startDate").GetDateTime();
+                        var endDate = item.GetProperty("endDate").GetDateTime();
+
+                        var car = await _context.Cars.Include(c => c.CarStatus).FirstOrDefaultAsync(c => c.CarID == carId);
+                        if (car == null)
+                            throw new Exception($"Xe ID {carId} khong ton tai.");
+                        if (car.CarStatus?.Name != "Available")
+                            throw new Exception($"Xe '{car.CarName}' khong con san.");
+
+                        bool hasOverlap = await _context.Bookings.Include(b => b.BookingStatus)
+                            .AnyAsync(b => b.CarID == carId && b.BookingStatus != null &&
+                                !excludedStatuses.Contains(b.BookingStatus.Name) &&
+                                startDate < b.EndDate.AddHours(-1) && endDate.AddHours(1) > b.StartDate);
+                        if (hasOverlap)
+                            throw new Exception($"Xe '{car.CarName}' da co nguoi dat trong khoang thoi gian.");
+                    }
+
                     var contractNo = $"HD-Cart-{transaction.TransactionID}-{DateTime.UtcNow:MMddyy}";
                     var minStart = DateTime.MaxValue;
                     var maxEnd = DateTime.MinValue;
@@ -1074,10 +1247,11 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                     }
 
                     await _context.SaveChangesAsync();
+                    await dbTransaction.CommitAsync();
                 }
                 catch (Exception ex)
                 {
-                    TempData["Error"] = "Lỗi khi tạo đơn: " + ex.Message;
+                    TempData["Error"] = "Loi khi tao don: " + ex.Message;
                     return RedirectToAction("Index", "Cart");
                 }
             }

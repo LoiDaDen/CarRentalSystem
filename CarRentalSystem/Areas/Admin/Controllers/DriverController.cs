@@ -1,5 +1,7 @@
 using CarRentalSystem.Data;
+using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Models;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +20,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         }
 
         // GET: Admin/Driver
-        public async Task<IActionResult> Index(string? status)
+        public async Task<IActionResult> Index(string? status, string? search, int? locationId)
         {
             var query = _context.Drivers
                 .Include(d => d.Location)
@@ -32,6 +34,25 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 query = query.Where(d => !d.IsApproved);
             else if (status == "approved")
                 query = query.Where(d => d.IsApproved);
+
+            // Tìm kiếm theo tên hoặc số điện thoại
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                search = search.Trim().ToLower();
+                query = query.Where(d => d.FullName.ToLower().Contains(search) || 
+                                        (d.Phone != null && d.Phone.Contains(search)));
+                ViewBag.Search = search;
+            }
+
+            // Lọc theo khu vực
+            if (locationId.HasValue)
+            {
+                query = query.Where(d => d.LocationID == locationId.Value);
+                ViewBag.LocationId = locationId;
+            }
+
+            // Lấy danh sách khu vực cho dropdown
+            ViewBag.Locations = await _context.Locations.OrderBy(l => l.Name).ToListAsync();
 
             var drivers = await query.ToListAsync();
             
@@ -51,8 +72,29 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .FirstOrDefaultAsync(d => d.DriverID == id);
             if (driver == null) return NotFound();
 
+            if (driver.User == null || !driver.User.IsVerified || driver.User.VerificationStatus != "Verified")
+            {
+                TempData["Error"] = $"Tai xe {driver.FullName} chua duoc duyet eKYC. Vui long duyet eKYC truoc khi duyet ho so tai xe.";
+                return RedirectToAction(nameof(Index));
+            }
+
             driver.IsApproved = true;
             driver.IsAvailable = true;
+
+            var existingContract = await _context.DriverContracts
+                .Where(dc => dc.DriverID == driver.DriverID && (dc.Status == "Pending" || dc.Status == "Active"))
+                .OrderByDescending(dc => dc.CreatedAt)
+                .FirstOrDefaultAsync();
+            if (existingContract != null)
+            {
+                await _context.SaveChangesAsync();
+                var existingContractUrl = Url.Action("ContractDetails", "Driver", new { area = "", id = existingContract.DriverContractID }, Request.Scheme) ?? "";
+                var existingEmail = driver.Email ?? driver.User.Email;
+                BackgroundJob.Enqueue<EmailBackgroundJob>(job => job.SendApprovalEmail(existingEmail, driver.FullName, "driver", existingContract.ContractNo, existingContract.ExpiresAt, existingContractUrl, "vi"));
+                ScheduleDriverContractReminders(existingContract.DriverContractID, existingContract.ExpiresAt, existingContractUrl);
+                TempData["Success"] = $"Da duyet tai xe {driver.FullName}. Hop dong #{existingContract.ContractNo} da ton tai.";
+                return RedirectToAction(nameof(Index));
+            }
 
             // ═══ Tự động tạo Hợp đồng Đối tác Tài xế ═══
             var contractCount = await _context.DriverContracts.CountAsync() + 1;
@@ -87,8 +129,28 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             _context.DriverContracts.Add(contract);
             await _context.SaveChangesAsync();
 
+            var contractUrl = Url.Action("ContractDetails", "Driver", new { area = "", id = contract.DriverContractID }, Request.Scheme) ?? "";
+            var email = driver.Email ?? driver.User.Email;
+            BackgroundJob.Enqueue<EmailBackgroundJob>(job => job.SendApprovalEmail(email, driver.FullName, "driver", contract.ContractNo, contract.ExpiresAt, contractUrl, "vi"));
+            ScheduleDriverContractReminders(contract.DriverContractID, contract.ExpiresAt, contractUrl);
+
             TempData["Success"] = $"Đã duyệt tài xế {driver.FullName} và tạo hợp đồng #{contractNo}. Tài xế có 7 ngày để ký xác nhận.";
             return RedirectToAction(nameof(Index));
+        }
+
+        private static void ScheduleDriverContractReminders(int contractId, DateTime expiresAt, string contractUrl)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var days in new[] { 3, 1 })
+            {
+                var runAt = expiresAt.AddDays(-days);
+                if (runAt > now)
+                {
+                    BackgroundJob.Schedule<EmailBackgroundJob>(
+                        job => job.SendDriverContractReminder(contractId, days, contractUrl, "vi"),
+                        runAt - now);
+                }
+            }
         }
 
         private string GenerateDriverContractTerms(CarRentalSystem.Models.Driver driver)

@@ -5,72 +5,75 @@
     Layout = "_AdminLayout";
 }
 
+<div class="theme-admin">
 <style>
-    .form-control, .form-select {
+    .theme-admin .form-control, .theme-admin .form-select {
         border-radius: 12px;
-        border: 1.5px solid #e2e8f0;
+        border: 1.5px solid var(--admin-border-color);
         padding: 0.7rem 1rem;
         font-weight: 500;
         transition: border-color 0.2s, box-shadow 0.2s;
+        background: var(--admin-surface-100);
+        color: var(--admin-text);
     }
-    .form-control:focus, .form-select:focus {
-        border-color: #3b82f6;
+    .theme-admin .form-control:focus, .theme-admin .form-select:focus {
+        border-color: var(--admin-primary);
         box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
     }
-    .form-label {
+    .theme-admin .form-label {
         font-weight: 700;
         font-size: 0.78rem;
         text-transform: uppercase;
         letter-spacing: 0.6px;
-        color: #64748b;
+        color: var(--admin-text-secondary);
         margin-bottom: 0.5rem;
     }
-    .section-card {
-        background: white;
+    .theme-admin .section-card {
+        background: var(--admin-card-bg);
         border-radius: 20px;
         padding: 1.75rem;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        border: 1px solid var(--admin-border-color);
+        box-shadow: var(--admin-shadow);
         margin-bottom: 1.5rem;
     }
-    .section-title {
+    .theme-admin .section-title {
         font-size: 0.75rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 1px;
-        color: #3b82f6;
+        color: var(--admin-primary);
         padding-bottom: 1rem;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--admin-border-color);
         margin-bottom: 1.5rem;
     }
-    .toggle-switch {
+    .theme-admin .toggle-switch {
         position: relative;
         width: 48px;
         height: 26px;
     }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider {
+    .theme-admin .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .theme-admin .toggle-slider {
         position: absolute;
         cursor: pointer;
         inset: 0;
-        background-color: #e2e8f0;
+        background-color: var(--admin-border-color);
         transition: 0.3s;
         border-radius: 26px;
     }
-    .toggle-slider:before {
+    .theme-admin .toggle-slider:before {
         position: absolute;
         content: "";
         height: 20px;
         width: 20px;
         left: 3px;
         bottom: 3px;
-        background-color: white;
+        background-color: var(--admin-surface-100);
         transition: 0.3s;
         border-radius: 50%;
         box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
-    .toggle-switch input:checked + .toggle-slider { background-color: #22c55e; }
-    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
+    .theme-admin .toggle-switch input:checked + .toggle-slider { background-color: var(--admin-success); }
+    .theme-admin .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
 </style>
 
 <!-- Select2 -->
@@ -301,3 +304,4 @@
         });
     </script>
 }
+</div>

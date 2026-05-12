@@ -165,23 +165,24 @@
                     <div class="p-3 border rounded-3 mb-3 bg-light">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="fw-bold text-success"><i class="bi bi-1-circle-fill me-2"></i>Thanh toán giữ chỗ qua ứng dụng</div>
-                            <span class="fw-bold" id="depositAmountDisplay">@((Model.TotalPrice * 0.2m).ToString("N0")) đ</span>
+                            <span class="fw-bold" id="depositAmountDisplay">@Model.ReservationFee.ToString("N0") đ</span>
                         </div>
                         <p class="small text-muted mb-0 ps-4">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào tiền phải thanh toán khi nhận xe.</p>
                     </div>
 
                     <div class="p-3 border rounded-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toan khi nhan xe</div>
+                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toán khi nhận xe</div>
                             @{
-                                var remainingAmount = Model.TotalPrice - Model.DepositAmount - Model.DiscountAmount;
+                                var remainingAmount = Model.TotalPrice - Model.ReservationFee;
                                 if (remainingAmount < 0) remainingAmount = 0;
                             }
                             <span class="fw-bold text-dark" id="balanceAmountDisplay">@remainingAmount.ToString("N0") đ</span>
                         </div>
                         <ul class="small text-muted mb-0 ps-4 list-unstyled">
-                            <li class="d-flex justify-content-between mb-1"><span>Tien thue (con lai)</span> <span id="rentalRemainingDisplay">@remainingAmount.ToString("N0") đ</span></li>
-                            <li class="d-flex justify-content-between mb-1"><span>Tai san Dat coc / The chap</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tổng tiền thuê</span> <span id="rentalTotalDisplay">@Model.TotalPrice.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tiền thuê còn lại</span> <span id="rentalRemainingDisplay">@remainingAmount.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tài sản đặt cọc / thế chấp</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
                         </ul>
                         <div id="voucherDiscountRow" class="d-flex justify-content-between mb-1 text-success fw-bold d-none">
                             <span><i class="bi bi-ticket-perforated me-1"></i>Giảm voucher</span>
@@ -456,7 +457,8 @@
                     document.getElementById('voucherDiscountRow').classList.remove('d-none');
                     document.getElementById('voucherDiscountAmount').textContent = '-' + promoDiscount.toLocaleString('vi-VN') + 'đ';
                     document.getElementById('depositAmountDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.2)).toLocaleString('vi-VN') + ' đ';
-                    document.getElementById('balanceAmountDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8 + @Model.DepositAmount)).toLocaleString('vi-VN') + ' đ';
+                    document.getElementById('balanceAmountDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8)).toLocaleString('vi-VN') + ' đ';
+                    document.getElementById('rentalTotalDisplay').textContent = Math.max(0, Math.round(discountedTotal)).toLocaleString('vi-VN') + ' đ';
                     document.getElementById('rentalRemainingDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8)).toLocaleString('vi-VN') + ' đ';
                 } else {
                     document.getElementById('promoError').classList.remove('d-none');

@@ -4,203 +4,198 @@
     Layout = "_AdminLayout";
 }
 
-<div class="page-admin-carmanage">
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Đội xe</h2>
-        <p class="text-muted mb-0">Xem và quản lý tất cả phương tiện trong hệ thống.</p>
+<div class="theme-admin page-admin-carmanage">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Đội xe</h2>
+            <p class="text-muted mb-0">Xem và quản lý tất cả phương tiện trong hệ thống.</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+            {
+                <a asp-area="Admin" asp-controller="Car" asp-action="Trash" class="btn btn-outline-danger shadow-sm px-4 py-2 rounded-3 fw-bold">
+                    <i class="bi bi-trash me-2"></i>Thùng rác
+                </a>
+            }
+            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+            {
+                <a asp-area="Admin" asp-controller="Car" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
+                    <i class="bi bi-plus-lg me-2"></i>Thêm xe mới
+                </a>
+            }
+        </div>
     </div>
-    <div class="d-flex gap-2">
-        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-        {
-            <a asp-area="Admin" asp-controller="Car" asp-action="Trash" class="btn btn-outline-danger shadow-sm px-4 py-2 rounded-3 fw-bold">
-                <i class="bi bi-trash me-2"></i>Thùng rác
-            </a>
-        }
-        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-        {
-            <a asp-area="Admin" asp-controller="Car" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
-                <i class="bi bi-plus-lg me-2"></i>Thêm xe mới
-            </a>
-        }
-    </div>
-</div>
 
-<!-- Bộ lọc -->
-<div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
-    <form method="get" asp-action="Manage" class="row g-3 align-items-end">
-        @if (User.IsInRole("Admin"))
-        {
-            <div class="col-md-3">
-                <label class="form-label text-muted small fw-bold text-uppercase">Khu vực</label>
-                <select name="areaId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
-                    <option value="">Tất cả khu vực</option>
-                    @if (ViewBag.Areas != null)
-                    {
-                        foreach (var a in ViewBag.Areas)
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form method="get" asp-action="Manage" class="row g-3 align-items-end">
+            @if (User.IsInRole("Admin"))
+            {
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Khu vực</label>
+                    <select name="areaId" class="form-select" onchange="this.form.submit()">
+                        <option value="">Tất cả khu vực</option>
+                        @if (ViewBag.Areas != null)
                         {
-                            <option value="@a.AreaID" selected="@(ViewBag.CurrentAreaId == a.AreaID)">@a.Name — @a.Province</option>
+                            foreach (var a in ViewBag.Areas)
+                            {
+                                <option value="@a.AreaID" selected="@(ViewBag.CurrentAreaId == a.AreaID)">@a.Name — @a.Province</option>
+                            }
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Hãng xe</label>
+                <select name="brandId" class="form-select" onchange="this.form.submit()">
+                    <option value="">Tất cả hãng xe</option>
+                    @if(ViewBag.Brands != null)
+                    {
+                        foreach(var brand in ViewBag.Brands)
+                        {
+                            <option value="@brand.BrandID" selected="@(ViewBag.CurrentBrandId == brand.BrandID)">@brand.Name</option>
                         }
                     }
                 </select>
             </div>
-        }
-        <div class="col-md-3">
-            <label class="form-label text-muted small fw-bold text-uppercase">Hãng xe</label>
-            <select name="brandId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
-                <option value="">Tất cả hãng xe</option>
-                @if(ViewBag.Brands != null)
-                {
-                    foreach(var brand in ViewBag.Brands)
+            <div class="col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Khu vực / Tỉnh thành</label>
+                <select name="locationId" class="form-select" onchange="this.form.submit()">
+                    <option value="">Tất cả khu vực</option>
+                    @if(ViewBag.Locations != null)
                     {
-                        <option value="@brand.BrandID" selected="@(ViewBag.CurrentBrandId == brand.BrandID)">@brand.Name</option>
+                        foreach(var loc in ViewBag.Locations)
+                        {
+                            <option value="@loc.LocationID" selected="@(ViewBag.CurrentLocationId == loc.LocationID)">@loc.Name</option>
+                        }
                     }
-                }
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label text-muted small fw-bold text-uppercase">Khu vực / Tỉnh thành</label>
-            <select name="locationId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
-                <option value="">Tất cả khu vực</option>
-                @if(ViewBag.Locations != null)
-                {
-                    foreach(var loc in ViewBag.Locations)
-                    {
-                        <option value="@loc.LocationID" selected="@(ViewBag.CurrentLocationId == loc.LocationID)">@loc.Name</option>
-                    }
-                }
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label text-muted small fw-bold text-uppercase">Trạng thái xe</label>
-            <select name="statusId" class="form-select border-1 fw-bold text-dark" style="border-radius: 10px;" onchange="this.form.submit()">
-                <option value="">Tất cả trạng thái</option>
-                @if(ViewBag.CarStatuses != null)
-                {
-                    foreach(var status in ViewBag.CarStatuses)
-                    {
-                        <option value="@status.CarStatusID" selected="@(ViewBag.CurrentStatusId == status.CarStatusID)">@status.Name</option>
-                    }
-                }
-            </select>
-        </div>
-        @if (!User.IsInRole("Admin") && (ViewBag.CurrentBrandId != null || ViewBag.CurrentLocationId != null || ViewBag.CurrentStatusId != null || ViewBag.CurrentAreaId != null))
-        {
-            <div class="col-12 text-end">
-                <a asp-action="Manage" class="btn btn-light text-danger fw-bold rounded-3 px-4 py-2">
-                    <i class="bi bi-x-circle me-1"></i> Bỏ lọc
-                </a>
+                </select>
             </div>
-        }
-        @if (User.IsInRole("Admin") && (ViewBag.CurrentBrandId != null || ViewBag.CurrentLocationId != null || ViewBag.CurrentStatusId != null || ViewBag.CurrentAreaId != null))
-        {
-            <div class="col-12 text-end">
-                <a asp-action="Manage" class="btn btn-light text-danger fw-bold rounded-3 px-4 py-2">
-                    <i class="bi bi-x-circle me-1"></i> Bỏ lọc
-                </a>
+            <div class="col-md-3">
+                <label class="form-label text-muted small fw-bold text-uppercase">Trạng thái xe</label>
+                <select name="statusId" class="form-select" onchange="this.form.submit()">
+                    <option value="">Tất cả trạng thái</option>
+                    @if(ViewBag.CarStatuses != null)
+                    {
+                        foreach(var status in ViewBag.CarStatuses)
+                        {
+                            <option value="@status.CarStatusID" selected="@(ViewBag.CurrentStatusId == status.CarStatusID)">@status.Name</option>
+                        }
+                    }
+                </select>
             </div>
-        }
-    </form>
-</div>
+            @if (ViewBag.CurrentBrandId != null || ViewBag.CurrentLocationId != null || ViewBag.CurrentStatusId != null || ViewBag.CurrentAreaId != null)
+            {
+                <div class="col-12 text-end">
+                    <a asp-action="Manage" class="btn btn-outline-secondary rounded-3 px-4 py-2">
+                        <i class="bi bi-x-circle me-1"></i> Bỏ lọc
+                    </a>
+                </div>
+            }
+        </form>
+    </div>
 
-<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 table-car">
-            <thead style="background: #f8fafd;">
-                <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
-                    <th class="ps-4">Phương tiện</th>
-                    <th>Biển số / VIN</th>
-                    <th>Loại / Nhiên liệu</th>
-                    <th>Giá/Ngày</th>
-                    <th>Trạng thái</th>
-                    <th class="text-end pe-4">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var car in Model)
-                {
-                    <tr>
-                        <td class="ps-4">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="car-avatar-admin">
-                                    @if (car.CarImages?.Any() == true)
-                                    {
-                                        <img src="@car.CarImages.First().ImageUrl" alt="@car.CarName" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-car-front text-primary" style="font-size:1.4rem;"></i>
-                                    }
-                                </div>
-                                <div>
-                                    <div class="fw-800 text-dark d-flex align-items-center gap-2 mb-1">
-                                        <span>@car.CarBrand?.Name @car.CarName</span>
-                                        @if(car.OwnerID == null)
+    <!-- Data Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 table-car">
+                <thead>
+                    <tr class="small text-uppercase fw-bold" style="color: var(--admin-text-secondary);">
+                        <th class="ps-4">Phương tiện</th>
+                        <th>Biển số / VIN</th>
+                        <th>Loại / Nhiên liệu</th>
+                        <th>Giá/Ngày</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var car in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="car-avatar-admin rounded-3 overflow-hidden" style="width: 50px; height: 50px; background: var(--admin-surface-2);">
+                                        @if (car.CarImages?.Any() == true)
                                         {
-                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 badge-system-car" style="font-size: 0.65rem;"><i class="bi bi-building"></i> Hệ Thống</span>
+                                            <img src="@car.CarImages.First().ImageUrl" alt="@car.CarName" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
                                         }
                                         else
                                         {
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 badge-partner-car" style="font-size: 0.65rem;"><i class="bi bi-person-badge"></i> Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
+                                            <i class="bi bi-car-front text-primary d-flex align-items-center justify-content-center h-100" style="font-size:1.4rem;"></i>
                                         }
                                     </div>
-                                    <small class="text-muted"><i class="bi bi-people me-1"></i>@car.Seats chỗ · @car.Transmission</small>
+                                    <div>
+                                        <div class="fw-800 d-flex align-items-center gap-2 mb-1">
+                                            <span>@car.CarBrand?.Name @car.CarName</span>
+                                            @if(car.OwnerID == null)
+                                            {
+                                                <span class="badge bg-primary-subtle text-primary border border-primary" style="font-size: 0.65rem;"><i class="bi bi-building"></i> Hệ Thống</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-info-subtle text-info border border-info" style="font-size: 0.65rem;"><i class="bi bi-person-badge"></i> Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
+                                            }
+                                        </div>
+                                        <small class="text-muted"><i class="bi bi-people me-1"></i>@car.Seats chỗ · @car.Transmission</small>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="badge bg-white text-dark border border-2 px-3 py-1 d-block mb-1" style="font-family: monospace; border-radius: 8px; max-width: 130px;">
-                                <i class="bi bi-card-text me-1 text-primary"></i>@car.LicensePlate
-                            </span>
-                            @if (!string.IsNullOrEmpty(car.VIN))
-                            {
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">VIN: @car.VIN</small>
-                            }
-                        </td>
-                        <td>
-                            <span class="badge bg-light text-dark border fw-bold" style="font-size: 0.75rem; border-radius: 8px;">@car.CarType?.Name</span>
-                            <br>
-                            <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">
-                                <i class="bi bi-fuel-pump me-1"></i>@car.FuelType
-                            </small>
-                        </td>
-                        <td>
-                            <span class="fw-bold text-primary">@car.PricePerDay.ToString("N0")<small class="text-muted fw-normal">đ/ngày</small></span>
-                        </td>
-                        <td>
-                            @{
-                                var statusName = car.CarStatus?.Name ?? "Unknown";
-                                var statusClass = statusName.ToLower() switch {
-                                    "available" => "bg-success",
-                                    "rented" => "bg-warning text-dark",
-                                    "maintenance" => "bg-danger",
-                                    _ => "bg-secondary"
-                                };
-                            }
-                            <span class="badge @statusClass px-3 py-1 rounded-pill status-badge-admin">@statusName</span>
-                        </td>
-                        <td class="text-end pe-4">
-                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                            {
-                                <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-outline-primary btn-sm rounded-pill px-3" title="Chỉnh sửa">
-                                    <i class="bi bi-pencil me-1"></i>Sửa
+                            </td>
+                            <td>
+                                <span class="badge bg-light border fw-bold d-block mb-1" style="font-family: monospace; border-radius: 8px; max-width: 130px;">
+                                    <i class="bi bi-card-text me-1" style="color: var(--admin-primary);"></i>@car.LicensePlate
+                                </span>
+                                @if (!string.IsNullOrEmpty(car.VIN))
+                                {
+                                    <small class="text-muted d-block" style="font-size: 0.65rem;">VIN: @car.VIN</small>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-light border fw-bold" style="font-size: 0.75rem; border-radius: 8px;">@car.CarType?.Name</span>
+                                <br>
+                                <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">
+                                    <i class="bi bi-fuel-pump me-1"></i>@car.FuelType
+                                </small>
+                            </td>
+                            <td>
+                                <span class="fw-bold" style="color: var(--admin-primary);">@car.PricePerDay.ToString("N0")<small class="text-muted fw-normal">đ/ngày</small></span>
+                            </td>
+                            <td>
+                                @{
+                                    var statusName = car.CarStatus?.Name ?? "Unknown";
+                                    var statusClass = statusName.ToLower() switch {
+                                        "available" => "bg-success",
+                                        "rented" => "bg-warning text-dark",
+                                        "maintenance" => "bg-danger",
+                                        _ => "bg-secondary"
+                                    };
+                                }
+                                <span class="badge @statusClass px-3 py-1 rounded-pill">@statusName</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                                {
+                                    <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-outline-primary btn-sm rounded-pill px-3" title="Chỉnh sửa">
+                                        <i class="bi bi-pencil me-1"></i>Sửa
+                                    </a>
+                                }
+                                <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
+                                    <i class="bi bi-eye me-1"></i>Chi tiết
                                 </a>
-                            }
-                            <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
-                                <i class="bi bi-eye me-1"></i>Chi tiết
-                            </a>
-                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                            {
-                                <form asp-action="Delete" asp-route-id="@car.CarID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn đưa xe này vào thùng rác?');">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3" title="Xóa mềm">
-                                        <i class="bi bi-trash me-1"></i>Xóa
-                                    </button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                                {
+                                    <form asp-action="Delete" asp-route-id="@car.CarID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn đưa xe này vào thùng rác?');">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3" title="Xóa mềm">
+                                            <i class="bi bi-trash me-1"></i>Xóa
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

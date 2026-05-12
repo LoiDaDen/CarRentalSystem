@@ -229,21 +229,27 @@
             <div class="row">
                 <div class="col-md-6">
                     <label class="form-label fw-bold small text-muted ocr-section-title">5. Selfie</label>
-                    <label class="upload-zone w-100 @(Model.FaceUrl == null ? "is-invalid" : "")" id="faceZone">
-                        <i class="bi bi-person-bounding-box"></i>
-                        <span class="fw-bold text-dark">Click để chọn ảnh</span>
-                        <input type="file" name="face" id="face" class="d-none" accept="image/jpeg,image/png,image/webp" onchange="handleFaceUpload(this, 'faceZone', 'facePreview')">
+                    <div class="upload-zone w-100 @(Model.FaceUrl == null ? "is-invalid" : "") camera-zone" id="faceZone">
+                        <i class="bi bi-camera-video"></i>
+                        <span class="fw-bold text-dark">Chụp khuôn mặt bằng camera</span>
+                        <input type="file" name="face" id="face" class="d-none" accept="image/jpeg,image/png,image/webp">
+                        <video id="faceCamera" class="w-100 rounded-3 mt-2 d-none" autoplay playsinline muted></video>
+                        <canvas id="faceCanvas" class="d-none"></canvas>
                         <img id="facePreview" class="preview-img" alt="Preview">
-                        <button type="button" class="clear-btn" onclick="clearImage(event, 'face', 'faceZone', 'facePreview')"><i class="bi bi-x"></i></button>
-                        <div class="ocr-status small text-muted mt-1">JPG, PNG, WEBP, tối đa 5MB · Chụp rõ mặt, không đeo kính</div>
+                        <div class="d-flex gap-2 justify-content-center mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="startFaceCameraBtn">Mở camera</button>
+                            <button type="button" class="btn btn-sm btn-primary d-none" id="captureFaceBtn">Chụp ảnh</button>
+                            <button type="button" class="btn btn-sm btn-light d-none" id="retakeFaceBtn">Chụp lại</button>
+                        </div>
+                        <div class="ocr-status small text-muted mt-1">Bắt buộc dùng camera thật, chụp rõ mặt, không đeo kính.</div>
                         <div class="ocr-loading" id="faceLoading">
                             <div class="spinner"></div>
                             <small>Đang so sánh khuôn mặt...</small>
                         </div>
                         <div class="validation-error" id="faceError">
-                            <i class="bi bi-exclamation-circle me-1"></i>Vui lòng tải lên ảnh selfie
+                            <i class="bi bi-exclamation-circle me-1"></i>Vui lòng chụp ảnh selfie bằng camera
                         </div>
-                    </label>
+                    </div>
                     <button type="button" class="scan-btn mt-2 w-100" id="verifyFaceBtn" onclick="verifyFace()" disabled>
                         <i class="bi bi-person-check me-1"></i>Xác minh khuôn mặt
                     </button>
@@ -304,14 +310,14 @@
 
         // Validate format
         if (!ALLOWED_TYPES.includes(file.type)) {
-            alert('Dinh dang khong hop le. Chi chap nhan: JPG, JPEG, PNG, WEBP.');
+            alert('Định dạng không hợp lệ. Chỉ chấp nhận: JPG, JPEG, PNG, WEBP.');
             input.value = '';
             return;
         }
 
         // Validate file size (5MB)
         if (file.size > MAX_SIZE) {
-            alert('File qua lon. Vui long chon file nho hon 5MB.');
+            alert('File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.');
             input.value = '';
             return;
         }
@@ -330,6 +336,9 @@
         previewImage(input, zoneId, previewId, errorId);
         hasCccdOcr = false;
         updateScanButton(scanBtnId);
+        const faceInput = document.getElementById('face');
+        const verifyFaceBtn = document.getElementById('verifyFaceBtn');
+        if (faceInput && verifyFaceBtn) verifyFaceBtn.disabled = !(input.files.length > 0 && faceInput.files.length > 0);
         document.getElementById('cccdResult').innerHTML = '';
         document.getElementById('extractedInfoCard').style.display = 'none';
     }
@@ -350,6 +359,87 @@
         const idFrontInput = document.getElementById('idFront');
         verifyBtn.disabled = !(idFrontInput.files.length > 0 && input.files.length > 0);
         document.getElementById('faceResult').innerHTML = '';
+    }
+
+    function initFaceCameraCapture() {
+        const input = document.getElementById('face');
+        const video = document.getElementById('faceCamera');
+        const canvas = document.getElementById('faceCanvas');
+        const preview = document.getElementById('facePreview');
+        const startBtn = document.getElementById('startFaceCameraBtn');
+        const captureBtn = document.getElementById('captureFaceBtn');
+        const retakeBtn = document.getElementById('retakeFaceBtn');
+        const zone = document.getElementById('faceZone');
+        const error = document.getElementById('faceError');
+        let stream = null;
+
+        if (!input || !video || !canvas || !preview || !startBtn || !captureBtn || !retakeBtn) return;
+
+        async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                if (error) {
+                    error.style.display = 'block';
+                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Trinh duyet khong ho tro camera.';
+                }
+                return;
+            }
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            video.srcObject = stream;
+            video.classList.remove('d-none');
+            preview.style.display = 'none';
+            captureBtn.classList.remove('d-none');
+            retakeBtn.classList.add('d-none');
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.srcObject = null;
+        }
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                await startCamera();
+            } catch {
+                if (error) {
+                    error.style.display = 'block';
+                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Khong mo duoc camera. Vui long cap quyen camera.';
+                }
+            }
+        });
+
+        captureBtn.addEventListener('click', () => {
+            if (!video.videoWidth || !video.videoHeight) return;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const file = new File([blob], 'face-camera.jpg', { type: 'image/jpeg' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+                zone.classList.add('has-preview');
+                clearZoneError('faceZone', 'faceError');
+                const idFrontInput = document.getElementById('idFront');
+                document.getElementById('verifyFaceBtn').disabled = !(idFrontInput.files.length > 0 && input.files.length > 0);
+                document.getElementById('faceResult').innerHTML = '';
+                stopCamera();
+                video.classList.add('d-none');
+                captureBtn.classList.add('d-none');
+                retakeBtn.classList.remove('d-none');
+            }, 'image/jpeg', 0.92);
+        });
+
+        retakeBtn.addEventListener('click', async () => {
+            input.value = '';
+            zone.classList.remove('has-preview');
+            await startCamera();
+        });
     }
 
     function clearImage(event, inputName, zoneId, previewId) {
@@ -399,7 +489,7 @@
                 clearZoneError(item.zoneId, item.errorId);
                 // Double-check format & size
                 if (!ALLOWED_TYPES.includes(file.type)) {
-                    alert('Dinh dang anh ' + item.label + ' khong hop le. Chi chap nhan: JPG, JPEG, PNG, WEBP.');
+                    alert('Định dạng ảnh ' + item.label + ' không hợp lệ. Chỉ chấp nhận: JPG, JPEG, PNG, WEBP.');
                     hasErrors = true;
                 }
                 if (file.size > MAX_SIZE) {
@@ -415,7 +505,7 @@
             if (firstError) {
                 firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-            alert('Vui long tai len day du 5 anh theo yeu cau.');
+            alert('Vui lòng tải lên đầy đủ 5 ảnh theo yêu cầu.');
             return false;
         }
         return true;
@@ -637,5 +727,7 @@
             if (loading) loading.classList.remove('active');
         }
     }
+
+    initFaceCameraCapture();
 </script>
 }

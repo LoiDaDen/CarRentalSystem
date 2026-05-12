@@ -4,164 +4,203 @@
     Layout = "_AdminLayout";
 }
 
-<div class="page-admin-driver">
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-person-badge me-2"></i>Quản lý Tài xế</h4>
-        <p class="text-muted mb-0 small">Duyệt & quản lý đội ngũ tài xế của hệ thống</p>
-    </div>
-    <div class="d-flex gap-2">
-        <span class="badge bg-dark bg-opacity-75 rounded-pill px-3 py-2">Tổng: @ViewBag.TotalCount</span>
-        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ duyệt: @ViewBag.PendingCount</span>
-        <span class="badge bg-success rounded-pill px-3 py-2">Đã duyệt: @ViewBag.ApprovedCount</span>
-    </div>
-</div>
-
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
-<!-- Filter Tabs -->
-<ul class="nav nav-pills mb-4 gap-2">
-    <li class="nav-item">
-        <a class="nav-link @(ViewBag.Status == null ? "active bg-dark" : "text-dark")" asp-action="Index">
-            <i class="bi bi-list-ul me-1"></i>Tất cả
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link @(ViewBag.Status == "pending" ? "active bg-warning text-dark" : "text-dark")" asp-action="Index" asp-route-status="pending">
-            <i class="bi bi-hourglass-split me-1"></i>Chờ duyệt
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link @(ViewBag.Status == "approved" ? "active bg-success" : "text-dark")" asp-action="Index" asp-route-status="approved">
-            <i class="bi bi-check-circle me-1"></i>Đã duyệt
-        </a>
-    </li>
-</ul>
-
-@if (Model.Count == 0)
-{
-    <div class="text-center py-5">
-        <i class="bi bi-person-x display-1 text-muted"></i>
-        <h5 class="mt-3 text-muted">Chưa có tài xế nào</h5>
-    </div>
-}
-else
-{
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-4">Tài xế</th>
-                        <th>Bằng lái</th>
-                        <th>Khu vực</th>
-                        <th class="text-center">Kinh nghiệm</th>
-                        <th class="text-center">Đánh giá</th>
-                        <th class="text-center">Chuyến</th>
-                        <th class="text-center">Giá/h</th>
-                        <th class="text-center">Trạng thái</th>
-                        <th class="text-center">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var d in Model)
-                    {
-                        <tr>
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center driver-avatar-admin">
-                                        <i class="bi bi-person-fill text-primary"></i>
-                                    </div>
-                                    <div class="ms-3">
-                                        <div class="fw-bold">@d.FullName</div>
-                                        <small class="text-muted">@d.Phone</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-info bg-opacity-10 text-info">@d.LicenseType</span>
-                            </td>
-                            <td class="small text-muted">@(d.Location?.Name ?? "—")</td>
-                            <td class="text-center">@d.ExperienceYears năm</td>
-                            <td class="text-center">
-                                <span class="text-warning"><i class="bi bi-star-fill"></i></span>
-                                @d.Rating.ToString("N1")
-                            </td>
-                            <td class="text-center">@d.TotalTrips</td>
-                            <td class="text-center fw-bold">@(d.HourlyRate > 0 ? d.HourlyRate.ToString("N0") + "đ" : "—")</td>
-                            <td class="text-center">
-                                @if (d.IsBlacklisted)
-                                {
-                                    <span class="badge bg-dark rounded-pill px-3">
-                                        <i class="bi bi-slash-circle me-1"></i>Blacklisted
-                                    </span>
-                                }
-                                else if (d.IsLocked)
-                                {
-                                    <span class="badge bg-danger rounded-pill px-3">
-                                        <i class="bi bi-lock-fill me-1"></i>Đã khóa
-                                    </span>
-                                }
-                                else if (!d.IsApproved)
-                                {
-                                    <span class="badge bg-warning text-dark rounded-pill px-3">
-                                        <i class="bi bi-hourglass-split me-1"></i>Chờ duyệt
-                                    </span>
-                                }
-                                else if (d.IsAvailable)
-                                {
-                                    <span class="badge bg-success rounded-pill px-3">
-                                        <i class="bi bi-check-circle me-1"></i>Sẵn sàng
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary rounded-pill px-3">
-                                        <i class="bi bi-pause-circle me-1"></i>Tạm nghỉ
-                                    </span>
-                                }
-                            </td>
-                            <td class="text-center">
-                                <div class="btn-group btn-group-sm">
-                                    @if (!d.IsApproved)
-                                    {
-                                        <form asp-action="Approve" asp-route-id="@d.DriverID" method="post" class="d-inline">
-                                            <button type="submit" class="btn btn-success rounded-pill px-3" title="Duyệt">
-                                                <i class="bi bi-check-lg me-1"></i>Duyệt
-                                            </button>
-                                        </form>
-                                    }
-                                    <a asp-action="Details" asp-route-id="@d.DriverID" class="btn btn-outline-info rounded-pill px-3" title="Chi tiết">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a asp-action="Edit" asp-route-id="@d.DriverID" class="btn btn-outline-primary rounded-pill px-3" title="Sửa">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    @if(d.IsApproved)
-                                    {
-                                        <form asp-action="ToggleLock" asp-route-id="@d.DriverID" method="post" class="d-inline">
-                                            <button type="submit" class="btn @(d.IsLocked ? "btn-warning" : "btn-outline-warning text-dark") rounded-pill px-3" title="@(d.IsLocked ? "Mở khóa" : "Khóa")">
-                                                <i class="bi @(d.IsLocked ? "bi-unlock" : "bi-lock")"></i>
-                                            </button>
-                                        </form>
-                                        <form asp-action="ToggleBlacklist" asp-route-id="@d.DriverID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn thay đổi trạng thái Blacklist?');">
-                                            <button type="submit" class="btn @(d.IsBlacklisted ? "btn-dark" : "btn-outline-dark") rounded-pill px-3" title="@(d.IsBlacklisted ? "Gỡ Blacklist" : "Blacklist")">
-                                                <i class="bi bi-slash-circle"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+<div class="theme-admin page-admin-driver">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 ls-neg-1 mb-1"><i class="bi bi-person-badge me-2"></i>Quản lý Tài xế</h2>
+            <p class="text-muted mb-0">Duyệt & quản lý đội ngũ tài xế của hệ thống</p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-dark rounded-pill px-3 py-2">Tổng: @ViewBag.TotalCount</span>
+            <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ duyệt: @ViewBag.PendingCount</span>
+            <span class="badge bg-success rounded-pill px-3 py-2">Đã duyệt: @ViewBag.ApprovedCount</span>
         </div>
     </div>
-}
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filter Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.Status == null ? "active" : "")" asp-action="Index" asp-route-search="@ViewBag.Search" asp-route-locationId="@ViewBag.LocationId">
+                <i class="bi bi-list-ul me-1"></i>Tất cả
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.Status == "pending" ? "active" : "")" asp-action="Index" asp-route-status="pending" asp-route-search="@ViewBag.Search" asp-route-locationId="@ViewBag.LocationId" style="color: var(--admin-warning);">
+                <i class="bi bi-hourglass-split me-1"></i>Chờ duyệt
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.Status == "approved" ? "active" : "")" asp-action="Index" asp-route-status="approved" asp-route-search="@ViewBag.Search" asp-route-locationId="@ViewBag.LocationId" style="color: var(--admin-success);">
+                <i class="bi bi-check-circle me-1"></i>Đã duyệt
+            </a>
+        </li>
+    </ul>
+
+    <!-- Search & Filter Bar -->
+    <form method="get" asp-action="Index" class="mb-4">
+        <input type="hidden" name="status" value="@ViewBag.Status" />
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-muted">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" name="search" class="form-control bg-dark border-secondary text-light" 
+                           placeholder="Tìm theo tên hoặc số điện thoại..." value="@ViewBag.Search" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="locationId" class="form-select bg-dark border-secondary text-light">
+                    <option value="">-- Tất cả khu vực --</option>
+                    @if (ViewBag.Locations != null)
+                    {
+                        @foreach (var loc in ViewBag.Locations)
+                        {
+                            <option value="@loc.LocationID" selected="@(ViewBag.LocationId == loc.LocationID ? "selected" : null)">
+                                @loc.Name
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-funnel me-1"></i>Lọc
+                </button>
+            </div>
+        </div>
+    </form>
+
+    @if (Model.Count == 0)
+    {
+        <div class="card text-center p-5">
+            <div class="empty-state">
+                <i class="bi bi-person-x display-1"></i>
+                <h5 class="mt-3">Chưa có tài xế nào</h5>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr style="color: var(--admin-text-secondary);">
+                            <th class="ps-4">Tài xế</th>
+                            <th>Bằng lái</th>
+                            <th>Khu vực</th>
+                            <th class="text-center">Kinh nghiệm</th>
+                            <th class="text-center">Đánh giá</th>
+                            <th class="text-center">Chuyến</th>
+                            <th class="text-center">Giá/h</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: var(--admin-primary-100); color: var(--admin-primary);">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <div class="ms-3">
+                                            <div class="fw-bold">@d.FullName</div>
+                                            <small class="text-muted">@d.Phone</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info border border-info">@d.LicenseType</span>
+                                </td>
+                                <td class="small text-muted">@(d.Location?.Name ?? "—")</td>
+                                <td class="text-center">@d.ExperienceYears năm</td>
+                                <td class="text-center">
+                                    <span style="color: var(--admin-warning);"><i class="bi bi-star-fill"></i></span>
+                                    @d.Rating.ToString("N1")
+                                </td>
+                                <td class="text-center">@d.TotalTrips</td>
+                                <td class="text-center fw-bold">@(d.HourlyRate > 0 ? d.HourlyRate.ToString("N0") + "đ" : "—")</td>
+                                <td class="text-center">
+                                    @if (d.IsBlacklisted)
+                                    {
+                                        <span class="badge bg-dark rounded-pill px-3">
+                                            <i class="bi bi-slash-circle me-1"></i>Blacklisted
+                                        </span>
+                                    }
+                                    else if (d.IsLocked)
+                                    {
+                                        <span class="badge bg-danger rounded-pill px-3">
+                                            <i class="bi bi-lock-fill me-1"></i>Đã khóa
+                                        </span>
+                                    }
+                                    else if (!d.IsApproved)
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3">
+                                            <i class="bi bi-hourglass-split me-1"></i>Chờ duyệt
+                                        </span>
+                                    }
+                                    else if (d.IsAvailable)
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3">
+                                            <i class="bi bi-check-circle me-1"></i>Sẵn sàng
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary rounded-pill px-3">
+                                            <i class="bi bi-pause-circle me-1"></i>Tạm nghỉ
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        @if (!d.IsApproved)
+                                        {
+                                            <form asp-action="Approve" asp-route-id="@d.DriverID" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-success rounded-pill px-3" title="Duyệt">
+                                                    <i class="bi bi-check-lg me-1"></i>Duyệt
+                                                </button>
+                                            </form>
+                                        }
+                                        <a asp-action="Details" asp-route-id="@d.DriverID" class="btn btn-outline-info rounded-pill px-3" title="Chi tiết">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@d.DriverID" class="btn btn-outline-primary rounded-pill px-3" title="Sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        @if(d.IsApproved)
+                                        {
+                                            <form asp-action="ToggleLock" asp-route-id="@d.DriverID" method="post" class="d-inline">
+                                                <button type="submit" class="btn @(d.IsLocked ? "btn-warning" : "btn-outline-warning") rounded-pill px-3" title="@(d.IsLocked ? "Mở khóa" : "Khóa")">
+                                                    <i class="bi @(d.IsLocked ? "bi-unlock" : "bi-lock")"></i>
+                                                </button>
+                                            </form>
+                                            <form asp-action="ToggleBlacklist" asp-route-id="@d.DriverID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn thay đổi trạng thái Blacklist?');">
+                                                <button type="submit" class="btn @(d.IsBlacklisted ? "btn-dark" : "btn-outline-dark") rounded-pill px-3" title="@(d.IsBlacklisted ? "Gỡ Blacklist" : "Blacklist")">
+                                                    <i class="bi bi-slash-circle"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

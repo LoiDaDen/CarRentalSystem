@@ -1,5 +1,7 @@
 using CarRentalSystem.Services;
+using CarRentalSystem.Data;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.BackgroundJobs
 {
@@ -11,11 +13,13 @@ namespace CarRentalSystem.BackgroundJobs
     public class EmailBackgroundJob
     {
         private readonly IEmailService _emailService;
+        private readonly ApplicationDbContext _db;
         private readonly ILogger<EmailBackgroundJob> _logger;
 
-        public EmailBackgroundJob(IEmailService emailService, ILogger<EmailBackgroundJob> logger)
+        public EmailBackgroundJob(IEmailService emailService, ApplicationDbContext db, ILogger<EmailBackgroundJob> logger)
         {
             _emailService = emailService;
+            _db = db;
             _logger = logger;
         }
 
@@ -57,6 +61,57 @@ namespace CarRentalSystem.BackgroundJobs
                 _logger.LogError(ex, "❌ [Hangfire] Gửi OTP THẤT BẠI đến: {Email}. Hangfire sẽ tự retry.", email);
                 throw;
             }
+        }
+
+        public async Task SendApprovalEmail(string email, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, string culture = "vi")
+        {
+            _logger.LogInformation("[Hangfire] Sending {Role} approval email to {Email}", roleName, email);
+            await _emailService.SendApprovalEmailAsync(email, recipientName, roleName, contractNo, expiresAt, contractUrl, culture);
+        }
+
+        public async Task SendDriverContractReminder(int driverContractId, int daysBeforeDeadline, string contractUrl, string culture = "vi")
+        {
+            var contract = await _db.DriverContracts
+                .Include(c => c.Driver)
+                .ThenInclude(d => d!.User)
+                .FirstOrDefaultAsync(c => c.DriverContractID == driverContractId);
+
+            if (contract?.Driver == null || contract.Status != "Pending" || contract.SignedByPartyB || DateTime.UtcNow > contract.ExpiresAt)
+                return;
+
+            var email = contract.Driver.Email ?? contract.Driver.User?.Email;
+            if (string.IsNullOrWhiteSpace(email))
+                return;
+
+            await _emailService.SendContractReminderEmailAsync(
+                email,
+                contract.Driver.FullName,
+                "driver",
+                contract.ContractNo,
+                contract.ExpiresAt,
+                contractUrl,
+                daysBeforeDeadline,
+                culture);
+        }
+
+        public async Task SendPartnerContractReminder(int partnerContractId, int daysBeforeDeadline, string contractUrl, string culture = "vi")
+        {
+            var contract = await _db.PartnerContracts
+                .Include(c => c.PartnerUser)
+                .FirstOrDefaultAsync(c => c.PartnerContractID == partnerContractId);
+
+            if (contract?.PartnerUser == null || contract.Status != "Pending" || contract.SignedByPartyB || DateTime.UtcNow > contract.ExpiresAt)
+                return;
+
+            await _emailService.SendContractReminderEmailAsync(
+                contract.PartnerUser.Email,
+                contract.PartnerUser.Name,
+                "partner",
+                contract.ContractNo,
+                contract.ExpiresAt,
+                contractUrl,
+                daysBeforeDeadline,
+                culture);
         }
     }
 }

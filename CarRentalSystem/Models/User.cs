@@ -75,6 +75,16 @@ namespace CarRentalSystem.Models
         [MaxLength(500)]
         public string? BlacklistReason { get; set; }
 
+        [MaxLength(6)]
+        public string? ReferralCode { get; set; }
+
+        public int? ReferredByUserID { get; set; }
+        [ForeignKey("ReferredByUserID")]
+        public User? ReferredByUser { get; set; }
+        public ICollection<User>? ReferredUsers { get; set; } = new List<User>();
+
+        public DateTime? ReferralDiscountUsedAt { get; set; }
+
         // 🔒 Mã hóa PII at rest — MaxLength lớn vì ciphertext dài
         [MaxLength(500)]
         public string? CitizenId { get; set; }

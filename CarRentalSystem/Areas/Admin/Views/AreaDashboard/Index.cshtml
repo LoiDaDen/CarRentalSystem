@@ -11,23 +11,25 @@
     var myAreaCount = Model.Count;
 }
 
+<div class="theme-admin">
 <style>
-    .area-card {
-        border: 1.5px solid #e2e8f0;
+    .theme-admin .area-card {
+        border: 1.5px solid var(--admin-border-color);
         border-radius: 20px;
         transition: transform 0.2s, box-shadow 0.2s;
         overflow: hidden;
+        background: var(--admin-card-bg);
     }
-    .area-card:hover {
+    .theme-admin .area-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     }
-    .area-card-header {
+    .theme-admin .area-card-header {
         padding: 1.25rem 1.5rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
-        border-bottom: 1px solid #f1f5f9;
+        background: var(--admin-surface-200);
+        border-bottom: 1px solid var(--admin-border-color);
     }
-    .stat-badge {
+    .theme-admin .stat-badge {
         width: 48px;
         height: 48px;
         border-radius: 14px;
@@ -36,20 +38,20 @@
         justify-content: center;
         font-size: 1.2rem;
     }
-    .stat-badge.blue { background: #eff6ff; color: #3b82f6; }
-    .stat-badge.green { background: #ecfdf5; color: #10b981; }
-    .stat-badge.orange { background: #fff7ed; color: #f59e0b; }
-    .stat-badge.purple { background: #f5f3ff; color: #7c3aed; }
-    .util-bar {
+    .theme-admin .stat-badge.blue { background: var(--admin-primary-50); color: var(--admin-primary); }
+    .theme-admin .stat-badge.green { background: var(--admin-success-50); color: var(--admin-success); }
+    .theme-admin .stat-badge.orange { background: var(--admin-warning-50); color: var(--admin-warning); }
+    .theme-admin .stat-badge.purple { background: var(--admin-purple-50); color: var(--admin-purple); }
+    .theme-admin .util-bar {
         height: 6px;
         border-radius: 3px;
-        background: #f1f5f9;
+        background: var(--admin-surface-200);
         overflow: hidden;
     }
-    .util-bar-fill {
+    .theme-admin .util-bar-fill {
         height: 100%;
         border-radius: 3px;
-        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        background: linear-gradient(90deg, var(--admin-primary), var(--admin-primary-500));
         transition: width 0.6s ease;
     }
 </style>
@@ -223,3 +225,4 @@ else
         }
     </div>
 }
+</div>

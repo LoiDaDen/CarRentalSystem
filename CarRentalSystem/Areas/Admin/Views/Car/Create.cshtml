@@ -4,20 +4,21 @@
     Layout = "_AdminLayout";
 }
 
+<div class="theme-admin">
 <style>
-    .form-control, .form-select { border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0.75rem 1rem; font-weight: 500; transition: border-color 0.2s, box-shadow 0.2s; }
-    .form-control:focus, .form-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
-    .form-label { font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px; color: #64748b; margin-bottom: 0.5rem; }
-    .section-card { background: white; border-radius: 20px; padding: 1.75rem; border: 1px solid #f1f5f9; box-shadow: 0 2px 12px rgba(0,0,0,0.04); margin-bottom: 1.5rem; }
-    .section-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #3b82f6; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 1.5rem; }
-    .upload-area { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; }
-    .upload-area:hover { border-color: #3b82f6; background: #f0f7ff; }
-    #mapPicker { height: 300px; border-radius: 12px; z-index: 1; border: 1px solid #e2e8f0; }
-    .preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
-    .preview-item { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #e2e8f0; }
-    .toggle-card { border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; }
-    .toggle-card:has(input:checked) { border-color: #3b82f6; background: #eff6ff; }
-    .toggle-card input { width: 20px; height: 20px; }
+    .theme-admin .form-control, .theme-admin .form-select { border-radius: 12px; border: 1.5px solid var(--admin-border-color); padding: 0.75rem 1rem; font-weight: 500; transition: border-color 0.2s, box-shadow 0.2s; background: var(--admin-surface-100); color: var(--admin-text); }
+    .theme-admin .form-control:focus, .theme-admin .form-select:focus { border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+    .theme-admin .form-label { font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--admin-text-secondary); margin-bottom: 0.5rem; }
+    .theme-admin .section-card { background: var(--admin-card-bg); border-radius: 20px; padding: 1.75rem; border: 1px solid var(--admin-border-color); box-shadow: var(--admin-shadow); margin-bottom: 1.5rem; }
+    .theme-admin .section-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--admin-primary); padding-bottom: 1rem; border-bottom: 1px solid var(--admin-border-color); margin-bottom: 1.5rem; }
+    .theme-admin .upload-area { border: 2px dashed var(--admin-border-color); border-radius: 16px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+    .theme-admin .upload-area:hover { border-color: var(--admin-primary); background: var(--admin-primary-50); }
+    .theme-admin #mapPicker { height: 300px; border-radius: 12px; z-index: 1; border: 1px solid var(--admin-border-color); }
+    .theme-admin .preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+    .theme-admin .preview-item { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid var(--admin-border-color); }
+    .theme-admin .toggle-card { border: 1.5px solid var(--admin-border-color); border-radius: 12px; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: space-between; background: var(--admin-surface-100); }
+    .theme-admin .toggle-card:has(input:checked) { border-color: var(--admin-primary); background: var(--admin-primary-50); }
+    .theme-admin .toggle-card input { width: 20px; height: 20px; }
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -112,6 +113,10 @@
                         <label class="form-label">Ngày bảo dưỡng tiếp theo</label>
                         <input type="date" asp-for="NextMaintenanceDate" class="form-control" />
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Ngay dang kiem tiep theo</label>
+                        <input type="date" asp-for="NextInspectionDate" class="form-control" />
+                    </div>
                 </div>
             </div>
 
@@ -133,6 +138,14 @@
                         <span class="input-group-text bg-light border fw-bold">đ</span>
                     </div>
                     <span asp-validation-for="PricePerDay" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Gia thue/gio tu dong (VND)</label>
+                    <div class="input-group">
+                        <input type="number" asp-for="PricePerHour" id="PricePerHourDisplay" class="form-control" readonly />
+                        <span class="input-group-text bg-light border fw-bold">d</span>
+                    </div>
+                    <small class="text-muted">He thong tinh bang gia ngay chia 8 gio.</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Giá ưu đãi (nếu có)</label>
@@ -248,6 +261,21 @@
                 const fakeEvent = { latlng: { lat: defaultLat, lng: defaultLng } };
                 picker.map.fire('click', fakeEvent);
             }
+        }
+    });
+
+    // --- PRICE AUTO-CALC LOGIC ---
+    document.addEventListener("DOMContentLoaded", function () {
+        const dayInput = document.getElementById('PricePerDay');
+        const hourInput = document.getElementById('PricePerHourDisplay');
+        const syncHourlyPrice = function () {
+            if (!dayInput || !hourInput) return;
+            const dayPrice = Number(dayInput.value || 0);
+            hourInput.value = dayPrice > 0 ? Math.round(dayPrice / 8) : 0;
+        };
+        if (dayInput) {
+            dayInput.addEventListener('input', syncHourlyPrice);
+            syncHourlyPrice();
         }
     });
 

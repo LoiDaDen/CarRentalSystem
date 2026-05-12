@@ -1,9 +1,11 @@
 using CarRentalSystem.Services;
+using CarRentalSystem.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PayOS.Models.Webhooks;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace CarRentalSystem.Controllers
 {
@@ -22,6 +24,63 @@ namespace CarRentalSystem.Controllers
             _bookingService = bookingService;
             _payOSPaymentService = payOSPaymentService;
             _context = context;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Hold(long orderCode)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var transaction = await _context.PayOSTransactions
+                .Include(t => t.BookingHold)
+                    .ThenInclude(h => h!.Car)
+                .FirstOrDefaultAsync(t => t.OrderCode == orderCode &&
+                    (t.UserID == userId || User.IsInRole("Admin")));
+
+            if (transaction == null)
+                return NotFound();
+
+            var quote = DeserializeQuote(transaction.BookingHold?.QuoteSnapshotJson) ?? new CheckoutQuoteViewModel
+            {
+                HoldingFee = transaction.Amount,
+                TotalPrice = transaction.Amount,
+                CarName = transaction.BookingHold?.Car?.CarName ?? "",
+                StartDate = transaction.BookingHold?.StartDate ?? DateTime.UtcNow,
+                EndDate = transaction.BookingHold?.EndDate ?? DateTime.UtcNow
+            };
+
+            var vm = new PayOSHoldPaymentViewModel
+            {
+                OrderCode = transaction.OrderCode,
+                Status = transaction.Status,
+                CheckoutUrl = transaction.CheckoutUrl,
+                QrCode = transaction.QrCode,
+                Bin = transaction.Bin,
+                AccountNumber = transaction.AccountNumber,
+                AccountName = transaction.AccountName,
+                Description = transaction.PayOSDescription,
+                ExpiresAt = transaction.BookingHold?.ExpiresAt ?? transaction.CreatedAt.AddMinutes(15),
+                Quote = quote
+            };
+
+            return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CancelHold(long orderCode)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
+            var transaction = await _context.PayOSTransactions
+                .FirstOrDefaultAsync(t => t.OrderCode == orderCode &&
+                    (t.UserID == userId || User.IsInRole("Admin")));
+            if (transaction == null)
+                return NotFound();
+
+            await _payOSPaymentService.MarkHoldCancelledAsync(orderCode);
+            return View("CancelHold", transaction);
         }
 
         [HttpGet]
@@ -84,9 +143,16 @@ namespace CarRentalSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> SuccessTransaction(int transactionId)
         {
+            // =========================================
+            // SECURITY: Verify ownership
+            // =========================================
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out int userId)) return Unauthorized();
+
             var transaction = await _context.BookingTransactions
                 .Include(t => t.Bookings).ThenInclude(b => b.BookingStatus)
-                .FirstOrDefaultAsync(t => t.TransactionID == transactionId);
+                .FirstOrDefaultAsync(t => t.TransactionID == transactionId &&
+                    (t.UserID == userId || User.IsInRole("Admin")));
 
             if (transaction == null)
                 return NotFound();
@@ -112,6 +178,15 @@ namespace CarRentalSystem.Controllers
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             return int.TryParse(currentUserId, out var userId) && bookingUserId == userId;
+        }
+
+        private static CheckoutQuoteViewModel? DeserializeQuote(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            return JsonSerializer.Deserialize<CheckoutQuoteViewModel>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            {
+                PropertyNameCaseInsensitive = true
+            });
         }
     }
 }

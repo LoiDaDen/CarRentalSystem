@@ -4,8 +4,6 @@ using CarRentalSystem.Repositories;
 using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using System;
@@ -27,8 +25,12 @@ namespace CarRentalSystem.Tests.IntegrationTests
             _context = MockRepositoryHelper.CreateSeededDbContext();
 
             var userRepo = new Repository<User>(_context);
-            var mockPii = new Mock<IPiiEncryptionService>();
-            _authService = new AuthService(userRepo, mockPii.Object);
+            var piiEncryption = new Moq.Mock<IPiiEncryptionService>();
+            piiEncryption.Setup(p => p.EncryptIfNotEmpty(It.IsAny<string?>()))
+                .Returns((string? value) => value);
+            piiEncryption.Setup(p => p.DecryptIfNotEmpty(It.IsAny<string?>()))
+                .Returns((string? value) => value);
+            _authService = new AuthService(userRepo, piiEncryption.Object);
         }
 
         // =============================================

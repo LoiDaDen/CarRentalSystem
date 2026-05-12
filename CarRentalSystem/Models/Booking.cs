@@ -72,6 +72,10 @@ namespace CarRentalSystem.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal DepositAmount { get; set; } = 0m;
 
+        [Range(0, double.MaxValue)]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal ReservationFee { get; set; } = 0m;
+
         [StringLength(20)]
         public string DepositStatus { get; set; } = "Pending"; // Pending, Holding, Refunded, Deducted
         public DateTime? ActualReturnDate { get; set; }

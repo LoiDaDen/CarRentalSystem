@@ -5,9 +5,9 @@
 }
 
 <style>
-    .message-card { background: white; border-radius: 20px; padding: 2.5rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
-    .reply-box { background: #f8fafd; border-radius: 16px; padding: 2rem; border: 1px dashed #cdd5e0; margin-top: 2rem; }
-    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .theme-admin .message-card { background: var(--admin-card-bg); border-radius: 20px; padding: 2.5rem; border: 1px solid var(--admin-border-color); box-shadow: var(--admin-shadow); }
+    .theme-admin .reply-box { background: var(--admin-surface-200); border-radius: 16px; padding: 2rem; border: 1px dashed var(--admin-border-color); margin-top: 2rem; }
+    .theme-admin .form-control:focus { border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
 </style>
 
 @if (TempData["Success"] != null)
@@ -98,4 +98,5 @@
             </form>
         </div>
     }
+</div>
 </div>

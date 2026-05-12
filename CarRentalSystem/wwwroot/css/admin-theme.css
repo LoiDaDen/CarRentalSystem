@@ -1,0 +1,1294 @@
+/* =========================================================
+   Smart Car Rental - Admin Dashboard Theme v3.0
+   Dark Mode Professional UI Framework
+   ========================================================= */
+
+/* =========================================================
+   1. CSS CUSTOM PROPERTIES (Design Tokens)
+   ========================================================= */
+:root {
+    /* Primary Colors - Electric Blue */
+    --admin-primary: #3b82f6;
+    --admin-primary-500: #60a5fa;
+    --admin-primary-600: #2563eb;
+    --admin-primary-700: #1d4ed8;
+    --admin-primary-100: #dbeafe;
+    --admin-primary-50: #eff6ff;
+
+    /* Semantic Colors */
+    --admin-success: #10b981;
+    --admin-success-500: #22c55e;
+    --admin-success-100: #dcfce7;
+    --admin-success-50: #f0fdf4;
+
+    --admin-warning: #f59e0b;
+    --admin-warning-500: #fbbf24;
+    --admin-warning-100: #fef3c7;
+    --admin-warning-50: #fffbeb;
+
+    --admin-danger: #ef4444;
+    --admin-danger-500: #f87171;
+    --admin-danger-100: #fee2e2;
+    --admin-danger-50: #fef2f2;
+
+    --admin-info: #0ea5e9;
+    --admin-info-100: #e0f2fe;
+
+    --admin-purple: #8b5cf6;
+    --admin-purple-100: #ede9fe;
+
+    /* Dark Theme Backgrounds */
+    --admin-bg: #0f172a;
+    --admin-bg-900: #0f172a;
+    --admin-bg-800: #1e293b;
+    --admin-bg-700: #334155;
+    --admin-bg-600: #475569;
+    --admin-bg-500: #64748b;
+    --admin-bg-400: #94a3b8;
+    --admin-bg-300: #cbd5e1;
+    --admin-bg-200: #e2e8f0;
+    --admin-bg-100: #f1f5f9;
+    --admin-bg-50: #f8fafc;
+    --admin-white: #ffffff;
+
+    /* Surface & Cards */
+    --admin-surface: #1e293b;
+    --admin-surface-2: #334155;
+    --admin-surface-elevated: #1e293b;
+    --admin-border: #334155;
+    --admin-border-light: #475569;
+
+    /* Text Colors */
+    --admin-text: #f1f5f9;
+    --admin-text-secondary: #94a3b8;
+    --admin-text-muted: #64748b;
+    --admin-text-light: #475569;
+    --admin-text-inverse: #0f172a;
+
+    /* Typography */
+    --admin-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --admin-font-heading: 'Plus Jakarta Sans', var(--admin-font);
+
+    /* Spacing Scale */
+    --admin-space-1: 0.25rem;
+    --admin-space-2: 0.5rem;
+    --admin-space-3: 0.75rem;
+    --admin-space-4: 1rem;
+    --admin-space-5: 1.25rem;
+    --admin-space-6: 1.5rem;
+    --admin-space-8: 2rem;
+    --admin-space-10: 2.5rem;
+    --admin-space-12: 3rem;
+
+    /* Border Radius */
+    --admin-radius-sm: 6px;
+    --admin-radius: 10px;
+    --admin-radius-md: 12px;
+    --admin-radius-lg: 16px;
+    --admin-radius-xl: 20px;
+    --admin-radius-2xl: 24px;
+    --admin-radius-full: 9999px;
+
+    /* Shadows */
+    --admin-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --admin-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
+    --admin-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --admin-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+    --admin-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+    --admin-shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+    /* Transitions */
+    --admin-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --admin-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --admin-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =========================================================
+   2. BASE STYLES
+   ========================================================= */
+.theme-admin {
+    font-family: var(--admin-font);
+    background-color: var(--admin-bg);
+    color: var(--admin-text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.theme-admin body {
+    background-color: var(--admin-bg);
+    color: var(--admin-text);
+}
+
+/* Selection */
+.theme-admin ::selection {
+    background-color: var(--admin-primary-100);
+    color: var(--admin-primary-700);
+}
+
+/* =========================================================
+   3. TYPOGRAPHY
+   ========================================================= */
+.theme-admin h1,
+.theme-admin h2,
+.theme-admin h3,
+.theme-admin h4,
+.theme-admin h5,
+.theme-admin h6 {
+    font-family: var(--admin-font-heading);
+    font-weight: 700;
+    color: var(--admin-text);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.theme-admin h1 { font-size: 2rem; }
+.theme-admin h2 { font-size: 1.75rem; }
+.theme-admin h3 { font-size: 1.375rem; }
+.theme-admin h4 { font-size: 1.25rem; }
+.theme-admin h5 { font-size: 1.125rem; }
+.theme-admin h6 { font-size: 1rem; }
+
+.theme-admin .text-muted,
+.theme-admin .text-secondary {
+    color: var(--admin-text-muted) !important;
+}
+
+.theme-admin .text-dark {
+    color: var(--admin-text) !important;
+}
+
+/* =========================================================
+   4. LAYOUT - ADMIN SHELL
+   ========================================================= */
+.admin-wrapper {
+    min-height: 100vh;
+    display: flex;
+}
+
+.admin-sidebar {
+    width: 280px;
+    background: linear-gradient(180deg, var(--admin-bg-900) 0%, var(--admin-bg-800) 100%);
+    border-right: 1px solid var(--admin-border);
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1000;
+    transition: width var(--admin-transition-slow);
+}
+
+.admin-sidebar.collapsed {
+    width: 80px;
+}
+
+.admin-main-content {
+    flex: 1;
+    margin-left: 280px;
+    min-height: 100vh;
+    background-color: var(--admin-bg);
+}
+
+.admin-top-navbar {
+    background: var(--admin-surface);
+    border-bottom: 1px solid var(--admin-border);
+    padding: 1rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.admin-page-content {
+    padding: 1.5rem 2rem;
+}
+
+/* =========================================================
+   5. STAT CARDS
+   ========================================================= */
+.admin-stat-card {
+    background: linear-gradient(145deg, var(--admin-surface) 0%, var(--admin-bg-900) 100%);
+    border: 1px solid var(--admin-border-light);
+    border-radius: var(--admin-radius-xl);
+    padding: 1.5rem;
+    transition: all var(--admin-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--admin-primary), var(--admin-info));
+}
+
+.admin-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--admin-shadow-lg);
+    border-color: var(--admin-primary);
+}
+
+.admin-stat-card .stat-icon-wrapper {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--admin-radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.admin-stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.admin-stat-card .stat-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--admin-text-muted);
+}
+
+.admin-stat-card .stat-trend {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.admin-stat-card .stat-bg-icon {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    font-size: 8rem;
+    opacity: 0.03;
+    pointer-events: none;
+}
+
+/* Stat Card Variants */
+.admin-stat-card.stat-revenue::before {
+    background: linear-gradient(90deg, var(--admin-primary), #6366f1);
+}
+
+.admin-stat-card.stat-bookings::before {
+    background: linear-gradient(90deg, var(--admin-success), #14b8a6);
+}
+
+.admin-stat-card.stat-fleet::before {
+    background: linear-gradient(90deg, var(--admin-warning), #fbbf24);
+}
+
+.admin-stat-card.stat-cars::before {
+    background: linear-gradient(90deg, var(--admin-info), #22d3ee);
+}
+
+/* =========================================================
+   6. CARDS
+   ========================================================= */
+.theme-admin .card {
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-lg);
+    box-shadow: var(--admin-shadow-sm);
+    transition: all var(--admin-transition);
+}
+
+.theme-admin .card:hover {
+    box-shadow: var(--admin-shadow-md);
+}
+
+.theme-admin .card-header {
+    background: var(--admin-surface);
+    border-bottom: 1px solid var(--admin-border);
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    color: var(--admin-text);
+}
+
+.theme-admin .card-body {
+    padding: 1.5rem;
+    color: var(--admin-text);
+}
+
+.theme-admin .card-footer {
+    background: var(--admin-surface);
+    border-top: 1px solid var(--admin-border);
+    padding: 1rem 1.5rem;
+    color: var(--admin-text);
+}
+
+/* Card Variants */
+.theme-admin .card.card-elevated {
+    box-shadow: var(--admin-shadow-md);
+    border: none;
+}
+
+.theme-admin .card.card-flat {
+    box-shadow: none;
+    border: 1px solid var(--admin-border);
+}
+
+.theme-admin .card.border-primary {
+    border-color: var(--admin-primary) !important;
+}
+
+.theme-admin .card.border-success {
+    border-color: var(--admin-success) !important;
+}
+
+.theme-admin .card.border-warning {
+    border-color: var(--admin-warning) !important;
+}
+
+.theme-admin .card.border-danger {
+    border-color: var(--admin-danger) !important;
+}
+
+/* =========================================================
+   7. BUTTONS
+   ========================================================= */
+.theme-admin .btn {
+    font-weight: 600;
+    border-radius: var(--admin-radius);
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    transition: all var(--admin-transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.theme-admin .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Primary Button */
+.theme-admin .btn-primary {
+    background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-600) 100%);
+    border: none;
+    color: var(--admin-white);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.theme-admin .btn-primary:hover,
+.theme-admin .btn-primary:focus {
+    background: linear-gradient(135deg, var(--admin-primary-600) 0%, var(--admin-primary-700) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    color: var(--admin-white);
+}
+
+/* Success Button */
+.theme-admin .btn-success {
+    background: linear-gradient(135deg, var(--admin-success) 0%, #059669 100%);
+    border: none;
+    color: var(--admin-white);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.theme-admin .btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    color: var(--admin-white);
+}
+
+/* Warning Button */
+.theme-admin .btn-warning {
+    background: linear-gradient(135deg, var(--admin-warning) 0%, #d97706 100%);
+    border: none;
+    color: var(--admin-text-inverse);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.theme-admin .btn-warning:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-1px);
+    color: var(--admin-text-inverse);
+}
+
+/* Danger Button */
+.theme-admin .btn-danger {
+    background: linear-gradient(135deg, var(--admin-danger) 0%, #dc2626 100%);
+    border: none;
+    color: var(--admin-white);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.theme-admin .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    color: var(--admin-white);
+}
+
+/* Outline Buttons */
+.theme-admin .btn-outline-primary {
+    border: 2px solid var(--admin-primary);
+    color: var(--admin-primary);
+    background: transparent;
+}
+
+.theme-admin .btn-outline-primary:hover {
+    background: var(--admin-primary);
+    color: var(--admin-white);
+    border-color: var(--admin-primary);
+}
+
+.theme-admin .btn-outline-secondary {
+    border: 2px solid var(--admin-border-light);
+    color: var(--admin-text-secondary);
+    background: transparent;
+}
+
+.theme-admin .btn-outline-secondary:hover {
+    background: var(--admin-surface-2);
+    color: var(--admin-text);
+    border-color: var(--admin-text-secondary);
+}
+
+.theme-admin .btn-outline-success {
+    border: 2px solid var(--admin-success);
+    color: var(--admin-success);
+    background: transparent;
+}
+
+.theme-admin .btn-outline-success:hover {
+    background: var(--admin-success);
+    color: var(--admin-white);
+}
+
+.theme-admin .btn-outline-danger {
+    border: 2px solid var(--admin-danger);
+    color: var(--admin-danger);
+    background: transparent;
+}
+
+.theme-admin .btn-outline-danger:hover {
+    background: var(--admin-danger);
+    color: var(--admin-white);
+}
+
+/* Button Sizes */
+.theme-admin .btn-sm {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    border-radius: var(--admin-radius-sm);
+}
+
+.theme-admin .btn-lg {
+    padding: 0.875rem 1.75rem;
+    font-size: 1rem;
+    border-radius: var(--admin-radius-md);
+}
+
+/* Button Groups */
+.theme-admin .btn-group .btn {
+    border-radius: var(--admin-radius);
+}
+
+.theme-admin .btn-group .btn:first-child {
+    border-radius: var(--admin-radius) 0 0 var(--admin-radius);
+}
+
+.theme-admin .btn-group .btn:last-child {
+    border-radius: 0 var(--admin-radius) var(--admin-radius) 0;
+}
+
+/* =========================================================
+   8. FORMS
+   ========================================================= */
+.theme-admin .form-control,
+.theme-admin .form-select {
+    border: 1px solid var(--admin-border-light);
+    border-radius: var(--admin-radius);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    background: var(--admin-surface);
+    color: var(--admin-text);
+    transition: all var(--admin-transition);
+    min-height: 42px;
+}
+
+.theme-admin .form-control:hover,
+.theme-admin .form-select:hover {
+    border-color: var(--admin-text-muted);
+}
+
+.theme-admin .form-control:focus,
+.theme-admin .form-select:focus {
+    border-color: var(--admin-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    outline: none;
+    background: var(--admin-surface);
+    color: var(--admin-text);
+}
+
+.theme-admin .form-control::placeholder {
+    color: var(--admin-text-muted);
+}
+
+.theme-admin .form-control:disabled,
+.theme-admin .form-select:disabled {
+    background: var(--admin-bg-700);
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Input Group */
+.theme-admin .input-group-text {
+    background: var(--admin-surface-2);
+    border: 1px solid var(--admin-border-light);
+    color: var(--admin-text-muted);
+    border-radius: var(--admin-radius) 0 0 var(--admin-radius);
+}
+
+.theme-admin .input-group .form-control {
+    border-radius: 0 var(--admin-radius) var(--admin-radius) 0;
+}
+
+/* Labels */
+.theme-admin label,
+.theme-admin .form-label {
+    color: var(--admin-text-secondary);
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Checkbox & Radio */
+.theme-admin .form-check-input {
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: var(--admin-radius-sm);
+    border: 2px solid var(--admin-border-light);
+    background-color: var(--admin-surface);
+    transition: all var(--admin-transition);
+}
+
+.theme-admin .form-check-input:checked {
+    background-color: var(--admin-primary);
+    border-color: var(--admin-primary);
+}
+
+.theme-admin .form-check-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* =========================================================
+   9. TABLES
+   ========================================================= */
+.theme-admin .table {
+    background: transparent;
+    color: var(--admin-text);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.theme-admin .table thead th {
+    background: var(--admin-surface-2);
+    color: var(--admin-text-secondary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+    border-bottom: 1px solid var(--admin-border);
+    white-space: nowrap;
+}
+
+.theme-admin .table thead th:first-child {
+    border-radius: var(--admin-radius) 0 0 0;
+}
+
+.theme-admin .table thead th:last-child {
+    border-radius: 0 var(--admin-radius) 0 0;
+}
+
+.theme-admin .table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--admin-border);
+    background: var(--admin-surface);
+}
+
+.theme-admin .table tbody tr {
+    transition: background-color var(--admin-transition-fast);
+}
+
+.theme-admin .table tbody tr:hover td {
+    background: var(--admin-surface-2);
+}
+
+.theme-admin .table.table-hover tbody tr:hover td {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Table Variants */
+.theme-admin .table-light {
+    background-color: var(--admin-surface-2);
+    color: var(--admin-text);
+}
+
+/* =========================================================
+   10. BADGES & TAGS
+   ========================================================= */
+.theme-admin .badge {
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.35em 0.75em;
+    border-radius: var(--admin-radius-full);
+    letter-spacing: 0.02em;
+}
+
+.theme-admin .badge.bg-light {
+    background-color: var(--admin-surface-2) !important;
+    color: var(--admin-text) !important;
+}
+
+.theme-admin .badge.bg-secondary {
+    background-color: var(--admin-bg-500) !important;
+    color: var(--admin-text) !important;
+}
+
+.theme-admin .badge.bg-primary {
+    background-color: var(--admin-primary) !important;
+    color: var(--admin-white) !important;
+}
+
+.theme-admin .badge.bg-success {
+    background-color: var(--admin-success) !important;
+    color: var(--admin-white) !important;
+}
+
+.theme-admin .badge.bg-warning {
+    background-color: var(--admin-warning) !important;
+    color: var(--admin-text-inverse) !important;
+}
+
+.theme-admin .badge.bg-danger {
+    background-color: var(--admin-danger) !important;
+    color: var(--admin-white) !important;
+}
+
+.theme-admin .badge.bg-info {
+    background-color: var(--admin-info) !important;
+    color: var(--admin-white) !important;
+}
+
+/* Status Badges with opacity */
+.theme-admin .badge.bg-opacity-10 {
+    background-color: rgba(var(--badge-color), 0.1) !important;
+}
+
+/* =========================================================
+   11. MODALS
+   ========================================================= */
+.theme-admin .modal-content {
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-xl);
+    box-shadow: var(--admin-shadow-xl);
+    color: var(--admin-text);
+}
+
+.theme-admin .modal-header {
+    background: var(--admin-surface);
+    border-bottom: 1px solid var(--admin-border);
+    padding: 1.5rem 2rem;
+    border-radius: var(--admin-radius-xl) var(--admin-radius-xl) 0 0;
+}
+
+.theme-admin .modal-header .modal-title {
+    color: var(--admin-text);
+    font-weight: 700;
+}
+
+.theme-admin .modal-header .btn-close {
+    filter: invert(1);
+    opacity: 0.5;
+}
+
+.theme-admin .modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+.theme-admin .modal-body {
+    padding: 2rem;
+    color: var(--admin-text);
+}
+
+.theme-admin .modal-footer {
+    background: var(--admin-surface);
+    border-top: 1px solid var(--admin-border);
+    padding: 1rem 2rem;
+    border-radius: 0 0 var(--admin-radius-xl) var(--admin-radius-xl);
+}
+
+/* Modal Sizes */
+.theme-admin .modal-lg {
+    max-width: 800px;
+}
+
+.theme-admin .modal-xl {
+    max-width: 1140px;
+}
+
+/* =========================================================
+   12. DROPDOWNS
+   ========================================================= */
+.theme-admin .dropdown-menu {
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-lg);
+    box-shadow: var(--admin-shadow-lg);
+    padding: 0.5rem;
+    animation: dropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.theme-admin .dropdown-item {
+    padding: 0.625rem 1rem;
+    border-radius: var(--admin-radius-sm);
+    font-size: 0.875rem;
+    color: var(--admin-text);
+    transition: all var(--admin-transition-fast);
+}
+
+.theme-admin .dropdown-item:hover,
+.theme-admin .dropdown-item:focus {
+    background: var(--admin-primary-50);
+    color: var(--admin-primary);
+}
+
+.theme-admin .dropdown-item.active,
+.theme-admin .dropdown-item:active {
+    background: var(--admin-primary);
+    color: var(--admin-white);
+}
+
+.theme-admin .dropdown-divider {
+    border-color: var(--admin-border);
+    margin: 0.5rem 0;
+}
+
+/* =========================================================
+   13. NAVIGATION TABS
+   ========================================================= */
+.theme-admin .nav-tabs {
+    border-bottom: 2px solid var(--admin-border);
+    gap: 0.5rem;
+}
+
+.theme-admin .nav-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--admin-text-muted);
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border-radius: var(--admin-radius) var(--admin-radius) 0 0;
+    transition: all var(--admin-transition);
+}
+
+.theme-admin .nav-tabs .nav-link:hover {
+    color: var(--admin-primary);
+    border-bottom-color: var(--admin-primary-100);
+}
+
+.theme-admin .nav-tabs .nav-link.active {
+    color: var(--admin-primary);
+    border-bottom-color: var(--admin-primary);
+    background: transparent;
+}
+
+/* Pills */
+.theme-admin .nav-pills .nav-link {
+    border-radius: var(--admin-radius-full);
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: var(--admin-text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+.theme-admin .nav-pills .nav-link:hover {
+    color: var(--admin-primary);
+    background: var(--admin-primary-50);
+}
+
+.theme-admin .nav-pills .nav-link.active {
+    background: var(--admin-primary);
+    color: var(--admin-white);
+}
+
+/* =========================================================
+   14. ALERTS & TOASTS
+   ========================================================= */
+.theme-admin .alert {
+    border: none;
+    border-radius: var(--admin-radius-lg);
+    padding: 1rem 1.5rem;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.theme-admin .alert-success {
+    background: var(--admin-success-50);
+    color: #047857;
+    border-left: 4px solid var(--admin-success);
+}
+
+.theme-admin .alert-danger {
+    background: var(--admin-danger-50);
+    color: #b91c1c;
+    border-left: 4px solid var(--admin-danger);
+}
+
+.theme-admin .alert-warning {
+    background: var(--admin-warning-50);
+    color: #b45309;
+    border-left: 4px solid var(--admin-warning);
+}
+
+.theme-admin .alert-info {
+    background: var(--admin-info-100);
+    color: #0369a1;
+    border-left: 4px solid var(--admin-info);
+}
+
+/* =========================================================
+   15. PROGRESS BARS
+   ========================================================= */
+.theme-admin .progress {
+    height: 8px;
+    border-radius: var(--admin-radius-full);
+    background: var(--admin-surface-2);
+    overflow: hidden;
+}
+
+.theme-admin .progress-bar {
+    border-radius: var(--admin-radius-full);
+    transition: width 0.6s ease-out;
+}
+
+/* =========================================================
+   16. PAGINATION
+   ========================================================= */
+.theme-admin .pagination {
+    gap: 0.25rem;
+}
+
+.theme-admin .page-link {
+    border: none;
+    border-radius: var(--admin-radius);
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+    color: var(--admin-text);
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    transition: all var(--admin-transition-fast);
+}
+
+.theme-admin .page-link:hover {
+    background: var(--admin-surface-2);
+    color: var(--admin-primary);
+    border-color: var(--admin-primary);
+}
+
+.theme-admin .page-item.active .page-link {
+    background: var(--admin-primary);
+    color: var(--admin-white);
+    border-color: var(--admin-primary);
+}
+
+.theme-admin .page-item.disabled .page-link {
+    background: var(--admin-bg-700);
+    color: var(--admin-text-muted);
+    border-color: var(--admin-border);
+}
+
+/* =========================================================
+   17. BACKGROUND UTILITIES
+   ========================================================= */
+.theme-admin .bg-white,
+.theme-admin .bg-light {
+    background-color: var(--admin-surface) !important;
+}
+
+.theme-admin .bg-body {
+    background-color: var(--admin-bg) !important;
+}
+
+.theme-admin .bg-dark {
+    background-color: var(--admin-bg-900) !important;
+}
+
+.theme-admin .bg-primary-subtle {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.theme-admin .bg-success-subtle {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+.theme-admin .bg-warning-subtle {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+}
+
+.theme-admin .bg-danger-subtle {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* =========================================================
+   18. BORDER UTILITIES
+   ========================================================= */
+.theme-admin .border {
+    border-color: var(--admin-border) !important;
+}
+
+.theme-admin .border-light {
+    border-color: var(--admin-border-light) !important;
+}
+
+.theme-admin .border-primary {
+    border-color: var(--admin-primary) !important;
+}
+
+/* =========================================================
+   19. ANIMATIONS
+   ========================================================= */
+.theme-admin .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.theme-admin .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.theme-admin .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hover Effects */
+.theme-admin .hover-lift {
+    transition: transform var(--admin-transition), box-shadow var(--admin-transition);
+}
+
+.theme-admin .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--admin-shadow-lg);
+}
+
+.theme-admin .hover-scale {
+    transition: transform var(--admin-transition);
+}
+
+.theme-admin .hover-scale:hover {
+    transform: scale(1.02);
+}
+
+/* =========================================================
+   20. CHART CONTAINERS
+   ========================================================= */
+.theme-admin .chart-container {
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-lg);
+    padding: 1.5rem;
+}
+
+.theme-admin canvas {
+    max-width: 100%;
+}
+
+/* =========================================================
+   21. AVATARS
+   ========================================================= */
+.theme-admin .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--admin-radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    background: var(--admin-primary);
+    color: var(--admin-white);
+}
+
+.theme-admin .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.theme-admin .avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+}
+
+.theme-admin .avatar-lg {
+    width: 56px;
+    height: 56px;
+    font-size: 1.25rem;
+}
+
+/* =========================================================
+   22. EMPTY STATES
+   ========================================================= */
+.theme-admin .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--admin-text-muted);
+}
+
+.theme-admin .empty-state i {
+    font-size: 4rem;
+    opacity: 0.2;
+    margin-bottom: 1rem;
+}
+
+.theme-admin .empty-state h5 {
+    color: var(--admin-text-secondary);
+    font-weight: 600;
+}
+
+.theme-admin .empty-state p {
+    color: var(--admin-text-muted);
+    font-size: 0.875rem;
+}
+
+/* =========================================================
+   23. FILTER BAR & SEARCH
+   ========================================================= */
+.theme-admin .filter-bar {
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-lg);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.theme-admin .search-box {
+    position: relative;
+}
+
+.theme-admin .search-box .form-control {
+    padding-left: 2.5rem;
+}
+
+.theme-admin .search-box i {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--admin-text-muted);
+}
+
+/* =========================================================
+   24. PAGE HEADERS
+   ========================================================= */
+.theme-admin .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.theme-admin .page-header h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+}
+
+.theme-admin .page-header p {
+    color: var(--admin-text-muted);
+    margin-bottom: 0;
+}
+
+/* =========================================================
+   25. SIDEBAR NAVIGATION
+   ========================================================= */
+.theme-admin .sidebar-nav {
+    padding: 1rem 0;
+}
+
+.theme-admin .sidebar-nav .nav-item {
+    margin: 0.25rem 0.75rem;
+}
+
+.theme-admin .sidebar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--admin-radius);
+    color: var(--admin-text-secondary);
+    font-weight: 500;
+    transition: all var(--admin-transition);
+}
+
+.theme-admin .sidebar-nav .nav-link:hover {
+    background: var(--admin-surface-2);
+    color: var(--admin-text);
+}
+
+.theme-admin .sidebar-nav .nav-link.active {
+    background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-600) 100%);
+    color: var(--admin-white);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.theme-admin .sidebar-nav .nav-link i {
+    font-size: 1.25rem;
+    width: 24px;
+    text-align: center;
+}
+
+.theme-admin .sidebar-nav .nav-divider {
+    height: 1px;
+    background: var(--admin-border);
+    margin: 1rem 0;
+}
+
+.theme-admin .sidebar-nav .nav-link .badge {
+    margin-left: auto;
+}
+
+/* =========================================================
+   26. SCROLLBAR STYLING
+   ========================================================= */
+.theme-admin ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.theme-admin ::-webkit-scrollbar-track {
+    background: var(--admin-bg);
+}
+
+.theme-admin ::-webkit-scrollbar-thumb {
+    background: var(--admin-border-light);
+    border-radius: 4px;
+}
+
+.theme-admin ::-webkit-scrollbar-thumb:hover {
+    background: var(--admin-text-muted);
+}
+
+/* =========================================================
+   27. RESPONSIVE UTILITIES
+   ========================================================= */
+@media (max-width: 991.98px) {
+    .admin-sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+    }
+
+    .admin-sidebar.show {
+        transform: translateX(0);
+    }
+
+    .admin-main-content {
+        margin-left: 0;
+    }
+
+    .admin-page-content {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .theme-admin h1 { font-size: 1.5rem; }
+    .theme-admin h2 { font-size: 1.375rem; }
+    .theme-admin h3 { font-size: 1.25rem; }
+
+    .admin-stat-card {
+        padding: 1rem;
+    }
+
+    .admin-stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .admin-stat-card .stat-icon-wrapper {
+        width: 44px;
+        height: 44px;
+        font-size: 1.25rem;
+    }
+}
+
+/* =========================================================
+   28. PRINT STYLES
+   ========================================================= */
+@media print {
+    .admin-sidebar,
+    .admin-top-navbar,
+    .btn,
+    .dropdown,
+    .modal {
+        display: none !important;
+    }
+
+    .theme-admin {
+        background: white !important;
+        color: black !important;
+    }
+
+    .theme-admin .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+}

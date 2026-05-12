@@ -1,3 +1,13 @@
+<div class="theme-admin">
+<style>
+    .theme-admin .card { background: var(--admin-card-bg); border: 1px solid var(--admin-border-color); }
+    .theme-admin .card-header { background: var(--admin-surface-200); border-bottom: 1px solid var(--admin-border-color); }
+    .theme-admin .bg-light { background-color: var(--admin-surface-200) !important; }
+    .theme-admin .text-muted { color: var(--admin-text-secondary) !important; }
+    .theme-admin .text-dark { color: var(--admin-text) !important; }
+    .theme-admin .table { color: var(--admin-text); }
+</style>
+
 @model IEnumerable<CarRentalSystem.Models.HolidayPricing>
 @{
     Layout = "_AdminLayout";
@@ -280,6 +290,7 @@
             </div>
         }
     </div>
+</div>
 </div>
 
 @section Scripts {

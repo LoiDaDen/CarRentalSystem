@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.IO;
 using System.Linq;
@@ -367,6 +368,7 @@ namespace CarRentalSystem.Controllers
                     (b.BookingStatus.Name == BookingStatusConstants.Confirmed ||
                      b.BookingStatus.Name == BookingStatusConstants.Pending ||
                      b.BookingStatus.Name == BookingStatusConstants.Active ||
+                     b.BookingStatus.Name == BookingStatusConstants.Unpaid ||
                      b.BookingStatus.Name == BookingStatusConstants.Draft))
                 .Select(b => new { b.StartDate, b.EndDate })
                 .ToList();
@@ -446,12 +448,30 @@ namespace CarRentalSystem.Controllers
             var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
             var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
 
+            var deliveryScope = HttpContext.RequestServices.GetRequiredService<IDeliveryScopeService>();
+            var scope = deliveryScope.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, customerLat, customerLng);
+            if (!scope.IsWithinScope)
+            {
+                return Json(new {
+                    success = false,
+                    isWithinDeliveryScope = false,
+                    message = scope.MessageVi,
+                    messageEn = scope.MessageEn,
+                    originProvince = scope.OriginProvince,
+                    destinationProvince = scope.DestinationProvince
+                });
+            }
+
             // Tính delivery
             var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
             var deliveryInfo = await deliveryService!.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
 
             return Json(new {
                 success = true,
+                isWithinDeliveryScope = true,
+                scopeMessage = "",
+                originProvince = scope.OriginProvince,
+                destinationProvince = scope.DestinationProvince,
                 distanceKm = deliveryInfo.DistanceKm,
                 durationMinutes = deliveryInfo.DurationMinutes,
                 shippingFee = deliveryInfo.ShippingFee,
@@ -460,6 +480,54 @@ namespace CarRentalSystem.Controllers
                 formattedDuration = deliveryInfo.FormattedDuration,
                 formattedFee = deliveryInfo.FormattedFee
             });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllCarsWithDistance(double customerLat, double customerLng)
+        {
+            var cars = await _context.Cars
+                .Include(c => c.Location)
+                .Include(c => c.CarBrand)
+                .Include(c => c.CarImages)
+                .Include(c => c.CarStatus)
+                .Where(c => c.CarStatus != null && c.CarStatus.Name == "Available")
+                .Take(50)
+                .ToListAsync();
+
+            var deliveryService = HttpContext.RequestServices.GetRequiredService<IDeliveryService>();
+            var deliveryScope = HttpContext.RequestServices.GetRequiredService<IDeliveryScopeService>();
+            var result = new List<object>();
+
+            foreach (var car in cars)
+            {
+                var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
+                var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
+                var scope = deliveryScope.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, customerLat, customerLng);
+                if (!scope.IsWithinScope)
+                    continue;
+
+                var delivery = await deliveryService.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
+                result.Add(new
+                {
+                    carId = car.CarID,
+                    carName = car.CarName,
+                    brand = car.CarBrand?.Name ?? "",
+                    imageUrl = car.ImageURL ?? car.CarImages?.Select(i => i.ImageUrl).FirstOrDefault(),
+                    pricePerDay = car.PricePerDay,
+                    location = car.CarAddress ?? car.Location?.Name ?? "",
+                    distanceKm = delivery.DistanceKm,
+                    durationMinutes = delivery.DurationMinutes,
+                    shippingFee = delivery.ShippingFee,
+                    formattedDistance = delivery.FormattedDistance,
+                    formattedDuration = delivery.FormattedDuration,
+                    formattedShippingFee = delivery.FormattedFee,
+                    earliestPickupTime = delivery.EarliestPickupTime,
+                    originProvince = scope.OriginProvince,
+                    destinationProvince = scope.DestinationProvince
+                });
+            }
+
+            return Json(result);
         }
 
         // API: Load more cars (JSON)

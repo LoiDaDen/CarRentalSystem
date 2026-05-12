@@ -1,6 +1,31 @@
+@using CarRentalSystem.Data
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext LayoutDb
+@{
+    var layoutUserName = User.Identity?.Name ?? "Admin";
+    string? layoutFaceUrl = null;
+    if (User.Identity?.IsAuthenticated == true &&
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var layoutUserId))
+    {
+        layoutFaceUrl = await LayoutDb.Users
+            .AsNoTracking()
+            .Where(u => u.UserID == layoutUserId)
+            .Select(u => u.FaceUrl)
+            .FirstOrDefaultAsync();
+    }
+
+    var layoutNameParts = layoutUserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var layoutInitials = layoutNameParts.Length == 0
+        ? "AD"
+        : string.Concat(layoutNameParts.Take(2).Select(p => p[0])).ToUpperInvariant();
+}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <script>
+        (function(){var t=localStorage.getItem('ui_theme')||document.cookie.match(/(?:^|; )ui_theme=([^;]+)/)?.[1]||'dark';document.documentElement.setAttribute('data-bs-theme',t);})();
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Quản trị Hệ thống</title>
@@ -10,20 +35,26 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     @RenderSection("Styles", required: false)
     <style>
         html { font-size: 13px; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8f9fa; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f1f5f9; }
         .admin-main-content { font-size: 0.85rem; }
-        .admin-sidebar { background: #0f172a; color: #94a3b8; border-right: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; }
+        .admin-sidebar { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); color: #94a3b8; border-right: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; }
         .admin-link { color: #94a3b8; padding: 0.6rem 1rem; border-radius: 12px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); margin-bottom: 0.35rem; text-decoration: none; display: flex; align-items: center; font-weight: 500; font-size: 0.8rem; }
-        .admin-link:hover { background: rgba(255,255,255,0.05); color: #fff; transform: translateX(4px); }
+        .admin-link:hover { background: rgba(255,255,255,0.08); color: #fff; transform: translateX(4px); }
         .admin-link i { font-size: 1.25rem; margin-right: 0.75rem; transition: transform 0.3s ease; }
-        .admin-link.active { background: #3b82f6; color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .admin-link.active { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
         .admin-link.active i { transform: scale(1.1); }
         .navbar-brand { font-weight: 800; letter-spacing: -1px; background: linear-gradient(135deg, #fff 0%, #94a3b8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Logo size */
+        .logo-admin-desktop { width: 32px; height: 32px; object-fit: contain; }
+        .logo-admin-mobile { width: 28px; height: 28px; object-fit: contain; }
+        .logo-admin-offcanvas { width: 28px; height: 28px; object-fit: contain; }
         
         /* Sidebar Dropdown Enhancements */
         .admin-link[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); transition: transform 0.3s ease; }
@@ -34,6 +65,9 @@
         
         .ps-3 { padding-left: 1.5rem !important; }
         .admin-sidebar .admin-link i { width: 1.25rem; text-align: center; }
+
+        /* Dark mode specific overrides */
+        .admin-sidebar .text-white-50 { color: rgba(255,255,255,0.5) !important; }
 
         @@media (min-width: 992px) {
             .dropdown-menu::before {
@@ -48,7 +82,12 @@
         }
     </style>
 </head>
-<body class="theme-carrental theme-admin">
+<body class="theme-admin">
+    <button type="button" class="theme-toggle-btn" data-theme-toggle title="Toggle light/dark"><i class="bi bi-moon-stars"></i></button>
+    <form class="language-switcher" asp-area="" asp-controller="Localization" asp-action="SetLanguage" method="post">
+        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+        <button name="culture" value="vi-VN" type="submit">VN</button><button name="culture" value="en-US" type="submit">EN</button>
+    </form>
     <div class="container-fluid p-0">
         <!-- Mobile Header -->
         <div class="d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center shadow-sm sticky-top z-3">
@@ -318,37 +357,36 @@
             </div>
 
             <!-- Main content -->
-            <main class="col-12 col-md-10 ms-sm-auto px-md-4 py-4 admin-main-content app-main-shell" style="min-height: 100vh; overflow-x: hidden; background-color: #f8f9fa;">
+            <main class="col-12 col-md-10 ms-sm-auto px-md-4 py-4 admin-main-content app-main-shell" style="min-height: 100vh; overflow-x: hidden; background-color: #0f172a;">
                 <!-- Desktop Top Navbar -->
-                <div class="d-none d-md-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm border border-light">
+                <div class="d-none d-md-flex justify-content-between align-items-center mb-4 p-3 rounded-4 shadow-sm" style="background-color: #1e293b; border: 1px solid #475569;">
                     <div class="d-flex align-items-center">
                         @if (User.IsInRole("Admin"))
                         {
-                            <h5 class="mb-0 fw-bold ms-2 text-dark"><i class="bi bi-shield-lock-fill text-primary me-2"></i>Hệ thống Quản trị CarRental</h5>
+                            <h5 class="mb-0 fw-bold ms-2" style="color: #f1f5f9;"><i class="bi bi-shield-lock-fill text-primary me-2"></i>Hệ thống Quản trị CarRental</h5>
                         }
                         else if (User.IsInRole("Manager"))
                         {
-                            <h5 class="mb-0 fw-bold ms-2 text-dark"><i class="bi bi-shield-check-fill text-danger me-2"></i>Quản lý Khu vực</h5>
+                            <h5 class="mb-0 fw-bold ms-2" style="color: #f1f5f9;"><i class="bi bi-shield-check-fill text-danger me-2"></i>Quản lý Khu vực</h5>
                         }
                         else
                         {
-                            <h5 class="mb-0 fw-bold ms-2 text-dark"><i class="bi bi-person-badge-fill text-warning me-2"></i>Nhân viên Khu vực</h5>
+                            <h5 class="mb-0 fw-bold ms-2" style="color: #f1f5f9;"><i class="bi bi-person-badge-fill text-warning me-2"></i>Nhân viên Khu vực</h5>
                         }
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <div class="dropdown">
-                            <button class="btn btn-light rounded-circle position-relative notif-bell-btn" data-bs-toggle="dropdown" aria-expanded="false" id="notifBellBtn">
-                                <i class="bi bi-bell-fill text-secondary"></i>
+                            <button class="btn rounded-circle position-relative notif-bell-btn" data-bs-toggle="dropdown" aria-expanded="false" id="notifBellBtn" style="background-color: #334155; border: 1px solid #475569;">
+                                <i class="bi bi-bell-fill" style="color: #94a3b8;"></i>
                                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display:none; font-size:0.6rem;">
                                     0
                                 </span>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2 p-0" style="min-width: 340px; max-height: 400px; overflow-y: auto;" id="notifDropdown">
-                                <li class="px-3 py-2 bg-light border-bottom">
-                                    <strong class="small">Thông báo gần đây</strong>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2 p-0" style="min-width: 340px; max-height: 400px; overflow-y: auto; background-color: #1e293b; border: 1px solid #475569;" id="notifDropdown">
+                                <li class="px-3 py-2 border-bottom" style="background-color: #334155; border-color: #475569 !important;">
+                                    <strong class="small" style="color: #f1f5f9;">Thông báo gần đây</strong>
                                 </li>
-                                <li id="notifLoading">
-                                    <div class="text-center py-3 text-muted">
+                                <li><div class="text-center py-3" style="color: #64748b;">
                                         <i class="bi bi-bell-slash fs-3 d-block mb-2 opacity-50"></i>
                                         <small>Đang tải...</small>
                                     </div>
@@ -358,11 +396,18 @@
                         
                         <div class="dropdown">
                             <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" id="adminProfileDrop" data-bs-toggle="dropdown" aria-expanded="false">
-                                <img src="https://ui-avatars.com/api/?name=@(User.Identity.Name ?? "Admin")&background=0D8ABC&color=fff" alt="mdo" width="38" height="38" class="rounded-circle me-2 shadow-sm">
+                                @if (!string.IsNullOrWhiteSpace(layoutFaceUrl))
+                                {
+                                    <img src="@layoutFaceUrl" alt="@layoutUserName" width="38" height="38" class="rounded-circle me-2 shadow-sm" style="border-radius: 50% !important; object-fit: cover;">
+                                }
+                                else
+                                {
+                                    <span class="rounded-circle me-2 shadow-sm d-inline-flex align-items-center justify-content-center fw-bold text-white" style="width:38px;height:38px;background:#0ea5e9;">@layoutInitials</span>
+                                }
                                 <strong>@(User.Identity.Name ?? "Quản trị viên")</strong>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2" aria-labelledby="adminProfileDrop">
-                                <li><a class="dropdown-item py-2" asp-area="" asp-controller="Auth" asp-action="Profile"><i class="bi bi-person me-2 text-primary"></i> Hồ sơ cá nhân</a></li>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" aria-labelledby="adminProfileDrop" style="background-color: #1e293b; border: 1px solid #475569;">
+                                <li><a class="dropdown-item py-2" asp-area="" asp-controller="Auth" asp-action="Profile" style="color: #f1f5f9;"><i class="bi bi-person me-2 text-primary"></i> Hồ sơ cá nhân</a></li>
                                 @if (User.IsInRole("Admin"))
                                 {
                                     <li><a class="dropdown-item py-2" asp-area="Admin" asp-controller="Lookups" asp-action="Index"><i class="bi bi-gear me-2 text-secondary"></i> Cài đặt danh mục</a></li>
@@ -374,6 +419,10 @@
                     </div>
                 </div>
 
+                <div class="admin-global-search mb-3" data-admin-global-search>
+                    <i class="bi bi-search"></i>
+                    <input type="search" class="form-control" placeholder="Tim nhanh trong bang hien tai..." data-admin-table-search />
+                </div>
                 @RenderBody()
             </main>
         </div>
@@ -441,7 +490,7 @@
                                     '<small class="text-muted">' + item.time + '</small></div></a></li>';
                             });
                         } else {
-                            html += '<li><div class="text-center py-3 text-muted"><i class="bi bi-bell-slash fs-3 d-block mb-2 opacity-50"></i><small>Chưa có thông báo mới.</small></div></li>';
+                            html += '<li><div class="text-center py-3" style="color: #64748b;"><i class="bi bi-bell-slash fs-3 d-block mb-2 opacity-50"></i><small>Chưa có thông báo mới.</small></div></li>';
                         }
                         dropdown.innerHTML = html;
                     })
@@ -464,6 +513,7 @@
             }
         });
     </script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

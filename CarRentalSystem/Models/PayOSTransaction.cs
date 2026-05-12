@@ -8,9 +8,17 @@ namespace CarRentalSystem.Models
         [Key]
         public int PayOSTransactionID { get; set; }
 
-        public int BookingID { get; set; }
+        public int? BookingID { get; set; }
         [ForeignKey("BookingID")]
         public Booking? Booking { get; set; }
+
+        public int? BookingHoldID { get; set; }
+        [ForeignKey("BookingHoldID")]
+        public BookingHold? BookingHold { get; set; }
+
+        public int? UserID { get; set; }
+        [ForeignKey("UserID")]
+        public User? User { get; set; }
 
         public int? PaymentID { get; set; }
         [ForeignKey("PaymentID")]
@@ -26,6 +34,24 @@ namespace CarRentalSystem.Models
 
         [MaxLength(255)]
         public string? CheckoutUrl { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? QrCode { get; set; }
+
+        [MaxLength(30)]
+        public string? Bin { get; set; }
+
+        [MaxLength(50)]
+        public string? AccountNumber { get; set; }
+
+        [MaxLength(120)]
+        public string? AccountName { get; set; }
+
+        [MaxLength(100)]
+        public string? PaymentLinkId { get; set; }
+
+        [MaxLength(3)]
+        public string Currency { get; set; } = "VND";
 
         [MaxLength(50)]
         public string? PayOSCode { get; set; }

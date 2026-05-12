@@ -1,12 +1,50 @@
+# ===========================================
 # Environment files with sensitive data
+# ===========================================
 .env
 .env.*
 !.env.example
 
+# ===========================================
 # Keep appsettings for reference but not with real secrets
+# ===========================================
 appsettings.*.json
 !appsettings.json
+!appsettings.Development.json
 
+# ===========================================
 # Build output
+# ===========================================
 bin/
 obj/
+
+# ===========================================
+# PII & Secure Uploads - NEVER commit
+# ===========================================
+App_Data/SecureUploads/
+wwwroot/uploads/ekyc/
+wwwroot/uploads/handovers/
+wwwroot/uploads/cars/
+wwwroot/uploads/*.jpg
+wwwroot/uploads/*.jpeg
+wwwroot/uploads/*.png
+wwwroot/uploads/*.pdf
+wwwroot/uploads/*.webp
+
+# ===========================================
+# IDE & OS files
+# ===========================================
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+
+# ===========================================
+# Logs
+# ===========================================
+*.log
+Logs/

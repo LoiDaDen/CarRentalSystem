@@ -10,14 +10,17 @@
 }
 
 <style>
-    .nav-tabs .nav-link { color: #64748b; font-weight: 600; padding: 1rem 1.5rem; border: none; border-bottom: 3px solid transparent; transition: all 0.2s; }
-    .nav-tabs .nav-link:hover { color: #3b82f6; border-bottom-color: rgba(59,130,246,0.3); }
-    .nav-tabs .nav-link.active { color: #3b82f6; border-bottom-color: #3b82f6; background: transparent; }
-    .lookup-card { background: white; border-radius: 20px; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.03); overflow: hidden; }
-    .table-lookup th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 700; background: #f8fafd; padding: 1rem 1.25rem; }
-    .table-lookup td { padding: 1rem 1.25rem; vertical-align: middle; }
+    .theme-admin .nav-tabs .nav-link { color: var(--admin-text-secondary); font-weight: 600; padding: 1rem 1.5rem; border: none; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .theme-admin .nav-tabs .nav-link:hover { color: var(--admin-primary); border-bottom-color: rgba(59,130,246,0.3); }
+    .theme-admin .nav-tabs .nav-link.active { color: var(--admin-primary); border-bottom-color: var(--admin-primary); background: transparent; }
+    .theme-admin .lookup-card { background: var(--admin-card-bg); border-radius: 20px; border: 1px solid var(--admin-border-color); box-shadow: var(--admin-shadow); overflow: hidden; }
+    .theme-admin .lookup-card .tab-content { background: var(--admin-surface-200); }
+    .theme-admin .table-lookup th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--admin-text-secondary); font-weight: 700; background: var(--admin-surface-200); padding: 1rem 1.25rem; }
+    .theme-admin .table-lookup td { padding: 1rem 1.25rem; vertical-align: middle; }
+    .theme-admin .table-lookup { color: var(--admin-text); }
 </style>
 
+<div class="theme-admin">
 @if (TempData["Success"] != null)
 {
     <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-3">
@@ -37,13 +40,15 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="fw-bold mb-1" style="letter-spacing: -1px;">Danh Mục Hệ Thống</h2>
+        <h2 class="fw-bold mb-1" style="letter-spacing: -1px;">
+            <i class="bi bi-sliders me-2" style="color: var(--admin-primary);"></i>Danh Mục Hệ Thống
+        </h2>
         <p class="text-muted mb-0">Thiết lập các tham số, danh mục thả xuống dùng chung toàn hệ thống.</p>
     </div>
 </div>
 
 <div class="lookup-card">
-    <ul class="nav nav-tabs px-3 flex-nowrap overflow-auto" id="lookupTabs" role="tablist">
+    <ul class="nav nav-tabs px-3 pt-3 flex-nowrap overflow-auto" id="lookupTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations" type="button" role="tab" aria-selected="false">
                 <i class="bi bi-geo-alt-fill me-2"></i>Địa điểm / Cơ sở
@@ -71,7 +76,7 @@
         </li>
     </ul>
     
-    <div class="tab-content border-top bg-light pt-4 pb-4 px-4" id="lookupTabsContent" style="min-height: 500px;">
+    <div class="tab-content border-top pt-4 pb-4 px-4" id="lookupTabsContent" style="min-height: 500px;">
         
         <!-- LOCATIONS TAB -->
         <div class="tab-pane fade" id="locations" role="tabpanel" tabindex="0">

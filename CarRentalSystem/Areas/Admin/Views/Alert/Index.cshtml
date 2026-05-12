@@ -4,6 +4,14 @@
     Layout = "_AdminLayout";
 }
 
+<div class="theme-admin">
+<style>
+    .theme-admin .table { color: var(--admin-text); }
+    .theme-admin .card { background: var(--admin-card-bg); border: 1px solid var(--admin-border-color); }
+    .theme-admin .bg-light { background-color: var(--admin-surface-200) !important; }
+    .theme-admin .text-dark { color: var(--admin-text) !important; }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-5">
     <div>
         <h2 class="fw-800 ls-neg-1 mb-1">Giám sát An ninh</h2>
@@ -76,19 +84,8 @@
                         </td>
                     </tr>
                 }
-                @if (!Model.Any())
-                {
-                    <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
-                            <div class="mb-3">
-                                <i class="bi bi-shield-check display-4 opacity-10"></i>
-                            </div>
-                            <h5 class="fw-bold opacity-25">Không có cảnh báo an ninh nào</h5>
-                            <p class="small opacity-50">Tất cả phương tiện đều đang an toàn.</p>
-                        </td>
-                    </tr>
-                }
             </tbody>
         </table>
     </div>
+</div>
 </div>

@@ -34,7 +34,10 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var cars = (await _carService.GetAllCarsAsync())?.ToList() ?? new List<CarRentalSystem.Models.Car>();
             var allBookings = await _bookingService.GetAllBookingsAsync() ?? new List<CarRentalSystem.Models.Booking>();
 
-            var bookings = allBookings.Where(b => b.BookingStatus?.Name != "Draft").ToList();
+            var hiddenStatuses = new[] { "Draft", "Unpaid" };
+            var bookings = allBookings
+                .Where(b => b.BookingStatus == null || !hiddenStatuses.Contains(b.BookingStatus.Name))
+                .ToList();
 
             var viewModel = new DashboardViewModel
             {

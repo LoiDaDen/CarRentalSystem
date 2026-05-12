@@ -12,9 +12,36 @@ document.addEventListener('DOMContentLoaded', function () {
     let deliveryDistanceKm = 0;
     let deliveryDurationMinutes = 0;
     let estimatedDeliveryTime = null;
+    let deliveryInScope = true;
+    let deliveryScopeMessage = '';
 
     // Delivery info display element
     let deliveryInfoEl = null;
+
+    async function refreshDeliveryQuote(lat, lng) {
+        try {
+            const response = await fetch(`/Car/CalculateDelivery?carId=${encodeURIComponent(carData.id)}&customerLat=${encodeURIComponent(lat)}&customerLng=${encodeURIComponent(lng)}`);
+            const data = await response.json();
+            if (!data.success || data.isWithinDeliveryScope === false) {
+                deliveryInScope = false;
+                deliveryScopeMessage = data.message || 'Da lo pham vi co the ship.';
+                deliveryDistanceKm = 0;
+                deliveryDurationMinutes = 0;
+            } else {
+                deliveryInScope = true;
+                deliveryScopeMessage = '';
+                deliveryDistanceKm = Number(data.distanceKm) || 0;
+                deliveryDurationMinutes = Number(data.durationMinutes) || 0;
+            }
+        } catch (err) {
+            console.error('Delivery quote error', err);
+            deliveryInScope = false;
+            deliveryScopeMessage = 'Khong the kiem tra pham vi giao xe. Vui long thu lai.';
+        }
+
+        updatePrices();
+        updateDeliveryInfoDisplay();
+    }
 
     function handleLocationToggle() {
         if (locOwner && locOwner.checked) {
@@ -34,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         const pickupCoords = document.getElementById('pickupCoords');
                         const finalLoc = document.getElementById('finalPickupLocation');
                         if (pickupCoords) pickupCoords.value = "Đang lấy địa chỉ...";
+                        refreshDeliveryQuote(lat, lng);
                         
                         // 1. Dùng OSRM API để lấy khoảng cách và thời gian lái xe thật
                         fetch(`https://router.project-osrm.org/route/v1/driving/${carData.lng},${carData.lat};${lng},${lat}?overview=false`)
@@ -186,7 +214,10 @@ document.addEventListener('DOMContentLoaded', function () {
         
         if (!distanceEl || !timeEl) return;
         
-        if (locOwnerEl && locOwnerEl.checked && deliveryDistanceKm > 0) {
+        if (locOwnerEl && locOwnerEl.checked && !deliveryInScope) {
+            distanceEl.textContent = deliveryScopeMessage || 'Da lo pham vi co the ship.';
+            timeEl.textContent = '-';
+        } else if (locOwnerEl && locOwnerEl.checked && deliveryDistanceKm > 0) {
             distanceEl.textContent = deliveryDistanceKm.toFixed(1) + ' km';
             const totalHours = 1 + (deliveryDurationMinutes / 60);
             if (totalHours >= 1) {
@@ -277,7 +308,15 @@ document.addEventListener('DOMContentLoaded', function () {
         
         const isOwnerDelivery = locOwnerEl && locOwnerEl.checked;
         
-        if (isOwnerDelivery) {
+        if (isOwnerDelivery && !deliveryInScope) {
+            deliveryFee = 0;
+            if (deliveryFeeRow) {
+                deliveryFeeRow.classList.remove('d-none');
+                deliveryFeeRow.classList.add('d-flex');
+                const feeSpan = deliveryFeeRow.querySelector('span:last-child');
+                if (feeSpan) feeSpan.textContent = deliveryScopeMessage || 'Da lo pham vi co the ship.';
+            }
+        } else if (isOwnerDelivery) {
             deliveryFee = calculateShippingFee(deliveryDistanceKm);
             if (deliveryFeeRow) {
                 deliveryFeeRow.classList.remove('d-none');
@@ -403,6 +442,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {
         bookingForm.addEventListener('submit', function(e) {
+            if (locOwner && locOwner.checked && !deliveryInScope) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Thong bao', deliveryScopeMessage || 'Da lo pham vi co the ship.', 'warning');
+                } else {
+                    alert(deliveryScopeMessage || 'Da lo pham vi co the ship.');
+                }
+                return;
+            }
             const btn = document.getElementById('confirmBookingBtn');
             if(btn) {
                 btn.disabled = true;

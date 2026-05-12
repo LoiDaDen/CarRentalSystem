@@ -49,6 +49,10 @@ namespace CarRentalSystem.Data
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<BookingTransaction> BookingTransactions { get; set; }
         public DbSet<PayOSTransaction> PayOSTransactions { get; set; }
+        public DbSet<BookingHold> BookingHolds { get; set; }
+        public DbSet<PaymentLedgerEntry> PaymentLedgerEntries { get; set; }
+        public DbSet<PaymentWebhookEvent> PaymentWebhookEvents { get; set; }
+        public DbSet<RefundRequest> RefundRequests { get; set; }
         
         // Scheduling
         public DbSet<AvailabilitySchedule> AvailabilitySchedules { get; set; }
@@ -108,16 +112,106 @@ namespace CarRentalSystem.Data
                 .HasColumnType("decimal(18,2)");
 
             modelBuilder.Entity<PayOSTransaction>()
-                .HasIndex(t => t.OrderCode);
+                .HasIndex(t => t.OrderCode)
+                .IsUnique();
 
             modelBuilder.Entity<PayOSTransaction>()
                 .HasIndex(t => t.BookingID);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasIndex(t => t.BookingHoldID);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasIndex(t => t.UserID);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasOne(t => t.Booking)
+                .WithMany()
+                .HasForeignKey(t => t.BookingID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasOne(t => t.BookingHold)
+                .WithMany()
+                .HasForeignKey(t => t.BookingHoldID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<PayOSTransaction>()
                 .HasOne(t => t.Payment)
                 .WithMany()
                 .HasForeignKey(t => t.PaymentID)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<BookingHold>()
+                .Property(h => h.RowVersion)
+                .IsRowVersion();
+
+            modelBuilder.Entity<BookingHold>()
+                .HasIndex(h => new { h.CarID, h.StartDate, h.EndDate, h.Status });
+
+            modelBuilder.Entity<BookingHold>()
+                .HasIndex(h => h.ExpiresAt);
+
+            modelBuilder.Entity<BookingHold>()
+                .HasOne(h => h.User)
+                .WithMany()
+                .HasForeignKey(h => h.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<BookingHold>()
+                .HasOne(h => h.Car)
+                .WithMany()
+                .HasForeignKey(h => h.CarID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<BookingHold>()
+                .HasOne(h => h.Booking)
+                .WithMany()
+                .HasForeignKey(h => h.BookingID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<BookingHold>()
+                .HasOne(h => h.BookingTransaction)
+                .WithMany()
+                .HasForeignKey(h => h.TransactionID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PaymentLedgerEntry>()
+                .Property(l => l.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<PaymentLedgerEntry>()
+                .Property(l => l.RowVersion)
+                .IsRowVersion();
+
+            modelBuilder.Entity<PaymentLedgerEntry>()
+                .HasIndex(l => l.IdempotencyKey)
+                .IsUnique()
+                .HasFilter("[IdempotencyKey] IS NOT NULL");
+
+            modelBuilder.Entity<PaymentLedgerEntry>()
+                .HasIndex(l => new { l.BookingID, l.EntryType, l.Status });
+
+            modelBuilder.Entity<PaymentWebhookEvent>()
+                .HasIndex(e => new { e.Provider, e.EventKey })
+                .IsUnique();
+
+            modelBuilder.Entity<RefundRequest>()
+                .Property(r => r.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<RefundRequest>()
+                .Property(r => r.RowVersion)
+                .IsRowVersion();
+
+            modelBuilder.Entity<RefundRequest>()
+                .HasIndex(r => new { r.BookingID, r.Status });
 
             modelBuilder.Entity<RentalContract>()
                 .Property(r => r.StartKm)
@@ -213,6 +307,21 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Booking>()
                 .Property(b => b.DepositAmount)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Booking>()
+                .Property(b => b.ReservationFee)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.ReferralCode)
+                .IsUnique()
+                .HasFilter("[ReferralCode] IS NOT NULL");
+
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.ReferredByUser)
+                .WithMany(u => u.ReferredUsers)
+                .HasForeignKey(u => u.ReferredByUserID)
+                .OnDelete(DeleteBehavior.NoAction);
 
 
 
@@ -510,6 +619,9 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => new { b.StartDate, b.EndDate });
 
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.CarID, b.StartDate, b.EndDate, b.BookingStatusID });
+
             // Payment index
             modelBuilder.Entity<Payment>()
                 .HasIndex(p => p.BookingID);
@@ -546,7 +658,19 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<AreaStaff>().HasQueryFilter(asx => !asx.IsDeleted);
         }
 
+        public override int SaveChanges()
+        {
+            ApplySoftDeleteRules();
+            return base.SaveChanges();
+        }
+
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplySoftDeleteRules();
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ApplySoftDeleteRules()
         {
             var entries = ChangeTracker
                 .Entries()
@@ -627,8 +751,6 @@ namespace CarRentalSystem.Data
                         break;
                 }
             }
-
-            return await base.SaveChangesAsync(cancellationToken);
         }
     }
 }

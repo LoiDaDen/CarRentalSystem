@@ -34,11 +34,12 @@ namespace CarRentalSystem.Services
         public async Task<IEnumerable<Car>> GetAllCarsAsync()
         {
             // 1. Thử lấy từ Cache trước
-            var cached = await _cache.GetAsync<List<Car>>(CacheKeyAllCars);
+            List<Car>? cached = null;
             if (cached != null) return cached;
 
             // 2. Cache miss → query DB
             var cars = await _carRepository.Query()
+                .AsNoTracking()
                 .Include(c => c.Location)
                 .Include(c => c.CarType)
                 .Include(c => c.CarStatus)
@@ -47,18 +48,19 @@ namespace CarRentalSystem.Services
                 .ToListAsync();
 
             // 3. Lưu vào Cache (TTL 5 phút)
-            await _cache.SetAsync(CacheKeyAllCars, cars, TimeSpan.FromMinutes(5));
+            // Do not cache EF entity graphs here; it can serialize a very large object graph.
             return cars;
         }
 
         public async Task<IEnumerable<Car>> GetAvailableCarsAsync()
         {
             // 1. Thử lấy từ Cache trước
-            var cached = await _cache.GetAsync<List<Car>>(CacheKeyAvailableCars);
+            List<Car>? cached = null;
             if (cached != null) return cached;
 
             // 2. Cache miss → query DB
             var cars = await _context.Cars
+                .AsNoTracking()
                 .Include(c => c.CarImages)
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarType)
@@ -68,7 +70,7 @@ namespace CarRentalSystem.Services
                 .ToListAsync();
 
             // 3. Lưu vào Cache (TTL 5 phút)
-            await _cache.SetAsync(CacheKeyAvailableCars, cars, TimeSpan.FromMinutes(5));
+            // Do not cache EF entity graphs here; it can serialize a very large object graph.
             return cars;
         }
 
@@ -99,11 +101,13 @@ namespace CarRentalSystem.Services
 
         public async Task DeleteCarAsync(int id)
         {
-            var car = await _carRepository.GetByIdAsync(id);
+            var car = await _context.Cars.FirstOrDefaultAsync(c => c.CarID == id);
             if (car != null)
             {
-                _carRepository.Delete(car);
-                await _carRepository.SaveChangesAsync();
+                car.IsDeleted = true;
+                car.DeletedAt = DateTime.UtcNow;
+                _context.Cars.Update(car);
+                await _context.SaveChangesAsync();
                 await InvalidateCarCache(); // Xóa cache khi xóa xe
             }
         }

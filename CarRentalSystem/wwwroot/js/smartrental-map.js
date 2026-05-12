@@ -243,3 +243,5 @@ const SmartMap = {
         return { map, renderMarkers, markerMap };
     }
 };
+
+window.SmartMap = SmartMap;

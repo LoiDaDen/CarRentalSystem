@@ -16,175 +16,177 @@
     };
 }
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2">
-        <i class="bi bi-check-circle-fill text-success"></i>
-        <span>@TempData["Success"]</span>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-    </div>
-}
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Đơn đặt xe</h2>
-        <p class="text-muted mb-0">Theo dõi và phê duyệt các đơn thuê từ khách hàng.</p>
-    </div>
-</div>
-
-<!-- Filter Bar -->
-<div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
-    <form method="get" class="d-flex gap-3 align-items-center flex-wrap">
-        <!-- Search -->
-        <div class="input-group flex-grow-1" style="max-width:320px;">
-            <span class="input-group-text bg-white border-end-0 rounded-start-4 border">
-                <i class="bi bi-search text-muted"></i>
-            </span>
-            <input type="text" name="search" value="@searchQ" class="form-control border-start-0 ps-0 rounded-end-4 border"
-                   placeholder="Khách hàng, xe..." />
+<div class="theme-admin">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>@TempData["Success"]</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
         </div>
+    }
 
-        <!-- Status Filter -->
-        <div class="d-flex gap-2 flex-wrap">
-            @{
-                var filterOptions = new[] {
-                    ("", "Tất cả", "bg-secondary"),
-                    ("Pending", "Chờ duyệt", "bg-warning"),
-                    ("Confirmed", "Đã xác nhận", "bg-info"),
-                    ("Completed", "Hoàn thành", "bg-success"),
-                    ("Cancelled", "Đã hủy", "bg-danger"),
-                };
-                foreach (var (val, label, cls) in filterOptions)
-                {
-                    <a href="?status=@val&search=@searchQ"
-                       class="btn btn-sm rounded-pill fw-bold @(activeStatus == val ? cls + " text-white" : "btn-light border")">
-                        @label
-                        <span class="badge ms-1 @(activeStatus == val ? "bg-white text-dark" : "bg-light text-dark")">
-                            @stats[val]
-                        </span>
-                    </a>
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Đơn đặt xe</h2>
+            <p class="text-muted mb-0">Theo dõi và phê duyệt các đơn thuê từ khách hàng.</p>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form method="get" class="d-flex gap-3 align-items-center flex-wrap">
+            <!-- Search -->
+            <div class="search-box flex-grow-1" style="max-width: 320px;">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@searchQ" class="form-control"
+                       placeholder="Khách hàng, xe..." />
+            </div>
+
+            <!-- Status Filter -->
+            <div class="d-flex gap-2 flex-wrap">
+                @{
+                    var filterOptions = new[] {
+                        ("", "Tất cả", "bg-primary"),
+                        ("Pending", "Chờ duyệt", "bg-warning"),
+                        ("Confirmed", "Đã xác nhận", "bg-info"),
+                        ("Completed", "Hoàn thành", "bg-success"),
+                        ("Cancelled", "Đã hủy", "bg-danger"),
+                    };
+                    foreach (var (val, label, cls) in filterOptions)
+                    {
+                        <a href="?status=@val&search=@searchQ"
+                           class="btn btn-sm rounded-pill fw-bold @(activeStatus == val ? cls + " text-white" : "btn-outline-secondary")">
+                            @label
+                            <span class="badge ms-1 @(activeStatus == val ? "bg-white text-dark" : "bg-light text-dark")">
+                                @stats[val]
+                            </span>
+                        </a>
+                    }
                 }
-            }
-        </div>
+            </div>
 
-        <button type="submit" class="btn btn-primary rounded-3 px-3 fw-bold ms-auto">
-            <i class="bi bi-filter me-1"></i>Lọc
-        </button>
-    </form>
-</div>
+            <button type="submit" class="btn btn-primary rounded-3 px-3 fw-bold ms-auto">
+                <i class="bi bi-filter me-1"></i>Lọc
+            </button>
+        </form>
+    </div>
 
-<div class="card border-0 shadow-sm overflow-hidden rounded-4">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead style="background:#f8fafd;">
-                <tr class="text-muted small text-uppercase fw-bold" style="font-size:0.72rem;letter-spacing:0.8px;">
-                    <th class="ps-4 py-3">Khách hàng</th>
-                    <th class="py-3">Xe</th>
-                    <th class="py-3">Thời gian</th>
-                    <th class="py-3">Gói thuê</th>
-                    <th class="py-3">Tài xế</th>
-                    <th class="py-3">Hợp đồng</th>
-                    <th class="py-3">Bảo hiểm</th>
-                    <th class="py-3">Tổng tiền</th>
-                    <th class="py-3 text-center">Trạng thái</th>
-                    <th class="pe-4 py-3 text-end">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var booking in Model)
-                {
-                    <tr>
-                        <td class="ps-4">
-                            <div class="d-flex align-items-center gap-2">
-                                <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(booking.User?.Name ?? "?")" width="34" height="34" class="rounded-circle" />
-                                <div>
-                                    <div class="fw-800 text-dark small">@booking.User?.Name</div>
-                                    <small class="text-muted">@booking.User?.Email</small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="fw-bold small">@booking.Car?.CarBrand?.Name @booking.Car?.CarName</div>
-                            <small class="badge bg-light text-dark border">@booking.Car?.LicensePlate</small>
-                        </td>
-                        <td class="small">
-                            <div><i class="bi bi-calendar-event me-1 text-primary"></i>@booking.StartDate.ToString("dd/MM")</div>
-                            <div class="text-muted"><i class="bi bi-arrow-return-right me-1"></i>@booking.EndDate.ToString("dd/MM/yyyy")</div>
-                        </td>
-                        <td>
-                            @if (booking.ContractType != null)
-                            {
-                                <span class="badge bg-opacity-25 bg-info text-info fw-bold border border-info">@booking.ContractType.Name</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-light text-secondary border">Theo ngày</span>
-                            }
-                        </td>
-                        <td>
-                            @{
-                                var driverBooking = driverBookings.FirstOrDefault(db => db.BookingID == booking.BookingID);
-                            }
-                            @if (driverBooking != null && driverBooking.Driver != null)
-                            {
-                                <span class="badge bg-opacity-25 bg-success text-success fw-bold border border-success">
-                                    <i class="bi bi-person-badge me-1"></i>@driverBooking.Driver.FullName
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-light text-secondary border">
-                                    <i class="bi bi-steering-wheel me-1"></i>Tự lái
-                                </span>
-                            }
-                        </td>
-                        <td>
-                            @if (booking.DigitalContract != null)
-                            {
-                                <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Details" asp-route-id="@booking.DigitalContract.DigitalContractID" class="badge bg-light text-primary border border-primary text-decoration-none" title="Xem Hợp Đồng">
-                                    <i class="bi bi-file-earmark-text me-1"></i> @booking.DigitalContract.ContractNo
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">-</span>
-                            }
-                        </td>
-                        <td>
-                            @{
-                                var tierColor = booking.InsuranceTier switch {
-                                    "Premium" => "text-primary",
-                                    "Full Cover" => "text-success",
-                                    _ => "text-muted"
-                                };
-                            }
-                            <span class="badge bg-light border @tierColor fw-bold">@booking.InsuranceTier</span>
-                        </td>
-                        <td>
-                            <span class="fw-bold text-primary">@booking.TotalPrice.ToString("N0") đ</span>
-                        </td>
-                        <td class="text-center">
-                            @{
-                                var statusName = booking.BookingStatus?.Name ?? "";
-                                var statusClass = statusName switch {
-                                    "Pending" => "bg-warning text-dark",
-                                    "Confirmed" => "bg-info text-white",
-                                    "Active" => "bg-success text-white",
-                                    "Completed" => "bg-secondary text-white",
-                                    "Cancelled" => "bg-danger text-white",
-                                    _ => "bg-light text-dark"
-                                };
-                            }
-                            <span class="badge @statusClass rounded-pill px-3">@statusName</span>
-                        </td>
-                        <td class="text-end pe-4">
-                            <a asp-action="Details" asp-route-id="@booking.BookingID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
-                                <i class="bi bi-eye me-1"></i>Chi tiết
-                            </a>
-                        </td>
+    <!-- Data Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="small text-uppercase fw-bold" style="color: var(--admin-text-secondary);">
+                        <th class="ps-4 py-3">Khách hàng</th>
+                        <th class="py-3">Xe</th>
+                        <th class="py-3">Thời gian</th>
+                        <th class="py-3">Gói thuê</th>
+                        <th class="py-3">Tài xế</th>
+                        <th class="py-3">Hợp đồng</th>
+                        <th class="py-3">Bảo hiểm</th>
+                        <th class="py-3">Tổng tiền</th>
+                        <th class="py-3 text-center">Trạng thái</th>
+                        <th class="pe-4 py-3 text-end">Thao tác</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var booking in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(booking.User?.Name ?? "?")" width="34" height="34" class="rounded-circle" />
+                                    <div>
+                                        <div class="fw-800 small">@booking.User?.Name</div>
+                                        <small class="text-muted">@booking.User?.Email</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-bold small">@booking.Car?.CarBrand?.Name @booking.Car?.CarName</div>
+                                <span class="badge bg-light border">@booking.Car?.LicensePlate</span>
+                            </td>
+                            <td class="small">
+                                <div><i class="bi bi-calendar-event me-1" style="color: var(--admin-primary);"></i>@booking.StartDate.ToString("dd/MM")</div>
+                                <div class="text-muted"><i class="bi bi-arrow-return-right me-1"></i>@booking.EndDate.ToString("dd/MM/yyyy")</div>
+                            </td>
+                            <td>
+                                @if (booking.ContractType != null)
+                                {
+                                    <span class="badge bg-primary-subtle text-primary border border-primary">@booking.ContractType.Name</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light border">Theo ngày</span>
+                                }
+                            </td>
+                            <td>
+                                @{
+                                    var driverBooking = driverBookings.FirstOrDefault(db => db.BookingID == booking.BookingID);
+                                }
+                                @if (driverBooking != null && driverBooking.Driver != null)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success">
+                                        <i class="bi bi-person-badge me-1"></i>@driverBooking.Driver.FullName
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light border">
+                                        <i class="bi bi-steering-wheel me-1"></i>Tự lái
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                @if (booking.DigitalContract != null)
+                                {
+                                    <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Details" asp-route-id="@booking.DigitalContract.DigitalContractID" class="badge bg-primary-subtle text-primary border border-primary text-decoration-none" title="Xem Hợp Đồng">
+                                        <i class="bi bi-file-earmark-text me-1"></i> @booking.DigitalContract.ContractNo
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">-</span>
+                                }
+                            </td>
+                            <td>
+                                @{
+                                    var tierColor = booking.InsuranceTier switch {
+                                        "Premium" => "text-primary",
+                                        "Full Cover" => "text-success",
+                                        _ => "text-muted"
+                                    };
+                                }
+                                <span class="badge bg-light border @tierColor fw-bold">@booking.InsuranceTier</span>
+                            </td>
+                            <td>
+                                <span class="fw-bold" style="color: var(--admin-primary);">@booking.TotalPrice.ToString("N0") đ</span>
+                            </td>
+                            <td class="text-center">
+                                @{
+                                    var statusName = booking.BookingStatus?.Name ?? "";
+                                    var statusClass = statusName switch {
+                                        "Pending" => "bg-warning text-dark",
+                                        "Confirmed" => "bg-info",
+                                        "Active" => "bg-success",
+                                        "Completed" => "bg-secondary",
+                                        "Cancelled" => "bg-danger",
+                                        _ => "bg-light"
+                                    };
+                                }
+                                <span class="badge @statusClass rounded-pill px-3">@statusName</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a asp-action="Details" asp-route-id="@booking.BookingID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
+                                    <i class="bi bi-eye me-1"></i>Chi tiết
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

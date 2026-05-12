@@ -1,4 +1,5 @@
 using CarRentalSystem.Models;
+using CarRentalSystem.ViewModels;
 using PayOS.Models.Webhooks;
 
 namespace CarRentalSystem.Services
@@ -20,7 +21,9 @@ namespace CarRentalSystem.Services
     {
         bool IsConfigured { get; }
         Task<PayOSCreatePaymentResult> CreateDepositPaymentAsync(Booking booking, string returnUrl, string cancelUrl);
+        Task<PayOSCreatePaymentResult> CreateHoldPaymentAsync(BookingHold hold, CheckoutQuoteViewModel quote, string baseUrl);
         Task<PayOSWebhookResult> HandleWebhookAsync(Webhook webhookData);
         Task MarkCancelledAsync(int bookingId);
+        Task MarkHoldCancelledAsync(long orderCode);
     }
 }

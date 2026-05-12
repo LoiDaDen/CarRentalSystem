@@ -36,6 +36,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             return View(payments);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmPayment(int id)
         {
             var payment = await _context.Payments

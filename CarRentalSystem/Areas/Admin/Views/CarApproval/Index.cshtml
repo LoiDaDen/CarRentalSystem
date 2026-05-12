@@ -6,20 +6,19 @@
     var canApprove = ViewBag.CanApprove as bool? ?? false;
 }
 
-<div class="container-fluid py-4">
-    <div class="mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="fw-bold text-dark mb-1">Duyệt Xe Mới</h2>
-                <p class="text-muted mb-0">Xem xét các xe đối tác vừa đăng tải lên sàn trước khi cho phép hoạt động.</p>
-            </div>
-            @if (!canApprove)
-            {
-                <div class="badge bg-info px-3 py-2 rounded-pill">
-                    <i class="bi bi-eye me-1"></i>Chế độ xem (Staff)
-                </div>
-            }
+<div class="theme-admin">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 ls-neg-1 mb-1">Duyệt Xe Mới</h2>
+            <p class="text-muted mb-0">Xem xét các xe đối tác vừa đăng tải lên sàn trước khi cho phép hoạt động.</p>
         </div>
+        @if (!canApprove)
+        {
+            <div class="badge bg-info px-3 py-2 rounded-pill">
+                <i class="bi bi-eye me-1"></i>Chế độ xem (Staff)
+            </div>
+        }
     </div>
 
     @if (TempData["Success"] != null)
@@ -40,15 +39,15 @@
 
     @if (!Model.Any())
     {
-        <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
-            <div class="opacity-25 mb-3">
-                <i class="bi bi-check2-circle display-1"></i>
+        <div class="card text-center p-5">
+            <div class="empty-state">
+                <i class="bi bi-check2-circle display-1" style="color: var(--admin-success);"></i>
+                <h4 class="mt-3">Hiện không có xe nào đang chờ duyệt</h4>
+                @if (!canApprove)
+                {
+                    <p class="text-muted small mt-2">Bạn chỉ có quyền xem danh sách xe chờ duyệt trong khu vực của mình.</p>
+                }
             </div>
-            <h4 class="text-muted fw-normal">Hiện không có xe nào đang chờ duyệt</h4>
-            @if (!canApprove)
-            {
-                <p class="text-muted small mt-2">Bạn chỉ có quyền xem danh sách xe chờ duyệt trong khu vực của mình.</p>
-            }
         </div>
     }
     else
@@ -57,18 +56,18 @@
             @foreach (var car in Model)
             {
                 <div class="col-md-6 col-xl-4">
-                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+                    <div class="card h-100">
                         @if (!string.IsNullOrEmpty(car.ImageURL))
                         {
                             <img src="@car.ImageURL" class="card-img-top" alt="@car.CarName" style="height: 200px; object-fit: cover;">
                         }
                         else
                         {
-                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <div class="d-flex align-items-center justify-content-center" style="height: 200px; background: var(--admin-surface-2);">
                                 <i class="bi bi-car-front text-secondary" style="font-size: 4rem;"></i>
                             </div>
                         }
-                        <div class="card-body p-4">
+                        <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h5 class="fw-bold mb-0 text-truncate" style="max-width: 200px;">@car.CarName</h5>
                                 <span class="badge bg-warning text-dark px-2 rounded-pill">Chờ duyệt</span>
@@ -80,30 +79,30 @@
                             <ul class="list-unstyled small mb-4">
                                 @if (car.CarBrand != null)
                                 {
-                                    <li class="mb-1"><i class="bi bi-tag me-2 text-secondary"></i>Hãng: @car.CarBrand.Name</li>
+                                    <li class="mb-1"><i class="bi bi-tag me-2" style="color: var(--admin-text-muted);"></i>Hãng: @car.CarBrand.Name</li>
                                 }
                                 @if (!string.IsNullOrEmpty(car.LicensePlate))
                                 {
-                                    <li class="mb-1"><i class="bi bi-hash me-2 text-secondary"></i>Biển số: <code>@car.LicensePlate</code></li>
+                                    <li class="mb-1"><i class="bi bi-hash me-2" style="color: var(--admin-text-muted);"></i>Biển số: <code>@car.LicensePlate</code></li>
                                 }
                                 @if (!string.IsNullOrEmpty(car.VIN))
                                 {
-                                    <li class="mb-1"><i class="bi bi-upc-scan me-2 text-secondary"></i>Số khung: <code>@car.VIN</code></li>
+                                    <li class="mb-1"><i class="bi bi-upc-scan me-2" style="color: var(--admin-text-muted);"></i>Số khung: <code>@car.VIN</code></li>
                                 }
-                                <li class="mb-1"><i class="bi bi-cash me-2 text-secondary"></i>Giá: <strong class="text-success">@car.PricePerDay.ToString("N0")đ</strong>/ngày</li>
+                                <li class="mb-1"><i class="bi bi-cash me-2" style="color: var(--admin-text-muted);"></i>Giá: <strong style="color: var(--admin-success);">@car.PricePerDay.ToString("N0")đ</strong>/ngày</li>
                                 @if (car.Location != null)
                                 {
-                                    <li class="mb-1"><i class="bi bi-geo-alt me-2 text-secondary"></i>Vị trí: <span class="badge bg-light text-dark border">@car.Location.Name</span></li>
+                                    <li class="mb-1"><i class="bi bi-geo-alt me-2" style="color: var(--admin-text-muted);"></i>Vị trí: <span class="badge bg-light border">@car.Location.Name</span></li>
                                 }
                                 @if (car.CreatedAt != default)
                                 {
-                                    <li class="mb-1"><i class="bi bi-clock me-2 text-secondary"></i>Ngày đăng: @car.CreatedAt.ToString("dd/MM/yyyy HH:mm")</li>
+                                    <li class="mb-1"><i class="bi bi-clock me-2" style="color: var(--admin-text-muted);"></i>Ngày đăng: @car.CreatedAt.ToString("dd/MM/yyyy HH:mm")</li>
                                 }
                             </ul>
 
                             @if (!string.IsNullOrEmpty(car.Description))
                             {
-                                <div class="bg-light p-3 rounded-3 mb-4">
+                                <div class="p-3 rounded-3 mb-4" style="background: var(--admin-surface-2);">
                                     <small class="text-muted">@car.Description</small>
                                 </div>
                             }

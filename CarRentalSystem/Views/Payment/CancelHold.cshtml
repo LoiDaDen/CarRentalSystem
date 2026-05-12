@@ -1,0 +1,13 @@
+@model CarRentalSystem.Models.PayOSTransaction
+@{
+    ViewData["Title"] = "Đã hủy giữ chỗ";
+}
+
+<div class="container py-5">
+    <div class="mx-auto text-center bg-white border rounded-4 shadow-sm p-5" style="max-width:640px;">
+        <i class="bi bi-x-circle text-secondary display-4"></i>
+        <h2 class="fw-bold mt-3">Đã hủy thanh toán giữ chỗ</h2>
+        <p class="text-muted">Hệ thống đã nhả xe tạm giữ. Không có đơn thuê nào được tạo nếu PayOS chưa xác nhận thanh toán.</p>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary rounded-pill px-4">Ve trang chu</a>
+    </div>
+</div>

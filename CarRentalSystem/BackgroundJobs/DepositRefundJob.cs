@@ -1,75 +1,67 @@
 using CarRentalSystem.Data;
+using CarRentalSystem.Models;
+using CarRentalSystem.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace CarRentalSystem.BackgroundJobs
 {
-    /// <summary>
-    /// Hangfire Recurring Job — Chạy mỗi ngày lúc 9:00 AM
-    /// Tự động hoàn cọc cho các booking đã trả xe >= 15 ngày mà không vi phạm.
-    /// Nghiệp vụ: Giữ cọc 15 ngày sau trả xe để chờ kiểm tra phạt nguội/hư hỏng.
-    /// </summary>
     public class DepositRefundJob
     {
         private readonly ApplicationDbContext _db;
         private readonly ILogger<DepositRefundJob> _logger;
+        private readonly IPaymentLedgerService _ledger;
 
-        public DepositRefundJob(ApplicationDbContext db, ILogger<DepositRefundJob> logger)
+        public DepositRefundJob(
+            ApplicationDbContext db,
+            ILogger<DepositRefundJob> logger,
+            IPaymentLedgerService ledger)
         {
             _db = db;
             _logger = logger;
+            _ledger = ledger;
         }
 
         public async Task Execute()
         {
-            _logger.LogInformation("💰 [Hangfire] Bắt đầu xử lý hoàn cọc...");
             var now = DateTime.UtcNow;
-            var refundThreshold = now.AddDays(-15); // 15 ngày holding period
+            var refundThreshold = now.AddDays(-15);
 
-            // Tìm các booking đã trả xe >= 15 ngày với DepositStatus = "PendingRefund"
             var eligibleBookings = await _db.Bookings
                 .Include(b => b.User)
                 .Include(b => b.Car)
                 .Include(b => b.BookingStatus)
-                .Where(b => b.DepositStatus == "PendingRefund" &&
-                            b.BookingStatus != null && b.BookingStatus.Name == "Completed" &&
+                .Where(b => b.DepositStatus == DepositStatusConstants.PendingRefund &&
+                            b.BookingStatus != null &&
+                            b.BookingStatus.Name == BookingStatusConstants.Completed &&
                             b.ActualReturnDate.HasValue &&
                             b.ActualReturnDate.Value <= refundThreshold)
                 .ToListAsync();
 
-            int refundedCount = 0;
-
+            var createdCount = 0;
             foreach (var booking in eligibleBookings)
             {
-                // Kiểm tra không có phạt nguội hoặc hư hỏng chưa xử lý
-                // (Trong thực tế, sẽ check bảng Violations/DamageReport)
-                
-                booking.DepositStatus = "Refunded";
-                refundedCount++;
+                var request = await _ledger.CreateRefundRequestAsync(
+                    booking.BookingID,
+                    booking.DepositAmount,
+                    "Eligible for deposit refund after 15-day holding period.");
 
-                _logger.LogInformation(
-                    "✅ Hoàn cọc Booking #{BookingId} — {Amount:N0}đ cho khách {Customer}.",
-                    booking.BookingID, booking.DepositAmount, booking.User?.Name ?? "N/A");
+                booking.DepositStatus = DepositStatusConstants.PendingRefund;
+                createdCount++;
 
-                // Ghi audit log
-                _db.AuditLogs.Add(new Models.AuditLog
+                _db.AuditLogs.Add(new AuditLog
                 {
-                    Action = "DepositRefund",
+                    Action = "DepositRefundRequest",
                     EntityType = "Booking",
                     EntityId = booking.BookingID,
-                    Description = $"Tự động hoàn cọc {booking.DepositAmount:N0}đ sau 15 ngày giữ. Xe: {booking.Car?.LicensePlate}",
+                    Description = $"Created refund request #{request.RefundRequestID} for {booking.DepositAmount:N0}. Car: {booking.Car?.LicensePlate}",
                     UserName = "System (Hangfire)"
                 });
             }
 
-            if (refundedCount > 0)
+            if (createdCount > 0)
             {
                 await _db.SaveChangesAsync();
-                _logger.LogInformation("💰 [Hangfire] Đã hoàn cọc cho {Count} booking.", refundedCount);
-            }
-            else
-            {
-                _logger.LogInformation("💰 [Hangfire] Không có booking nào cần hoàn cọc.");
+                _logger.LogInformation("Created {Count} deposit refund requests.", createdCount);
             }
         }
     }

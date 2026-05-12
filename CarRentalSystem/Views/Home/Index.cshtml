@@ -2,373 +2,857 @@
 @{ ViewData["Title"] = "CarRental - Thuê Xe Tự Lái 24/7"; }
 
 <style>
-    .home-hero {
-        background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.85) 100%),
-                    url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop')
-                    no-repeat center center;
-        background-size: cover;
-        padding: 100px 0 80px;
+    /* Hero Section - Enterprise Style */
+    .hero-section {
         position: relative;
+        padding: 5rem 0 4rem;
+        background: linear-gradient(135deg, var(--cr-dark) 0%, var(--cr-dark-800) 60%, var(--cr-primary-700) 100%);
+        color: var(--cr-white);
+        overflow: hidden;
     }
-    .home-hero h1 {
-        font-size: 2.8rem;
+
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=2070&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        opacity: 0.25;
+    }
+
+    .hero-section::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 150px;
+        background: linear-gradient(to top, var(--cr-bg), transparent);
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero-title {
+        font-size: 2.75rem;
         font-weight: 800;
-        text-shadow: 2px 2px 12px rgba(0,0,0,0.7);
-        letter-spacing: -0.5px;
-        color: #ffffff !important;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
     }
-    .home-hero .hero-subtitle {
-        font-size: 1.1rem;
-        color: rgba(255,255,255,0.95);
-        text-shadow: 1px 1px 6px rgba(0,0,0,0.6);
-        font-weight: 500;
+
+    .hero-subtitle {
+        font-size: 1.125rem;
+        color: rgba(255, 255, 255, 0.9);
         max-width: 600px;
-        margin: 0 auto;
-        line-height: 1.6;
+        margin: 0 auto 2rem;
+        line-height: 1.7;
     }
-    .home-hero .hero-subtitle strong {
-        color: #4ade80;
+
+    .hero-highlight {
+        color: var(--cr-success-500);
         font-weight: 700;
     }
-    .home-search {
-        background: rgba(255,255,255,0.98);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        margin-top: 30px;
-        border: 1px solid rgba(255,255,255,0.3);
+
+    /* Search Widget */
+    .search-widget {
+        background: var(--cr-white);
+        border-radius: var(--cr-radius-2xl);
+        padding: 1.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        position: relative;
+        z-index: 2;
+        margin-top: 2rem;
     }
-    .home-input {
-        border: none;
-        border-bottom: 2px solid #e5e7eb;
-        border-radius: 0;
-        padding-left: 12px;
+
+    .search-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--cr-text-muted);
+        margin-bottom: 0.5rem;
+    }
+
+    .search-input {
+        border: 2px solid var(--cr-dark-200);
+        border-radius: var(--cr-radius);
+        padding: 0.75rem 1rem;
         font-weight: 500;
-        box-shadow: none !important;
-        background: transparent;
+        background: var(--cr-white);
+        transition: all var(--cr-transition);
+        height: 48px;
+    }
+
+    .search-input:hover {
+        border-color: var(--cr-dark-300);
+    }
+
+    .search-input:focus {
+        border-color: var(--cr-primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        outline: none;
+    }
+
+    .search-btn {
+        height: 48px;
+        padding: 0 2rem;
+        font-weight: 700;
+        font-size: 1rem;
+        border-radius: var(--cr-radius);
+        transition: all var(--cr-transition);
+    }
+
+    /* Car Cards */
+    .car-card {
+        border: none;
+        border-radius: var(--cr-radius-xl);
+        overflow: hidden;
+        background: var(--cr-white);
+        box-shadow: var(--cr-shadow-sm);
+        transition: all var(--cr-transition);
+        height: 100%;
+    }
+
+    .car-card:hover {
+        transform: translateY(-6px);
+        box-shadow: var(--cr-shadow-lg);
+    }
+
+    .car-card-img {
+        height: 160px;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+    }
+
+    .car-card:hover .car-card-img {
+        transform: scale(1.05);
+    }
+
+    .car-card-img-wrapper {
+        overflow: hidden;
+        position: relative;
+    }
+
+    .car-card-badge {
+        position: absolute;
+        top: 0.75rem;
+        left: 0.75rem;
+        z-index: 2;
+    }
+
+    .car-card-body {
+        padding: 1rem;
+    }
+
+    .car-card-brand {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--cr-text-muted);
+    }
+
+    .car-card-name {
         font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--cr-dark);
+        line-height: 1.3;
+        margin: 0.25rem 0 0.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
-    .home-input:focus {
-        border-bottom-color: #10b981;
+
+    .car-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-size: 0.75rem;
+        color: var(--cr-text-secondary);
+    }
+
+    .car-card-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .car-card-divider {
+        height: 1px;
+        background: var(--cr-dark-200);
+        margin: 0.75rem 0;
+    }
+
+    .car-card-price {
+        display: flex;
+        align-items: baseline;
+        gap: 0.25rem;
+    }
+
+    .car-card-price-value {
+        font-size: 1.125rem;
+        font-weight: 800;
+        color: var(--cr-primary);
+    }
+
+    .car-card-price-unit {
+        font-size: 0.75rem;
+        color: var(--cr-text-muted);
+    }
+
+    /* Rating Stars */
+    .rating-stars {
+        display: flex;
+        align-items: center;
+        gap: 0.125rem;
+    }
+
+    .rating-stars i {
+        font-size: 0.65rem;
+        color: var(--cr-warning);
+    }
+
+    .rating-stars .empty {
+        color: var(--cr-dark-300);
+    }
+
+    .rating-value {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--cr-dark-700);
+    }
+
+    .rating-count {
+        font-size: 0.65rem;
+        color: var(--cr-text-light);
+    }
+
+    /* Section Headers */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--cr-dark);
+        margin-bottom: 0.25rem;
+        letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+        font-size: 0.9rem;
+        color: var(--cr-text-muted);
+        margin: 0;
+    }
+
+    .section-link {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--cr-primary);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: all var(--cr-transition);
+    }
+
+    .section-link:hover {
+        color: var(--cr-primary-600);
+        gap: 0.5rem;
+    }
+
+    /* How It Works */
+    .hiw-section {
+        background: linear-gradient(180deg, var(--cr-white) 0%, var(--cr-bg) 100%);
+        padding: 4rem 0;
+    }
+
+    .hiw-step {
+        text-align: center;
+        padding: 2rem 1rem;
+        position: relative;
+    }
+
+    .hiw-step-number {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--cr-radius-xl);
+        background: var(--cr-primary-50);
+        color: var(--cr-primary);
+        font-size: 1.5rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.25rem;
+        box-shadow: 0 8px 16px rgba(37, 99, 235, 0.15);
+    }
+
+    .hiw-step-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--cr-dark);
+        margin-bottom: 0.75rem;
+    }
+
+    .hiw-step-desc {
+        font-size: 0.9rem;
+        color: var(--cr-text-secondary);
+        line-height: 1.6;
+    }
+
+    .hiw-connector {
+        position: absolute;
+        top: 50%;
+        right: -50%;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, var(--cr-primary-100), transparent);
+    }
+
+    /* Tab Pills */
+    .nav-pill {
+        background: var(--cr-dark-100);
+        border-radius: var(--cr-radius-full);
+        padding: 0.25rem;
+        display: inline-flex;
+        gap: 0.25rem;
+    }
+
+    .nav-pill-btn {
+        padding: 0.625rem 1.25rem;
+        border-radius: var(--cr-radius-full);
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--cr-text-secondary);
         background: transparent;
-        box-shadow: none !important;
+        border: none;
+        transition: all var(--cr-transition);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    .home-label { font-size: 0.85rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-    .home-car-card { border-radius: 16px; transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid #f0f0f0; }
-    .home-car-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
-    .home-btn-search { border-radius: 12px; font-weight: 700; letter-spacing: 1px; }
-    .badges-top { position: absolute; top: 10px; left: 10px; z-index: 2; }
-    .price-tag { font-size: 1.25rem; font-weight: 800; color: #0d6efd; }
-</style>
+
+    .nav-pill-btn:hover {
+        color: var(--cr-primary);
+    }
+
+    .nav-pill-btn.active {
+        background: var(--cr-primary);
+        color: var(--cr-white);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    /* Promo Badge */
+    .promo-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--cr-danger-50);
+        color: var(--cr-danger);
+        padding: 0.5rem 1rem;
+        border-radius: var(--cr-radius-full);
+        font-size: 0.8125rem;
+        font-weight: 600;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--cr-white);
+        border-radius: var(--cr-radius-xl);
+        border: 2px dashed var(--cr-dark-200);
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        color: var(--cr-dark-300);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--cr-dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state-desc {
+        font-size: 0.9rem;
+        color: var(--cr-text-muted);
+    }
+
+    /* Responsive */
+    <text>
+    @@media (max-width: 991.98px) {
+        .hero-title {
+            font-size: 2rem;
+        }
+        
+        .search-widget {
+            padding: 1.25rem;
+        }
+        
+        .hiw-connector {
+            display: none;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .hero-section {
+            padding: 3rem 0 2rem;
+        }
+        
+        .hero-title {
+            font-size: 1.75rem;
+        }
+        
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+    }
+    </text>
 </style>
 
 <div class="page-home">
-<section class="home-hero text-white mb-5 ui-hero-banner">
-    <div class="container text-center position-relative">
-        <div class="hero-banner-content">
-            <h1 class="display-3 fw-bolder mb-3 hero-title">Ứng dụng đặt xe thông minh 24/7</h1>
-            <p class="lead mb-4 hero-subtitle">
-                <strong>Giá chỉ từ 400K</strong>. Thuê xe linh hoạt 4h, 8h, 24h.
-                <br>Cam kết xe đời mới, sạch sẽ, an toàn.
-            </p>
-        </div>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="hero-content text-center">
+                <h1 class="hero-title" style="color: white;">Ứng dụng đặt xe thông minh 24/7</h1>
+                <p class="hero-subtitle">
+                    <span class="hero-highlight">Giá chỉ từ 400K</span>. Thuê xe linh hoạt 4h, 8h, 24h.
+                    <br>Cam kết xe đời mới, sạch sẽ, an toàn.
+                </p>
 
-        <div class="home-search text-start mx-auto ui-search-panel home-search-panel">
-            <!-- Tabs -->
-            <ul class="nav nav-pills mb-3 justify-content-center gap-2" id="rentalTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold tab-btn-primary" id="self-drive-tab" data-bs-toggle="tab" data-bs-target="#selfDrivePane" type="button" role="tab">
-                        <i class="bi bi-car-front-fill"></i> Thuê xe tự lái
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link d-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold tab-btn-secondary" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthlyPane" type="button" role="tab">
-                        <i class="bi bi-calendar-month"></i> Thuê xe theo tháng
-                    </button>
-                </li>
-            </ul>
+                <!-- Search Widget -->
+                <div class="search-widget">
+                    <ul class="nav nav-pills mb-4 justify-content-center" id="rentalTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-pill-btn active" id="self-drive-tab" data-bs-toggle="tab" data-bs-target="#selfDrivePane" type="button" role="tab">
+                                <i class="bi bi-car-front-fill"></i> Thuê xe tự lái
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-pill-btn" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthlyPane" type="button" role="tab">
+                                <i class="bi bi-calendar-month"></i> Thuê xe theo tháng
+                            </button>
+                        </li>
+                    </ul>
 
-            <div class="tab-content">
-                <!-- Tab 1: Self-Drive -->
-                <div class="tab-pane fade show active" id="selfDrivePane" role="tabpanel">
-                    <form asp-controller="Car" asp-action="Index" method="get" class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label class="home-label fw-bold"><i class="bi bi-geo-alt-fill text-primary"></i> Địa điểm nhận xe</label>
-                            <select class="form-select home-input" name="location">
-                                <option value="">Tất cả khu vực</option>
-                                @if (ViewBag.Locations != null) {
-                                    foreach (var loc in ViewBag.Locations) {
-                                        <option value="@loc.Name">@loc.Name</option>
-                                    }
-                                }
-                            </select>
+                    <div class="tab-content" id="rentalTabContent">
+                        <!-- Self-Drive Tab -->
+                        <div class="tab-pane fade show active" id="selfDrivePane" role="tabpanel">
+                            <form asp-controller="Car" asp-action="Index" method="get">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-lg-4 col-md-6">
+                                        <label class="search-label">
+                                            <i class="bi bi-geo-alt-fill text-primary me-1"></i> Địa điểm nhận xe
+                                        </label>
+                                        <select class="form-select search-input" name="location">
+                                            <option value="">Tất cả khu vực</option>
+                                            @if (ViewBag.Locations != null)
+                                            {
+                                                foreach (var loc in ViewBag.Locations)
+                                                {
+                                                    <option value="@loc.Name">@loc.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-5 col-md-6">
+                                        <label class="search-label">
+                                            <i class="bi bi-calendar-range text-primary me-1"></i> Lịch thuê xe
+                                        </label>
+                                        <div class="search-input d-flex align-items-center justify-content-between cursor-pointer" 
+                                             onclick="openCarCalendar({startInputId: 'heroStartDate', endInputId: 'heroEndDate', defaultStart: document.getElementById('heroStartDate').value, defaultEnd: document.getElementById('heroEndDate').value})">
+                                            <span id="heroCalendarDisplay" class="fw-semibold text-dark">Chọn thời gian...</span>
+                                            <i class="bi bi-pencil-square text-muted"></i>
+                                        </div>
+                                        <input type="hidden" name="startDate" id="heroStartDate" required>
+                                        <input type="hidden" name="endDate" id="heroEndDate" required>
+                                    </div>
+                                    <div class="col-lg-3 col-12">
+                                        <button type="submit" class="btn btn-success w-100 search-btn">
+                                            <i class="bi bi-search me-2"></i>TÌM XE
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                        <div class="col-md-6">
-                            <label class="home-label fw-bold"><i class="bi bi-calendar-range text-primary"></i> Lịch thuê xe</label>
-                            <div class="form-control home-input d-flex align-items-center justify-content-between" onclick="openCarCalendar({startInputId: 'heroStartDate', endInputId: 'heroEndDate', defaultStart: document.getElementById('heroStartDate').value, defaultEnd: document.getElementById('heroEndDate').value})" style="cursor: pointer; min-height: 48px;">
-                                <span id="heroCalendarDisplay" data-calendar-display class="fw-bold text-dark">Chọn thời gian...</span>
-                                <i class="bi bi-pencil-square text-muted"></i>
-                            </div>
-                            <input type="hidden" name="startDate" id="heroStartDate" required>
-                            <input type="hidden" name="endDate" id="heroEndDate" required>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-success w-100 home-btn-search py-3 fs-5">TÌM XE</button>
-                        </div>
-                    </form>
-                </div>
 
-                <!-- Tab 2: Monthly Rental -->
-                <div class="tab-pane fade" id="monthlyPane" role="tabpanel">
-                    <form asp-controller="Car" asp-action="Index" method="get" class="row g-3 align-items-end">
-                        <input type="hidden" name="rentalType" value="monthly" />
-                        <div class="col-md-3">
-                            <label class="home-label fw-bold"><i class="bi bi-geo-alt-fill text-primary"></i> Địa điểm nhận xe</label>
-                            <select class="form-select home-input" name="location">
-                                @if (ViewBag.Locations != null) {
-                                    foreach (var loc in ViewBag.Locations) {
-                                        <option value="@loc.Name">@loc.Name</option>
-                                    }
-                                }
-                            </select>
+                        <!-- Monthly Tab -->
+                        <div class="tab-pane fade" id="monthlyPane" role="tabpanel">
+                            <form asp-controller="Car" asp-action="Index" method="get">
+                                <input type="hidden" name="rentalType" value="monthly" />
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-lg-4 col-md-4">
+                                        <label class="search-label">
+                                            <i class="bi bi-geo-alt-fill text-primary me-1"></i> Địa điểm
+                                        </label>
+                                        <select class="form-select search-input" name="location">
+                                            @if (ViewBag.Locations != null)
+                                            {
+                                                foreach (var loc in ViewBag.Locations)
+                                                {
+                                                    <option value="@loc.Name">@loc.Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-3 col-md-4">
+                                        <label class="search-label">
+                                            <i class="bi bi-box text-primary me-1"></i> Gói thuê
+                                        </label>
+                                        <select class="form-select search-input" name="monthlyPackage">
+                                            <option value="1">1 tháng</option>
+                                            <option value="3">3 tháng</option>
+                                            <option value="6">6 tháng</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-3 col-md-4">
+                                        <label class="search-label">
+                                            <i class="bi bi-clock text-primary me-1"></i> Thời gian nhận
+                                        </label>
+                                        <select class="form-select search-input" name="pickupTimeframe">
+                                            <option value="7">7 ngày tới</option>
+                                            <option value="14">14 ngày tới</option>
+                                            <option value="30">1 tháng tới</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-2 col-12">
+                                        <button type="submit" class="btn btn-success w-100 search-btn">
+                                            <i class="bi bi-check-lg me-2"></i>XÁC NHẬN
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <span class="promo-badge">
+                                        <i class="bi bi-piggy-bank"></i> Tiết kiệm 15% so với thuê ngày
+                                    </span>
+                                </div>
+                            </form>
                         </div>
-                        <div class="col-md-3">
-                            <label class="home-label fw-bold"><i class="bi bi-box text-primary"></i> Gói thuê</label>
-                            <select class="form-select home-input" name="monthlyPackage">
-                                <option value="1">1 tháng</option>
-                                <option value="3">3 tháng</option>
-                                <option value="6">6 tháng</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="home-label fw-bold"><i class="bi bi-clock text-primary"></i> Thời gian nhận xe</label>
-                            <select class="form-select home-input" name="pickupTimeframe">
-                                <option value="7">7 ngày tới</option>
-                                <option value="14">14 ngày tới</option>
-                                <option value="30">1 tháng tới</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-success w-100 home-btn-search py-3 fs-5">XÁC NHẬN</button>
-                        </div>
-                        <div class="col-12 text-center">
-                            <span class="badge bg-danger bg-opacity-75 px-3 py-2 rounded-pill">
-                                <i class="bi bi-piggy-bank me-1"></i> Tiết kiệm 15% so với thuê ngày
-                            </span>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var now = new Date(); var start = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-    var mins = start.getMinutes();
-    if (mins > 0 && mins <= 30) start.setMinutes(30, 0, 0);
-    else if (mins > 30) { start.setHours(start.getHours() + 1); start.setMinutes(0, 0, 0); }
-    else start.setMinutes(0, 0, 0);
-    var end = new Date(start.getTime() + 4 * 60 * 60 * 1000);
-    function fmtDT(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
-    var s = document.getElementById('heroStartDate'); var e = document.getElementById('heroEndDate');
-    if (s) s.value = fmtDT(start); if (e) e.value = fmtDT(end);
-    var dDisp = document.getElementById('heroCalendarDisplay');
-    if (dDisp) {
-        var m1 = String(start.getMonth() + 1).padStart(2,'0'); var d1 = String(start.getDate()).padStart(2,'0');
-        var h1 = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
-        var m2 = String(end.getMonth() + 1).padStart(2,'0'); var d2 = String(end.getDate()).padStart(2,'0');
-        var h2 = String(end.getHours()).padStart(2,'0') + ':' + String(end.getMinutes()).padStart(2,'0');
-        dDisp.innerText = d1 + '/' + m1 + ' ' + h1 + ' - ' + d2 + '/' + m2 + ' ' + h2;
-    }
-    document.querySelectorAll('#rentalTabs .nav-link').forEach(function(tab) {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('#rentalTabs .nav-link').forEach(function(t) { t.classList.remove('tab-btn-primary'); t.classList.add('tab-btn-secondary'); });
-            this.classList.remove('tab-btn-secondary'); this.classList.add('tab-btn-primary');
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize date values
+            var now = new Date();
+            var start = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            var mins = start.getMinutes();
+            if (mins > 0 && mins <= 30) start.setMinutes(30, 0, 0);
+            else if (mins > 30) { start.setHours(start.getHours() + 1); start.setMinutes(0, 0, 0); }
+            else start.setMinutes(0, 0, 0);
+            var end = new Date(start.getTime() + 4 * 60 * 60 * 1000);
+
+            function fmtDT(d) {
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+            }
+
+            var s = document.getElementById('heroStartDate');
+            var e = document.getElementById('heroEndDate');
+            if (s) s.value = fmtDT(start);
+            if (e) e.value = fmtDT(end);
+
+            var dDisp = document.getElementById('heroCalendarDisplay');
+            if (dDisp) {
+                var m1 = String(start.getMonth() + 1).padStart(2,'0');
+                var d1 = String(start.getDate()).padStart(2,'0');
+                var h1 = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
+                var m2 = String(end.getMonth() + 1).padStart(2,'0');
+                var d2 = String(end.getDate()).padStart(2,'0');
+                var h2 = String(end.getHours()).padStart(2,'0') + ':' + String(end.getMinutes()).padStart(2,'0');
+                dDisp.innerText = d1 + '/' + m1 + ' ' + h1 + ' - ' + d2 + '/' + m2 + ' ' + h2;
+            }
+
+            // Tab switching animation
+            document.querySelectorAll('.nav-pill-btn').forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.nav-pill-btn').forEach(function(t) {
+                        t.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                });
+            });
         });
-    });
-});
-</script>
+    </script>
 
-<!-- Xe Có Ngay Section -->
-<div class="container py-4 mb-5">
-    <div class="d-flex justify-content-between align-items-end mb-4">
-        <div>
-            <h2 class="fw-bolder mb-1">Xe Có Ngay</h2>
-            <p class="text-muted mb-0">Các mẫu xe phổ thông trống lịch, có thể nhận ngay hôm nay.</p>
-        </div>
-        <a asp-controller="Car" asp-action="Index" class="text-primary fw-bold text-decoration-none">Xem thêm <i class="bi bi-arrow-right"></i></a>
-    </div>
+    <!-- Available Cars Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Xe Có Ngay</h2>
+                    <p class="section-subtitle">Các mẫu xe phổ biến, sẵn sàng phục vụ ngay hôm nay.</p>
+                </div>
+                <a asp-controller="Car" asp-action="Index" class="section-link">
+                    Xem tất cả <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
 
-    <div class="row g-4">
-        @if (ViewBag.AvailableCars != null)
-        {
-            foreach (var car in ViewBag.AvailableCars as IEnumerable<CarRentalSystem.Models.Car>)
+            @if (ViewBag.AvailableCars != null && ViewBag.AvailableCars.Count > 0)
             {
-                var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
-                var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
-                var carReviewCount = carReviews.Count;
-                var p24h = car.PricePerDay;
-                var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
-                <div class="col-lg-3 col-md-4 col-sm-6">
-                    <a id="home-car-@car.CarID" href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="text-decoration-none text-dark">
-                        <div class="card home-car-card h-100 position-relative ui-elevated-card" style="cursor: pointer;">
-                            <div class="badges-top">
-                                <span class="badge bg-success shadow-sm px-2 py-1 rounded-pill" style="font-size: 0.7rem;">Sẵn sàng</span>
-                            </div>
-                            <img src="@(car.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600")" class="card-img-top car-card-img" alt="@car.CarName" style="height: 140px; object-fit: cover;">
-                            <div class="card-body p-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">@car.CarBrand?.Name</span>
-                                    <div class="d-flex align-items-center gap-1 px-1 py-0 rounded-pill rating-badge" style="font-size: 0.65rem;">
-                                        @for (int s = 1; s <= 5; s++)
+                <div class="row g-4">
+                    @foreach (var car in (IEnumerable<CarRentalSystem.Models.Car>)ViewBag.AvailableCars)
+                    {
+                        var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
+                        var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
+                        var carReviewCount = carReviews.Count;
+                        var p24h = car.PricePerDay;
+                        var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
+                        var firstImage = car.CarImages?.OrderBy(i => i.ImageID).FirstOrDefault()?.ImageUrl ?? car.ImageURL;
+
+                        <div class="col-lg-3 col-md-4 col-sm-6">
+                            <a href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="text-decoration-none">
+                                <div class="car-card">
+                                    <div class="car-card-img-wrapper">
+                                        <img src="@firstImage" class="car-card-img w-100" alt="@car.CarName"
+                                             onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600'"
+                                             loading="lazy">
+                                        <div class="car-card-badge">
+                                            <span class="badge bg-success bg-opacity-90 text-white shadow-sm">
+                                                <i class="bi bi-check-circle-fill me-1"></i>Sẵn sàng
+                                            </span>
+                                        </div>
+                                        @if (isElectric)
                                         {
-                                            <i class="bi @(s <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.55rem;"></i>
-                                        }
-                                        <span class="fw-800 ms-1" style="color: #92400e; font-size: 0.6rem;">@carAvgRating.ToString("0.0")</span>
-                                        @if (carReviewCount > 0)
-                                        {
-                                            <span class="text-muted" style="font-size: 0.5rem;">(@carReviewCount)</span>
+                                            <div class="position-absolute top-0 end-0 m-2">
+                                                <span class="badge bg-primary shadow-sm">
+                                                    <i class="bi bi-lightning-charge-fill me-1"></i>Điện
+                                                </span>
+                                            </div>
                                         }
                                     </div>
-                                </div>
-                                <h5 class="fw-bold mb-1" style="font-size: 0.95rem;">@car.CarName</h5>
-                                <div class="d-flex gap-2 mb-2 small text-muted" style="font-size: 0.75rem;">
-                                    <span><i class="bi bi-gear"></i> @car.Transmission</span>
-                                    <span><i class="bi bi-person"></i> @car.Seats</span>
-                                    @if (isElectric)
-                                    {
-                                        <span><i class="bi bi-lightning-charge text-success"></i> Điện</span>
-                                    }
-                                    else
-                                    {
-                                        <span><i class="bi bi-fuel-pump"></i> @car.FuelType</span>
-                                    }
-                                </div>
-                                <hr class="opacity-10 my-2">
+                                    <div class="car-card-body">
+                                        <div class="car-card-brand">@car.CarBrand?.Name</div>
+                                        <h5 class="car-card-name">@car.CarName</h5>
+                                        
+                                        <div class="car-card-meta">
+                                            <span class="car-card-meta-item">
+                                                <i class="bi bi-gear"></i> @car.Transmission
+                                            </span>
+                                            <span class="car-card-meta-item">
+                                                <i class="bi bi-people"></i> @car.Seats
+                                            </span>
+                                            @if (!isElectric && !string.IsNullOrEmpty(car.FuelType))
+                                            {
+                                                <span class="car-card-meta-item">
+                                                    <i class="bi bi-fuel-pump"></i> @car.FuelType
+                                                </span>
+                                            }
+                                        </div>
 
-                                <!-- Bảng giá -->
-                                <div class="mb-2">
-                                    <div class="small text-muted mb-1"><i class="bi bi-tags-fill me-1"></i>Bảng giá</div>
-                                    <div class="text-center">
-                                        <div class="fw-bold" style="font-size: 1rem; color: var(--blue-600);">@((p24h/1000).ToString("N0"))K</div>
-                                        <div class="text-muted" style="font-size: 0.75rem;">0h - 24h</div>
+                                        <div class="car-card-divider"></div>
+
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="car-card-price">
+                                                <span class="car-card-price-value">@((p24h/1000).ToString("N0"))K</span>
+                                                <span class="car-card-price-unit">/24h</span>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <div class="rating-stars">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <i class="bi @(i <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")"></i>
+                                                    }
+                                                </div>
+                                                @if (carReviewCount > 0)
+                                                {
+                                                    <span class="rating-count">(@carReviewCount)</span>
+                                                }
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-
-                            </div>
+                            </a>
                         </div>
-                    </a>
+                    }
                 </div>
             }
-        }
-    </div>
-</div>
-
-<!-- Xe Xịn Section -->
-<div class="container py-4 mb-5">
-    <div class="d-flex justify-content-between align-items-end mb-4">
-        <div>
-            <h2 class="fw-bolder mb-1">Xế Xịn - Xe Sang</h2>
-            <p class="text-muted mb-0">Nâng tầm chuyến đi với các dòng xe cao cấp, sang trọng.</p>
-        </div>
-        <a asp-controller="Car" asp-action="Index" asp-route-isPremium="true" class="text-primary fw-bold text-decoration-none">Xem thêm <i class="bi bi-arrow-right"></i></a>
-    </div>
-
-    <div class="row g-4">
-        @if (Model != null)
-        {
-            foreach (var car in Model)
+            else
             {
-                var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
-                var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
-                var carReviewCount = carReviews.Count;
-                var p24h = car.PricePerDay;
-                var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
-                <div class="col-lg-4 col-md-6">
-                    <a id="home-premium-@car.CarID" href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="text-decoration-none text-dark">
-                        <div class="card home-car-card h-100 position-relative ui-elevated-card" style="cursor: pointer;">
-                            <div class="badges-top">
-                                <span class="badge bg-dark shadow-sm px-2 py-1 rounded-pill" style="font-size: 0.7rem;"><i class="bi bi-gem text-warning"></i> Premium</span>
-                            </div>
-                            <img src="https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?auto=format&fit=crop&q=80&w=800" class="card-img-top car-card-img" alt="@car.CarName" style="height: 140px; object-fit: cover;">
-                            <div class="card-body p-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">@car.CarBrand?.Name</span>
-                                    <div class="d-flex align-items-center gap-1 px-1 py-0 rounded-pill rating-badge" style="font-size: 0.65rem;">
-                                        @for (int s = 1; s <= 5; s++)
-                                        {
-                                            <i class="bi @(s <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")" style="color: #f59e0b; font-size: 0.55rem;"></i>
-                                        }
-                                        <span class="fw-800 ms-1" style="color: #92400e; font-size: 0.6rem;">@carAvgRating.ToString("0.0")</span>
-                                        @if (carReviewCount > 0)
-                                        {
-                                            <span class="text-muted" style="font-size: 0.5rem;">(@carReviewCount)</span>
-                                        }
-                                    </div>
-                                </div>
-                                <h4 class="fw-bold mb-1" style="font-size: 1rem;">@car.CarName</h4>
-                                <div class="d-flex gap-2 mb-2 small text-muted" style="font-size: 0.75rem;">
-                                    <span><i class="bi bi-person"></i> @car.Seats chỗ</span>
-                                    <span><i class="bi bi-gear"></i> @car.Transmission</span>
-                                    <span><i class="bi bi-geo-alt"></i> @car.Location?.Name</span>
-                                </div>
-                                <hr class="opacity-10 my-2">
-
-                                <!-- Bảng giá -->
-                                <div class="mb-2">
-                                    <div class="small text-muted mb-1"><i class="bi bi-tags-fill me-1"></i>Bảng giá</div>
-                                    <div class="text-center">
-                                        <div class="fw-bold" style="font-size: 1rem; color: var(--blue-600);">@((p24h/1000).ToString("N0"))K</div>
-                                        <div class="text-muted" style="font-size: 0.75rem;">0h - 24h</div>
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
-                    </a>
+                <div class="empty-state">
+                    <i class="bi bi-car-front empty-state-icon"></i>
+                    <h3 class="empty-state-title">Không có xe khả dụng</h3>
+                    <p class="empty-state-desc">Hiện tại không có xe nào sẵn sàng cho thuê. Vui lòng quay lại sau.</p>
                 </div>
             }
-        }
-    </div>
-</div>
+        </div>
+    </section>
 
-<!-- How It Works Section -->
-<section class="py-5 home-how-it-works">
-    <div class="container py-4 text-center">
-        <h2 class="fw-bolder mb-2 text-dark">3 Bước Đặt Xe Dễ Dàng</h2>
-        <p class="text-muted mb-5">Nhanh chóng, minh bạch và an toàn.</p>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="p-4">
-                    <div class="mx-auto mb-4 bg-white text-primary shadow-sm rounded-circle d-flex align-items-center justify-content-center step-icon">
-                        <i class="bi bi-search"></i>
-                    </div>
-                    <h5 class="fw-bold mb-3">1. Tìm Xe</h5>
-                    <p class="text-muted">Lựa chọn thời gian, địa điểm và mẫu xe ưng ý với đa dạng phân khúc.</p>
+    <!-- Premium Cars Section -->
+    <section class="py-5 bg-white">
+        <div class="container">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Xe Sang - Xe Xịn</h2>
+                    <p class="section-subtitle">Nâng tầm trải nghiệm với các dòng xe cao cấp, sang trọng.</p>
                 </div>
+                <a asp-controller="Car" asp-action="Index" asp-route-isPremium="true" class="section-link">
+                    Xem tất cả <i class="bi bi-arrow-right"></i>
+                </a>
             </div>
-            <div class="col-md-4">
-                <div class="p-4">
-                    <div class="mx-auto mb-4 bg-white text-primary shadow-sm rounded-circle d-flex align-items-center justify-content-center step-icon">
-                        <i class="bi bi-calendar2-check"></i>
-                    </div>
-                    <h5 class="fw-bold mb-3">2. Đặt Lịch & Cọc</h5>
-                    <p class="text-muted">Chọn gói theo giờ (4h, 8h) hoặc ngày và tiến hành đặt cọc giữ xe nhanh chóng.</p>
+
+            @if (Model != null && Model.Any())
+            {
+                <div class="row g-4">
+                    @foreach (var car in Model.Take(6))
+                    {
+                        var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
+                        var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
+                        var carReviewCount = carReviews.Count;
+                        var p24h = car.PricePerDay;
+                        var isElectric = car.FuelType != null && (car.FuelType.Contains("Điện") || car.FuelType.Contains("Electric"));
+                        var firstImage = car.CarImages?.OrderBy(i => i.ImageID).FirstOrDefault()?.ImageUrl ?? car.ImageURL;
+
+                        <div class="col-lg-4 col-md-6">
+                            <a href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="text-decoration-none">
+                                <div class="car-card">
+                                    <div class="car-card-img-wrapper">
+                                        <img src="@firstImage" class="car-card-img w-100" alt="@car.CarName"
+                                             onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600'"
+                                             loading="lazy">
+                                        <div class="car-card-badge">
+                                            <span class="badge bg-dark shadow-sm">
+                                                <i class="bi bi-gem text-warning me-1"></i>Premium
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="car-card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="car-card-brand">@car.CarBrand?.Name</div>
+                                                <h5 class="car-card-name">@car.CarName</h5>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="car-card-meta">
+                                            <span class="car-card-meta-item">
+                                                <i class="bi bi-people"></i> @car.Seats chỗ
+                                            </span>
+                                            <span class="car-card-meta-item">
+                                                <i class="bi bi-gear"></i> @car.Transmission
+                                            </span>
+                                            <span class="car-card-meta-item">
+                                                <i class="bi bi-geo-alt"></i> @car.Location?.Name
+                                            </span>
+                                        </div>
+
+                                        <div class="car-card-divider"></div>
+
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="car-card-price">
+                                                <span class="car-card-price-value">@((p24h/1000).ToString("N0"))K</span>
+                                                <span class="car-card-price-unit">/24h</span>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <div class="rating-stars">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <i class="bi @(i <= Math.Round(carAvgRating) ? "bi-star-fill" : "bi-star")"></i>
+                                                    }
+                                                </div>
+                                                @if (carReviewCount > 0)
+                                                {
+                                                    <span class="rating-count">(@carReviewCount)</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
                 </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="bi bi-car-front empty-state-icon"></i>
+                    <h3 class="empty-state-title">Không có xe premium</h3>
+                    <p class="empty-state-desc">Danh sách xe cao cấp đang được cập nhật.</p>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="hiw-section">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="section-title mb-2">3 Bước Đặt Xe Đơn Giản</h2>
+                <p class="section-subtitle">Nhanh chóng, minh bạch và an toàn 100%.</p>
             </div>
-            <div class="col-md-4">
-                <div class="p-4">
-                    <div class="mx-auto mb-4 bg-primary text-white shadow-sm rounded-circle d-flex align-items-center justify-content-center step-icon">
-                        <i class="bi bi-key"></i>
+            <div class="row g-4">
+                <div class="col-md-4 position-relative">
+                    <div class="hiw-step">
+                        <div class="hiw-step-number">1</div>
+                        <h5 class="hiw-step-title">Tìm & Chọn Xe</h5>
+                        <p class="hiw-step-desc">Lựa chọn thời gian, địa điểm và mẫu xe phù hợp với đa dạng phân khúc từ phổ thông đến cao cấp.</p>
                     </div>
-                    <h5 class="fw-bold mb-3">3. Nhận Xe Bắt Đầu</h5>
-                    <p class="text-muted">Nhận xe trực tiếp hoặc giao tận nơi, kiểm tra xe và vi vu hành trình.</p>
+                    <div class="hiw-connector d-none d-md-block"></div>
+                </div>
+                <div class="col-md-4 position-relative">
+                    <div class="hiw-step">
+                        <div class="hiw-step-number">2</div>
+                        <h5 class="hiw-step-title">Đặt Cọc Giữ Xe</h5>
+                        <p class="hiw-step-desc">Chọn gói theo giờ (4h, 8h) hoặc theo ngày và tiến hành đặt cọc giữ xe nhanh chóng qua ứng dụng.</p>
+                    </div>
+                    <div class="hiw-connector d-none d-md-block"></div>
+                </div>
+                <div class="col-md-4">
+                    <div class="hiw-step">
+                        <div class="hiw-step-number bg-success text-white">3</div>
+                        <h5 class="hiw-step-title">Nhận Xe & Vi Vu</h5>
+                        <p class="hiw-step-desc">Nhận xe trực tiếp hoặc giao tận nơi. Kiểm tra xe qua ứng dụng và bắt đầu hành trình.</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
+
+    <!-- Trust Section -->
+    <section class="py-5 bg-white">
+        <div class="container">
+            <div class="row g-5 text-center">
+                <div class="col-md-3 col-6">
+                    <div class="display-4 fw-bold text-primary mb-2">24/7</div>
+                    <p class="text-muted mb-0 fw-medium">Hỗ trợ 24/7</p>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="display-4 fw-bold text-success mb-2">100K+</div>
+                    <p class="text-muted mb-0 fw-medium">Khách hàng tin tưởng</p>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="display-4 fw-bold text-warning mb-2">500+</div>
+                    <p class="text-muted mb-0 fw-medium">Xe các loại</p>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="display-4 fw-bold text-info mb-2">4.8</div>
+                    <p class="text-muted mb-0 fw-medium">Điểm đánh giá</p>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>

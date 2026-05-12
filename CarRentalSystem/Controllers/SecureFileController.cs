@@ -1,154 +1,125 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using System.IO;
-using System;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using CarRentalSystem.Data;
-using System.Linq;
 
 namespace CarRentalSystem.Controllers
 {
+    /// <summary>
+    /// Controller bảo mật để serve file eKYC từ App_Data/SecureUploads
+    /// Chỉ user sở hữu hoặc Admin mới có quyền truy cập
+    /// </summary>
     [Authorize]
     public class SecureFileController : Controller
     {
         private readonly IWebHostEnvironment _env;
-        private readonly ApplicationDbContext _context;
+        private readonly Data.ApplicationDbContext _context;
 
-        public SecureFileController(IWebHostEnvironment env, ApplicationDbContext context)
+        public SecureFileController(IWebHostEnvironment env, Data.ApplicationDbContext context)
         {
             _env = env;
             _context = context;
         }
 
+        /// <summary>
+        /// Lấy hình ảnh eKYC bảo mật
+        /// VD: /SecureFile/GetSecureImage?folder=eKyc&fileName=123/id_front.jpg
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetSecureImage(string folder, string fileName)
         {
             if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(fileName))
-            {
-                return BadRequest("Invalid request parameters.");
-            }
+                return NotFound("Invalid path");
 
-            // 1. NGĂN CHẶN PATH TRAVERSAL (Tấn công leo thang thư mục)
-            if (folder.Contains("..") || fileName.Contains("..") || folder.Contains("/") || folder.Contains("\\") || fileName.Contains("/") || fileName.Contains("\\"))
-            {
-                return BadRequest("Mã lỗi xác định Path Traversal: Đường dẫn không hợp lệ.");
-            }
+            // Parse userId từ fileName (format: {userId}/filename)
+            var parts = fileName.Split('/');
+            if (parts.Length < 2)
+                return NotFound("Invalid file path");
 
-            string safeFolder = "";
-            if (folder.Equals("eKyc", StringComparison.OrdinalIgnoreCase))
-                safeFolder = "eKyc";
-            else if (folder.Equals("Handovers", StringComparison.OrdinalIgnoreCase))
-                safeFolder = "Handovers";
-            else
-                return BadRequest("Thư mục yêu cầu không được cho phép.");
+            if (!int.TryParse(parts[0], out int fileOwnerId))
+                return NotFound("Invalid user ID");
 
-            // 2. KIỂM TRA PHÂN QUYỀN TRUY CẬP (AUTHORIZATION MÚC TÀI NGUYÊN)
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var role = User.FindFirstValue(ClaimTypes.Role) ?? "";
-            bool isAdmin = role == "Admin";
-            
-            if (!int.TryParse(userIdString, out int userId)) 
+            // Lấy userId hiện tại
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int currentUserId))
                 return Unauthorized();
 
-            bool isAuthorized = false;
-
-            if (safeFolder == "eKyc")
+            // Kiểm tra quyền: chỉ chủ sở hữu hoặc Admin mới được xem
+            if (fileOwnerId != currentUserId && !User.IsInRole("Admin"))
             {
-                if (isAdmin) 
-                {
-                    isAuthorized = true;
-                }
-                else
-                {
-                    // Chỉ cho phép người dùng xem file eKyc của chính họ
-                    isAuthorized = await _context.Users.AnyAsync(u => u.UserID == userId &&
-                        (
-                            (u.IdCardFrontUrl != null && u.IdCardFrontUrl.Contains(fileName)) || 
-                            (u.IdCardBackUrl != null && u.IdCardBackUrl.Contains(fileName)) || 
-                            (u.DrivingLicenseUrl != null && u.DrivingLicenseUrl.Contains(fileName))
-                        ));
-                }
-            }
-            else if (safeFolder == "Handovers")
-            {
-                if (isAdmin)
-                {
-                    isAuthorized = true;
-                }
-                else
-                {
-                    // Chỉ cho phép Khách hàng thuê xe (Customer) hoặc Chủ xe (Partner) xem biên bản bàn giao
-                    isAuthorized = await _context.HandoverRecords
-                        .Include(h => h.Booking)
-                        .ThenInclude(b => b.Car)
-                        .AnyAsync(h => 
-                            (
-                                (h.FrontImgUrl != null && h.FrontImgUrl.Contains(fileName)) || 
-                                (h.BackImgUrl != null && h.BackImgUrl.Contains(fileName)) || 
-                                (h.LeftImgUrl != null && h.LeftImgUrl.Contains(fileName)) || 
-                                (h.RightImgUrl != null && h.RightImgUrl.Contains(fileName)) || 
-                                (h.InsideImgUrl != null && h.InsideImgUrl.Contains(fileName)) || 
-                                (h.SignatureUrl != null && h.SignatureUrl.Contains(fileName))
-                            ) &&
-                            (h.Booking.UserID == userId || (h.Booking.Car.OwnerID != null && h.Booking.Car.OwnerID == userId))
-                        );
-                }
+                return Forbid();
             }
 
-            if (!isAuthorized)
+            // Verify user exists and has permission
+            var fileOwner = await _context.Users.FindAsync(fileOwnerId);
+            if (fileOwner == null)
+                return NotFound("User not found");
+
+            // Build secure path
+            var basePath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", folder);
+            var fullPath = Path.Combine(basePath, fileName);
+
+            // Prevent directory traversal
+            var resolvedPath = Path.GetFullPath(fullPath);
+            if (!resolvedPath.StartsWith(Path.GetFullPath(basePath)))
+                return NotFound("Invalid path");
+
+            if (!System.IO.File.Exists(resolvedPath))
+                return NotFound("File not found");
+
+            // Determine content type
+            var extension = Path.GetExtension(resolvedPath).ToLowerInvariant();
+            var contentType = extension switch
             {
-                return Forbid("Bạn không có quyền truy cập vào tài liệu này.");
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".pdf" => "application/pdf",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
+
+            // Serve file với cache headers bảo mật
+            var fileStream = System.IO.File.OpenRead(resolvedPath);
+            return File(fileStream, contentType, enableRangeProcessing: true);
+        }
+
+        /// <summary>
+        /// Xóa file eKYC (chỉ chủ sở hữu hoặc Admin)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteSecureFile(string folder, string fileName)
+        {
+            if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(fileName))
+                return Json(new { success = false, message = "Invalid path" });
+
+            var parts = fileName.Split('/');
+            if (parts.Length < 2)
+                return Json(new { success = false, message = "Invalid file path" });
+
+            if (!int.TryParse(parts[0], out int fileOwnerId))
+                return Json(new { success = false, message = "Invalid user ID" });
+
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int currentUserId))
+                return Unauthorized();
+
+            // Chỉ chủ sở hữu hoặc Admin được xóa
+            if (fileOwnerId != currentUserId && !User.IsInRole("Admin"))
+                return Forbid();
+
+            var basePath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", folder);
+            var fullPath = Path.Combine(basePath, fileName);
+
+            var resolvedPath = Path.GetFullPath(fullPath);
+            if (!resolvedPath.StartsWith(Path.GetFullPath(basePath)))
+                return Json(new { success = false, message = "Invalid path" });
+
+            if (System.IO.File.Exists(resolvedPath))
+            {
+                System.IO.File.Delete(resolvedPath);
+                return Json(new { success = true, message = "File deleted" });
             }
 
-            // 3. ĐỌC FILE SAU KHI ĐÃ XÁC THỰC VÀ PHÂN QUYỀN
-            string filePath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", safeFolder, fileName);
-            if (!System.IO.File.Exists(filePath))
-            {
-                return NotFound("Không tìm thấy file.");
-            }
-
-            // 4. NGĂN CHẶN CACHE BROWSER & PROXY
-            Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
-            Response.Headers["Pragma"] = "no-cache";
-            Response.Headers["X-Content-Type-Options"] = "nosniff";
-
-            var ext = Path.GetExtension(fileName).ToLowerInvariant();
-            string mimeType = "application/octet-stream";
-
-            switch (ext)
-            {
-                case ".jpg":
-                case ".jpeg":
-                    mimeType = "image/jpeg";
-                    break;
-                case ".png":
-                    mimeType = "image/png";
-                    break;
-                case ".pdf":
-                    mimeType = "application/pdf";
-                    break;
-                case ".gif":
-                    mimeType = "image/gif";
-                    break;
-                case ".webp":
-                    mimeType = "image/webp";
-                    break;
-            }
-
-            try
-            {
-                var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                return File(stream, mimeType);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[SecureFileController] Error reading file: {ex.Message}");
-                // Không throw exception nội bộ ra bên ngoài
-                return StatusCode(500, "Lỗi máy chủ khi đọc file.");
-            }
+            return Json(new { success = false, message = "File not found" });
         }
     }
 }

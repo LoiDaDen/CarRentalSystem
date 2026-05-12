@@ -18,14 +18,19 @@
 }
 
 <style>
-.role-badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
-.role-mgr { background: #fee2e2; color: #dc2626; }
-.role-staff { background: #dcfce7; color: #16a34a; }
-.area-chip { font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
-.table-setup { font-size: 0.8rem; }
-.table-setup thead th { background: #f8fafc; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; color: #64748b; border: none; padding-top: 0.75rem; padding-bottom: 0.75rem; }
-.table-setup td { vertical-align: middle; border-color: #f1f5f9; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.theme-admin .role-badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+.theme-admin .role-mgr { background: var(--admin-danger-50); color: var(--admin-danger); }
+.theme-admin .role-staff { background: var(--admin-success-50); color: var(--admin-success); }
+.theme-admin .area-chip { font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; font-weight: 500; }
+.theme-admin .table-setup { font-size: 0.8rem; color: var(--admin-text); }
+.theme-admin .table-setup thead th { background: var(--admin-surface-200); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; color: var(--admin-text-secondary); border: none; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.theme-admin .table-setup td { vertical-align: middle; border-color: var(--admin-border-color); padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.theme-admin .card { background: var(--admin-card-bg); border: 1px solid var(--admin-border-color); }
+.theme-admin .card-header { background: var(--admin-surface-200); border-bottom: 1px solid var(--admin-border-color); }
+.theme-admin .text-muted { color: var(--admin-text-secondary) !important; }
 </style>
+
+<div class="theme-admin">
 
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
     <div class="card-header bg-white border-0 py-3">

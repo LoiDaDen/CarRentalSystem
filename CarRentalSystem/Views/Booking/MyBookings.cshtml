@@ -22,7 +22,7 @@
         <div class="d-flex align-items-center">
             <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
             <div>
-                <h6 class="mb-0 fw-bold text-dark">Thong bao quan trong tu he thong</h6>
+                <h6 class="mb-0 fw-bold text-dark">Thông báo quan trọng từ hệ thống</h6>
                 @* San pham TempData de tranh XSS *@
                 <p class="mb-0 small opacity-75">@TempData["Warning"]</p>
             </div>
@@ -377,11 +377,11 @@ else
                                             <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
                                             <div>
                                                 <h6 class="mb-1 fw-bold">Ban can tao bien ban tra xe truoc!</h6>
-                                                <p class="mb-0 small opacity-75">Vui long chup anh xe va dien thong tin bien ban tra xe truoc khi xac nhan tra xe.</p>
+                                                <p class="mb-0 small opacity-75">Vui lòng chụp ảnh xe và điền thông tin biên bản trả xe trước khi xác nhận trả xe.</p>
                                             </div>
                                         </div>
                                         <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckOut" class="btn btn-warning mt-3 w-100 rounded-pill fw-bold">
-                                            <i class="bi bi-clipboard-plus me-2"></i>Tao bien ban tra xe ngay
+                                            <i class="bi bi-clipboard-plus me-2"></i>Tạo biên bản trả xe ngay
                                         </a>
                                     </div>
                                 }
@@ -392,7 +392,7 @@ else
                                         <input type="hidden" name="id" value="@booking.BookingID" />
 
                                         <div class="alert alert-info border-0 rounded-4 small mb-4 py-3">
-                                            <i class="bi bi-info-circle-fill me-2"></i>Sau khi bam "Xac nhan tra xe", he thong se tu dong tinh toan chi phi tre han hoac lo KM (neu co).
+                                            <i class="bi bi-info-circle-fill me-2"></i>Sau khi bấm "Xác nhận trả xe", hệ thống sẽ tự động tính toán chi phí trễ hạn hoặc lố KM (nếu có).
                                         </div>
 
                                         <div class="d-grid gap-2">

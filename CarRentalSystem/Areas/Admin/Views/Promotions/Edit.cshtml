@@ -4,10 +4,11 @@
     Layout = "_AdminLayout";
 }
 
+<div class="theme-admin">
 <style>
-    .form-control, .form-select { border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0.75rem 1rem; transition: all 0.2s; }
-    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-    .section-card { background: white; border-radius: 20px; padding: 2rem; border: 1px solid #f1f5f9; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+    .theme-admin .form-control, .theme-admin .form-select { border-radius: 12px; border: 1.5px solid var(--admin-border-color); padding: 0.75rem 1rem; transition: all 0.2s; background: var(--admin-surface-100); color: var(--admin-text); }
+    .theme-admin .form-control:focus { border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .theme-admin .section-card { background: var(--admin-card-bg); border-radius: 20px; padding: 2rem; border: 1px solid var(--admin-border-color); box-shadow: var(--admin-shadow); }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-5">
@@ -113,3 +114,4 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
     <script src="~/js/global-calendar.js" asp-append-version="true"></script>
 }
+</div>

@@ -5,6 +5,7 @@ using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -48,10 +49,48 @@ namespace CarRentalSystem.Tests.IntegrationTests
             var statusRepo = new Repository<BookingStatus>(_context);
             var carRepo = new Repository<Car>(_context);
             var carStatusRepo = new Repository<CarStatus>(_context);
+            var transitionService = new Mock<IBookingTransitionService>();
+            transitionService
+                .Setup(t => t.TransitionAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
+                .Callback<int, string, int?, string, string?>((bookingId, statusName, _, _, reason) =>
+                {
+                    var booking = _context.Bookings.Include(b => b.Car).FirstOrDefault(b => b.BookingID == bookingId);
+                    var status = _context.BookingStatuses.FirstOrDefault(s => s.Name == statusName);
+                    if (booking == null || status == null) return;
+
+                    booking.BookingStatusID = status.BookingStatusID;
+                    booking.BookingStatus = status;
+                    if (!string.IsNullOrEmpty(reason))
+                        booking.AdminNotes = reason;
+
+                    if (statusName == BookingStatusConstants.Active && booking.Car != null)
+                        booking.Car.CarStatusID = 2;
+                    if (statusName == BookingStatusConstants.Completed && booking.Car != null)
+                        booking.Car.CarStatusID = 1;
+                    _context.SaveChanges();
+                })
+                .ReturnsAsync(new BookingTransitionResult(true, null));
+            transitionService
+                .Setup(t => t.CancelAsync(It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
+                .Callback<int, int?, string, string?>((bookingId, _, _, reason) =>
+                {
+                    var booking = _context.Bookings.Include(b => b.Car).FirstOrDefault(b => b.BookingID == bookingId);
+                    var status = _context.BookingStatuses.FirstOrDefault(s => s.Name == BookingStatusConstants.Cancelled);
+                    if (booking == null || status == null) return;
+
+                    booking.BookingStatusID = status.BookingStatusID;
+                    booking.BookingStatus = status;
+                    booking.CancelReason = reason;
+                    booking.DepositStatus = DepositStatusConstants.PendingRefund;
+                    if (booking.Car != null)
+                        booking.Car.CarStatusID = 1;
+                    _context.SaveChanges();
+                })
+                .ReturnsAsync(new BookingTransitionResult(true, null));
 
             _bookingService = new BookingService(
                 bookingRepo, paymentRepo, contractRepo,
-                statusRepo, carRepo, carStatusRepo
+                statusRepo, carRepo, carStatusRepo, transitionService.Object
             );
         }
 
@@ -78,7 +117,7 @@ namespace CarRentalSystem.Tests.IntegrationTests
 
             // Act 1: Tạo booking → Draft
             await _bookingService.CreateBookingAsync(newBooking);
-            newBooking.BookingStatusID.Should().Be(1, "Draft status");
+            newBooking.BookingStatusID.Should().Be(2, "the seeded database fallback initial status is Pending when Unpaid is not seeded");
 
             // Act 2: Chuyển → Confirmed
             await _bookingService.UpdateBookingStatusAsync(newBooking.BookingID, "Confirmed");
@@ -178,7 +217,7 @@ namespace CarRentalSystem.Tests.IntegrationTests
             var booking = await _context.Bookings.FindAsync(100);
             booking.Should().NotBeNull();
             booking!.BookingStatusID.Should().Be(4, "Cancelled status");
-            booking.DepositStatus.Should().Be("Refunded", "vì tiền cọc phải được hoàn trả khi hủy booking");
+            booking.DepositStatus.Should().Be(DepositStatusConstants.PendingRefund, "vì tiền cọc chuyển sang hàng chờ hoàn/reconcile thay vì đánh dấu đã hoàn ngay");
             booking.CancelReason.Should().Be("Khách hàng đổi lịch");
 
             var car = await _context.Cars.FindAsync(1);

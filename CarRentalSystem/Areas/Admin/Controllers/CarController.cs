@@ -229,6 +229,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (!string.IsNullOrEmpty(CarAddress)) car.CarAddress = CarAddress;
             if (double.TryParse(Latitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lat)) car.Latitude = lat;
             if (double.TryParse(Longitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng)) car.Longitude = lng;
+            car.PricePerHour = car.PricePerDay > 0 ? Math.Round(car.PricePerDay / 8m) : 0;
 
             ModelState.Remove("CarImages");
             ModelState.Remove("Bookings");
@@ -241,6 +242,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ModelState.Remove("CarType");
             ModelState.Remove("Location");
             ModelState.Remove("InsuranceTier");
+            ModelState.Remove("PricePerHour");
 
             if (await _context.Cars.AnyAsync(c => c.LicensePlate == car.LicensePlate))
                 ModelState.AddModelError("LicensePlate", "Biển số xe này đã tồn tại.");
@@ -249,9 +251,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             if (ModelState.IsValid)
             {
-                if (car.PricePerHour == 0)
-                    car.PricePerHour = Math.Round(car.PricePerDay / 8m);
-
                 await _carService.AddCarAsync(car);
 
                 if (imageFiles != null && imageFiles.Count > 0)
@@ -350,6 +349,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (!string.IsNullOrEmpty(CarAddress)) car.CarAddress = CarAddress;
             if (double.TryParse(Latitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lat)) car.Latitude = lat;
             if (double.TryParse(Longitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng)) car.Longitude = lng;
+            car.PricePerHour = car.PricePerDay > 0 ? Math.Round(car.PricePerDay / 8m) : 0;
 
             ModelState.Remove("CarImages");
             ModelState.Remove("Bookings");
@@ -361,6 +361,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ModelState.Remove("CarStatus");
             ModelState.Remove("CarType");
             ModelState.Remove("Location");
+            ModelState.Remove("PricePerHour");
 
             if (await _context.Cars.AnyAsync(c => c.LicensePlate == car.LicensePlate && c.CarID != car.CarID))
                 ModelState.AddModelError("LicensePlate", "Biển số xe này đã tồn tại.");
@@ -369,9 +370,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             if (ModelState.IsValid)
             {
-                if (car.PricePerHour == 0)
-                    car.PricePerHour = Math.Round(car.PricePerDay / 8m);
-
                 if (imageFiles != null && imageFiles.Count > 0)
                 {
                     string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "cars");
@@ -409,7 +407,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> Delete(int id, int? areaId)
         {
             var car = await _context.Cars
-                .Include(c => c.Bookings).ThenInclude(b => b.BookingStatus)
                 .FirstOrDefaultAsync(c => c.CarID == id);
 
             if (car != null)
@@ -428,7 +425,12 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     return Forbid();
                 }
 
-                bool hasActiveBookings = car.Bookings != null && car.Bookings.Any(b => b.BookingStatus?.Name == "Confirmed" || b.BookingStatus?.Name == "Active");
+                var activeBookingStatuses = new[] { "Confirmed", "Active" };
+                bool hasActiveBookings = await _context.Bookings
+                    .Include(b => b.BookingStatus)
+                    .AnyAsync(b => b.CarID == id &&
+                        b.BookingStatus != null &&
+                        activeBookingStatuses.Contains(b.BookingStatus.Name));
                 if (hasActiveBookings)
                 {
                     TempData["Error"] = "Không thể xóa xe này vì đang có chuyến đi chưa hoàn tất.";
@@ -445,7 +447,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     return RedirectToAction(nameof(Manage), new { areaId });
                 }
 
-                _context.Cars.Remove(car);
+                car.IsDeleted = true;
+                car.DeletedAt = DateTime.UtcNow;
+                _context.Cars.Update(car);
                 await _context.SaveChangesAsync();
 
                 TempData["Success"] = "Đã chuyển xe vào thùng rác!";

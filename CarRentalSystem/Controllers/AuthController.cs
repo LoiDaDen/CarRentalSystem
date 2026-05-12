@@ -1,6 +1,7 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
+using CarRentalSystem.ViewModels;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,8 +27,9 @@ namespace CarRentalSystem.Controllers
         private readonly IPiiEncryptionService _piiEncryption;
         private readonly ApplicationDbContext _context;
         private readonly IRecaptchaService _recaptchaService;
+        private readonly IReferralService _referralService;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService, IReferralService referralService)
         {
             _authService = authService;
             _env = env;
@@ -35,6 +37,7 @@ namespace CarRentalSystem.Controllers
             _piiEncryption = piiEncryption;
             _context = context;
             _recaptchaService = recaptchaService;
+            _referralService = referralService;
         }
 
         [HttpGet]
@@ -116,12 +119,12 @@ namespace CarRentalSystem.Controllers
         {
             if (User.Identity.IsAuthenticated)
                 return RedirectToAction("Index", "Home");
-            return View();
+            return View(new RegisterViewModel());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Register(User user, string? recaptchaToken)
+        public async Task<IActionResult> Register(RegisterViewModel model, string? recaptchaToken)
         {
             // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
             // if (string.IsNullOrEmpty(recaptchaToken))
@@ -138,6 +141,67 @@ namespace CarRentalSystem.Controllers
             //     return View(user);
             // }
 
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                ViewBag.Error = string.Join("; ", errors);
+                return View(model);
+            }
+
+            var newName = model.Name.Trim();
+            var newEmail = model.Email.Trim();
+            var newPhone = model.Phone.Trim();
+
+            var registeredUser = await _authService.GetUserByEmailAsync(newEmail);
+            if (registeredUser != null)
+            {
+                ViewBag.Error = "Email nay da duoc dang ky.";
+                return View(model);
+            }
+
+            if (await _authService.IsPhoneTakenAsync(newPhone, 0))
+            {
+                ViewBag.Error = "So dien thoai nay da duoc su dung.";
+                return View(model);
+            }
+
+            User? referrer = null;
+            if (!string.IsNullOrWhiteSpace(model.ReferralCode))
+            {
+                referrer = await _referralService.GetVerifiedReferrerAsync(model.ReferralCode);
+                if (referrer == null)
+                {
+                    ViewBag.Error = "Ma gioi thieu khong hop le hoac tai khoan gioi thieu chua xac thuc eKYC.";
+                    return View(model);
+                }
+            }
+
+            var user = new User
+            {
+                Name = newName,
+                Email = newEmail,
+                Phone = newPhone,
+                PhoneHash = ComputeHash(newPhone),
+                PasswordHash = model.Password,
+                Role = "Customer",
+                IsEmailVerified = false,
+                VerificationStatus = "Pending",
+                ReferredByUserID = referrer?.UserID
+            };
+
+            user.EmailVerificationToken = GenerateOtp();
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+
+            await _authService.RegisterAsync(user);
+
+            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                job => job.SendOtpEmail(user.Email, user.EmailVerificationToken));
+
+            TempData["RegisteredEmail"] = user.Email;
+            return RedirectToAction("VerifyEmailStep2", new { email = user.Email });
+        }
+
+        /*
             ModelState.Remove("Role"); // Role is assigned programmatically
             if (!ModelState.IsValid)
             {
@@ -236,6 +300,7 @@ namespace CarRentalSystem.Controllers
             TempData["RegisteredEmail"] = user.Email;
             return RedirectToAction("VerifyEmailStep2", new { email = user.Email });
         }
+        */
 
         public async Task<IActionResult> RegistrationSuccess()
         {
@@ -571,6 +636,12 @@ namespace CarRentalSystem.Controllers
                 var user = await _authService.GetUserByIdAsync(userId);
                 if (user != null)
                 {
+                    if (user.IsVerified && string.IsNullOrWhiteSpace(user.ReferralCode))
+                    {
+                        await _referralService.EnsureReferralCodeAsync(user.UserID);
+                        user = await _authService.GetUserByIdAsync(userId);
+                    }
+
                     // 🔓 Decrypt PII — chỉ hiện đầy đủ cho Admin
                     var decryptedCitizenId = _piiEncryption.DecryptIfNotEmpty(user.CitizenId);
                     var decryptedGplx = _piiEncryption.DecryptIfNotEmpty(user.DrivingLicenseNumber);
@@ -604,14 +675,47 @@ namespace CarRentalSystem.Controllers
                 var user = await _authService.GetUserByIdAsync(userId);
                 if (user != null)
                 {
-                    if (!string.IsNullOrEmpty(updatedUser.CitizenId))
+                    // =========================================
+                    // PII UPDATE: Chi update neu co gia tri moi THUC SU
+                    // Khong re-encrypt masked value (●●●●●●●●)
+                    // =========================================
+                    const string MaskedPlaceholder = "●●●●●●●●";
+                    bool profileChanged = false;
+
+                    // Lay plaintext CCCD neu user nhap gia tri moi (khong phai mask)
+                    var newCitizenId = updatedUser.CitizenId?.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(newCitizenId) && newCitizenId != MaskedPlaceholder)
                     {
-                        bool isTaken = await _authService.IsCitizenIdTakenAsync(updatedUser.CitizenId, userId);
+                        bool isTaken = await _authService.IsCitizenIdTakenAsync(newCitizenId, userId);
                         if (isTaken)
                         {
                             TempData["ErrorMessage"] = "Số CMND/CCCD này đã được sử dụng bởi một tài khoản khác.";
                             return RedirectToAction("Profile");
                         }
+                        user.CitizenId = _piiEncryption.Encrypt(newCitizenId);
+                        user.CitizenIdHash = ComputeHash(newCitizenId);
+                        profileChanged = true;
+                    }
+
+                    // Lấy plaintext GPLX nếu user nhập giá trị mới
+                    var newGplx = updatedUser.DrivingLicenseNumber?.Trim() ?? "";
+                    if (!string.IsNullOrEmpty(newGplx) && newGplx != MaskedPlaceholder)
+                    {
+                        // Validate GPLX format
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(newGplx, @"^\d{12}$"))
+                        {
+                            TempData["ErrorMessage"] = "Số Giấy Phép Lái Xe phải đúng 12 chữ số.";
+                            return RedirectToAction("Profile");
+                        }
+                        bool gplxTaken = await _authService.IsDrivingLicenseTakenAsync(newGplx, userId);
+                        if (gplxTaken)
+                        {
+                            TempData["ErrorMessage"] = "Số Giấy Phép Lái Xe này đã được sử dụng bởi một tài khoản khác.";
+                            return RedirectToAction("Profile");
+                        }
+                        user.DrivingLicenseNumber = _piiEncryption.Encrypt(newGplx);
+                        user.DrivingLicenseHash = ComputeHash(newGplx);
+                        profileChanged = true;
                     }
 
                     // 🔒 Validate SĐT format + check trùng
@@ -629,46 +733,20 @@ namespace CarRentalSystem.Controllers
                         return RedirectToAction("Profile");
                     }
 
-                    // 🔒 Validate GPLX = 12 chữ số + check trùng
-                    var newGplx = updatedUser.DrivingLicenseNumber?.Trim() ?? "";
-                    if (!string.IsNullOrEmpty(newGplx))
-                    {
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(newGplx, @"^\d{12}$"))
-                        {
-                            TempData["ErrorMessage"] = "Số Giấy Phép Lái Xe phải đúng 12 chữ số.";
-                            return RedirectToAction("Profile");
-                        }
-                        bool gplxTaken = await _authService.IsDrivingLicenseTakenAsync(newGplx, userId);
-                        if (gplxTaken)
-                        {
-                            TempData["ErrorMessage"] = "Số Giấy Phép Lái Xe này đã được sử dụng bởi một tài khoản khác.";
-                            return RedirectToAction("Profile");
-                        }
-                    }
-
                     user.Name = updatedUser.Name;
                     user.Phone = newPhone;
+                    user.PhoneHash = ComputeHash(newPhone);
 
-                    // Lưu plaintext CCCD để hash trước khi encrypt
-                    var plaintextCitizenId = updatedUser.CitizenId?.Trim() ?? "";
-
-                    // 🔒 Encrypt PII at rest
-                    user.CitizenId = _piiEncryption.EncryptIfNotEmpty(updatedUser.CitizenId);
-                    user.DrivingLicenseNumber = _piiEncryption.EncryptIfNotEmpty(updatedUser.DrivingLicenseNumber);
+                    // Update non-PII fields
                     user.DateOfBirth = updatedUser.DateOfBirth;
                     user.Gender = updatedUser.Gender;
                     user.Address = updatedUser.Address;
 
-                    // 🔐 Compute SHA-256 hash từ PLAINTEXT (không phải ciphertext)
-                    user.CitizenIdHash = ComputeHash(plaintextCitizenId);
-                    user.DrivingLicenseHash = ComputeHash(newGplx);
-                    user.PhoneHash = ComputeHash(newPhone);
-
-                    // Handle eKYC Uploads
-                    string uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "eKyc");
-                    if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
-
+                    // Track profile changes for IsVerified reset
+                    bool identityDocChanged = false;
                     bool filesUploaded = false;
+                    var uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "eKyc", userId.ToString());
+                    Directory.CreateDirectory(uploadPath);
                     var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
                     const long maxFileSize = 5 * 1024 * 1024; // 🔒 5MB max per file
 
@@ -705,8 +783,8 @@ namespace CarRentalSystem.Controllers
                         string fileName = Guid.NewGuid().ToString() + ext;
                         string filePath = Path.Combine(uploadPath, fileName);
                         using (var stream = new FileStream(filePath, FileMode.Create)) { await uploadIdFront.CopyToAsync(stream); }
-                        user.IdCardFrontUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={fileName}";
-                        filesUploaded = true;
+                        user.IdCardFrontUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={userId}/id_front{Path.GetExtension(uploadIdFront.FileName)}";
+                        identityDocChanged = true;
                     }
 
                     if (uploadIdBack != null && uploadIdBack.Length > 0)
@@ -720,8 +798,8 @@ namespace CarRentalSystem.Controllers
                         string fileName = Guid.NewGuid().ToString() + ext;
                         string filePath = Path.Combine(uploadPath, fileName);
                         using (var stream = new FileStream(filePath, FileMode.Create)) { await uploadIdBack.CopyToAsync(stream); }
-                        user.IdCardBackUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={fileName}";
-                        filesUploaded = true;
+                        user.IdCardBackUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={userId}/id_back{Path.GetExtension(uploadIdBack.FileName)}";
+                        identityDocChanged = true;
                     }
 
                     if (uploadLicense != null && uploadLicense.Length > 0)
@@ -735,14 +813,16 @@ namespace CarRentalSystem.Controllers
                         string fileName = Guid.NewGuid().ToString() + ext;
                         string filePath = Path.Combine(uploadPath, fileName);
                         using (var stream = new FileStream(filePath, FileMode.Create)) { await uploadLicense.CopyToAsync(stream); }
-                        user.DrivingLicenseUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={fileName}";
-                        filesUploaded = true;
+                        user.DrivingLicenseUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={userId}/license_front{Path.GetExtension(uploadLicense.FileName)}";
+                        identityDocChanged = true;
                     }
 
-                    // Nếu user tải lên tài liệu mới hoặc thay đổi thông tin định danh, lập tức HỦY trạng thái đã duyệt
-                    if (filesUploaded || user.CitizenId != updatedUser.CitizenId || user.Name != updatedUser.Name || user.DrivingLicenseNumber != updatedUser.DrivingLicenseNumber)
+                    // =========================================
+                    // IsVerified Reset: Chỉ reset khi có thay đổi THỰC SỰ
+                    // =========================================
+                    if (identityDocChanged || profileChanged)
                     {
-                        user.IsVerified = false; // Bắt buộc admin phải duyệt lại
+                        user.IsVerified = false; // Bat buoc admin phai duyet lai eKYC
                     }
                     
                     await _authService.UpdateUserAsync(user);

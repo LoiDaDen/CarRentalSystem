@@ -92,6 +92,40 @@ namespace CarRentalSystem.Tests.UnitTests
             var statusRepo = MockRepositoryHelper.Create(_statuses);
             var carRepo = MockRepositoryHelper.Create(_cars);
             var carStatusRepo = MockRepositoryHelper.Create(_carStatuses);
+            var transitionService = new Mock<IBookingTransitionService>();
+            transitionService
+                .Setup(t => t.TransitionAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
+                .Callback<int, string, int?, string, string?>((bookingId, statusName, _, _, reason) =>
+                {
+                    var booking = _bookings.FirstOrDefault(b => b.BookingID == bookingId);
+                    var status = _statuses.FirstOrDefault(s => s.Name == statusName);
+                    if (booking == null || status == null) return;
+
+                    booking.BookingStatusID = status.BookingStatusID;
+                    booking.BookingStatus = status;
+                    if (statusName == BookingStatusConstants.Active)
+                    {
+                        booking.AdminNotes = reason ?? booking.AdminNotes;
+                        _cars[0].CarStatusID = 2;
+                    }
+                    if (statusName == BookingStatusConstants.Completed)
+                        _cars[0].CarStatusID = 1;
+                })
+                .ReturnsAsync(new BookingTransitionResult(true, null));
+            transitionService
+                .Setup(t => t.CancelAsync(It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
+                .Callback<int, int?, string, string?>((bookingId, _, _, reason) =>
+                {
+                    var booking = _bookings.FirstOrDefault(b => b.BookingID == bookingId);
+                    if (booking == null) return;
+
+                    booking.BookingStatusID = 4;
+                    booking.BookingStatus = _statuses.First(s => s.Name == BookingStatusConstants.Cancelled);
+                    booking.DepositStatus = DepositStatusConstants.PendingRefund;
+                    booking.CancelReason = reason;
+                    _cars[0].CarStatusID = 1;
+                })
+                .ReturnsAsync(new BookingTransitionResult(true, null));
 
             _bookingService = new BookingService(
                 bookingRepo.Object,
@@ -99,7 +133,8 @@ namespace CarRentalSystem.Tests.UnitTests
                 contractRepo.Object,
                 statusRepo.Object,
                 carRepo.Object,
-                carStatusRepo.Object
+                carStatusRepo.Object,
+                transitionService.Object
             );
         }
 
@@ -127,7 +162,7 @@ namespace CarRentalSystem.Tests.UnitTests
             await _bookingService.CreateBookingAsync(newBooking);
 
             // Assert
-            newBooking.BookingStatusID.Should().Be(1, "vì booking mới phải có trạng thái 'Draft' (ID=1)");
+            newBooking.BookingStatusID.Should().Be(2, "vì test data không có trạng thái Unpaid nên service fallback sang Pending");
         }
 
         [Fact]
@@ -179,7 +214,7 @@ namespace CarRentalSystem.Tests.UnitTests
             await _bookingService.CancelBookingAsync(100, "Đổi lịch");
 
             // Assert
-            _bookings[0].DepositStatus.Should().Be("Refunded", "vì khi hủy booking, tiền cọc phải được hoàn trả");
+            _bookings[0].DepositStatus.Should().Be(DepositStatusConstants.PendingRefund, "vì hủy booking tạo luồng hoàn cọc chờ reconcile thay vì đánh dấu đã hoàn tiền ngay");
         }
 
         [Fact]

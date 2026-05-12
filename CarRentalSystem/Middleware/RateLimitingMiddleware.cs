@@ -16,6 +16,9 @@ namespace CarRentalSystem.Middleware
         // Track failed login attempts per IP: IP -> (count, windowStart)
         private static readonly ConcurrentDictionary<string, RateLimitEntry> _failedLoginAttempts = new();
 
+        // Track PIN verification attempts per IP
+        private static readonly ConcurrentDictionary<string, RateLimitEntry> _pinAttempts = new();
+
         // Cấu hình: tối đa 5 lần login failed / 15 phút
         private const int LoginMaxAttempts = 5;
         private static readonly TimeSpan LoginWindow = TimeSpan.FromMinutes(15);
@@ -23,6 +26,10 @@ namespace CarRentalSystem.Middleware
         // Cấu hình: tối đa 60 API calls / phút
         private const int ApiMaxAttempts = 60;
         private static readonly TimeSpan ApiWindow = TimeSpan.FromMinutes(1);
+
+        // Cấu hình: tối đa 5 PIN attempts / 5 phút
+        private const int PinMaxAttempts = 5;
+        private static readonly TimeSpan PinWindow = TimeSpan.FromMinutes(5);
 
         // Key để lưu trạng thái login trong HttpContext.Items
         private const string LoginFailedKey = "LoginFailedAttempt";
@@ -77,6 +84,23 @@ namespace CarRentalSystem.Middleware
                 }
             }
 
+            // =========================================
+            // Rate limit PIN verification endpoints
+            // =========================================
+            if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) && method == "POST")
+            {
+                var key = $"pin:{clientIp}";
+                if (IsRateLimited(key, PinMaxAttempts, PinWindow))
+                {
+                    _logger.LogWarning("PIN rate limit exceeded from IP: {IP}", clientIp);
+                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    context.Response.Headers["Retry-After"] = PinWindow.TotalSeconds.ToString();
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync("{\"success\":false,\"message\":\"Qua nhieu yeu cau. Vui long thu lai sau.\"}");
+                    return;
+                }
+            }
+
             await _next(context);
 
             // Xử lý sau khi login - chỉ đếm FAILED attempts
@@ -101,8 +125,18 @@ namespace CarRentalSystem.Middleware
                 }
                 else if (context.Items.ContainsKey(LoginFailedKey) && (bool)context.Items[LoginFailedKey]!)
                 {
-                    // Login thất bại - tăng counter
+                    // Login that bai - tang counter
                     IncrementFailedLoginAttempt(key, clientIp);
+                }
+            }
+
+            // Track PIN verification attempts - reset on success
+            if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) && method == "POST")
+            {
+                var key = $"pin:{clientIp}";
+                if (context.Response.StatusCode == 200)
+                {
+                    _pinAttempts.TryRemove(key, out _);
                 }
             }
         }

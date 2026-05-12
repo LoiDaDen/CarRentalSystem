@@ -389,6 +389,9 @@ namespace CarRentalSystem.Migrations
                     b.Property<int?>("PromotionID")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("ReservationFee")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("ReturnLocationID")
                         .HasColumnType("int");
 
@@ -435,6 +438,8 @@ namespace CarRentalSystem.Migrations
 
                     b.HasIndex("StartDate", "EndDate");
 
+                    b.HasIndex("CarID", "StartDate", "EndDate", "BookingStatusID");
+
                     b.ToTable("Bookings");
                 });
 
@@ -460,6 +465,72 @@ namespace CarRentalSystem.Migrations
                     b.HasIndex("AddOnID");
 
                     b.ToTable("BookingAddOns");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BookingHold", b =>
+                {
+                    b.Property<int>("BookingHoldID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingHoldID"));
+
+                    b.Property<int?>("BookingID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CarID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ConvertedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("QuoteSnapshotJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("TransactionID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
+                    b.HasKey("BookingHoldID");
+
+                    b.HasIndex("BookingID");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TransactionID");
+
+                    b.HasIndex("UserID");
+
+                    b.HasIndex("CarID", "StartDate", "EndDate", "Status");
+
+                    b.ToTable("BookingHolds");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.BookingStatus", b =>
@@ -1941,10 +2012,25 @@ namespace CarRentalSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PayOSTransactionID"));
 
+                    b.Property<string>("AccountName")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("AccountNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("BookingID")
+                    b.Property<string>("Bin")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("BookingHoldID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BookingID")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("CancelledAt")
@@ -1956,6 +2042,11 @@ namespace CarRentalSystem.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
 
                     b.Property<DateTime?>("FailedAt")
                         .HasColumnType("datetime2");
@@ -1980,21 +2071,36 @@ namespace CarRentalSystem.Migrations
                     b.Property<int?>("PaymentID")
                         .HasColumnType("int");
 
+                    b.Property<string>("PaymentLinkId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("QrCode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("UserID")
+                        .HasColumnType("int");
 
                     b.Property<string>("WebhookPayload")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("PayOSTransactionID");
 
+                    b.HasIndex("BookingHoldID");
+
                     b.HasIndex("BookingID");
 
-                    b.HasIndex("OrderCode");
+                    b.HasIndex("OrderCode")
+                        .IsUnique();
 
                     b.HasIndex("PaymentID");
+
+                    b.HasIndex("UserID");
 
                     b.ToTable("PayOSTransactions");
                 });
@@ -2037,6 +2143,86 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.PaymentLedgerEntry", b =>
+                {
+                    b.Property<int>("PaymentLedgerEntryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PaymentLedgerEntryID"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("BookingID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BookingTransactionTransactionID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("EntryType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<long?>("OrderCode")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("PaymentID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("TransactionID")
+                        .HasColumnType("int");
+
+                    b.HasKey("PaymentLedgerEntryID");
+
+                    b.HasIndex("BookingTransactionTransactionID");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("[IdempotencyKey] IS NOT NULL");
+
+                    b.HasIndex("PaymentID");
+
+                    b.HasIndex("BookingID", "EntryType", "Status");
+
+                    b.ToTable("PaymentLedgerEntries");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.PaymentSchedule", b =>
                 {
                     b.Property<int>("ScheduleID")
@@ -2070,6 +2256,58 @@ namespace CarRentalSystem.Migrations
                     b.HasIndex("RentalID");
 
                     b.ToTable("PaymentSchedules");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.PaymentWebhookEvent", b =>
+                {
+                    b.Property<int>("PaymentWebhookEventID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PaymentWebhookEventID"));
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("EventKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<long?>("OrderCode")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("RawPayload")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("PaymentWebhookEventID");
+
+                    b.HasIndex("Provider", "EventKey")
+                        .IsUnique();
+
+                    b.ToTable("PaymentWebhookEvents");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Promotion", b =>
@@ -2115,6 +2353,66 @@ namespace CarRentalSystem.Migrations
                     b.HasKey("PromotionID");
 
                     b.ToTable("Promotions");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.RefundRequest", b =>
+                {
+                    b.Property<int>("RefundRequestID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RefundRequestID"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ApprovedByUserID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BookingID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("PaidByUserID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PaymentLedgerEntryID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("RefundRequestID");
+
+                    b.HasIndex("ApprovedByUserID");
+
+                    b.HasIndex("PaidByUserID");
+
+                    b.HasIndex("PaymentLedgerEntryID");
+
+                    b.HasIndex("BookingID", "Status");
+
+                    b.ToTable("RefundRequests");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.RentalContract", b =>
@@ -2364,6 +2662,16 @@ namespace CarRentalSystem.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("ReferralCode")
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<DateTime?>("ReferralDiscountUsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ReferredByUserID")
+                        .HasColumnType("int");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -2387,6 +2695,12 @@ namespace CarRentalSystem.Migrations
                         .IsUnique();
 
                     b.HasIndex("MembershipTierID");
+
+                    b.HasIndex("ReferralCode")
+                        .IsUnique()
+                        .HasFilter("[ReferralCode] IS NOT NULL");
+
+                    b.HasIndex("ReferredByUserID");
 
                     b.HasIndex("Role");
 
@@ -2653,6 +2967,39 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("AddOn");
 
                     b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BookingHold", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CarRentalSystem.Models.Car", "Car")
+                        .WithMany()
+                        .HasForeignKey("CarID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.BookingTransaction", "BookingTransaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CarRentalSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("BookingTransaction");
+
+                    b.Navigation("Car");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.BookingTransaction", b =>
@@ -2949,20 +3296,33 @@ namespace CarRentalSystem.Migrations
 
             modelBuilder.Entity("CarRentalSystem.Models.PayOSTransaction", b =>
                 {
+                    b.HasOne("CarRentalSystem.Models.BookingHold", "BookingHold")
+                        .WithMany()
+                        .HasForeignKey("BookingHoldID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("CarRentalSystem.Models.Booking", "Booking")
                         .WithMany()
                         .HasForeignKey("BookingID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("CarRentalSystem.Models.Payment", "Payment")
                         .WithMany()
                         .HasForeignKey("PaymentID")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("CarRentalSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("Booking");
 
+                    b.Navigation("BookingHold");
+
                     b.Navigation("Payment");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Payment", b =>
@@ -2976,6 +3336,27 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("Booking");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.PaymentLedgerEntry", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingID");
+
+                    b.HasOne("CarRentalSystem.Models.BookingTransaction", "BookingTransaction")
+                        .WithMany()
+                        .HasForeignKey("BookingTransactionTransactionID");
+
+                    b.HasOne("CarRentalSystem.Models.Payment", "Payment")
+                        .WithMany()
+                        .HasForeignKey("PaymentID");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("BookingTransaction");
+
+                    b.Navigation("Payment");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.PaymentSchedule", b =>
                 {
                     b.HasOne("CarRentalSystem.Models.LongTermRental", "LongTermRental")
@@ -2985,6 +3366,35 @@ namespace CarRentalSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("LongTermRental");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.RefundRequest", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserID");
+
+                    b.HasOne("CarRentalSystem.Models.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.User", "PaidByUser")
+                        .WithMany()
+                        .HasForeignKey("PaidByUserID");
+
+                    b.HasOne("CarRentalSystem.Models.PaymentLedgerEntry", "PaymentLedgerEntry")
+                        .WithMany()
+                        .HasForeignKey("PaymentLedgerEntryID");
+
+                    b.Navigation("ApprovedByUser");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("PaidByUser");
+
+                    b.Navigation("PaymentLedgerEntry");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.RentalContract", b =>
@@ -3035,7 +3445,14 @@ namespace CarRentalSystem.Migrations
                         .HasForeignKey("MembershipTierID")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("CarRentalSystem.Models.User", "ReferredByUser")
+                        .WithMany("ReferredUsers")
+                        .HasForeignKey("ReferredByUserID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("MembershipTier");
+
+                    b.Navigation("ReferredByUser");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.VehicleTracking", b =>
@@ -3166,6 +3583,8 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("OwnedCars");
+
+                    b.Navigation("ReferredUsers");
 
                     b.Navigation("Reviews");
                 });

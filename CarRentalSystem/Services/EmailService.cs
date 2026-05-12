@@ -13,6 +13,8 @@ namespace CarRentalSystem.Services
         Task SendVerificationEmailAsync(string toEmail, string verificationLink);
         Task SendOtpEmailAsync(string toEmail, string otp);
         Task SendBookingConfirmationEmailAsync(Booking booking, decimal paidAmount);
+        Task SendApprovalEmailAsync(string toEmail, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, string culture = "vi");
+        Task SendContractReminderEmailAsync(string toEmail, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, int daysBeforeDeadline, string culture = "vi");
     }
 
     public class EmailService : IEmailService
@@ -134,6 +136,80 @@ namespace CarRentalSystem.Services
             string body = BuildBookingEmailHtml(booking, depositAmount, remainingAmount);
 
             await SendEmailAsync(host, portStr, user, pass, toEmail, subject, body);
+        }
+
+        public async Task SendApprovalEmailAsync(string toEmail, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, string culture = "vi")
+        {
+            var smtpSettings = _configuration.GetSection("SmtpSettings");
+            var isEnglish = string.Equals(culture, "en", StringComparison.OrdinalIgnoreCase)
+                || culture.StartsWith("en-", StringComparison.OrdinalIgnoreCase);
+
+            var subject = isEnglish
+                ? $"[CarRental] Your {roleName} profile has been approved"
+                : $"[CarRental] Ho so {roleName} cua ban da duoc duyet";
+
+            var title = isEnglish ? "Profile approved" : "Ho so da duoc duyet";
+            var intro = isEnglish
+                ? $"Congratulations {System.Net.WebUtility.HtmlEncode(recipientName)}, your {roleName} profile has been approved."
+                : $"Chuc mung {System.Net.WebUtility.HtmlEncode(recipientName)}, ho so {roleName} cua ban da duoc duyet.";
+            var deadline = isEnglish
+                ? $"Please sign contract #{System.Net.WebUtility.HtmlEncode(contractNo)} before {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}."
+                : $"Vui long ky hop dong #{System.Net.WebUtility.HtmlEncode(contractNo)} truoc {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}.";
+            var button = isEnglish ? "Open contract" : "Mo hop dong";
+
+            var body = BuildContractNoticeEmailHtml(title, intro, deadline, contractUrl, button);
+            await SendEmailAsync(smtpSettings["Host"], smtpSettings["Port"], smtpSettings["User"], smtpSettings["Pass"], toEmail, subject, body);
+        }
+
+        public async Task SendContractReminderEmailAsync(string toEmail, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, int daysBeforeDeadline, string culture = "vi")
+        {
+            var smtpSettings = _configuration.GetSection("SmtpSettings");
+            var isEnglish = string.Equals(culture, "en", StringComparison.OrdinalIgnoreCase)
+                || culture.StartsWith("en-", StringComparison.OrdinalIgnoreCase);
+
+            var subject = isEnglish
+                ? $"[CarRental] Contract signing reminder: {daysBeforeDeadline} day(s) left"
+                : $"[CarRental] Nhac ky hop dong: con {daysBeforeDeadline} ngay";
+
+            var title = isEnglish ? "Contract signing reminder" : "Nhac ky hop dong";
+            var intro = isEnglish
+                ? $"Hi {System.Net.WebUtility.HtmlEncode(recipientName)}, your {roleName} contract is still waiting for your signature."
+                : $"Chao {System.Net.WebUtility.HtmlEncode(recipientName)}, hop dong {roleName} cua ban van dang cho ky.";
+            var deadline = isEnglish
+                ? $"Contract #{System.Net.WebUtility.HtmlEncode(contractNo)} expires at {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}."
+                : $"Hop dong #{System.Net.WebUtility.HtmlEncode(contractNo)} het han luc {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}.";
+            var button = isEnglish ? "Sign contract now" : "Ky hop dong ngay";
+
+            var body = BuildContractNoticeEmailHtml(title, intro, deadline, contractUrl, button);
+            await SendEmailAsync(smtpSettings["Host"], smtpSettings["Port"], smtpSettings["User"], smtpSettings["Pass"], toEmail, subject, body);
+        }
+
+        private static string BuildContractNoticeEmailHtml(string title, string intro, string deadline, string contractUrl, string buttonText)
+        {
+            var encodedUrl = System.Net.WebUtility.HtmlEncode(contractUrl);
+            return $@"<!DOCTYPE html>
+<html lang='vi'>
+<head><meta charset='UTF-8' /><meta name='viewport' content='width=device-width, initial-scale=1.0'/></head>
+<body style='margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;'>
+  <table width='100%' cellpadding='0' cellspacing='0' style='background:#f1f5f9;padding:30px 10px;'>
+    <tr><td align='center'>
+      <table width='560' cellpadding='0' cellspacing='0' style='background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,.12);'>
+        <tr><td style='background:linear-gradient(135deg,#0369a1,#0ea5e9);padding:30px 36px;text-align:center;color:#fff;'>
+          <h1 style='margin:0;font-size:24px;'>CarRental</h1>
+          <p style='margin:8px 0 0;color:rgba(255,255,255,.86);'>{System.Net.WebUtility.HtmlEncode(title)}</p>
+        </td></tr>
+        <tr><td style='padding:30px 36px;color:#1e293b;'>
+          <p style='font-size:15px;line-height:1.6;margin:0 0 16px;'>{intro}</p>
+          <div style='background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;color:#1e40af;font-weight:700;margin-bottom:22px;'>{deadline}</div>
+          <p style='font-size:13px;color:#64748b;line-height:1.6;margin:0 0 24px;'>Please complete this step before the deadline so your account can keep using partner/driver features.</p>
+          <p style='text-align:center;margin:0;'><a href='{encodedUrl}' style='display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;'>{System.Net.WebUtility.HtmlEncode(buttonText)}</a></p>
+        </td></tr>
+        <tr><td style='background:#0f172a;padding:20px 36px;text-align:center;color:#94a3b8;font-size:12px;'>CarRental - Smart car rental system</td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>";
         }
 
         private string BuildBookingEmailHtml(Booking booking, decimal depositAmount, decimal remainingAmount)
@@ -317,9 +393,8 @@ namespace CarRentalSystem.Services
         {
             if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user))
             {
-                _logger.LogWarning("SMTP Settings not configured. Email will be logged but NOT sent:");
-                _logger.LogInformation("To: {Email}, Subject: {Subject}", toEmail, subject);
-                return;
+                _logger.LogError("SMTP settings are not configured. Email to {Email} with subject {Subject} was not sent.", toEmail, subject);
+                throw new InvalidOperationException("SMTP settings are not configured.");
             }
 
             try
@@ -347,7 +422,8 @@ namespace CarRentalSystem.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Failed to send email to {Email}: {Error}", toEmail, ex.Message);
+                _logger.LogError(ex, "Failed to send email to {Email} with subject {Subject}", toEmail, subject);
+                throw;
             }
         }
     }

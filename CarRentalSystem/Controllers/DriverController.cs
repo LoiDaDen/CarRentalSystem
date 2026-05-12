@@ -255,6 +255,13 @@ namespace CarRentalSystem.Controllers
             {
                 var user = await _context.Users.FindAsync(userId);
                 ViewBag.CurrentUser = user;
+                if (user == null || !user.IsVerified || user.VerificationStatus != "Verified")
+                {
+                    TempData["Error"] = "Ban can duoc duyet eKYC truoc khi dang ky lam tai xe.";
+                    TempData["ShowEkycModal"] = "true";
+                    TempData["EkycReturnUrl"] = Url.Action(nameof(Register), "Driver");
+                    return RedirectToAction("Index", "Ekyc");
+                }
             }
 
             return View();
@@ -299,6 +306,14 @@ namespace CarRentalSystem.Controllers
 
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound();
+
+            if (!user.IsVerified || user.VerificationStatus != "Verified")
+            {
+                TempData["Error"] = "Ban can duoc duyet eKYC truoc khi dang ky lam tai xe.";
+                TempData["ShowEkycModal"] = "true";
+                TempData["EkycReturnUrl"] = Url.Action(nameof(Register), "Driver");
+                return RedirectToAction("Index", "Ekyc");
+            }
 
             driver.UserID = userId;
             driver.FullName = driver.FullName.Trim();

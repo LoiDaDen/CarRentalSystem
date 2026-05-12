@@ -16,17 +16,20 @@ namespace CarRentalSystem.Controllers
         private readonly IEkycService _ekycService;
         private readonly IPiiEncryptionService _piiEncryption;
         private readonly IWebHostEnvironment _env;
+        private readonly IReferralService _referralService;
 
         public EkycController(
             ApplicationDbContext context,
             IEkycService ekycService,
             IPiiEncryptionService piiEncryption,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IReferralService referralService)
         {
             _context = context;
             _ekycService = ekycService;
             _piiEncryption = piiEncryption;
             _env = env;
+            _referralService = referralService;
         }
 
         [HttpGet]
@@ -176,7 +179,8 @@ namespace CarRentalSystem.Controllers
             IFormFile? idBack,
             IFormFile? license,
             IFormFile? licenseBack,
-            IFormFile? face)
+            IFormFile? face,
+            string? returnUrl)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
@@ -236,47 +240,48 @@ namespace CarRentalSystem.Controllers
             {
                 TempData["ErrorMessage"] = "Vui long kiem tra lai cac truong sau:";
                 TempData["EkycWarnings"] = string.Join("|", validationErrors);
-                return RedirectToAction("Index");
+                return RedirectAfterEkyc(returnUrl);
             }
 
             try
             {
-                // --- Lưu ảnh ---
-                string uploadFolder = Path.Combine(_env.WebRootPath, "uploads", "ekyc", user.UserID.ToString());
+                // --- Lưu ảnh vào App_Data/SecureUploads (PRIVATE, không public) ---
+                string uploadFolder = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "eKyc", user.UserID.ToString());
                 Directory.CreateDirectory(uploadFolder);
 
                 if (idFront != null && idFront.Length > 0)
                 {
                     string idFPath = Path.Combine(uploadFolder, "id_front" + Path.GetExtension(idFront.FileName));
                     await SaveFileAsync(idFront, idFPath);
-                    user.IdCardFrontUrl = $"/uploads/ekyc/{user.UserID}/id_front{Path.GetExtension(idFront.FileName)}";
+                    user.IdCardFrontUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={user.UserID}/id_front{Path.GetExtension(idFront.FileName)}";
                 }
                 if (idBack != null && idBack.Length > 0)
                 {
                     string idBPath = Path.Combine(uploadFolder, "id_back" + Path.GetExtension(idBack.FileName));
                     await SaveFileAsync(idBack, idBPath);
-                    user.IdCardBackUrl = $"/uploads/ekyc/{user.UserID}/id_back{Path.GetExtension(idBack.FileName)}";
+                    user.IdCardBackUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={user.UserID}/id_back{Path.GetExtension(idBack.FileName)}";
                 }
                 if (license != null && license.Length > 0)
                 {
                     string licPath = Path.Combine(uploadFolder, "license_front" + Path.GetExtension(license.FileName));
                     await SaveFileAsync(license, licPath);
-                    user.DrivingLicenseUrl = $"/uploads/ekyc/{user.UserID}/license_front{Path.GetExtension(license.FileName)}";
+                    user.DrivingLicenseUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={user.UserID}/license_front{Path.GetExtension(license.FileName)}";
                 }
                 if (licenseBack != null && licenseBack.Length > 0)
                 {
                     string licBPath = Path.Combine(uploadFolder, "license_back" + Path.GetExtension(licenseBack.FileName));
                     await SaveFileAsync(licenseBack, licBPath);
-                    user.DrivingLicenseBackUrl = $"/uploads/ekyc/{user.UserID}/license_back{Path.GetExtension(licenseBack.FileName)}";
+                    user.DrivingLicenseBackUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={user.UserID}/license_back{Path.GetExtension(licenseBack.FileName)}";
                 }
                 if (face != null && face.Length > 0)
                 {
                     string facePath = Path.Combine(uploadFolder, "face" + Path.GetExtension(face.FileName));
                     await SaveFileAsync(face, facePath);
-                    user.FaceUrl = $"/uploads/ekyc/{user.UserID}/face{Path.GetExtension(face.FileName)}";
+                    user.FaceUrl = $"/SecureFile/GetSecureImage?folder=eKyc&fileName={user.UserID}/face{Path.GetExtension(face.FileName)}";
                 }
 
                 // --- OCR CCCD ---
+                var providerWarnings = new List<string>();
                 string? citizenId = null, fullNameCccd = null, dobCccd = null, genderCccd = null, addressCccd = null;
                 bool cccdReadSuccess = false;
 
@@ -292,6 +297,14 @@ namespace CarRentalSystem.Controllers
                         genderCccd = idResult.Gender;
                         addressCccd = idResult.Address;
                     }
+                    else if (idResult.IsProviderError)
+                    {
+                        providerWarnings.Add($"Dich vu OCR CCCD chua san sang: {idResult.Message}");
+                    }
+                    else
+                    {
+                        providerWarnings.Add($"Chua doc duoc CCCD tu anh da tai len: {idResult.Message}");
+                    }
                 }
 
                 // --- OCR GPLX ---
@@ -306,11 +319,20 @@ namespace CarRentalSystem.Controllers
                         licReadSuccess = true;
                         licenseNumber = licResult.LicenseNumber;
                     }
+                    else if (licResult.IsProviderError)
+                    {
+                        providerWarnings.Add($"Dich vu OCR GPLX chua san sang: {licResult.Message}");
+                    }
+                    else
+                    {
+                        providerWarnings.Add($"Chua doc duoc GPLX tu anh da tai len: {licResult.Message}");
+                    }
                 }
 
                 // --- THU THẬP TẤT CẢ CẢNH BÁO & LỖI ---
                 var errors = new List<string>(); // Lỗi nghiêm trọng → Reject
                 var warnings = new List<string>(); // Cảnh báo nhẹ → Flag
+                warnings.AddRange(providerWarnings);
 
                 // ============================================================
                 // BƯỚC 1: Kiểm tra trùng lặp CCCD/GPLX trên toàn hệ thống
@@ -340,9 +362,10 @@ namespace CarRentalSystem.Controllers
                 // ============================================================
                 // BƯỚC 2: Face Compare — Selfie vs CCCD (BẮT BUỘC)
                 // ============================================================
+                EkycFaceResult? faceResult = null;
                 if (face != null && idFront != null)
                 {
-                    var faceResult = await _ekycService.CompareFaceAsync(face, idFront);
+                    faceResult = await _ekycService.CompareFaceAsync(face, idFront);
                     if (faceResult.IsSuccess)
                     {
                         if (!faceResult.IsMatch)
@@ -364,9 +387,16 @@ namespace CarRentalSystem.Controllers
                 // ============================================================
                 // BƯỚC 3: Face Compare — Selfie vs GPLX (nếu có ảnh GPLX)
                 // ============================================================
+                if (faceResult?.IsProviderError == true && errors.Count > 0)
+                {
+                    errors.RemoveAt(errors.Count - 1);
+                    warnings.Add($"Chua the so sanh khuon mat voi CCCD: {faceResult.Message}. Ho so se duoc giu de xac minh lai.");
+                }
+
+                EkycFaceResult? faceLicResult = null;
                 if (face != null && license != null)
                 {
-                    var faceLicResult = await _ekycService.CompareFaceAsync(face, license);
+                    faceLicResult = await _ekycService.CompareFaceAsync(face, license);
                     if (faceLicResult.IsSuccess)
                     {
                         if (!faceLicResult.IsMatch)
@@ -384,6 +414,12 @@ namespace CarRentalSystem.Controllers
                 // ============================================================
                 // BƯỚC 4: Cross-check Profile vs CCCD
                 // ============================================================
+                if (faceLicResult?.IsProviderError == true && errors.Count > 0)
+                {
+                    errors.RemoveAt(errors.Count - 1);
+                    warnings.Add($"Chua the so sanh selfie voi GPLX: {faceLicResult.Message}. Ho so se duoc giu de xac minh lai.");
+                }
+
                 if (cccdReadSuccess)
                 {
                     // 4a) So sánh tên
@@ -446,7 +482,7 @@ namespace CarRentalSystem.Controllers
 
                     TempData["ErrorMessage"] = "Xác thực thất bại. Hệ thống phát hiện các vấn đề sau:";
                     TempData["EkycWarnings"] = string.Join("|", errors);
-                    return RedirectToAction("Index");
+                    return RedirectAfterEkyc(returnUrl);
                 }
 
                 if (!cccdReadSuccess)
@@ -458,7 +494,7 @@ namespace CarRentalSystem.Controllers
                     await _context.SaveChangesAsync();
 
                     TempData["WarningMessage"] = "Hồ sơ đã được gửi nhưng không đọc được CCCD. Hệ thống sẽ xác minh trong 24h.";
-                    return RedirectToAction("Index");
+                    return RedirectAfterEkyc(returnUrl);
                 }
 
                 // Lưu thông tin đã OCR vào user
@@ -493,22 +529,37 @@ namespace CarRentalSystem.Controllers
                     user.IsVerified = true;
                     _context.Users.Update(user);
                     await _context.SaveChangesAsync();
+                    await _referralService.EnsureReferralCodeAsync(user.UserID);
 
                     TempData["SuccessMessage"] = "Xác thực thành công! Hệ thống đã tự động xác minh danh tính từ CCCD của bạn.";
                 }
 
-                return RedirectToAction("Index");
+                return RedirectAfterEkyc(returnUrl);
             }
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] = "Quá trình tải lên gặp lỗi: " + ex.Message;
-                return RedirectToAction("Index");
+                return RedirectAfterEkyc(returnUrl);
             }
         }
 
         /// <summary>
         /// Che giấu PII — chỉ hiện 4 ký tự cuối
         /// </summary>
+        private IActionResult RedirectAfterEkyc(string? returnUrl)
+        {
+            if (TempData.ContainsKey("ErrorMessage") || TempData.ContainsKey("WarningMessage") || TempData.ContainsKey("EkycWarnings"))
+            {
+                TempData["ShowEkycModal"] = "true";
+                TempData["EkycReturnUrl"] = returnUrl;
+            }
+
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
+
+            return RedirectToAction("Profile", "Auth");
+        }
+
         private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
         private const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5MB
 

@@ -1,0 +1,146 @@
+@model CarRentalSystem.ViewModels.PayOSHoldPaymentViewModel
+@{
+    ViewData["Title"] = "Thanh toán giữ chỗ PayOS";
+    var quote = Model.Quote;
+    var qrPayload = !string.IsNullOrWhiteSpace(Model.QrCode) ? Model.QrCode : Model.CheckoutUrl;
+    var qrImage = !string.IsNullOrWhiteSpace(qrPayload)
+        ? "https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=" + Uri.EscapeDataString(qrPayload)
+        : "";
+}
+
+<style>
+    .payos-shell { max-width: 1120px; margin: 32px auto; }
+    .payos-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; box-shadow: 0 14px 32px rgba(15,23,42,.08); }
+    .payos-qr { width: 280px; height: 280px; object-fit: contain; border-radius: 16px; border: 1px solid #e5e7eb; background: #fff; padding: 12px; }
+    .money { font-weight: 800; color: #0f172a; }
+    .summary-row { display:flex; justify-content:space-between; gap:16px; padding:8px 0; border-bottom:1px dashed #e5e7eb; }
+    .summary-row:last-child { border-bottom:0; }
+    .copy-btn { border:0; background:#eff6ff; color:#2563eb; border-radius:8px; padding:4px 8px; font-size:.8rem; font-weight:700; }
+</style>
+
+<div class="container payos-shell">
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="payos-card p-4 text-center">
+                <div class="badge bg-primary-subtle text-primary rounded-pill mb-3">PayOS - thanh toán phí giữ chỗ</div>
+                <h3 class="fw-bold mb-1">@quote.HoldingFee.ToString("N0") đ</h3>
+                <p class="text-muted small mb-3">Quét QR hoặc chuyển khoản đúng nội dung bên dưới. Hệ thống chỉ tạo đơn sau khi PayOS xác nhận đã nhận tiền.</p>
+
+                @if (!string.IsNullOrWhiteSpace(qrImage))
+                {
+                    <img src="@qrImage" alt="PayOS QR" class="payos-qr mb-3" />
+                }
+                else
+                {
+                    <div class="alert alert-warning">PayOS chưa trả về QR. Vui lòng mở link thanh toán.</div>
+                }
+
+                <div class="text-start small">
+                    <div class="summary-row"><span>Số tiền</span><strong>@quote.HoldingFee.ToString("N0") đ <button type="button" class="copy-btn ms-1" data-copy="@((long)quote.HoldingFee)">Copy</button></strong></div>
+                    <div class="summary-row"><span>Ngân hàng</span><strong>@(Model.Bin ?? "PayOS")</strong></div>
+                    <div class="summary-row"><span>Số tài khoản</span><strong>@(Model.AccountNumber ?? "-") <button type="button" class="copy-btn ms-1" data-copy="@(Model.AccountNumber ?? "")">Copy</button></strong></div>
+                    <div class="summary-row"><span>Chủ tài khoản</span><strong>@(Model.AccountName ?? "-")</strong></div>
+                    <div class="summary-row">
+                        <span>Nội dung</span>
+                        <strong>@(Model.Description ?? Model.OrderCode.ToString()) <button type="button" class="copy-btn ms-1" data-copy="@(Model.Description ?? Model.OrderCode.ToString())">Copy</button></strong>
+                    </div>
+                    <div class="summary-row"><span>Mã đơn PayOS</span><strong>@Model.OrderCode <button type="button" class="copy-btn ms-1" data-copy="@Model.OrderCode">Copy</button></strong></div>
+                    <div class="summary-row"><span>Còn lại</span><strong id="holdCountdown">--:--</strong></div>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    @if (!string.IsNullOrWhiteSpace(Model.CheckoutUrl))
+                    {
+                        <a href="@Model.CheckoutUrl" class="btn btn-primary fw-bold">Mở trang PayOS</a>
+                    }
+                    <a asp-action="CancelHold" asp-route-orderCode="@Model.OrderCode" class="btn btn-outline-secondary">Hủy giữ chỗ</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="payos-card p-4">
+                <h4 class="fw-bold mb-3">Chi tiết chuyến xe</h4>
+                <div class="mb-3">
+                    <div class="fw-bold">@quote.CarBrand @quote.CarName</div>
+                    <div class="text-muted small">@quote.StartDate.ToString("HH:mm dd/MM/yyyy") - @quote.EndDate.ToString("HH:mm dd/MM/yyyy") (@quote.TotalHours giờ)</div>
+                </div>
+
+                <div class="summary-row"><span>Tiền thuê xe</span><span class="money">@quote.BaseRentalAmount.ToString("N0") đ</span></div>
+                <div class="summary-row"><span>Phí dịch vụ</span><span>@quote.ServiceFee.ToString("N0") đ</span></div>
+                @if (quote.DeliveryFee > 0)
+                {
+                    <div class="summary-row"><span>Giao xe tận nơi</span><span>@quote.DeliveryFee.ToString("N0") đ</span></div>
+                }
+                @if (quote.InsuranceFee > 0)
+                {
+                    <div class="summary-row"><span>Gói bảo vệ @quote.InsuranceTier</span><span>@quote.InsuranceFee.ToString("N0") đ</span></div>
+                }
+                @foreach (var item in quote.AddOns)
+                {
+                    <div class="summary-row"><span>@item.Name x @item.Quantity</span><span>@item.TotalPrice.ToString("N0") đ</span></div>
+                }
+                @if (quote.DriverFee > 0)
+                {
+                    <div class="summary-row"><span>Tài xế @(quote.DriverName ?? "")</span><span>@quote.DriverFee.ToString("N0") đ</span></div>
+                }
+                @if (quote.DiscountAmount > 0)
+                {
+                    @if (quote.MembershipDiscountAmount > 0)
+                    {
+                        <div class="summary-row text-success"><span>Giảm hạng thành viên</span><span>-@quote.MembershipDiscountAmount.ToString("N0") đ</span></div>
+                    }
+                    @if (quote.PromotionDiscountAmount > 0)
+                    {
+                        <div class="summary-row text-success"><span>Giảm voucher</span><span>-@quote.PromotionDiscountAmount.ToString("N0") đ</span></div>
+                    }
+                    @if (quote.ReferralDiscountAmount > 0)
+                    {
+                        <div class="summary-row text-success"><span>Giảm mã giới thiệu</span><span>-@quote.ReferralDiscountAmount.ToString("N0") đ</span></div>
+                    }
+                }
+
+                <hr />
+                <div class="summary-row"><span>Tổng tiền thuê sau giảm</span><span class="money">@quote.TotalPrice.ToString("N0") đ</span></div>
+                <div class="summary-row text-primary"><span>Thanh toán PayOS để giữ chỗ</span><span class="money">@quote.HoldingFee.ToString("N0") đ</span></div>
+                <div class="summary-row"><span>Tiền thuê còn lại khi nhận xe</span><span>@quote.RemainingRentalAmount.ToString("N0") đ</span></div>
+                <div class="summary-row"><span>Tiền cọc / tài sản thế chấp khi nhận xe</span><span>@quote.CollateralAmount.ToString("N0") đ</span></div>
+
+                <div class="alert alert-info mt-4 mb-0">
+                    Đơn thuê chỉ xuất hiện trong "Chuyến xe của tôi" sau khi PayOS xác nhận đã nhận đúng số tiền giữ chỗ.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const expiresAt = new Date('@Model.ExpiresAt.ToUniversalTime().ToString("O")');
+        const countdown = document.getElementById('holdCountdown');
+        function tickHoldCountdown() {
+            const ms = expiresAt.getTime() - Date.now();
+            if (ms <= 0) {
+                countdown.textContent = 'Hết hạn';
+                return;
+            }
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            countdown.textContent = `${minutes}:${seconds}`;
+            setTimeout(tickHoldCountdown, 1000);
+        }
+        tickHoldCountdown();
+
+        document.querySelectorAll('[data-copy]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const value = btn.getAttribute('data-copy') || '';
+                if (!value) return;
+                await navigator.clipboard?.writeText(value);
+                const oldText = btn.textContent;
+                btn.textContent = 'Đã copy';
+                setTimeout(() => btn.textContent = oldText, 1200);
+            });
+        });
+    </script>
+}

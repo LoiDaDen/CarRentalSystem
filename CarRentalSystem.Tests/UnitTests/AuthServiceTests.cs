@@ -51,8 +51,12 @@ namespace CarRentalSystem.Tests.UnitTests
             };
 
             var userRepo = MockRepositoryHelper.Create(_users);
-            var mockPii = new Mock<IPiiEncryptionService>();
-            _authService = new AuthService(userRepo.Object, mockPii.Object);
+            var piiEncryption = new Mock<IPiiEncryptionService>();
+            piiEncryption.Setup(p => p.EncryptIfNotEmpty(It.IsAny<string?>()))
+                .Returns((string? value) => value);
+            piiEncryption.Setup(p => p.DecryptIfNotEmpty(It.IsAny<string?>()))
+                .Returns((string? value) => value);
+            _authService = new AuthService(userRepo.Object, piiEncryption.Object);
         }
 
         // =============================================
@@ -100,14 +104,13 @@ namespace CarRentalSystem.Tests.UnitTests
         [Fact]
         [Trait("Module", "Auth")]
         [Trait("Type", "Unit")]
-        public async Task Authenticate_ByUsername_ReturnsUser()
+        public async Task Authenticate_ByUsername_ReturnsNull()
         {
-            // Act - Hệ thống hỗ trợ đăng nhập bằng cả Username (Name)
+            // Act - AuthService hiện chuẩn hóa đăng nhập bằng email để tránh nhập nhằng định danh.
             var result = await _authService.AuthenticateAsync("Nguyen Van A", "Password123!");
 
             // Assert
-            result.Should().NotBeNull("vì hệ thống cho phép đăng nhập bằng tên người dùng");
-            result!.Email.Should().Be("nguyenvana@email.com");
+            result.Should().BeNull("vì đăng nhập bằng tên người dùng không còn được hỗ trợ ở AuthService");
         }
 
         // =============================================

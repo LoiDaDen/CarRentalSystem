@@ -76,7 +76,7 @@
 
                 <div class="mb-4">
                     <div class="filter-title">Địa điểm</div>
-                    <select class="form-select form-select-sm fw-bold border-1" name="location" onclick="event.stopPropagation()" onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
+                    <select class="form-select form-select-sm fw-bold border-1" name="location" onchange="document.getElementById('filterForm').submit()">
                         <option value="">Toàn quốc</option>
                         @if(ViewBag.Locations != null) {
                             foreach (var loc in ViewBag.Locations) {
@@ -89,8 +89,8 @@
                 @if (ViewBag.Contract == null) {
                     <div class="mb-4">
                         <div class="filter-title">Thời gian chờ (Nhận - Trả)</div>
-                        <input type="datetime-local" class="form-control form-control-sm mb-2 fw-bold" name="startDate" value="@Context.Request.Query["startDate"]" onclick="event.stopPropagation()" onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
-                        <input type="datetime-local" class="form-control form-control-sm fw-bold" name="endDate" value="@Context.Request.Query["endDate"]" onclick="event.stopPropagation()" onclick="event.stopPropagation()" onchange="document.getElementById('filterForm').submit()">
+                        <input type="datetime-local" class="form-control form-control-sm mb-2 fw-bold" name="startDate" value="@Context.Request.Query["startDate"]" onchange="document.getElementById('filterForm').submit()">
+                        <input type="datetime-local" class="form-control form-control-sm fw-bold" name="endDate" value="@Context.Request.Query["endDate"]" onchange="document.getElementById('filterForm').submit()">
                     </div>
                 } else {
                     <input type="hidden" name="contractId" value="@(ViewBag.Contract.ContractTypeID)" />

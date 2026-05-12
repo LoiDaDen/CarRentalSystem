@@ -88,7 +88,12 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             }
 
             if (string.IsNullOrEmpty(status))
-                allBookings = allBookings.Where(b => b.BookingStatus?.Name != "Draft").ToList();
+            {
+                var hiddenStatuses = new[] { BookingStatusConstants.Draft, BookingStatusConstants.Unpaid };
+                allBookings = allBookings
+                    .Where(b => b.BookingStatus == null || !hiddenStatuses.Contains(b.BookingStatus.Name))
+                    .ToList();
+            }
             else
                 allBookings = allBookings.Where(b => b.BookingStatus?.Name == status).ToList();
 
@@ -313,7 +318,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var since = DateTime.UtcNow.AddHours(-24);
 
             var notifications = allBookings
-                .Where(b => b.CreatedAt >= since && b.BookingStatus?.Name != "Draft")
+                .Where(b => b.CreatedAt >= since &&
+                    b.BookingStatus?.Name != BookingStatusConstants.Draft &&
+                    b.BookingStatus?.Name != BookingStatusConstants.Unpaid)
                 .OrderByDescending(b => b.CreatedAt)
                 .Take(10)
                 .Select(b => new

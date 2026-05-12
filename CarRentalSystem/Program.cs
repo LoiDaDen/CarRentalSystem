@@ -6,10 +6,13 @@ using CarRentalSystem.Services;
 using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Middleware;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using Hangfire.SqlServer;
 using DotNetEnv;
+using Microsoft.AspNetCore.Localization;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +30,10 @@ if (File.Exists(envFilePath))
     }
 }
 
+ConfigurationGuard.ValidateProductionConfiguration(builder.Configuration, builder.Environment);
+
 // Add services to the container.
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.AddControllersWithViews(options =>
 {
     // ═══════════════════════════════════════════════════
@@ -35,7 +41,9 @@ builder.Services.AddControllersWithViews(options =>
     // cho mọi POST/PUT/DELETE action (trừ [IgnoreAntiforgeryToken])
     // ═══════════════════════════════════════════════════
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
-});
+})
+.AddViewLocalization()
+.AddDataAnnotationsLocalization();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
         // Chỉ enable sensitive data logging trong Development
@@ -48,11 +56,19 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ITrackingService, TrackingService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPayOSPaymentService, PayOSPaymentService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IBookingQuoteService, BookingQuoteService>();
+builder.Services.AddScoped<IReferralService, ReferralService>();
+builder.Services.AddScoped<IEligibilityService, EligibilityService>();
+builder.Services.AddScoped<IPaymentLedgerService, PaymentLedgerService>();
+builder.Services.AddScoped<IBookingTransitionService, BookingTransitionService>();
+builder.Services.AddScoped<IFileUploadValidationService, FileUploadValidationService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
 builder.Services.AddScoped<ISnapshotService, SnapshotService>(); // Database snapshot & backup
 builder.Services.AddHttpClient<IDeliveryService, DeliveryService>();
+builder.Services.AddSingleton<IDeliveryScopeService, DeliveryScopeService>();
 
 // ═══════════════════════════════════════════════════
 // 🔴 REDIS DISTRIBUTED CACHE (Fallback: MemoryCache)
@@ -119,28 +135,42 @@ builder.Services.AddScoped<IRecaptchaService, RecaptchaService>();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("database");
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    if (builder.Configuration.GetValue<bool>("Security:TrustForwardedHeaders"))
+    {
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    }
+});
+
 // ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE — Background Job Processing
 // ═══════════════════════════════════════════════════
-builder.Services.AddHangfire(config => config
-    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"), new SqlServerStorageOptions
-    {
-        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-        QueuePollInterval = TimeSpan.Zero,
-        UseRecommendedIsolationLevel = false,
-        DisableGlobalLocks = false
-    }));
-builder.Services.AddHangfireServer();
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHangfire(config => config
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"), new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Zero,
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true
+        }));
+    builder.Services.AddHangfireServer();
+}
 
 // Đăng ký Background Job classes vào DI
 builder.Services.AddScoped<EmailBackgroundJob>();
 builder.Services.AddScoped<ContractExpirationJob>();
 builder.Services.AddScoped<MaintenanceAlertJob>();
 builder.Services.AddScoped<DepositRefundJob>();
+builder.Services.AddScoped<ExpireBookingHoldsJob>();
 builder.Services.AddScoped<CleanupUnverifiedAccountsJob>();
 
 builder.Services.AddAuthentication("Cookies")
@@ -214,24 +244,27 @@ builder.Services.AddCors(options => {
 var app = builder.Build();
 AuditLogServiceAccessor.ScopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
+app.UseForwardedHeaders();
+
 // ═══════════════════════════════════════════════════
 // 🗄️ DATABASE MIGRATION & SEED
 // Migration: luôn chạy để DB schema up-to-date
 // Seed: CHỈ chạy trong Development VÀ khi DB trống (lần đầu tiên)
 // Production: KHÔNG seed — dữ liệu phải import thẳng vào DB
 // ═══════════════════════════════════════════════════
-if (!app.Environment.IsEnvironment("Testing"))
+if (!app.Environment.IsEnvironment("Testing") &&
+    app.Configuration.GetValue<bool>("Security:RunMigrationsOnStartup"))
 {
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<ApplicationDbContext>();
         
-        // Luôn chạy migration để DB schema đồng bộ code
         context.Database.Migrate();
         
-        // Chỉ seed dữ liệu mẫu trong Development VÀ khi DB trống
-        if (app.Environment.IsDevelopment() && !context.Users.Any())
+        if (app.Environment.IsDevelopment() &&
+            app.Configuration.GetValue<bool>("Security:SeedReferenceDataOnStartup") &&
+            !context.Users.Any())
         {
             DbSeeder.Seed(context);
         }
@@ -252,8 +285,15 @@ app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
-    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=(self)";
+    context.Response.Headers["Content-Security-Policy"] =
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; " +
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; " +
+        "img-src 'self' data: blob: https:; " +
+        "font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
+        "connect-src 'self' https://nominatim.openstreetmap.org; frame-ancestors 'none'";
     await next();
 });
 
@@ -265,13 +305,24 @@ if (!app.Environment.IsDevelopment())
 
 // Tắt ServeUnknownFileTypes để bảo mật
 app.UseStaticFiles();
-app.UseStaticFiles(new StaticFileOptions
+if (app.Environment.IsDevelopment())
 {
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "..", "docs")),
-    RequestPath = "/docs",
-    ServeUnknownFileTypes = false, // Tắt để tránh directory traversal
-    DefaultContentType = "text/plain"
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+            Path.Combine(builder.Environment.ContentRootPath, "..", "docs")),
+        RequestPath = "/docs",
+        ServeUnknownFileTypes = false,
+        DefaultContentType = "text/plain"
+    });
+}
+
+var supportedCultures = new[] { new CultureInfo("vi-VN"), new CultureInfo("en-US") };
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("vi-VN"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures
 });
 app.UseRouting();
 app.UseCors();
@@ -305,18 +356,22 @@ app.UseAuditLog();
 // ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE DASHBOARD — chỉ Admin mới truy cập được
 // ═══════════════════════════════════════════════════
-app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    Authorization = new[] { new HangfireAuthorizationFilter() },
-    DashboardTitle = "Car Rental — Background Jobs"
-});
+    app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+    {
+        Authorization = new[] { new HangfireAuthorizationFilter() },
+        DashboardTitle = "Car Rental — Background Jobs"
+    });
+}
 
 // ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE RECURRING JOBS — Lên lịch tự động
 // ═══════════════════════════════════════════════════
 // Chỉ đăng ký recurring jobs khi KHÔNG phải môi trường Testing
 // (Testing dùng InMemory DB, không có SQL Server cho Hangfire)
-if (!app.Environment.IsEnvironment("Testing"))
+if (!app.Environment.IsEnvironment("Testing") &&
+    app.Configuration.GetValue<bool>("Security:SeedReferenceDataOnStartup"))
 {
     RecurringJob.AddOrUpdate<ContractExpirationJob>(
         "contract-expiration-check",
@@ -332,6 +387,11 @@ if (!app.Environment.IsEnvironment("Testing"))
         "deposit-refund-process",
         job => job.Execute(),
         Cron.Daily(9)); // Mỗi ngày lúc 9:00 AM
+
+    RecurringJob.AddOrUpdate<ExpireBookingHoldsJob>(
+        "expire-booking-holds",
+        job => job.Execute(),
+        "*/5 * * * *");
 
     // Xóa tài khoản chưa xác thực email sau 24 giờ
     RecurringJob.AddOrUpdate<CleanupUnverifiedAccountsJob>(
@@ -350,85 +410,97 @@ if (!app.Environment.IsEnvironment("Testing"))
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // --- Seed ContractTypes — Always ensure 5 long-term packages exist ---
+        // --- Seed ContractTypes — Chỉ thêm nếu chưa có ---
         var requiredPackages = new[] { "Theo ngày", "1 Tuần", "1 Tháng", "3 Tháng", "6 Tháng", "1 Năm" };
         var existingPackageNames = db.ContractTypes
             .Where(c => requiredPackages.Contains(c.Name))
             .Select(c => c.Name)
             .ToList();
 
-        // If any package is missing, clear all and re-seed
-        if (existingPackageNames.Count != 6)
+        // Chỉ seed nếu thiếu gói nào đó, KHÔNG xóa existing
+        if (existingPackageNames.Count < 6)
         {
-            var allContracts = db.ContractTypes.ToList();
-            if (allContracts.Any())
-            {
-                db.ContractTypes.RemoveRange(allContracts);
-                db.SaveChanges();
-            }
+            // Thêm các gói còn thiếu
+            var missingPackages = requiredPackages.Where(p => !existingPackageNames.Contains(p)).ToList();
 
-            db.ContractTypes.AddRange(
-                new CarRentalSystem.Models.ContractType
+            foreach (var packageName in missingPackages)
+            {
+                switch (packageName)
                 {
-                    Name = "Theo ngày",
-                    MinDurationDays = 1,
-                    MaxDurationDays = 6,
-                    DiscountPercent = 0,
-                    FreeMaintenanceCount = 0,
-                    IsActive = true,
-                    Description = "Thuê xe theo ngày, không giảm giá"
-                },
-                new CarRentalSystem.Models.ContractType
-                {
-                    Name = "1 Tuần",
-                    MinDurationDays = 7,
-                    MaxDurationDays = 29,
-                    DiscountPercent = 5,
-                    FreeMaintenanceCount = 0,
-                    IsActive = true,
-                    Description = "Thuê từ 7 ngày, giảm 5% so với giá lẻ"
-                },
-                new CarRentalSystem.Models.ContractType
-                {
-                    Name = "1 Tháng",
-                    MinDurationDays = 30,
-                    MaxDurationDays = 30,
-                    DiscountPercent = 10,
-                    FreeMaintenanceCount = 1,
-                    IsActive = true,
-                    Description = "Thuê 30 ngày, giảm 10%, miễn phí 1 lần bảo dưỡng"
-                },
-                new CarRentalSystem.Models.ContractType
-                {
-                    Name = "3 Tháng",
-                    MinDurationDays = 90,
-                    MaxDurationDays = 90,
-                    DiscountPercent = 15,
-                    FreeMaintenanceCount = 2,
-                    IsActive = true,
-                    Description = "Thuê 3 tháng, giảm 15%, miễn phí 2 lần bảo dưỡng"
-                },
-                new CarRentalSystem.Models.ContractType
-                {
-                    Name = "6 Tháng",
-                    MinDurationDays = 180,
-                    MaxDurationDays = 180,
-                    DiscountPercent = 20,
-                    FreeMaintenanceCount = 4,
-                    IsActive = true,
-                    Description = "Thuê 6 tháng, giảm 20%, miễn phí 4 lần bảo dưỡng"
-                },
-                new CarRentalSystem.Models.ContractType
-                {
-                    Name = "1 Năm",
-                    MinDurationDays = 360,
-                    MaxDurationDays = 365,
-                    DiscountPercent = 25,
-                    FreeMaintenanceCount = 8,
-                    IsActive = true,
-                    Description = "Thuê 1 năm, giảm 25%, miễn phí 8 lần bảo dưỡng, ưu tiên xe mới"
+                    case "Theo ngày":
+                        db.ContractTypes.Add(new CarRentalSystem.Models.ContractType
+                        {
+                            Name = "Theo ngày",
+                            MinDurationDays = 1,
+                            MaxDurationDays = 6,
+                            DiscountPercent = 0,
+                            FreeMaintenanceCount = 0,
+                            IsActive = true,
+                            Description = "Thuê xe theo ngày, không giảm giá"
+                        });
+                        break;
+                    case "1 Tuần":
+                        db.ContractTypes.Add(new CarRentalSystem.Models.ContractType
+                        {
+                            Name = "1 Tuần",
+                            MinDurationDays = 7,
+                            MaxDurationDays = 29,
+                            DiscountPercent = 5,
+                            FreeMaintenanceCount = 0,
+                            IsActive = true,
+                            Description = "Thuê từ 7 ngày, giảm 5% so với giá lẻ"
+                        });
+                        break;
+                    case "1 Tháng":
+                        db.ContractTypes.Add(new CarRentalSystem.Models.ContractType
+                        {
+                            Name = "1 Tháng",
+                            MinDurationDays = 30,
+                            MaxDurationDays = 30,
+                            DiscountPercent = 10,
+                            FreeMaintenanceCount = 1,
+                            IsActive = true,
+                            Description = "Thuê 30 ngày, giảm 10%, miễn phí 1 lần bảo dưỡng"
+                        });
+                        break;
+                    case "3 Tháng":
+                        db.ContractTypes.Add(new CarRentalSystem.Models.ContractType
+                        {
+                            Name = "3 Tháng",
+                            MinDurationDays = 90,
+                            MaxDurationDays = 90,
+                            DiscountPercent = 15,
+                            FreeMaintenanceCount = 2,
+                            IsActive = true,
+                            Description = "Thuê 3 tháng, giảm 15%, miễn phí 2 lần bảo dưỡng"
+                        });
+                        break;
+                    case "6 Tháng":
+                        db.ContractTypes.Add(new CarRentalSystem.Models.ContractType
+                        {
+                            Name = "6 Tháng",
+                            MinDurationDays = 180,
+                            MaxDurationDays = 180,
+                            DiscountPercent = 20,
+                            FreeMaintenanceCount = 4,
+                            IsActive = true,
+                            Description = "Thuê 6 tháng, giảm 20%, miễn phí 4 lần bảo dưỡng"
+                        });
+                        break;
+                    case "1 Năm":
+                        db.ContractTypes.Add(new CarRentalSystem.Models.ContractType
+                        {
+                            Name = "1 Năm",
+                            MinDurationDays = 360,
+                            MaxDurationDays = 365,
+                            DiscountPercent = 25,
+                            FreeMaintenanceCount = 8,
+                            IsActive = true,
+                            Description = "Thuê 1 năm, giảm 25%, miễn phí 8 lần bảo dưỡng, ưu tiên xe mới"
+                        });
+                        break;
                 }
-            );
+            }
             db.SaveChanges();
         }
 
@@ -509,12 +581,6 @@ public class HangfireAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthoriz
         var httpContext = dashboardContext.GetHttpContext();
         if (httpContext == null) return false;
 
-        // Cho phép truy cập tự do (ai cũng vào được) trong môi trường Development
-        var env = httpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-        if (env.IsDevelopment())
-            return true;
-
-        // Production: Yêu cầu phải đăng nhập VÀ là Admin
         return httpContext.User.Identity?.IsAuthenticated == true
             && httpContext.User.IsInRole("Admin");
     }

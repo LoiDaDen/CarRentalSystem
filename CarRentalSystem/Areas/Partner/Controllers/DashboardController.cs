@@ -118,10 +118,19 @@ namespace CarRentalSystem.Areas.Partner.Controllers
         }
 
         // GET /Partner/Dashboard/Register
-        public IActionResult Register()
+        public async Task<IActionResult> Register()
         {
             var userId = GetCurrentUserId();
             if (userId == null) return RedirectToAction("Login", "Auth", new { area = "" });
+            var user = await _db.Users.FindAsync(userId);
+            if (user == null) return NotFound();
+            if (!user.IsVerified || user.VerificationStatus != "Verified")
+            {
+                TempData["Error"] = "Ban can duoc duyet eKYC truoc khi dang ky lam doi tac.";
+                TempData["ShowEkycModal"] = "true";
+                TempData["EkycReturnUrl"] = Url.Action("Register", "Dashboard", new { area = "Partner" });
+                return RedirectToAction("Index", "Ekyc", new { area = "" });
+            }
             return View();
         }
 
@@ -134,6 +143,14 @@ namespace CarRentalSystem.Areas.Partner.Controllers
 
             var user = await _db.Users.FindAsync(userId);
             if (user == null) return NotFound();
+
+            if (!user.IsVerified || user.VerificationStatus != "Verified")
+            {
+                TempData["Error"] = "Ban can duoc duyet eKYC truoc khi dang ky lam doi tac.";
+                TempData["ShowEkycModal"] = "true";
+                TempData["EkycReturnUrl"] = Url.Action("Register", "Dashboard", new { area = "Partner" });
+                return RedirectToAction("Index", "Ekyc", new { area = "" });
+            }
 
             // Kiểm tra đã đồng ý điều khoản
             if (string.IsNullOrEmpty(agreeTerms))
@@ -172,7 +189,6 @@ namespace CarRentalSystem.Areas.Partner.Controllers
             }
 
             user.IsPartnerApproved = false; // Chờ Admin duyệt
-            user.IsVerified = false;
 
             // Tạo hợp đồng đối tác
             var contractCount = await _db.PartnerContracts.CountAsync() + 1;
@@ -198,8 +214,8 @@ namespace CarRentalSystem.Areas.Partner.Controllers
                 ExpiresAt = now.AddDays(7),
                 SignedByPartyA = true,
                 PartyASignDate = now,
-                SignedByPartyB = true, // Đã ký điện tử
-                PartyBSignDate = now,
+                SignedByPartyB = false,
+                PartyBSignDate = null,
                 TermsContent = GeneratePartnerContractTerms(user)
             };
 

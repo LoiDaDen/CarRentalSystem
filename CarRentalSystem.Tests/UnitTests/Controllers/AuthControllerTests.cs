@@ -1,15 +1,16 @@
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using CarRentalSystem.Data;
 using CarRentalSystem.Controllers;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
+using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
 
@@ -25,7 +26,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IEmailService> _mockEmailService;
         private readonly Mock<IPiiEncryptionService> _mockPiiEncryption;
         private readonly Mock<IRecaptchaService> _mockRecaptchaService;
-        private readonly CarRentalSystem.Data.ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
@@ -35,21 +36,15 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockEmailService = new Mock<IEmailService>();
             _mockPiiEncryption = new Mock<IPiiEncryptionService>();
             _mockRecaptchaService = new Mock<IRecaptchaService>();
-
-            // Use InMemory database for ApplicationDbContext if needed, or mock it
-            var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<CarRentalSystem.Data.ApplicationDbContext>()
-                .UseInMemoryDatabase(databaseName: System.Guid.NewGuid().ToString())
-                .Options;
-            _context = new CarRentalSystem.Data.ApplicationDbContext(options);
+            _context = MockRepositoryHelper.CreateSeededDbContext();
 
             _controller = new AuthController(
-                _mockAuthService.Object, 
-                _mockEnv.Object, 
-                _mockEmailService.Object, 
+                _mockAuthService.Object,
+                _mockEnv.Object,
+                _mockEmailService.Object,
                 _mockPiiEncryption.Object,
                 _context,
                 _mockRecaptchaService.Object);
-
             _controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()

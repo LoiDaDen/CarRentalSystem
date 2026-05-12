@@ -43,24 +43,19 @@ namespace CarRentalSystem.Services
         {
             ResetStream(frontImage);
             ResetStream(backImage);
-            if (string.IsNullOrEmpty(_apiKey) || _apiKey == "YOUR_FPT_API_KEY")
+
+            // =========================================
+            // FAIL-CLOSED: Không có API key = reject
+            // Production phải có API key hợp lệ
+            // =========================================
+            if (string.IsNullOrWhiteSpace(_apiKey) || _apiKey == "YOUR_FPT_API_KEY")
             {
-                _logger.LogWarning("FPT API key not configured. Using simulated data.");
-                await Task.Delay(2000);
+                _logger.LogError("eKYC OCR rejected: FPT API key not configured or using demo key.");
                 return new EkycIdResult
                 {
-                    IsSuccess = true,
-                    CitizenId = "034" + new Random().Next(100000000, 999999999).ToString(),
-                    FullName = "NGUYEN VAN A",
-                    DateOfBirth = "01/01/1990",
-                    Validity = "01/01/2035",
-                    Gender = "Nam",
-                    Address = "123 Nguyen Trai, Quan 1, TP Ho Chi Minh",
-                    Nationality = "Viet Nam",
-                    Ethnicity = "Kinh",
-                    IssueDate = "15/06/2015",
-                    IssueLocation = "TP. Ho Chi Minh",
-                    Message = "Simulated (API key not configured)"
+                    IsSuccess = false,
+                    IsProviderError = true,
+                    Message = "Dịch vụ xác thực CCCD chưa được cấu hình. Vui lòng liên hệ hỗ trợ."
                 };
             }
 
@@ -97,6 +92,7 @@ namespace CarRentalSystem.Services
                 return new EkycIdResult
                 {
                     IsSuccess = false,
+                    IsProviderError = true,
                     Message = "OCR extraction failed: " + ex.Message
                 };
             }
@@ -118,7 +114,7 @@ namespace CarRentalSystem.Services
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("FPT.AI IDR API returned {StatusCode}", response.StatusCode);
-                return new EkycIdResult { IsSuccess = false, Message = "FPT.AI API error: " + response.StatusCode };
+                return new EkycIdResult { IsSuccess = false, IsProviderError = true, Message = "FPT.AI API error: " + response.StatusCode };
             }
 
             var jsonString = await response.Content.ReadAsStringAsync();
@@ -193,23 +189,19 @@ namespace CarRentalSystem.Services
         public async Task<EkycLicenseResult> ExtractDrivingLicenseAsync(IFormFile licenseImage)
         {
             ResetStream(licenseImage);
-            if (string.IsNullOrEmpty(_apiKey) || _apiKey == "YOUR_FPT_API_KEY")
+
+            // =========================================
+            // FAIL-CLOSED: Không có API key = reject
+            // Production phải có API key hợp lệ
+            // =========================================
+            if (string.IsNullOrWhiteSpace(_apiKey) || _apiKey == "YOUR_FPT_API_KEY")
             {
-                _logger.LogWarning("FPT API key not configured. Using simulated license data.");
-                await Task.Delay(1500);
+                _logger.LogError("eKYC GPLX rejected: FPT API key not configured or using demo key.");
                 return new EkycLicenseResult
                 {
-                    IsSuccess = true,
-                    LicenseNumber = "790" + new Random().Next(1000000, 9999999).ToString(),
-                    Class = "B2",
-                    FullName = "NGUYEN VAN A",
-                    DateOfBirth = "01/01/1990",
-                    Validity = "01/01/2035",
-                    Nationality = "Viet Nam",
-                    Address = "123 Nguyen Trai, Quan 1, TP Ho Chi Minh",
-                    IssueDate = "15/06/2015",
-                    IssueLocation = "TP. Ho Chi Minh",
-                    Message = "Simulated (API key not configured)"
+                    IsSuccess = false,
+                    IsProviderError = true,
+                    Message = "Dịch vụ xác thực GPLX chưa được cấu hình. Vui lòng liên hệ hỗ trợ."
                 };
             }
 
@@ -229,7 +221,7 @@ namespace CarRentalSystem.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError("FPT.AI DLR API returned {StatusCode}", response.StatusCode);
-                    return new EkycLicenseResult { IsSuccess = false, Message = "FPT.AI API error: " + response.StatusCode };
+                    return new EkycLicenseResult { IsSuccess = false, IsProviderError = true, Message = "FPT.AI API error: " + response.StatusCode };
                 }
 
                 var jsonString = await response.Content.ReadAsStringAsync();
@@ -289,6 +281,7 @@ namespace CarRentalSystem.Services
                 return new EkycLicenseResult
                 {
                     IsSuccess = false,
+                    IsProviderError = true,
                     Message = "OCR extraction failed: " + ex.Message
                 };
             }
@@ -298,16 +291,21 @@ namespace CarRentalSystem.Services
         {
             ResetStream(faceImage);
             ResetStream(cardImage);
-            if (string.IsNullOrEmpty(_apiKey) || _apiKey == "YOUR_FPT_API_KEY")
+
+            // =========================================
+            // FAIL-CLOSED: Không có API key = reject
+            // Face match phải được thực hiện bởi AI, không simulate được
+            // =========================================
+            if (string.IsNullOrWhiteSpace(_apiKey) || _apiKey == "YOUR_FPT_API_KEY")
             {
-                _logger.LogWarning("FPT API key not configured. Using simulated face match.");
-                await Task.Delay(2000);
+                _logger.LogError("eKYC Face Compare rejected: FPT API key not configured or using demo key.");
                 return new EkycFaceResult
                 {
-                    IsSuccess = true,
-                    SimilarityPercent = new Random().Next(85, 99),
-                    IsMatch = true,
-                    Message = "Simulated match (API key not configured)"
+                    IsSuccess = false,
+                    IsProviderError = true,
+                    SimilarityPercent = 0,
+                    IsMatch = false,
+                    Message = "Dịch vụ xác thực khuôn mặt chưa được cấu hình. Vui lòng liên hệ hỗ trợ."
                 };
             }
 
@@ -333,7 +331,7 @@ namespace CarRentalSystem.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError("FPT.AI Face Compare API returned {StatusCode}", response.StatusCode);
-                    return new EkycFaceResult { IsSuccess = false, Message = "Face compare API error: " + response.StatusCode };
+                    return new EkycFaceResult { IsSuccess = false, IsProviderError = true, Message = "Face compare API error: " + response.StatusCode };
                 }
 
                 var jsonString = await response.Content.ReadAsStringAsync();
@@ -359,6 +357,7 @@ namespace CarRentalSystem.Services
                     return new EkycFaceResult
                     {
                         IsSuccess = false,
+                        IsProviderError = true,
                         Message = $"Face compare error {code}: {message}"
                     };
                 }
@@ -402,6 +401,7 @@ namespace CarRentalSystem.Services
                 return new EkycFaceResult
                 {
                     IsSuccess = false,
+                    IsProviderError = true,
                     Message = "Face compare failed: " + ex.Message
                 };
             }
@@ -447,6 +447,7 @@ namespace CarRentalSystem.Services
     public class EkycIdResult
     {
         public bool IsSuccess { get; set; }
+        public bool IsProviderError { get; set; }
         public string? CitizenId { get; set; }
         public string? FullName { get; set; }
         public string? DateOfBirth { get; set; }
@@ -467,6 +468,7 @@ namespace CarRentalSystem.Services
     public class EkycLicenseResult
     {
         public bool IsSuccess { get; set; }
+        public bool IsProviderError { get; set; }
         public string? LicenseNumber { get; set; }
         public string? Class { get; set; }
         public string? FullName { get; set; }
@@ -482,6 +484,7 @@ namespace CarRentalSystem.Services
     public class EkycFaceResult
     {
         public bool IsSuccess { get; set; }
+        public bool IsProviderError { get; set; }
         public double SimilarityPercent { get; set; }
         public bool IsMatch { get; set; }
         public string? Message { get; set; }

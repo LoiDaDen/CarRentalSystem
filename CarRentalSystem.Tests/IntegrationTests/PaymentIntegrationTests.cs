@@ -5,6 +5,7 @@ using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using System;
 using System.Threading.Tasks;
 using Xunit;
@@ -26,9 +27,24 @@ namespace CarRentalSystem.Tests.IntegrationTests
             var statusRepo = new Repository<BookingStatus>(_context);
             var carRepo = new Repository<Car>(_context);
             var carStatusRepo = new Repository<CarStatus>(_context);
+            var transitionService = new Mock<IBookingTransitionService>();
+            transitionService
+                .Setup(t => t.TransitionAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
+                .Callback<int, string, int?, string, string?>((bookingId, statusName, _, _, _) =>
+                {
+                    var booking = _context.Bookings.FirstOrDefault(b => b.BookingID == bookingId);
+                    var status = _context.BookingStatuses.FirstOrDefault(s => s.Name == statusName);
+                    if (booking != null && status != null)
+                    {
+                        booking.BookingStatusID = status.BookingStatusID;
+                        booking.BookingStatus = status;
+                        _context.SaveChanges();
+                    }
+                })
+                .ReturnsAsync(new BookingTransitionResult(true, null));
 
             _bookingService = new BookingService(
-                bookingRepo, paymentRepo, contractRepo, statusRepo, carRepo, carStatusRepo);
+                bookingRepo, paymentRepo, contractRepo, statusRepo, carRepo, carStatusRepo, transitionService.Object);
         }
 
         [Fact]

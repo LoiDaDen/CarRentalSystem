@@ -26,6 +26,7 @@ public class ChatController : ControllerBase
     {
         public string Message { get; set; } = "";
         public string? SessionId { get; set; }
+        public string? Culture { get; set; }
         public bool ClearHistory { get; set; } = false;
     }
 
@@ -48,7 +49,7 @@ public class ChatController : ControllerBase
         _chatSessionService.AddUserMessage(sessionId, request.Message.Trim());
 
         var history = _chatSessionService.GetOrCreateSession(sessionId);
-        var reply = await _groqChatService.GetResponseAsync(history);
+        var reply = await _groqChatService.GetResponseAsync(history, request.Culture ?? "vi");
 
         _chatSessionService.AddAssistantMessage(sessionId, reply);
 
