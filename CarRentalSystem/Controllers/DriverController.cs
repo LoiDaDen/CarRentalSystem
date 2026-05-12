@@ -420,18 +420,15 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(MyProfile));
             }
 
-            // Use atomic update to prevent race conditions
-            var contract = await _context.DriverContracts
-                .FirstOrDefaultAsync(dc => dc.DriverContractID == id && dc.DriverID == driver.DriverID && dc.Status == "Active");
-            
-            if (contract != null)
+            // Use standard update pattern for InMemory DB compatibility
+            if (contract != null && contract.Status == "Active")
             {
                 contract.Status = "Cancelled";
                 contract.CancelledAt = DateTime.UtcNow;
                 contract.CancelReason = reason ?? "Bên B yêu cầu hủy hợp đồng";
                 _context.DriverContracts.Update(contract);
             }
-            var rowsAffected = contract != null ? 1 : 0;
+            var rowsAffected = (contract != null && contract.Status == "Cancelled") ? 1 : 0;
 
             if (rowsAffected == 0)
             {
