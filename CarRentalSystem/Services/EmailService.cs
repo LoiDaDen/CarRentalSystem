@@ -319,8 +319,7 @@ namespace CarRentalSystem.Services
             {
                 _logger.LogWarning("SMTP Settings not configured. Email will be logged but NOT sent:");
                 _logger.LogInformation("To: {Email}, Subject: {Subject}", toEmail, subject);
-                // KHÔNG silent return - throw exception để caller biết email không được gửi
-                throw new InvalidOperationException($"Email configuration missing. Cannot send email to {toEmail}");
+                return;
             }
 
             try
@@ -349,8 +348,6 @@ namespace CarRentalSystem.Services
             catch (Exception ex)
             {
                 _logger.LogError("Failed to send email to {Email}: {Error}", toEmail, ex.Message);
-                // Re-throw để caller xử lý
-                throw;
             }
         }
     }
