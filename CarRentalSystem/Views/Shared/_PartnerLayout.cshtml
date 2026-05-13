@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <script>
-        (function(){var t=localStorage.getItem('ui_theme')||document.cookie.match(/(?:^|; )ui_theme=([^;]+)/)?.[1]||'light';document.documentElement.setAttribute('data-bs-theme',t);})();
-    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Partner Portal | CarRental</title>
@@ -164,11 +161,6 @@
     </style>
 </head>
 <body class="theme-carrental theme-partner">
-    <button type="button" class="theme-toggle-btn" data-theme-toggle title="Toggle light/dark"><i class="bi bi-moon-stars"></i></button>
-    <form class="language-switcher" asp-area="" asp-controller="Localization" asp-action="SetLanguage" method="post">
-        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
-        <button name="culture" value="vi-VN" type="submit">VN</button><button name="culture" value="en-US" type="submit">EN</button>
-    </form>
     <!-- Sidebar -->
     <div class="partner-sidebar d-none d-lg-flex flex-column">
         <div class="sidebar-logo">

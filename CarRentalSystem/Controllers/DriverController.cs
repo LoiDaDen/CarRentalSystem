@@ -10,10 +10,14 @@ namespace CarRentalSystem.Controllers
     public class DriverController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _env;
+        private const long DriverAvatarMaxBytes = 5 * 1024 * 1024;
+        private static readonly string[] DriverAvatarExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
 
-        public DriverController(ApplicationDbContext context)
+        public DriverController(ApplicationDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // Public: List available drivers
@@ -271,7 +275,7 @@ namespace CarRentalSystem.Controllers
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Register(Driver driver)
+        public async Task<IActionResult> Register(Driver driver, IFormFile? avatarFile)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out int userId))
@@ -315,10 +319,22 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Index", "Ekyc");
             }
 
+            string avatarUrl;
+            try
+            {
+                avatarUrl = await SaveDriverAvatarAsync(avatarFile, required: true) ?? string.Empty;
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(Register));
+            }
+
             driver.UserID = userId;
             driver.FullName = driver.FullName.Trim();
             driver.Phone = driver.Phone.Trim();
             driver.Email = driver.Email?.Trim() ?? user.Email;
+            driver.AvatarUrl = avatarUrl;
             driver.IsApproved = false;
             driver.IsAvailable = false;
             driver.Rating = 5.0m;
@@ -329,6 +345,36 @@ namespace CarRentalSystem.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Đăng ký tài xế thành công! Vui lòng chờ Admin xét duyệt hồ sơ.";
+            return RedirectToAction(nameof(MyProfile));
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateAvatar(IFormFile? avatarFile)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.UserID == userId);
+            if (driver == null) return NotFound();
+
+            string avatarUrl;
+            try
+            {
+                avatarUrl = await SaveDriverAvatarAsync(avatarFile, required: true) ?? string.Empty;
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(MyProfile));
+            }
+
+            DeleteLocalDriverAvatar(driver.AvatarUrl);
+            driver.AvatarUrl = avatarUrl;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Đã cập nhật ảnh đại diện tài xế.";
             return RedirectToAction(nameof(MyProfile));
         }
 
@@ -453,6 +499,52 @@ namespace CarRentalSystem.Controllers
 
             TempData["Success"] = $"Đã hủy hợp đồng #{contract.ContractNo}.";
             return RedirectToAction(nameof(MyProfile));
+        }
+
+        private async Task<string?> SaveDriverAvatarAsync(IFormFile? avatarFile, bool required)
+        {
+            if (avatarFile == null || avatarFile.Length == 0)
+            {
+                if (required) throw new InvalidOperationException("Vui lòng tải lên ảnh đại diện tài xế.");
+                return null;
+            }
+
+            if (avatarFile.Length > DriverAvatarMaxBytes)
+                throw new InvalidOperationException("Ảnh đại diện vượt quá giới hạn 5MB.");
+
+            var extension = Path.GetExtension(avatarFile.FileName).ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(extension) || !DriverAvatarExtensions.Contains(extension))
+                throw new InvalidOperationException("Ảnh đại diện chỉ chấp nhận JPG, PNG hoặc WEBP.");
+
+            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var uploadFolder = Path.Combine(webRoot, "uploads", "drivers", "avatars");
+            Directory.CreateDirectory(uploadFolder);
+
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var filePath = Path.Combine(uploadFolder, fileName);
+            await using var stream = new FileStream(filePath, FileMode.Create);
+            await avatarFile.CopyToAsync(stream);
+
+            return $"/uploads/drivers/avatars/{fileName}";
+        }
+
+        private void DeleteLocalDriverAvatar(string? avatarUrl)
+        {
+            if (string.IsNullOrWhiteSpace(avatarUrl) ||
+                !avatarUrl.StartsWith("/uploads/drivers/avatars/", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var fileName = Path.GetFileName(avatarUrl);
+            if (string.IsNullOrWhiteSpace(fileName)) return;
+
+            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var filePath = Path.Combine(webRoot, "uploads", "drivers", "avatars", fileName);
+            if (System.IO.File.Exists(filePath))
+            {
+                System.IO.File.Delete(filePath);
+            }
         }
     }
 }

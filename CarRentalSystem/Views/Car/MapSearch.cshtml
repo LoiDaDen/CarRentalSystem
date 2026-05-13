@@ -1,138 +1,461 @@
-@using System.Text.Json
 @{
-    ViewData["Title"] = "Tìm xe gần bạn - SmartRental";
+    ViewData["Title"] = "Tìm xe trên bản đồ - CarRental";
     var carTypes = ViewBag.CarTypes as List<string> ?? new List<string>();
+    var amenities = ViewBag.Amenities as List<string> ?? new List<string>();
 }
 
 @section Styles {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <style>
-        #map-container { display: flex; height: calc(100vh - 72px); overflow: hidden; position: relative; }
-        #map { flex: 1; height: 100%; z-index: 1; }
-        #car-sidebar { width: 400px; min-width: 400px; height: 100%; overflow-y: auto; background: #fff; border-right: 1px solid #e9ecef; box-shadow: 4px 0 20px rgba(0,0,0,.07); z-index: 2; position: relative; }
-        
-        /* Floating Filter Bar */
-        #filter-bar {
-            position: absolute;
-            top: 20px;
-            left: 420px;
-            right: 20px;
-            z-index: 1000;
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        .map-discovery-shell {
+            position: relative;
             display: flex;
-            gap: 12px;
-            align-items: center;
-            border: 1px solid rgba(255,255,255,0.3);
+            width: 100vw;
+            height: calc(100dvh - 78px);
+            min-height: 620px;
+            margin-top: -1.5rem;
+            margin-left: calc(50% - 50vw);
+            overflow: hidden;
+            background: #dbeafe;
         }
 
-        .filter-select {
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 8px 12px;
-            font-size: 0.875rem;
-            outline: none;
-            cursor: pointer;
-            transition: border-color 0.2s;
+        .discovery-sidebar {
+            position: relative;
+            z-index: 20;
+            width: min(420px, 34vw);
+            min-width: 360px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.98);
+            border-right: 1px solid #e2e8f0;
+            box-shadow: 10px 0 30px rgba(15, 23, 42, 0.08);
+        }
+
+        .discovery-sidebar-header {
+            padding: 22px 24px 18px;
+            border-bottom: 1px solid #e2e8f0;
             background: #fff;
         }
-        .filter-select:focus { border-color: #3b82f6; }
+
+        .discovery-drag-handle {
+            display: none;
+            width: 44px;
+            height: 4px;
+            margin: 0 auto 12px;
+            border-radius: 999px;
+            background: #cbd5e1;
+        }
+
+        .discovery-results {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .discovery-map-panel {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .map-filter-panel {
+            position: absolute;
+            top: 18px;
+            left: calc(min(420px, 34vw) + 18px);
+            right: 18px;
+            z-index: 500;
+            display: grid;
+            grid-template-columns: auto repeat(5, minmax(126px, 1fr)) auto;
+            gap: 10px;
+            align-items: end;
+            padding: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
+            backdrop-filter: blur(14px);
+        }
+
+        .filter-title {
+            min-width: 92px;
+            align-self: center;
+            color: #0f172a;
+            font-weight: 800;
+            font-size: 0.82rem;
+        }
+
+        .map-filter-panel label {
+            display: block;
+            margin-bottom: 4px;
+            color: #64748b;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .map-filter-panel .filter-select {
+            min-height: 40px;
+            width: 100%;
+            border: 1px solid #dbe3ef;
+            border-radius: 12px;
+            padding: 8px 12px;
+            background-color: #fff;
+            color: #0f172a;
+            font-size: 0.86rem;
+            font-weight: 700;
+            outline: none;
+        }
+
+        .map-filter-panel .filter-select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+        }
+
+        .map-filter-mobile-head,
+        .map-filter-backdrop,
+        .map-filter-toggle {
+            display: none;
+        }
 
         .car-pin-price {
             background: #2563eb;
-            color: white;
-            border: 2px solid white;
-            border-radius: 20px;
-            padding: 4px 10px;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 999px;
+            padding: 5px 11px;
             font-size: 0.8rem;
-            font-weight: 700;
+            font-weight: 800;
             white-space: nowrap;
-            box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+            box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35);
             cursor: pointer;
-            transition: all .2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.2s ease, background 0.2s ease;
         }
-        .car-pin-price:hover, .car-pin-price.active {
-            background: #1e40af;
-            transform: scale(1.15) translateY(-2px);
-            box-shadow: 0 8px 20px rgba(30,64,175,0.4);
+
+        .car-pin-price:hover,
+        .car-pin-price.active {
+            background: #1d4ed8;
+            transform: scale(1.12) translateY(-2px);
         }
 
         .car-card-small {
-            border: 1px solid transparent;
+            border: 1px solid #e2e8f0;
             border-radius: 16px;
-            overflow: hidden;
-            transition: all 0.3s ease;
+            padding: 12px;
+            background: #fff;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
             cursor: pointer;
-            margin-bottom: 4px;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
-        .car-card-small:hover { background: #f8fafc; border-color: #e2e8f0; transform: translateY(-2px); }
-        .car-card-small.active { background: #eff6ff; border-color: #3b82f6; box-shadow: 0 4px 15px rgba(59,130,246,0.15); }
-        
-        .badge-type { font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; background: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; }
+
+        .car-card-small + .car-card-small {
+            margin-top: 12px;
+        }
+
+        .car-card-small:hover,
+        .car-card-small.active {
+            transform: translateY(-2px);
+            border-color: #2563eb;
+            box-shadow: 0 16px 34px rgba(37, 99, 235, 0.16);
+        }
+
+        .car-card-layout {
+            display: grid;
+            grid-template-columns: 116px minmax(0, 1fr);
+            gap: 12px;
+        }
+
+        .car-thumb {
+            position: relative;
+            width: 116px;
+            height: 86px;
+            overflow: hidden;
+            border-radius: 14px;
+            background: #eef2f7;
+        }
+
+        .car-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .car-rating-chip {
+            position: absolute;
+            right: 6px;
+            bottom: 6px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.96);
+            color: #0f172a;
+            font-size: 0.72rem;
+            font-weight: 800;
+            box-shadow: 0 5px 14px rgba(15, 23, 42, 0.16);
+        }
+
+        .badge-type {
+            display: inline-flex;
+            max-width: 100%;
+            padding: 4px 9px;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 0.67rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .car-name-line {
+            color: #0f172a;
+            font-size: 0.98rem;
+            font-weight: 850;
+            line-height: 1.25;
+        }
+
+        .car-meta-line {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: #64748b;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .empty-map-state {
+            padding: 56px 18px;
+            text-align: center;
+            color: #64748b;
+        }
+
+        @@media (max-width: 1199.98px) {
+            .map-filter-panel {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                left: calc(min(420px, 34vw) + 16px);
+            }
+
+            .filter-title {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @@media (max-width: 991.98px) {
+            .map-discovery-shell {
+                height: calc(100dvh - 64px);
+                min-height: 560px;
+                margin-top: -1rem;
+            }
+
+            .discovery-map-panel {
+                width: 100%;
+            }
+
+            .discovery-sidebar {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                min-width: 0;
+                height: 42%;
+                min-height: 270px;
+                border-right: 0;
+                border-radius: 24px 24px 0 0;
+                box-shadow: 0 -18px 42px rgba(15, 23, 42, 0.2);
+            }
+
+            .discovery-sidebar.is-expanded {
+                height: 76%;
+            }
+
+            .discovery-drag-handle {
+                display: block;
+            }
+
+            .discovery-sidebar-header {
+                padding: 12px 16px 10px;
+                cursor: pointer;
+            }
+
+            .discovery-results {
+                padding: 12px;
+            }
+
+            .map-filter-toggle {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                z-index: 900;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 48px;
+                height: 48px;
+                border: 0;
+                border-radius: 16px;
+                background: #fff;
+                color: #2563eb;
+                box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+            }
+
+            .map-filter-backdrop {
+                position: absolute;
+                inset: 0;
+                z-index: 950;
+                background: rgba(15, 23, 42, 0.35);
+            }
+
+            .map-filter-backdrop.is-open {
+                display: block;
+            }
+
+            .map-filter-panel {
+                top: 12px;
+                left: 12px;
+                right: 12px;
+                z-index: 1000;
+                display: block;
+                max-height: calc(100dvh - 120px);
+                overflow-y: auto;
+                padding: 14px;
+                transform: translateY(-120%);
+                transition: transform 0.24s ease;
+            }
+
+            .map-filter-panel.is-open {
+                transform: translateY(0);
+            }
+
+            .map-filter-mobile-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 12px;
+            }
+
+            .map-filter-panel .filter-title {
+                display: none;
+            }
+
+            .filter-field {
+                margin-bottom: 12px;
+            }
+
+            .map-filter-panel .btn,
+            .map-filter-panel .filter-select {
+                min-height: 48px;
+            }
+
+            .car-card-layout {
+                grid-template-columns: 96px minmax(0, 1fr);
+            }
+
+            .car-thumb {
+                width: 96px;
+                height: 78px;
+            }
+
+            .car-name-line {
+                font-size: 0.92rem;
+            }
+
+            .car-card-small .btn {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
     </style>
 }
 
-<div id="map-container">
-    <!-- Filter Bar -->
-    <div id="filter-bar">
-        <div class="d-flex align-items-center gap-2 me-2">
-            <i class="bi bi-sliders2 text-primary"></i>
-            <span class="fw-bold small">Bộ lọc:</span>
+<div class="map-discovery-shell" data-discovery-map>
+    <aside class="discovery-sidebar" id="car-sidebar">
+        <div class="discovery-sidebar-header" id="sheetHeader">
+            <div class="discovery-drag-handle"></div>
+            <div class="d-flex align-items-start justify-content-between gap-3">
+                <div>
+                    <h1 class="h4 fw-800 mb-1">Discovery Map</h1>
+                    <p id="car-count" class="text-muted mb-0">Đang tải danh sách xe...</p>
+                </div>
+                <span class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle px-3 py-2" id="result-count">0 xe</span>
+            </div>
         </div>
-        
-        <select id="type-filter" class="filter-select" onchange="applyFilters()">
-            <option value="">Loại xe (Tất cả)</option>
-            @foreach (var type in carTypes)
-            {
-                <option value="@type">@type</option>
-            }
-        </select>
+        <div id="car-list" class="discovery-results"></div>
+    </aside>
 
-        <select id="trans-filter" class="filter-select" onchange="applyFilters()">
-            <option value="">Hộp số (Tất cả)</option>
-            <option value="Tự động">Tự động</option>
-            <option value="Số sàn">Số sàn</option>
-        </select>
+    <section class="discovery-map-panel">
+        <div id="map"></div>
+    </section>
 
-        <select id="amenity-filter" class="filter-select" onchange="applyFilters()">
-            <option value="">Tiện nghi (Tất cả)</option>
-            @foreach (var amenity in ViewBag.Amenities as List<string>)
-            {
-                <option value="@amenity">@amenity</option>
-            }
-        </select>
+    <button type="button" class="map-filter-toggle" id="filterOpenBtn" aria-label="Mở bộ lọc">
+        <i class="bi bi-sliders2 fs-4"></i>
+    </button>
+    <div class="map-filter-backdrop" id="filterBackdrop"></div>
 
-        <select id="rating-filter" class="filter-select" onchange="applyFilters()">
-            <option value="0">Đánh giá (Tất cả)</option>
-            <option value="4.5">4.5+ ⭐</option>
-            <option value="4">4.0+ ⭐</option>
-            <option value="3">3.0+ ⭐</option>
-        </select>
-
-        <select id="price-filter" class="filter-select" onchange="applyFilters()">
-            <option value="0">Giá (Tất cả)</option>
-            <option value="800000">Dưới 800k</option>
-            <option value="1500000">Từ 800k - 1tr5</option>
-            <option value="9999999">Trên 1tr5</option>
-        </select>
-
-        <div class="ms-auto text-muted small" id="result-count"></div>
-    </div>
-
-    <!-- Sidebar -->
-    <div id="car-sidebar">
-        <div class="p-4 border-bottom sticky-top bg-white">
-            <h5 class="fw-bold mb-1">Discovery Map</h5>
-            <p id="car-count" class="text-muted small mb-0">Hệ thống đang tải dữ liệu xe...</p>
+    <form id="filter-bar" class="map-filter-panel">
+        <div class="map-filter-mobile-head">
+            <div class="fw-800 text-dark"><i class="bi bi-sliders2 me-2 text-primary"></i>Bộ lọc</div>
+            <button type="button" class="btn btn-light rounded-circle" id="filterCloseBtn" aria-label="Đóng bộ lọc">
+                <i class="bi bi-x-lg"></i>
+            </button>
         </div>
-        <div id="car-list" class="p-3"></div>
-    </div>
-
-    <!-- Map -->
-    <div id="map"></div>
+        <div class="filter-title"><i class="bi bi-sliders2 me-1 text-primary"></i>Bộ lọc</div>
+        <div class="filter-field">
+            <label for="type-filter">Loại xe</label>
+            <select id="type-filter" class="filter-select">
+                <option value="">Tất cả loại xe</option>
+                @foreach (var type in carTypes)
+                {
+                    <option value="@type">@type</option>
+                }
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="trans-filter">Hộp số</label>
+            <select id="trans-filter" class="filter-select">
+                <option value="">Tất cả hộp số</option>
+                <option value="auto">Tự động</option>
+                <option value="manual">Số sàn</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="amenity-filter">Tiện nghi</label>
+            <select id="amenity-filter" class="filter-select">
+                <option value="">Tất cả tiện nghi</option>
+                @foreach (var amenity in amenities)
+                {
+                    <option value="@amenity">@amenity</option>
+                }
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="rating-filter">Đánh giá</label>
+            <select id="rating-filter" class="filter-select">
+                <option value="0">Tất cả đánh giá</option>
+                <option value="4.5">4.5+ sao</option>
+                <option value="4">4.0+ sao</option>
+                <option value="3">3.0+ sao</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="price-filter">Giá/ngày</label>
+            <select id="price-filter" class="filter-select">
+                <option value="0">Tất cả mức giá</option>
+                <option value="800000">Dưới 800k</option>
+                <option value="1500000">800k - 1tr5</option>
+                <option value="9999999">Trên 1tr5</option>
+            </select>
+        </div>
+        <button type="button" class="btn btn-outline-secondary rounded-3 fw-bold" id="resetFiltersBtn">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+        </button>
+    </form>
 </div>
 
 @section Scripts {
@@ -140,70 +463,93 @@
         const rawCarsData = @Html.Raw(ViewBag.CarsJson ?? "[]");
         let activeMapObj = null;
 
-        function buildCard(car) {
-            const type = car.Type || car.type || 'Khác';
-            const trans = car.Transmission || car.transmission || '';
-            const brand = car.Brand || car.brand || '';
-            const name = car.CarName || car.carName || '';
-            const price = Number(car.PricePerDay || car.pricePerDay || 0);
-            const rating = Number(car.Rating || car.rating || 5.0);
-            const id = car.CarID || car.carID || car.id;
-            const img = car.Image || car.image || '';
+        function textValue(value) {
+            return (value ?? '').toString();
+        }
+
+        function normalizeText(value) {
+            return textValue(value).trim().toLocaleLowerCase('vi-VN');
+        }
+
+        function normalizeTransmission(value) {
+            const text = normalizeText(value);
+            if (text.includes('sàn') || text.includes('manual') || text.includes('mt')) return 'manual';
+            if (text.includes('tự') || text.includes('auto') || text.includes('at')) return 'auto';
+            return text;
+        }
+
+        function normalizeCar(car) {
+            return {
+                id: car.id || car.carID || car.CarID,
+                name: car.carName || car.CarName || '',
+                brand: car.brand || car.Brand || '',
+                type: car.type || car.Type || 'Khác',
+                transmission: car.transmission || car.Transmission || '',
+                price: Number(car.pricePerDay || car.PricePerDay || 0),
+                rating: Number(car.rating || car.Rating || 0),
+                image: car.image || car.Image || '',
+                features: car.features || car.Features || '',
+                seats: car.seats || car.Seats || '',
+                fuelType: car.fuelType || car.FuelType || ''
+            };
+        }
+
+        function buildCard(carRaw) {
+            const car = normalizeCar(carRaw);
+            const transLabel = normalizeTransmission(car.transmission) === 'auto' ? 'AT' : 'MT';
+            const fallbackImg = 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=500&h=320&fit=crop';
 
             return `
-            <div class="car-card-small bg-white p-3" id="card-${id}" onclick="focusCar(${id})">
-                <div class="d-flex gap-3">
-                    <div class="position-relative" style="width:105px;height:75px;flex-shrink:0">
-                        ${img ? `<img src="${img}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=200&fit=crop';" style="width:100%;height:100%;object-fit:cover;border-radius:12px">` : '<div class="bg-light rounded-3 h-100 d-flex align-items-center justify-content-center"><i class="bi bi-car-front fs-2 text-secondary opacity-50"></i></div>'}
-                        <div class="position-absolute bottom-0 end-0 bg-white px-1 rounded-start-2 shadow-sm" style="font-size:0.75rem; font-weight: 700;">
-                            <i class="bi bi-star-fill text-warning"></i> ${rating.toFixed(1)}
-                        </div>
+            <article class="car-card-small" id="card-${car.id}" onclick="focusCar(${car.id})">
+                <div class="car-card-layout">
+                    <div class="car-thumb">
+                        ${car.image ? `<img src="${car.image}" alt="${car.brand} ${car.name}" loading="lazy" onerror="this.onerror=null;this.src='${fallbackImg}';">` : `<div class="h-100 d-flex align-items-center justify-content-center"><i class="bi bi-car-front fs-2 text-secondary opacity-50"></i></div>`}
+                        <div class="car-rating-chip"><i class="bi bi-star-fill text-warning me-1"></i>${car.rating.toFixed(1)}</div>
                     </div>
-                    <div style="min-width:0" class="flex-grow-1 d-flex flex-column justify-content-between">
-                        <div>
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <span class="badge-type">${type}</span>
-                                <span class="small text-muted fw-bold"><i class="bi bi-gear-wide-connected me-1"></i>${trans === 'Tự động' ? 'AT' : 'MT'}</span>
-                            </div>
-                            <div class="fw-bold text-truncate" style="font-size:0.95rem" title="${brand} ${name}">${brand} ${name}</div>
+                    <div class="min-w-0">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span class="badge-type text-truncate">${car.type}</span>
+                            <span class="small text-muted fw-bold"><i class="bi bi-gear-wide-connected me-1"></i>${transLabel}</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-end mt-1">
-                            <div class="fw-bold text-primary" style="font-size:1rem">${price.toLocaleString('vi-VN')} ₫</div>
-                            <a href="/Car/Details/${id}" class="btn btn-primary btn-sm rounded-pill px-3 py-1 fw-bold shadow-sm" style="font-size: 0.8rem;" onclick="event.stopPropagation()">Đặt ngay</a>
+                        <div class="car-name-line text-truncate" title="${car.brand} ${car.name}">${car.brand} ${car.name}</div>
+                        <div class="car-meta-line mt-2">
+                            ${car.seats ? `<span><i class="bi bi-people me-1"></i>${car.seats} chỗ</span>` : ''}
+                            ${car.fuelType ? `<span><i class="bi bi-fuel-pump me-1"></i>${car.fuelType}</span>` : ''}
+                        </div>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                            <div class="fw-800 text-primary fs-6">${car.price.toLocaleString('vi-VN')} đ</div>
+                            <a href="/Car/Details/${car.id}" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold" onclick="event.stopPropagation()">Đặt ngay</a>
                         </div>
                     </div>
                 </div>
-            </div>`;
+            </article>`;
         }
 
-        function applyFilters() {
-            const type = document.getElementById('type-filter').value;
+        function getFilteredCars() {
+            const type = normalizeText(document.getElementById('type-filter').value);
             const trans = document.getElementById('trans-filter').value;
-            const amenity = document.getElementById('amenity-filter').value;
+            const amenity = normalizeText(document.getElementById('amenity-filter').value);
             const ratingInput = parseFloat(document.getElementById('rating-filter').value) || 0;
             const priceVal = parseInt(document.getElementById('price-filter').value) || 0;
 
-            const filtered = rawCarsData.filter(car => {
-                const carType = car.Type || car.type || '';
-                const carTrans = car.Transmission || car.transmission || '';
-                const carPrice = Number(car.PricePerDay || car.pricePerDay || 0);
-                const carRating = Number(car.Rating || car.rating || 0);
-                const carFeatures = car.Features || car.features || '';
+            return rawCarsData.filter(carRaw => {
+                const car = normalizeCar(carRaw);
+                const matchType = !type || normalizeText(car.type) === type;
+                const matchTrans = !trans || normalizeTransmission(car.transmission) === trans;
+                const matchAmenity = !amenity || normalizeText(car.features).includes(amenity);
+                const matchRating = car.rating >= ratingInput;
 
-                const matchType = !type || carType === type;
-                const matchTrans = !trans || carTrans === trans;
-                const matchAmenity = !amenity || (carFeatures && carFeatures.includes(amenity));
-                const matchRating = carRating >= ratingInput;
-                
                 let matchPrice = true;
-                if (priceVal === 800000) matchPrice = carPrice < 800000;
-                else if (priceVal === 1500000) matchPrice = carPrice >= 800000 && carPrice <= 1500000;
-                else if (priceVal === 9999999) matchPrice = carPrice > 1500000;
-                
+                if (priceVal === 800000) matchPrice = car.price < 800000;
+                else if (priceVal === 1500000) matchPrice = car.price >= 800000 && car.price <= 1500000;
+                else if (priceVal === 9999999) matchPrice = car.price > 1500000;
+
                 return matchType && matchTrans && matchAmenity && matchRating && matchPrice;
             });
+        }
 
-            updateDisplay(filtered);
+        function applyFilters() {
+            updateDisplay(getFilteredCars());
         }
 
         function updateDisplay(cars) {
@@ -211,23 +557,19 @@
             const carCount = document.getElementById('car-count');
             const resultCount = document.getElementById('result-count');
 
-            if (cars.length === 0) {
-                carList.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-emoji-frown display-3 d-block mb-3 opacity-25"></i><p>Không tìm thấy xe phù hợp với bộ lọc.</p></div>';
-                carCount.textContent = '0 xe đang khả dụng';
-                resultCount.textContent = '0 kết quả';
-                if (activeMapObj) {
-                    activeMapObj.renderMarkers([]); // render empty
-                }
-            } else {
-                carCount.textContent = `${cars.length} xe đang khả dụng`;
-                resultCount.textContent = `${cars.length} kết quả`;
-                carList.innerHTML = cars.map(buildCard).join('');
+            carCount.textContent = `${cars.length} xe đang khả dụng`;
+            resultCount.textContent = `${cars.length} xe`;
 
-                if (!activeMapObj) {
-                    activeMapObj = SmartMap.initClusterMap('map', cars, focusCar);
-                } else {
-                    activeMapObj.renderMarkers(cars);
-                }
+            if (cars.length === 0) {
+                carList.innerHTML = '<div class="empty-map-state"><i class="bi bi-search display-5 d-block mb-3 opacity-50"></i><div class="fw-bold text-dark mb-1">Không tìm thấy xe phù hợp</div><div>Thử đổi loại xe, giá hoặc tiện nghi để mở rộng kết quả.</div></div>';
+            } else {
+                carList.innerHTML = cars.map(buildCard).join('');
+            }
+
+            if (!activeMapObj) {
+                activeMapObj = SmartMap.initClusterMap('map', cars, focusCar);
+            } else {
+                activeMapObj.renderMarkers(cars);
             }
         }
 
@@ -239,6 +581,7 @@
                 document.querySelectorAll('.car-pin-price').forEach(p => p.classList.remove('active'));
                 marker.getElement()?.querySelector('.car-pin-price')?.classList.add('active');
             }
+
             document.querySelectorAll('.car-card-small').forEach(c => c.classList.remove('active'));
             const card = document.getElementById('card-' + carId);
             if (card) {
@@ -247,9 +590,40 @@
             }
         }
 
-        // Initial run
         document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('#filter-bar select').forEach(select => {
+                select.addEventListener('change', applyFilters);
+            });
+
+            document.getElementById('resetFiltersBtn')?.addEventListener('click', () => {
+                document.querySelectorAll('#filter-bar select').forEach(select => select.selectedIndex = 0);
+                applyFilters();
+            });
+
+            const filterPanel = document.getElementById('filter-bar');
+            const filterBackdrop = document.getElementById('filterBackdrop');
+            const openFilter = () => {
+                filterPanel.classList.add('is-open');
+                filterBackdrop.classList.add('is-open');
+            };
+            const closeFilter = () => {
+                filterPanel.classList.remove('is-open');
+                filterBackdrop.classList.remove('is-open');
+            };
+
+            document.getElementById('filterOpenBtn')?.addEventListener('click', openFilter);
+            document.getElementById('filterCloseBtn')?.addEventListener('click', closeFilter);
+            filterBackdrop?.addEventListener('click', closeFilter);
+
+            document.getElementById('sheetHeader')?.addEventListener('click', () => {
+                if (window.matchMedia('(max-width: 991.98px)').matches) {
+                    document.getElementById('car-sidebar')?.classList.toggle('is-expanded');
+                    setTimeout(() => activeMapObj?.map?.invalidateSize(), 220);
+                }
+            });
+
             updateDisplay(rawCarsData);
+            setTimeout(() => activeMapObj?.map?.invalidateSize(), 250);
         });
     </script>
 }

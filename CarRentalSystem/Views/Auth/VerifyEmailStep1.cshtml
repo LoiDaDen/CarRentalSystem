@@ -18,7 +18,7 @@
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-danger alert-dismissible fade show animate__animated animate__shakeX" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Html.Encode(errorMessage)
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@errorMessage
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     }
@@ -26,7 +26,7 @@
                     @if (!string.IsNullOrEmpty(successMessage))
                     {
                         <div class="alert alert-success alert-dismissible fade show animate__animated animate__bounceIn" role="alert">
-                            <i class="bi bi-check-circle-fill me-2"></i>@Html.Encode(successMessage)
+                            <i class="bi bi-check-circle-fill me-2"></i>@successMessage
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     }

@@ -1,36 +1,5 @@
 (() => {
-    const themeKey = 'ui_theme';
     const chatKey = 'carrental_chat_session_id';
-
-    function setCookie(name, value, days) {
-        const expires = new Date(Date.now() + days * 864e5).toUTCString();
-        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-    }
-
-    function applyTheme(theme) {
-        document.documentElement.setAttribute('data-bs-theme', theme);
-        localStorage.setItem(themeKey, theme);
-        setCookie(themeKey, theme, 365);
-        document.querySelectorAll('[data-theme-toggle] i').forEach(icon => {
-            icon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
-        });
-    }
-
-    function initTheme() {
-        const cookieTheme = document.cookie.match(/(?:^|; )ui_theme=([^;]+)/)?.[1];
-        const current = localStorage.getItem(themeKey)
-            || (cookieTheme ? decodeURIComponent(cookieTheme) : null)
-            || document.documentElement.getAttribute('data-bs-theme')
-            || 'light';
-
-        applyTheme(current);
-        document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const next = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
-                applyTheme(next);
-            });
-        });
-    }
 
     function getChatSessionId() {
         let id = localStorage.getItem(chatKey);
@@ -42,8 +11,7 @@
     }
 
     window.CarRentalUi = {
-        getChatSessionId,
-        getCulture: () => document.documentElement.lang || navigator.language || 'vi'
+        getChatSessionId
     };
 
     function initAdminTableSearch() {
@@ -81,7 +49,7 @@
                 body: JSON.stringify({
                     message: text,
                     sessionId: getChatSessionId(),
-                    culture: window.CarRentalUi.getCulture()
+                    culture: 'vi'
                 })
             });
             const data = await response.json();
@@ -93,7 +61,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        initTheme();
         initAdminTableSearch();
     });
 })();

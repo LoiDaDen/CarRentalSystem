@@ -635,6 +635,7 @@ namespace CarRentalSystem.Data
 
             // Phase 10: Soft Delete Global Query Filters
             modelBuilder.Entity<Car>().HasQueryFilter(c => !c.IsDeleted);
+            modelBuilder.Entity<BookingHold>().HasQueryFilter(h => !h.Car!.IsDeleted);
             modelBuilder.Entity<Alert>().HasQueryFilter(a => !a.IsDeleted);
             modelBuilder.Entity<Booking>().HasQueryFilter(b => !b.IsDeleted);
             modelBuilder.Entity<BookingAddOn>().HasQueryFilter(ba => !ba.IsDeleted);
@@ -649,6 +650,7 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<MaintenanceLog>().HasQueryFilter(ml => !ml.IsDeleted);
             modelBuilder.Entity<Payment>().HasQueryFilter(p => !p.IsDeleted);
             modelBuilder.Entity<PayOSTransaction>().HasQueryFilter(t => !t.IsDeleted);
+            modelBuilder.Entity<RefundRequest>().HasQueryFilter(r => !r.Booking!.IsDeleted);
             modelBuilder.Entity<RentalContract>().HasQueryFilter(rc => !rc.IsDeleted);
             modelBuilder.Entity<Review>().HasQueryFilter(r => !r.IsDeleted);
             modelBuilder.Entity<Models.Route>().HasQueryFilter(r => !r.IsDeleted);

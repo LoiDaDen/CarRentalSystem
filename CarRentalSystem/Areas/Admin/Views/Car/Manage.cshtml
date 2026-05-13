@@ -1,201 +1,503 @@
 @model IEnumerable<CarRentalSystem.Models.Car>
-@{ 
-    ViewData["Title"] = "Quản lý Đội xe"; 
+@{
+    ViewData["Title"] = "Quản lý Đội xe";
     Layout = "_AdminLayout";
+
+    var cars = Model?.ToList() ?? new List<CarRentalSystem.Models.Car>();
+    var hasFilters = ViewBag.CurrentBrandId != null
+        || ViewBag.CurrentLocationId != null
+        || ViewBag.CurrentStatusId != null
+        || ViewBag.CurrentAreaId != null;
+    var availableCars = cars.Count(c => string.Equals(c.CarStatus?.Name, "Available", StringComparison.OrdinalIgnoreCase));
+    var rentedCars = cars.Count(c => string.Equals(c.CarStatus?.Name, "Rented", StringComparison.OrdinalIgnoreCase));
+    var maintenanceCars = cars.Count(c => string.Equals(c.CarStatus?.Name, "Maintenance", StringComparison.OrdinalIgnoreCase));
 }
 
-<div class="theme-admin page-admin-carmanage">
-    <!-- Page Header -->
-    <div class="page-header mb-4">
-        <div>
-            <h2 class="fw-800 ls-neg-1 mb-1">Quản lý Đội xe</h2>
-            <p class="text-muted mb-0">Xem và quản lý tất cả phương tiện trong hệ thống.</p>
-        </div>
-        <div class="d-flex gap-2">
-            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-            {
-                <a asp-area="Admin" asp-controller="Car" asp-action="Trash" class="btn btn-outline-danger shadow-sm px-4 py-2 rounded-3 fw-bold">
-                    <i class="bi bi-trash me-2"></i>Thùng rác
-                </a>
-            }
-            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-            {
-                <a asp-area="Admin" asp-controller="Car" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
-                    <i class="bi bi-plus-lg me-2"></i>Thêm xe mới
-                </a>
-            }
-        </div>
-    </div>
+<style>
+    .admin-fleet-page {
+        color: var(--admin-text);
+    }
 
-    <!-- Filter Bar -->
-    <div class="filter-bar">
+    .admin-fleet-page .min-w-0 {
+        min-width: 0;
+    }
+
+    .admin-fleet-hero {
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 22px;
+        background:
+            radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.18), transparent 34%),
+            linear-gradient(135deg, #111827 0%, #1e293b 100%);
+        box-shadow: 0 18px 40px rgba(2, 6, 23, 0.24);
+    }
+
+    .fleet-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(118px, 1fr));
+        gap: 10px;
+        min-width: min(520px, 48%);
+    }
+
+    .fleet-stat-card {
+        padding: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.56);
+    }
+
+    .fleet-filter-card,
+    .fleet-table-card,
+    .fleet-mobile-card {
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 20px;
+        background: #111827;
+        box-shadow: 0 14px 36px rgba(2, 6, 23, 0.18);
+    }
+
+    .fleet-filter-card {
+        padding: 16px;
+    }
+
+    .fleet-filter-card .form-select {
+        min-height: 42px;
+        border-color: #334155;
+        background-color: #0f172a;
+        color: #f8fafc;
+        font-weight: 700;
+    }
+
+    .fleet-filter-card .form-select:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+
+    .fleet-filter-card .form-label {
+        margin-bottom: 6px;
+        color: #94a3b8 !important;
+        font-size: 0.68rem;
+        letter-spacing: 0.05em;
+    }
+
+    .fleet-table-card {
+        overflow: hidden;
+    }
+
+    .fleet-table-card .table {
+        color: #e5e7eb;
+    }
+
+    .fleet-table-card .table thead {
+        background: #0f172a;
+    }
+
+    .fleet-table-card .table > :not(caption) > * > * {
+        padding-top: 14px;
+        padding-bottom: 14px;
+        border-color: rgba(148, 163, 184, 0.14);
+    }
+
+    .fleet-car-thumb {
+        width: 58px;
+        height: 58px;
+        flex: 0 0 58px;
+        overflow: hidden;
+        border-radius: 14px;
+        background: #1e293b;
+    }
+
+    .fleet-car-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .fleet-mobile-list {
+        display: none;
+    }
+
+    .fleet-mobile-card {
+        padding: 14px;
+    }
+
+    .fleet-mobile-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .fleet-mobile-meta > div {
+        padding: 10px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.78);
+    }
+
+    @@media (max-width: 1199.98px) {
+        .admin-fleet-hero {
+            flex-direction: column;
+        }
+
+        .fleet-stat-grid {
+            min-width: 0;
+            width: 100%;
+        }
+    }
+
+    @@media (max-width: 991.98px) {
+        .fleet-table-card {
+            display: none;
+        }
+
+        .fleet-mobile-list {
+            display: grid;
+            gap: 12px;
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .admin-fleet-hero,
+        .fleet-filter-card {
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .admin-fleet-hero h2 {
+            font-size: 1.35rem;
+            line-height: 1.25;
+        }
+
+        .fleet-stat-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .fleet-filter-card .btn,
+        .fleet-filter-card .form-select {
+            width: 100%;
+            min-height: 48px;
+        }
+
+        .fleet-mobile-meta {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="theme-admin admin-fleet-page">
+    <section class="admin-fleet-hero mb-4">
+        <div class="d-flex flex-column justify-content-between">
+            <div>
+                <div class="text-uppercase fw-bold text-primary mb-2" style="font-size:0.72rem;letter-spacing:.08em;">Fleet Operations</div>
+                <h2 class="fw-800 mb-2">Quản lý Đội xe</h2>
+                <p class="text-muted mb-0">Theo dõi xe, khu vực, trạng thái vận hành và thao tác quản trị từ một màn hình.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                {
+                    <a asp-area="Admin" asp-controller="Car" asp-action="Trash" class="btn btn-outline-danger rounded-3 fw-bold px-3">
+                        <i class="bi bi-trash me-2"></i>Thùng rác
+                    </a>
+                    <a asp-area="Admin" asp-controller="Car" asp-action="Create" class="btn btn-primary rounded-3 fw-bold px-3">
+                        <i class="bi bi-plus-lg me-2"></i>Thêm xe mới
+                    </a>
+                }
+            </div>
+        </div>
+
+        <div class="fleet-stat-grid">
+            <div class="fleet-stat-card">
+                <div class="small text-muted text-uppercase fw-bold">Tổng xe</div>
+                <div class="fs-4 fw-800">@cars.Count</div>
+            </div>
+            <div class="fleet-stat-card">
+                <div class="small text-muted text-uppercase fw-bold">Khả dụng</div>
+                <div class="fs-4 fw-800 text-success">@availableCars</div>
+            </div>
+            <div class="fleet-stat-card">
+                <div class="small text-muted text-uppercase fw-bold">Đang thuê</div>
+                <div class="fs-4 fw-800 text-warning">@rentedCars</div>
+            </div>
+            <div class="fleet-stat-card">
+                <div class="small text-muted text-uppercase fw-bold">Bảo trì</div>
+                <div class="fs-4 fw-800 text-danger">@maintenanceCars</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="fleet-filter-card mb-4">
         <form method="get" asp-action="Manage" class="row g-3 align-items-end">
             @if (User.IsInRole("Admin"))
             {
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold text-uppercase">Khu vực</label>
+                <div class="col-xl-3 col-md-6">
+                    <label class="form-label fw-bold text-uppercase">Khu vực quản lý</label>
                     <select name="areaId" class="form-select" onchange="this.form.submit()">
                         <option value="">Tất cả khu vực</option>
                         @if (ViewBag.Areas != null)
                         {
-                            foreach (var a in ViewBag.Areas)
+                            foreach (var area in ViewBag.Areas)
                             {
-                                <option value="@a.AreaID" selected="@(ViewBag.CurrentAreaId == a.AreaID)">@a.Name — @a.Province</option>
+                                <option value="@area.AreaID" selected="@(ViewBag.CurrentAreaId == area.AreaID)">@area.Name - @area.Province</option>
                             }
                         }
                     </select>
                 </div>
             }
-            <div class="col-md-3">
-                <label class="form-label text-muted small fw-bold text-uppercase">Hãng xe</label>
+
+            <div class="col-xl-3 col-md-6">
+                <label class="form-label fw-bold text-uppercase">Hãng xe</label>
                 <select name="brandId" class="form-select" onchange="this.form.submit()">
                     <option value="">Tất cả hãng xe</option>
-                    @if(ViewBag.Brands != null)
+                    @if (ViewBag.Brands != null)
                     {
-                        foreach(var brand in ViewBag.Brands)
+                        foreach (var brand in ViewBag.Brands)
                         {
                             <option value="@brand.BrandID" selected="@(ViewBag.CurrentBrandId == brand.BrandID)">@brand.Name</option>
                         }
                     }
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label text-muted small fw-bold text-uppercase">Khu vực / Tỉnh thành</label>
+
+            <div class="col-xl-3 col-md-6">
+                <label class="form-label fw-bold text-uppercase">Tỉnh / điểm xe</label>
                 <select name="locationId" class="form-select" onchange="this.form.submit()">
-                    <option value="">Tất cả khu vực</option>
-                    @if(ViewBag.Locations != null)
+                    <option value="">Tất cả điểm xe được phép</option>
+                    @if (ViewBag.Locations != null)
                     {
-                        foreach(var loc in ViewBag.Locations)
+                        foreach (var loc in ViewBag.Locations)
                         {
                             <option value="@loc.LocationID" selected="@(ViewBag.CurrentLocationId == loc.LocationID)">@loc.Name</option>
                         }
                     }
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label text-muted small fw-bold text-uppercase">Trạng thái xe</label>
+
+            <div class="col-xl-2 col-md-6">
+                <label class="form-label fw-bold text-uppercase">Trạng thái</label>
                 <select name="statusId" class="form-select" onchange="this.form.submit()">
                     <option value="">Tất cả trạng thái</option>
-                    @if(ViewBag.CarStatuses != null)
+                    @if (ViewBag.CarStatuses != null)
                     {
-                        foreach(var status in ViewBag.CarStatuses)
+                        foreach (var status in ViewBag.CarStatuses)
                         {
                             <option value="@status.CarStatusID" selected="@(ViewBag.CurrentStatusId == status.CarStatusID)">@status.Name</option>
                         }
                     }
                 </select>
             </div>
-            @if (ViewBag.CurrentBrandId != null || ViewBag.CurrentLocationId != null || ViewBag.CurrentStatusId != null || ViewBag.CurrentAreaId != null)
-            {
-                <div class="col-12 text-end">
-                    <a asp-action="Manage" class="btn btn-outline-secondary rounded-3 px-4 py-2">
-                        <i class="bi bi-x-circle me-1"></i> Bỏ lọc
-                    </a>
-                </div>
-            }
-        </form>
-    </div>
 
-    <!-- Data Table -->
-    <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 table-car">
-                <thead>
-                    <tr class="small text-uppercase fw-bold" style="color: var(--admin-text-secondary);">
-                        <th class="ps-4">Phương tiện</th>
-                        <th>Biển số / VIN</th>
-                        <th>Loại / Nhiên liệu</th>
-                        <th>Giá/Ngày</th>
-                        <th>Trạng thái</th>
-                        <th class="text-end pe-4">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var car in Model)
+            <div class="col-xl-1 col-12">
+                @if (hasFilters)
+                {
+                    if (User.IsInRole("Admin"))
                     {
-                        <tr>
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="car-avatar-admin rounded-3 overflow-hidden" style="width: 50px; height: 50px; background: var(--admin-surface-2);">
-                                        @if (car.CarImages?.Any() == true)
-                                        {
-                                            <img src="@car.CarImages.First().ImageUrl" alt="@car.CarName" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
-                                        }
-                                        else
-                                        {
-                                            <i class="bi bi-car-front text-primary d-flex align-items-center justify-content-center h-100" style="font-size:1.4rem;"></i>
-                                        }
-                                    </div>
-                                    <div>
-                                        <div class="fw-800 d-flex align-items-center gap-2 mb-1">
-                                            <span>@car.CarBrand?.Name @car.CarName</span>
-                                            @if(car.OwnerID == null)
+                        <a asp-action="Manage" class="btn btn-outline-light rounded-3 fw-bold w-100">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-action="Manage" asp-route-areaId="@ViewBag.CurrentAreaId" class="btn btn-outline-light rounded-3 fw-bold w-100">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    }
+                }
+                else
+                {
+                    <button type="button" class="btn btn-outline-secondary rounded-3 fw-bold w-100" disabled>
+                        <i class="bi bi-filter"></i>
+                    </button>
+                }
+            </div>
+        </form>
+    </section>
+
+    @if (!cars.Any())
+    {
+        <div class="fleet-filter-card text-center py-5">
+            <i class="bi bi-car-front display-4 text-muted opacity-50 d-block mb-3"></i>
+            <h5 class="fw-800">Không có xe phù hợp</h5>
+            <p class="text-muted mb-0">Hãy đổi bộ lọc hoặc kiểm tra lại khu vực được phân quyền.</p>
+        </div>
+    }
+    else
+    {
+        <section class="fleet-table-card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 table-car">
+                    <thead>
+                        <tr class="small text-uppercase fw-bold" style="color: var(--admin-text-secondary);">
+                            <th class="ps-4">Phương tiện</th>
+                            <th>Biển số / VIN</th>
+                            <th>Loại / nhiên liệu</th>
+                            <th>Giá/ngày</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end pe-4">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var car in cars)
+                        {
+                            var statusName = car.CarStatus?.Name ?? "Unknown";
+                            var statusClass = statusName.ToLower() switch
+                            {
+                                "available" => "bg-success",
+                                "rented" => "bg-warning text-dark",
+                                "maintenance" => "bg-danger",
+                                _ => "bg-secondary"
+                            };
+                            var carImage = car.CarImages?.FirstOrDefault()?.ImageUrl ?? car.ImageURL;
+
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="fleet-car-thumb">
+                                            @if (!string.IsNullOrWhiteSpace(carImage))
                                             {
-                                                <span class="badge bg-primary-subtle text-primary border border-primary" style="font-size: 0.65rem;"><i class="bi bi-building"></i> Hệ Thống</span>
+                                                <img src="@carImage" alt="@car.CarName" loading="lazy">
                                             }
                                             else
                                             {
-                                                <span class="badge bg-info-subtle text-info border border-info" style="font-size: 0.65rem;"><i class="bi bi-person-badge"></i> Đối Tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
+                                                <i class="bi bi-car-front text-primary d-flex align-items-center justify-content-center h-100" style="font-size:1.5rem;"></i>
                                             }
                                         </div>
-                                        <small class="text-muted"><i class="bi bi-people me-1"></i>@car.Seats chỗ · @car.Transmission</small>
+                                        <div class="min-w-0">
+                                            <div class="fw-800 d-flex align-items-center gap-2 flex-wrap mb-1">
+                                                <span>@car.CarBrand?.Name @car.CarName</span>
+                                                @if (car.OwnerID == null)
+                                                {
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary">Hệ thống</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-info-subtle text-info border border-info">Đối tác @(car.Owner?.Name != null ? "- " + car.Owner.Name : "")</span>
+                                                }
+                                            </div>
+                                            <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>@(car.Location?.Name ?? "Chưa rõ") · @car.Seats chỗ · @car.Transmission</small>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-light border fw-bold d-block mb-1" style="font-family: monospace; border-radius: 8px; max-width: 130px;">
-                                    <i class="bi bi-card-text me-1" style="color: var(--admin-primary);"></i>@car.LicensePlate
-                                </span>
-                                @if (!string.IsNullOrEmpty(car.VIN))
-                                {
-                                    <small class="text-muted d-block" style="font-size: 0.65rem;">VIN: @car.VIN</small>
-                                }
-                            </td>
-                            <td>
-                                <span class="badge bg-light border fw-bold" style="font-size: 0.75rem; border-radius: 8px;">@car.CarType?.Name</span>
-                                <br>
-                                <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">
-                                    <i class="bi bi-fuel-pump me-1"></i>@car.FuelType
-                                </small>
-                            </td>
-                            <td>
-                                <span class="fw-bold" style="color: var(--admin-primary);">@car.PricePerDay.ToString("N0")<small class="text-muted fw-normal">đ/ngày</small></span>
-                            </td>
-                            <td>
-                                @{
-                                    var statusName = car.CarStatus?.Name ?? "Unknown";
-                                    var statusClass = statusName.ToLower() switch {
-                                        "available" => "bg-success",
-                                        "rented" => "bg-warning text-dark",
-                                        "maintenance" => "bg-danger",
-                                        _ => "bg-secondary"
-                                    };
-                                }
-                                <span class="badge @statusClass px-3 py-1 rounded-pill">@statusName</span>
-                            </td>
-                            <td class="text-end pe-4">
-                                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                                {
-                                    <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-outline-primary btn-sm rounded-pill px-3" title="Chỉnh sửa">
-                                        <i class="bi bi-pencil me-1"></i>Sửa
-                                    </a>
-                                }
-                                <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Chi tiết">
-                                    <i class="bi bi-eye me-1"></i>Chi tiết
-                                </a>
-                                @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                                {
-                                    <form asp-action="Delete" asp-route-id="@car.CarID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn đưa xe này vào thùng rác?');">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3" title="Xóa mềm">
-                                            <i class="bi bi-trash me-1"></i>Xóa
-                                        </button>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border fw-bold d-block mb-1" style="font-family: monospace; border-radius: 8px; max-width: 140px;">
+                                        <i class="bi bi-card-text me-1 text-primary"></i>@car.LicensePlate
+                                    </span>
+                                    @if (!string.IsNullOrEmpty(car.VIN))
+                                    {
+                                        <small class="text-muted d-block" style="font-size: 0.68rem;">VIN: @car.VIN</small>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border fw-bold">@car.CarType?.Name</span>
+                                    <small class="text-muted mt-1 d-block"><i class="bi bi-fuel-pump me-1"></i>@car.FuelType</small>
+                                </td>
+                                <td>
+                                    <span class="fw-800 text-primary">@car.PricePerDay.ToString("N0")<small class="text-muted fw-normal">đ/ngày</small></span>
+                                </td>
+                                <td>
+                                    <span class="badge @statusClass px-3 py-2 rounded-pill">@statusName</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <div class="d-inline-flex flex-wrap justify-content-end gap-2">
+                                        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                                <i class="bi bi-pencil me-1"></i>Sửa
+                                            </a>
+                                        }
+                                        <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                                            <i class="bi bi-eye me-1"></i>Chi tiết
+                                        </a>
+                                        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                                        {
+                                            <form asp-action="Delete" asp-route-id="@car.CarID" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn đưa xe này vào thùng rác?');">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                                                    <i class="bi bi-trash me-1"></i>Xóa
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="fleet-mobile-list">
+            @foreach (var car in cars)
+            {
+                var statusName = car.CarStatus?.Name ?? "Unknown";
+                var statusClass = statusName.ToLower() switch
+                {
+                    "available" => "bg-success",
+                    "rented" => "bg-warning text-dark",
+                    "maintenance" => "bg-danger",
+                    _ => "bg-secondary"
+                };
+                var carImage = car.CarImages?.FirstOrDefault()?.ImageUrl ?? car.ImageURL;
+
+                <article class="fleet-mobile-card">
+                    <div class="d-flex gap-3">
+                        <div class="fleet-car-thumb">
+                            @if (!string.IsNullOrWhiteSpace(carImage))
+                            {
+                                <img src="@carImage" alt="@car.CarName" loading="lazy">
+                            }
+                            else
+                            {
+                                <i class="bi bi-car-front text-primary d-flex align-items-center justify-content-center h-100" style="font-size:1.5rem;"></i>
+                            }
+                        </div>
+                        <div class="min-w-0 flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <h6 class="fw-800 mb-1 text-truncate">@car.CarBrand?.Name @car.CarName</h6>
+                                <span class="badge @statusClass rounded-pill">@statusName</span>
+                            </div>
+                            <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>@(car.Location?.Name ?? "Chưa rõ")</div>
+                            <div class="fw-800 text-primary mt-1">@car.PricePerDay.ToString("N0")đ/ngày</div>
+                        </div>
+                    </div>
+
+                    <div class="fleet-mobile-meta mt-3">
+                        <div>
+                            <div class="small text-muted">Biển số</div>
+                            <div class="fw-bold">@car.LicensePlate</div>
+                        </div>
+                        <div>
+                            <div class="small text-muted">Loại xe</div>
+                            <div class="fw-bold">@car.CarType?.Name</div>
+                        </div>
+                        <div>
+                            <div class="small text-muted">Thông số</div>
+                            <div class="fw-bold">@car.Seats chỗ · @car.Transmission</div>
+                        </div>
+                        <div>
+                            <div class="small text-muted">Nguồn xe</div>
+                            <div class="fw-bold">@(car.OwnerID == null ? "Hệ thống" : "Đối tác")</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-light rounded-pill fw-bold">
+                            <i class="bi bi-eye me-1"></i>Chi tiết
+                        </a>
+                        @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@car.CarID" class="btn btn-primary rounded-pill fw-bold">
+                                <i class="bi bi-pencil me-1"></i>Sửa
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@car.CarID" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn đưa xe này vào thùng rác?');">
+                                <button type="submit" class="btn btn-outline-danger rounded-pill fw-bold w-100">
+                                    <i class="bi bi-trash me-1"></i>Xóa
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </article>
+            }
+        </section>
+    }
 </div>

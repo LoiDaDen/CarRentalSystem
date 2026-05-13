@@ -1,6 +1,6 @@
 @{
     ViewData["Title"] = "Nhập Mã Xác Thực";
-    var errorMessage = ViewBag.Error;
+    var errorMessage = ViewBag.Error?.ToString() ?? TempData["ErrorMessage"]?.ToString();
     var successMessage = TempData["SuccessMessage"]?.ToString();
 }
 
@@ -44,7 +44,7 @@
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-danger alert-dismissible fade show animate__animated animate__shakeX" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Html.Encode(errorMessage)
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@errorMessage
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     }
@@ -52,7 +52,7 @@
                     @if (!string.IsNullOrEmpty(successMessage))
                     {
                         <div class="alert alert-success alert-dismissible fade show animate__animated animate__bounceIn" role="alert">
-                            <i class="bi bi-check-circle-fill me-2"></i>@Html.Encode(successMessage)
+                            <i class="bi bi-check-circle-fill me-2"></i>@successMessage
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     }
@@ -64,14 +64,14 @@
                         </div>
                         <p class="text-muted mb-2">Mã xác thực đã được gửi đến</p>
                         <div class="email-box">
-                            <i class="bi bi-at me-2"></i>@Html.Encode(ViewBag.Email)
+                            <i class="bi bi-at me-2"></i>@ViewBag.Email
                         </div>
                         <small class="text-muted d-block mt-2">
                             <i class="bi bi-clock me-1"></i>Mã có hiệu lực trong <strong>5 phút</strong>
                         </small>
                     </div>
 
-                    <form asp-action="VerifyEmailStep2" method="post">
+                    <form asp-action="VerifyEmailStep2" method="post" id="verifyOtpForm">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="email" value="@ViewBag.Email">
 
@@ -108,7 +108,7 @@
 
                     <div class="text-center">
                         <p class="text-muted mb-2">Bạn chưa nhận được mã?</p>
-                        <form asp-action="ResendOtpStep2" method="post" class="d-inline">
+                        <form asp-action="ResendOtpStep2" method="post" class="d-inline" id="resendOtpForm">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="email" value="@ViewBag.Email">
                             <button type="submit" class="btn btn-outline-primary" id="resendBtn">
@@ -305,7 +305,7 @@
                     
                     // Auto submit when all filled
                     if (otpHidden.value.length === 6) {
-                        document.querySelector('form').querySelector('button[type="submit"]').focus();
+                        document.getElementById('verifyOtpForm').querySelector('button[type="submit"]').focus();
                     }
                 });
                 
@@ -333,8 +333,9 @@
             });
             
             // Form submit animation
-            const form = document.querySelector('form');
+            const form = document.getElementById('verifyOtpForm');
             form.addEventListener('submit', function() {
+                updateHiddenInput();
                 const btn = document.getElementById('verifyBtn');
                 btn.querySelector('.verify-text').classList.add('d-none');
                 btn.querySelector('.loading-text').classList.remove('d-none');
@@ -342,9 +343,11 @@
             });
             
             // Resend button animation
-            document.getElementById('resendBtn').addEventListener('click', function() {
-                this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Đang gửi...';
-                this.disabled = true;
+            document.getElementById('resendOtpForm').addEventListener('submit', function() {
+                const resendButton = document.getElementById('resendBtn');
+                resendButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Đang gửi...';
+                resendButton.classList.add('disabled');
+                resendButton.setAttribute('aria-disabled', 'true');
             });
         });
     </script>

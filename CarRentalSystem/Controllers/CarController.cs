@@ -391,6 +391,7 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CarStatus)
                 .Include(c => c.Location)
                 .Include(c => c.CarBrand)
+                .Include(c => c.CarType)
                 .Include(c => c.CarImages)
                 .Include(c => c.Reviews)
                 .Where(c => c.CarStatus!.Name == "Available");

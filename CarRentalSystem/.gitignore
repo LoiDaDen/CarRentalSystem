@@ -25,6 +25,7 @@ App_Data/SecureUploads/
 wwwroot/uploads/ekyc/
 wwwroot/uploads/handovers/
 wwwroot/uploads/cars/
+wwwroot/uploads/drivers/avatars/
 wwwroot/uploads/*.jpg
 wwwroot/uploads/*.jpeg
 wwwroot/uploads/*.png

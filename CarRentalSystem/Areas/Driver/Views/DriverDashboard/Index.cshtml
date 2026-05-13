@@ -8,10 +8,125 @@
     int upcomingCount = ViewBag.UpcomingCount ?? 0;
 }
 
+<style>
+    .driver-dashboard-avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #fff;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+        background: #eff6ff;
+    }
+
+    .driver-dashboard-avatar-placeholder {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #2563eb;
+        background: #eff6ff;
+        border: 3px solid #fff;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+        font-size: 2rem;
+    }
+
+    @@media (max-width: 575.98px) {
+        .driver-dashboard-header {
+            align-items: stretch !important;
+        }
+
+        .driver-dashboard-identity {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .driver-dashboard-identity > div:last-child {
+            width: 100%;
+        }
+
+        .driver-dashboard-avatar,
+        .driver-dashboard-avatar-placeholder {
+            width: 64px;
+            height: 64px;
+        }
+
+        .driver-dashboard-header-actions {
+            width: 100%;
+            flex-direction: column;
+            align-items: stretch !important;
+        }
+
+        .driver-dashboard-header-actions .btn,
+        .driver-dashboard-header-actions form {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .driver-dashboard .stat-card {
+            border-radius: 16px;
+        }
+
+        .driver-dashboard .stat-card .card-body {
+            padding: 16px !important;
+        }
+
+        .driver-dashboard .row.g-4 {
+            --bs-gutter-y: 0.75rem;
+        }
+
+        .driver-dashboard .filter-tabs {
+            width: 100%;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+            scrollbar-width: thin;
+        }
+
+        .driver-dashboard .filter-tabs a {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        .driver-dashboard .booking-card {
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .driver-dashboard .booking-card > .d-flex:first-child,
+        .driver-dashboard .booking-card > .d-flex.border-top {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .driver-dashboard .booking-card .text-end {
+            text-align: left !important;
+        }
+
+        .driver-dashboard .booking-card .btn {
+            width: 100%;
+        }
+    }
+</style>
+
 <div class="driver-dashboard">
     <!-- Header with Driver Info -->
-    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-        <div>
+    <div class="driver-dashboard-header d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3 flex-wrap driver-dashboard-identity">
+            @if (!string.IsNullOrEmpty(driver?.AvatarUrl))
+            {
+                <img src="@driver.AvatarUrl" alt="@driver.FullName" class="driver-dashboard-avatar">
+            }
+            else
+            {
+                <div class="driver-dashboard-avatar-placeholder">
+                    <i class="bi bi-person-bounding-box"></i>
+                </div>
+            }
+            <div>
             <h4 class="fw-800 mb-1 text-dark">Xin chào, @driver?.FullName!</h4>
             <p class="text-muted mb-0 small">Đây là trang quản lý chuyến xe của bạn.</p>
             @if (driver != null)
@@ -28,8 +143,9 @@
                     </span>
                 </div>
             }
+            </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="driver-dashboard-header-actions d-flex align-items-center gap-2">
             <!-- Availability Toggle -->
             <form asp-area="Driver" asp-controller="DriverDashboard" asp-action="ToggleAvailability" method="post" class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-pill border">
                 @Html.AntiForgeryToken()

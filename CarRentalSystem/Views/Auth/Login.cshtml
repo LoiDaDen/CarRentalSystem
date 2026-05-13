@@ -40,13 +40,9 @@
                 @if (ViewBag.Error.ToString().Contains("xác thực"))
                 {
                     <hr />
-                    <form asp-action="ResendVerificationEmail" method="post" class="mt-2">
-                        <p class="small mb-2">Bạn chưa nhận được email? Nhập email của bạn để gửi lại:</p>
-                        <div class="input-group input-group-sm">
-                            <input type="email" name="email" class="form-control" placeholder="Nhập email của bạn..." required>
-                            <button class="btn btn-outline-danger" type="submit">Gửi lại Link</button>
-                        </div>
-                    </form>
+                    <a asp-action="VerifyEmailStep1" class="btn btn-outline-danger btn-sm rounded-pill mt-2">
+                        <i class="bi bi-shield-check me-1"></i>Xác minh tài khoản
+                    </a>
                 }
             </div>
         }
@@ -68,6 +64,15 @@
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm rounded-pill py-3">Đăng Nhập</button>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 small">
+                    <a asp-action="VerifyEmailStep1" class="text-decoration-none">
+                        <i class="bi bi-shield-check me-1"></i>Xác minh tài khoản
+                    </a>
+                    <a asp-action="ForgotPassword" class="text-decoration-none">
+                        <i class="bi bi-question-circle me-1"></i>Quên mật khẩu?
+                    </a>
+                </div>
                 
                 <div class="mt-5 text-center">
                     <p class="text-muted small mb-0">Chưa có tài khoản? <a asp-action="Register" class="fw-bold text-decoration-none">Đăng ký ngay</a></p>

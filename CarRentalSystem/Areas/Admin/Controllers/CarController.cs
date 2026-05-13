@@ -38,8 +38,11 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var userAreas = await GetUserAreasAsync(userId);
             var userAreaIds = userAreas.Select(a => a.AreaID).ToList();
 
-            // Lay areaId hien tai: query string -> cookie/fallback
-            var currentAreaId = await ResolveAreaIdAsync(userId, areaId);
+            // Admin must not be scoped by the working-area cookie on fleet pages.
+            // Manager/Staff still use query -> cookie -> first assigned area.
+            var currentAreaId = role == "Admin"
+                ? areaId
+                : await ResolveAreaIdAsync(userId, areaId);
 
             // Staff/Manager: chi thay xe trong 1 area cu the (khong thay tat ca area)
             if (role == "Staff" || role == "Manager")
@@ -74,11 +77,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
                 // Lay locations CHI trong area dang chon
                 var areaLocationIds = await _areaService.GetLocationIdsForAreaAsync(currentAreaId.Value);
-
-                // Neu chua co locationId -> mac dinh location dau tien trong area
-                if (!locationId.HasValue && areaLocationIds.Count > 0)
+                if (locationId.HasValue && !areaLocationIds.Contains(locationId.Value))
                 {
-                    locationId = areaLocationIds[0];
+                    locationId = null;
                 }
 
                 var query = _context.Cars
@@ -122,6 +123,11 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (currentAreaId.HasValue && currentAreaId.Value > 0)
             {
                 var areaLocationIds = await _areaService.GetLocationIdsForAreaAsync(currentAreaId.Value);
+                if (locationId.HasValue && !areaLocationIds.Contains(locationId.Value))
+                {
+                    locationId = null;
+                }
+
                 var query = _context.Cars
                     .Include(c => c.CarBrand)
                     .Include(c => c.Location)

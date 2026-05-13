@@ -2,6 +2,13 @@
 @{ ViewData["Title"] = "CarRental - Thuê Xe Tự Lái 24/7"; }
 
 <style>
+    .page-home {
+        width: 100vw;
+        margin-top: -1.5rem;
+        margin-left: calc(50% - 50vw);
+        overflow: hidden;
+    }
+
     /* Hero Section - Enterprise Style */
     .hero-section {
         position: relative;
@@ -399,6 +406,10 @@
     /* Responsive */
     <text>
     @@media (max-width: 991.98px) {
+        .page-home {
+            margin-top: -1rem;
+        }
+
         .hero-title {
             font-size: 2rem;
         }
@@ -413,12 +424,77 @@
     }
 
     @@media (max-width: 767.98px) {
+        .page-home {
+            margin-top: -0.75rem;
+        }
+
         .hero-section {
-            padding: 3rem 0 2rem;
+            padding: 2.75rem 0 2rem;
+            min-height: auto;
+        }
+
+        .hero-content {
+            text-align: left !important;
         }
         
         .hero-title {
             font-size: 1.75rem;
+            line-height: 1.16;
+            margin-bottom: 0.75rem;
+        }
+
+        .hero-subtitle {
+            max-width: none;
+            margin-bottom: 1.25rem;
+            font-size: 0.98rem;
+            line-height: 1.55;
+        }
+
+        .search-widget {
+            margin-top: 1.25rem;
+            padding: 1rem;
+            border-radius: 18px;
+        }
+
+        #rentalTabs {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        #rentalTabs .nav-item {
+            width: 100%;
+        }
+
+        .nav-pill-btn {
+            width: 100%;
+            min-height: 46px;
+            justify-content: center;
+            white-space: normal;
+            text-align: center;
+        }
+
+        .search-label {
+            font-size: 0.7rem;
+        }
+
+        .search-input {
+            min-height: 48px;
+            height: auto;
+            font-size: 16px;
+        }
+
+        .search-btn {
+            min-height: 50px;
+            padding: 0.75rem 1rem;
+        }
+
+        .promo-badge {
+            width: 100%;
+            justify-content: center;
+            border-radius: 14px;
+            white-space: normal;
+            text-align: center;
         }
         
         .section-header {

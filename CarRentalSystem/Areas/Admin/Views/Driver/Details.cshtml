@@ -28,9 +28,16 @@
     <div class="col-md-4">
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body text-center p-4">
-                <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
-                    <i class="bi bi-person-fill text-primary display-5"></i>
-                </div>
+                @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                {
+                    <img src="@Model.AvatarUrl" alt="@Model.FullName" class="rounded-circle object-fit-cover mx-auto mb-3 d-block" style="width: 96px; height: 96px; border: 4px solid rgba(59,130,246,.15);">
+                }
+                else
+                {
+                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 96px; height: 96px;">
+                        <i class="bi bi-person-fill text-primary display-5"></i>
+                    </div>
+                }
                 <h5 class="fw-bold">@Model.FullName</h5>
                 <p class="text-muted mb-3">@(Model.Location?.Name ?? "Chưa chọn khu vực")</p>
 

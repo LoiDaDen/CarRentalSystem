@@ -197,7 +197,7 @@ const SmartMap = {
         const renderMarkers = (cars) => {
             activeMarkers.forEach(m => map.removeLayer(m));
             activeMarkers = [];
-            markerMap = {};
+            Object.keys(markerMap).forEach(key => delete markerMap[key]);
 
             cars.forEach(car => {
                 const price = Number(car.PricePerDay || car.pricePerDay || 0);

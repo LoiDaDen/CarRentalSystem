@@ -427,33 +427,28 @@ namespace CarRentalSystem.Controllers
                 return View();
             }
 
-            // Sử dụng atomic update để tránh race condition
-            // Chỉ update nếu: token khớp, chưa hết hạn, và chưa verified
+            if (user.IsEmailVerified)
+            {
+                TempData["SuccessMessage"] = "Tài khoản của bạn đã được xác thực trước đó. Vui lòng đăng nhập.";
+                return RedirectToAction("Login");
+            }
+
+            if (!string.Equals(user.EmailVerificationToken, normalizedOtp, StringComparison.Ordinal))
+            {
+                ViewBag.Error = "Mã OTP không đúng. Vui lòng kiểm tra lại email.";
+                return View();
+            }
+
+            if (user.EmailVerificationTokenExpiry == null || user.EmailVerificationTokenExpiry < DateTime.UtcNow)
+            {
+                ViewBag.Error = "Mã OTP đã hết hạn. Vui lòng nhấn \"Gửi lại mã\" để nhận mã mới.";
+                return View();
+            }
+
             user.IsEmailVerified = true;
             user.EmailVerificationToken = null;
             user.EmailVerificationTokenExpiry = null;
             await _authService.UpdateUserAsync(user);
-            var rowsAffected = 1; // Simulate success for the logic below
-
-            if (rowsAffected == 0)
-            {
-                // Token không hợp lệ, đã hết hạn, hoặc đã được sử dụng
-                var existingUser = await _authService.GetUserByEmailAsync(email);
-                if (existingUser?.IsEmailVerified == true)
-                {
-                    TempData["SuccessMessage"] = "Tài khoản của bạn đã được xác thực trước đó. Vui lòng đăng nhập.";
-                    return RedirectToAction("Login");
-                }
-                if (existingUser?.EmailVerificationTokenExpiry != null && existingUser.EmailVerificationTokenExpiry < DateTime.UtcNow)
-                {
-                    ViewBag.Error = "Mã OTP đã hết hạn. Vui lòng nhấn \"Gửi lại mã\" để nhận mã mới.";
-                }
-                else
-                {
-                    ViewBag.Error = "Mã OTP không đúng. Vui lòng kiểm tra lại email.";
-                }
-                return View();
-            }
 
             TempData["SuccessMessage"] = "Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.";
             return RedirectToAction("Login");
@@ -497,6 +492,102 @@ namespace CarRentalSystem.Controllers
 
             TempData["SuccessMessage"] = "Mã OTP mới đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.";
             return RedirectToAction("VerifyEmailStep2");
+        }
+
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToAction("Index", "Home");
+
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToAction("Index", "Home");
+
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var email = model.Email.Trim();
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                ViewBag.Error = "Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại.";
+                return View(model);
+            }
+
+            var otp = GenerateOtp();
+            user.PasswordResetToken = otp;
+            user.PasswordResetTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            await _authService.UpdateUserAsync(user);
+
+            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                job => job.SendPasswordResetOtpEmail(user.Email, otp));
+
+            TempData["PasswordResetEmail"] = email;
+            TempData["SuccessMessage"] = "Mã OTP đặt lại mật khẩu đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.";
+            return RedirectToAction("ResetPassword", new { email });
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword(string? email)
+        {
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToAction("Index", "Home");
+
+            var emailToUse = TempData["PasswordResetEmail"]?.ToString() ?? email;
+            if (string.IsNullOrWhiteSpace(emailToUse))
+                return RedirectToAction("ForgotPassword");
+
+            TempData["PasswordResetEmail"] = emailToUse;
+            return View(new ResetPasswordViewModel { Email = emailToUse });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+            if (User.Identity?.IsAuthenticated == true)
+                return RedirectToAction("Index", "Home");
+
+            TempData["PasswordResetEmail"] = model.Email;
+
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var email = model.Email.Trim();
+            var otp = model.Otp.Trim();
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                ViewBag.Error = "Email này không tồn tại trong hệ thống. Vui lòng kiểm tra lại.";
+                return View(model);
+            }
+
+            if (!string.Equals(user.PasswordResetToken, otp, StringComparison.Ordinal))
+            {
+                ViewBag.Error = "Mã OTP không đúng. Vui lòng kiểm tra lại email.";
+                return View(model);
+            }
+
+            if (user.PasswordResetTokenExpiry == null || user.PasswordResetTokenExpiry < DateTime.UtcNow)
+            {
+                ViewBag.Error = "Mã OTP đã hết hạn. Vui lòng yêu cầu gửi mã mới.";
+                return View(model);
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiry = null;
+            await _authService.UpdateUserAsync(user);
+
+            TempData["SuccessMessage"] = "Đổi mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.";
+            return RedirectToAction("Login");
         }
 
         /// <summary>

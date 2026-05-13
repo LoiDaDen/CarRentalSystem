@@ -5,7 +5,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="CarRental Driver" />
     <title>@ViewData["Title"] - Driver Dashboard | CarRental</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/pwa-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -186,8 +192,43 @@
 
         @@media (max-width: 768px) {
             body { margin-left: 0; }
-            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar {
+                width: min(86vw, var(--sidebar-width));
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+                box-shadow: 16px 0 40px rgba(15, 23, 42, 0.25);
+            }
             .sidebar.open { transform: translateX(0); }
+            .topbar {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+            .topbar > .d-flex {
+                min-width: 0;
+            }
+            .topbar h4 {
+                font-size: 1rem;
+                line-height: 1.25;
+                white-space: normal;
+            }
+            .driver-page-content {
+                padding: 16px !important;
+            }
+        }
+
+        @@media (max-width: 575.98px) {
+            .topbar {
+                align-items: flex-start;
+            }
+            .topbar .btn {
+                flex: 0 0 auto;
+            }
+            .driver-live-time {
+                display: none !important;
+            }
+            .driver-page-content {
+                padding: 12px !important;
+            }
         }
     </style>
 </head>
@@ -260,7 +301,7 @@
                 </div>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <div class="d-flex align-items-center gap-2 bg-light px-3 py-2 rounded-pill">
+                <div class="d-flex align-items-center gap-2 bg-light px-3 py-2 rounded-pill driver-live-time">
                     <i class="bi bi-clock text-muted small"></i>
                     <span class="small fw-600 text-muted" id="liveTime">@DateTime.Now.ToString("HH:mm - dd/MM/yyyy")</span>
                 </div>
@@ -282,12 +323,13 @@
         </div>
 
         <!-- Page Content -->
-        <div class="p-4">
+        <div class="p-4 driver-page-content">
             @RenderBody()
         </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/pwa.js" asp-append-version="true"></script>
     <script>
         setInterval(() => {
             const now = new Date();

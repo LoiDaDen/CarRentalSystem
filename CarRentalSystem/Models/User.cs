@@ -69,6 +69,10 @@ namespace CarRentalSystem.Models
         public string? EmailVerificationToken { get; set; }
         public DateTime? EmailVerificationTokenExpiry { get; set; }
 
+        [MaxLength(100)]
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiry { get; set; }
+
         public bool IsVerified { get; set; } = false;
         
         public bool IsBlacklisted { get; set; } = false;

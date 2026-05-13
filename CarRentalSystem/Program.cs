@@ -11,13 +11,8 @@ using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using Hangfire.SqlServer;
 using DotNetEnv;
-using Microsoft.AspNetCore.Localization;
-using System.Globalization;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Load .env file (nếu tồn tại) - không crash nếu file không tồn tại
-var envFilePath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
 if (File.Exists(envFilePath))
 {
     try
@@ -30,10 +25,12 @@ if (File.Exists(envFilePath))
     }
 }
 
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
+
 ConfigurationGuard.ValidateProductionConfiguration(builder.Configuration, builder.Environment);
 
 // Add services to the container.
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.AddControllersWithViews(options =>
 {
     // ═══════════════════════════════════════════════════
@@ -41,13 +38,9 @@ builder.Services.AddControllersWithViews(options =>
     // cho mọi POST/PUT/DELETE action (trừ [IgnoreAntiforgeryToken])
     // ═══════════════════════════════════════════════════
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
-})
-.AddViewLocalization()
-.AddDataAnnotationsLocalization();
+});
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-        // Chỉ enable sensitive data logging trong Development
-        .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ICarService, CarService>();
@@ -317,13 +310,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-var supportedCultures = new[] { new CultureInfo("vi-VN"), new CultureInfo("en-US") };
-app.UseRequestLocalization(new RequestLocalizationOptions
-{
-    DefaultRequestCulture = new RequestCulture("vi-VN"),
-    SupportedCultures = supportedCultures,
-    SupportedUICultures = supportedCultures
-});
 app.UseRouting();
 app.UseCors();
 

@@ -63,6 +63,22 @@ namespace CarRentalSystem.BackgroundJobs
             }
         }
 
+        public async Task SendPasswordResetOtpEmail(string email, string otp)
+        {
+            _logger.LogInformation("[Hangfire] Sending password reset OTP to {Email}", email);
+
+            try
+            {
+                await _emailService.SendPasswordResetOtpEmailAsync(email, otp);
+                _logger.LogInformation("[Hangfire] Password reset OTP sent to {Email}", email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Hangfire] Password reset OTP failed for {Email}. Hangfire will retry.", email);
+                throw;
+            }
+        }
+
         public async Task SendApprovalEmail(string email, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, string culture = "vi")
         {
             _logger.LogInformation("[Hangfire] Sending {Role} approval email to {Email}", roleName, email);

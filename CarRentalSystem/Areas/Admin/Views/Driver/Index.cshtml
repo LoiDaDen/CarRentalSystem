@@ -113,9 +113,16 @@
                             <tr>
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center">
-                                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: var(--admin-primary-100); color: var(--admin-primary);">
-                                            <i class="bi bi-person-fill"></i>
-                                        </div>
+                                        @if (!string.IsNullOrEmpty(d.AvatarUrl))
+                                        {
+                                            <img src="@d.AvatarUrl" alt="@d.FullName" class="rounded-circle object-fit-cover" style="width: 40px; height: 40px; border: 2px solid var(--admin-primary-100);">
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: var(--admin-primary-100); color: var(--admin-primary);">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                        }
                                         <div class="ms-3">
                                             <div class="fw-bold">@d.FullName</div>
                                             <small class="text-muted">@d.Phone</small>

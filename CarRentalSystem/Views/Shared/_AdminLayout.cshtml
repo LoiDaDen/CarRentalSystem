@@ -23,9 +23,6 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <script>
-        (function(){var t=localStorage.getItem('ui_theme')||document.cookie.match(/(?:^|; )ui_theme=([^;]+)/)?.[1]||'dark';document.documentElement.setAttribute('data-bs-theme',t);})();
-    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Quản trị Hệ thống</title>
@@ -69,6 +66,27 @@
         /* Dark mode specific overrides */
         .admin-sidebar .text-white-50 { color: rgba(255,255,255,0.5) !important; }
 
+        .admin-shell-row {
+            min-height: 100vh;
+        }
+
+        .admin-main-content {
+            min-width: 0;
+            margin-left: 0 !important;
+        }
+
+        .admin-desktop-topbar {
+            min-width: 0;
+        }
+
+        .admin-desktop-topbar .dropdown-menu {
+            max-width: min(380px, calc(100vw - 32px));
+        }
+
+        .admin-global-search {
+            max-width: 100%;
+        }
+
         @@media (min-width: 992px) {
             .dropdown-menu::before {
                 content: "";
@@ -80,17 +98,84 @@
                 background: transparent;
             }
         }
+
+        @@media (min-width: 768px) {
+            .admin-sidebar {
+                width: 280px !important;
+                flex: 0 0 280px !important;
+                max-width: 280px !important;
+                position: sticky !important;
+                top: 0;
+            }
+
+            .admin-main-content {
+                flex: 1 1 calc(100% - 280px) !important;
+                max-width: calc(100% - 280px) !important;
+                padding-left: 24px !important;
+                padding-right: 24px !important;
+                padding-top: 24px !important;
+                padding-bottom: 24px !important;
+            }
+        }
+
+        @@media (max-width: 767.98px) {
+            html {
+                font-size: 13px;
+            }
+
+            .admin-mobile-header {
+                padding: 12px 14px !important;
+            }
+
+            .admin-mobile-header .navbar-brand {
+                min-width: 0;
+                font-size: 1.05rem !important;
+            }
+
+            .admin-mobile-header .btn {
+                width: 46px;
+                height: 46px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 14px;
+                background: rgba(255, 255, 255, 0.08);
+            }
+
+            .admin-sidebar {
+                width: min(88vw, 320px) !important;
+                max-width: min(88vw, 320px) !important;
+                position: fixed !important;
+            }
+
+            .admin-sidebar .admin-link {
+                min-height: 42px;
+                padding: 0.65rem 0.8rem;
+                border-radius: 12px;
+            }
+
+            .admin-main-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 12px !important;
+                overflow-x: hidden;
+            }
+
+            .admin-global-search {
+                margin-bottom: 12px !important;
+            }
+
+            .admin-global-search input {
+                min-height: 46px;
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body class="theme-admin">
-    <button type="button" class="theme-toggle-btn" data-theme-toggle title="Toggle light/dark"><i class="bi bi-moon-stars"></i></button>
-    <form class="language-switcher" asp-area="" asp-controller="Localization" asp-action="SetLanguage" method="post">
-        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
-        <button name="culture" value="vi-VN" type="submit">VN</button><button name="culture" value="en-US" type="submit">EN</button>
-    </form>
     <div class="container-fluid p-0">
         <!-- Mobile Header -->
-        <div class="d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center shadow-sm sticky-top z-3">
+        <div class="admin-mobile-header d-md-none bg-dark text-white p-3 d-flex justify-content-between align-items-center shadow-sm sticky-top z-3">
             <a class="navbar-brand d-flex align-items-center fs-5 m-0" href="/">
                 <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-admin-mobile" />
                 CarRental
@@ -100,9 +185,9 @@
             </button>
         </div>
 
-        <div class="row g-0">
+        <div class="row g-0 admin-shell-row">
             <!-- Sidebar -->
-            <div class="col-12 col-md-2 admin-sidebar offcanvas-md offcanvas-start d-flex flex-column z-index-master" tabindex="-1" id="adminSidebar" aria-labelledby="adminSidebarLabel" style="height: 100vh; overflow-y: auto; position: sticky; top: 0;">
+            <div class="col-12 col-md-auto admin-sidebar offcanvas-md offcanvas-start d-flex flex-column z-index-master" tabindex="-1" id="adminSidebar" aria-labelledby="adminSidebarLabel" style="height: 100vh; overflow-y: auto; position: sticky; top: 0;">
                 <div class="offcanvas-header d-md-none border-bottom border-light border-opacity-10 mt-2">
                     <span class="offcanvas-title text-white fs-5 fw-bold" id="adminSidebarLabel">
                         <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-admin-offcanvas" />
@@ -357,9 +442,9 @@
             </div>
 
             <!-- Main content -->
-            <main class="col-12 col-md-10 ms-sm-auto px-md-4 py-4 admin-main-content app-main-shell" style="min-height: 100vh; overflow-x: hidden; background-color: #0f172a;">
+            <main class="col-12 col-md admin-main-content app-main-shell" style="min-height: 100vh; overflow-x: hidden; background-color: #0f172a;">
                 <!-- Desktop Top Navbar -->
-                <div class="d-none d-md-flex justify-content-between align-items-center mb-4 p-3 rounded-4 shadow-sm" style="background-color: #1e293b; border: 1px solid #475569;">
+                <div class="admin-desktop-topbar d-none d-md-flex justify-content-between align-items-center mb-4 p-3 rounded-4 shadow-sm" style="background-color: #1e293b; border: 1px solid #475569;">
                     <div class="d-flex align-items-center">
                         @if (User.IsInRole("Admin"))
                         {

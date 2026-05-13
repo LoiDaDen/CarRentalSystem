@@ -12,6 +12,7 @@ namespace CarRentalSystem.Services
     {
         Task SendVerificationEmailAsync(string toEmail, string verificationLink);
         Task SendOtpEmailAsync(string toEmail, string otp);
+        Task SendPasswordResetOtpEmailAsync(string toEmail, string otp);
         Task SendBookingConfirmationEmailAsync(Booking booking, decimal paidAmount);
         Task SendApprovalEmailAsync(string toEmail, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, string culture = "vi");
         Task SendContractReminderEmailAsync(string toEmail, string recipientName, string roleName, string contractNo, DateTime expiresAt, string contractUrl, int daysBeforeDeadline, string culture = "vi");
@@ -93,6 +94,69 @@ namespace CarRentalSystem.Services
                             <div style='background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px 18px;'>
                                 <p style='margin:0;font-size:12px;color:#92400e;line-height:1.6;'>
                                     Neu ban khong thuc hien yeu cau nay, vui long bo qua email nay.<br/>
+                                    Khong chia se ma OTP cho bat ky ai.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='background:#0f172a;padding:20px 40px;text-align:center;'>
+                            <p style='margin:0;font-size:12px;color:#64748b;'>CarRental - He thong thue xe thong minh | 1900 1234</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
+
+            await SendEmailAsync(host, portStr, user, pass, toEmail, subject, body);
+        }
+
+        public async Task SendPasswordResetOtpEmailAsync(string toEmail, string otp)
+        {
+            var smtpSettings = _configuration.GetSection("SmtpSettings");
+            string host = smtpSettings["Host"];
+            string portStr = smtpSettings["Port"];
+            string user = smtpSettings["User"];
+            string pass = smtpSettings["Pass"];
+
+            string subject = "Mã đặt lại mật khẩu - CarRental";
+            string body = $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
+    <title>Dat lai mat khau</title>
+</head>
+<body style='margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;'>
+    <table width='100%' cellpadding='0' cellspacing='0' style='background:#f1f5f9;padding:30px 10px;'>
+        <tr>
+            <td align='center'>
+                <table width='500' cellpadding='0' cellspacing='0' style='background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08);'>
+                    <tr>
+                        <td style='background:linear-gradient(135deg,#0f172a 0%,#2563eb 100%);padding:32px 40px;text-align:center;'>
+                            <h1 style='color:#ffffff;margin:0;font-size:24px;font-weight:700;'>CarRental</h1>
+                            <p style='color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;'>Dat lai mat khau cua ban</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='padding:30px 40px;text-align:center;'>
+                            <p style='margin:0 0 8px;font-size:15px;color:#1e293b;'>Chung toi da nhan duoc yeu cau dat lai mat khau.</p>
+                            <p style='margin:0 0 24px;font-size:14px;color:#64748b;'>Su dung ma OTP ben duoi de tao mat khau moi:</p>
+                            <div style='background:#eff6ff;border:2px dashed #2563eb;border-radius:12px;padding:20px 32px;display:inline-block;margin-bottom:20px;'>
+                                <span style='font-size:36px;font-weight:800;color:#1d4ed8;letter-spacing:8px;'>{otp}</span>
+                            </div>
+                            <p style='margin:0;font-size:13px;color:#dc2626;font-weight:600;'>&#9888; Ma nay chi co hieu luc trong <strong>5 phut</strong>.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='padding:0 40px 30px;'>
+                            <div style='background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px 18px;'>
+                                <p style='margin:0;font-size:12px;color:#92400e;line-height:1.6;'>
+                                    Neu ban khong yeu cau dat lai mat khau, vui long bo qua email nay.<br/>
                                     Khong chia se ma OTP cho bat ky ai.
                                 </p>
                             </div>
