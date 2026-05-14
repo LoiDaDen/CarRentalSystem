@@ -305,6 +305,185 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("AvailabilitySchedules");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.Blog", b =>
+                {
+                    b.Property<int>("BlogID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BlogID"));
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("CategoryID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CoverImageAlt")
+                        .HasMaxLength(220)
+                        .HasColumnType("nvarchar(220)");
+
+                    b.Property<string>("CoverImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MetaDescription")
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)");
+
+                    b.Property<string>("MetaTitle")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<DateTime>("PublishedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ReadingTime")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ThumbnailAlt")
+                        .HasMaxLength(220)
+                        .HasColumnType("nvarchar(220)");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(220)
+                        .HasColumnType("nvarchar(220)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("BlogID");
+
+                    b.HasIndex("CategoryID");
+
+                    b.HasIndex("IsFeatured");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "PublishedDate");
+
+                    b.ToTable("Blogs");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BlogCategory", b =>
+                {
+                    b.Property<int>("BlogCategoryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BlogCategoryID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.HasKey("BlogCategoryID");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("BlogCategories");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BlogTag", b =>
+                {
+                    b.Property<int>("BlogTagID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BlogTagID"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.HasKey("BlogTagID");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("BlogTags");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BlogTagMapping", b =>
+                {
+                    b.Property<int>("BlogID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BlogTagID")
+                        .HasColumnType("int");
+
+                    b.HasKey("BlogID", "BlogTagID");
+
+                    b.HasIndex("BlogTagID");
+
+                    b.ToTable("BlogTagMappings");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.Booking", b =>
                 {
                     b.Property<int>("BookingID")
@@ -3001,6 +3180,36 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.Blog", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.BlogCategory", "Category")
+                        .WithMany("Blogs")
+                        .HasForeignKey("CategoryID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BlogTagMapping", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.Blog", "Blog")
+                        .WithMany("BlogTagMappings")
+                        .HasForeignKey("BlogID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.BlogTag", "BlogTag")
+                        .WithMany("BlogTagMappings")
+                        .HasForeignKey("BlogTagID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Blog");
+
+                    b.Navigation("BlogTag");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.Booking", b =>
                 {
                     b.HasOne("CarRentalSystem.Models.BookingStatus", "BookingStatus")
@@ -3624,6 +3833,21 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("AreaLocations");
 
                     b.Navigation("AreaStaffs");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.Blog", b =>
+                {
+                    b.Navigation("BlogTagMappings");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BlogCategory", b =>
+                {
+                    b.Navigation("Blogs");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.BlogTag", b =>
+                {
+                    b.Navigation("BlogTagMappings");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Booking", b =>

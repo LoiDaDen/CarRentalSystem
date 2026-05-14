@@ -457,7 +457,7 @@ namespace CarRentalSystem.Controllers
 
                 var domain = PaymentUrlResolver.ResolvePublicBaseUrl(HttpContext);
                 var payOSResult = await _payOSPaymentService.CreateHoldPaymentAsync(holdResult.Hold, quote, domain);
-                if (!payOSResult.IsSuccess || payOSResult.Transaction == null)
+                if (!payOSResult.IsSuccess || payOSResult.Transaction == null || string.IsNullOrWhiteSpace(payOSResult.CheckoutUrl))
                 {
                     await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "Long-term PayOS create payment failed.");
                     TempData["Error"] = payOSResult.ErrorMessage ?? "Không thể tạo thanh toán giữ chỗ thuê dài hạn.";
@@ -470,7 +470,7 @@ namespace CarRentalSystem.Controllers
                     payOSResult.Transaction.OrderCode);
 
                 TempData["Success"] = "Xe đã được giữ cho thuê dài hạn. Vui lòng thanh toán giữ chỗ/cọc để hoàn tất.";
-                return RedirectToAction("Hold", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
+                return Redirect(payOSResult.CheckoutUrl);
             }
             catch (Exception ex)
             {

@@ -1,0 +1,129 @@
+@model IEnumerable<Blog>
+@{
+    ViewData["Title"] = "Quản lý Blog";
+    Layout = "_AdminLayout";
+    var blogs = Model.ToList();
+    var categories = ViewBag.Categories as List<BlogCategory> ?? new List<BlogCategory>();
+}
+
+<div class="theme-admin">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+        </div>
+    }
+
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 mb-1"><i class="bi bi-journal-richtext me-2 text-primary"></i>Quản lý Blog</h2>
+            <p class="text-muted mb-0">Tạo nội dung SEO, hướng dẫn khách thuê xe và tăng độ tin cậy cho website.</p>
+        </div>
+        <a asp-area="Admin" asp-controller="Blog" asp-action="Create" class="btn btn-primary rounded-3 fw-bold px-4">
+            <i class="bi bi-plus-lg me-2"></i>Thêm bài viết
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-lg-5">
+                    <label class="form-label small fw-bold text-muted">Từ khóa</label>
+                    <input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Tìm theo tiêu đề, mô tả, tag..." />
+                </div>
+                <div class="col-lg-3">
+                    <label class="form-label small fw-bold text-muted">Danh mục</label>
+                    <select name="categoryId" class="form-select">
+                        <option value="">Tất cả</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.BlogCategoryID" selected="@(ViewBag.CategoryId == category.BlogCategoryID)">@category.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-lg-2">
+                    <label class="form-label small fw-bold text-muted">Trạng thái</label>
+                    <select name="status" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option value="@BlogStatusConstants.Published" selected="@(ViewBag.Status == BlogStatusConstants.Published)">Published</option>
+                        <option value="@BlogStatusConstants.Draft" selected="@(ViewBag.Status == BlogStatusConstants.Draft)">Draft</option>
+                    </select>
+                </div>
+                <div class="col-lg-2 d-grid">
+                    <button class="btn btn-outline-primary fw-bold" type="submit">Lọc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Bài viết</th>
+                        <th>Danh mục</th>
+                        <th>Ngày đăng</th>
+                        <th>Lượt xem</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var blog in blogs)
+                    {
+                        <tr>
+                            <td class="ps-4" style="min-width: 360px;">
+                                <div class="d-flex gap-3 align-items-center">
+                                    <img src="@(blog.ThumbnailUrl ?? "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=200&auto=format&fit=crop")" alt="@blog.Title" class="rounded-3" style="width:72px;height:52px;object-fit:cover;" />
+                                    <div>
+                                        <div class="fw-bold">@blog.Title</div>
+                                        <div class="small text-muted">@blog.Slug</div>
+                                        @if (blog.IsFeatured)
+                                        {
+                                            <span class="badge bg-warning text-dark rounded-pill mt-1">Nổi bật</span>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@blog.Category?.Name</td>
+                            <td class="small">@blog.PublishedDate.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@blog.ViewCount</td>
+                            <td>
+                                <span class="badge rounded-pill @(blog.Status == BlogStatusConstants.Published ? "bg-success-subtle text-success border border-success" : "bg-secondary-subtle text-secondary border")">
+                                    @blog.Status
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a asp-area="" asp-controller="Blog" asp-action="Detail" asp-route-slug="@blog.Slug" target="_blank" class="btn btn-sm btn-outline-secondary rounded-3 me-1">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <form asp-action="ToggleStatus" asp-route-id="@blog.BlogID" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-warning rounded-3 me-1" title="Đổi trạng thái">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                </form>
+                                <a asp-action="Edit" asp-route-id="@blog.BlogID" class="btn btn-sm btn-outline-primary rounded-3 me-1">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@blog.BlogID" method="post" class="d-inline" onsubmit="return confirm('Xóa bài viết này?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (!blogs.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">Chưa có bài viết blog nào.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

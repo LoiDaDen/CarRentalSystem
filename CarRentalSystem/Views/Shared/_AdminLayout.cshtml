@@ -337,7 +337,10 @@
                                 <span><i class="bi bi-headset"></i> CRM & Marketing</span>
                                 <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
-                            <div class="collapse @(new[]{"Promotions", "Contacts", "Reviews"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="crmDropdown">
+                            <div class="collapse @(new[]{"Promotions", "Contacts", "Reviews", "Blog"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="crmDropdown">
+                                <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Blog" ? "active" : "")" asp-area="Admin" asp-controller="Blog" asp-action="Index">
+                                    <i class="bi bi-journal-richtext" style="font-size: 1.1rem;"></i> Blog
+                                </a>
                                 <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Promotions" ? "active" : "")" asp-area="Admin" asp-controller="Promotions" asp-action="Index">
                                     <i class="bi bi-ticket-perforated-fill" style="font-size: 1.1rem;"></i> Mã Khuyến Mãi
                                 </a>

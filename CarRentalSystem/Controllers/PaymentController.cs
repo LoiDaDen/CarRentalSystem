@@ -53,10 +53,10 @@ namespace CarRentalSystem.Controllers
                 return NotFound();
 
             if (reconcile.IsPaid && reconcile.BookingId.HasValue)
-                return RedirectToAction("Deposit", "Booking", new { id = reconcile.BookingId.Value });
+                return RedirectToAction("Success", "Payment", new { bookingId = reconcile.BookingId.Value });
 
             if (transaction.Status == PaymentStatusConstants.Paid && transaction.BookingID.HasValue)
-                return RedirectToAction("Deposit", "Booking", new { id = transaction.BookingID.Value });
+                return RedirectToAction("Success", "Payment", new { bookingId = transaction.BookingID.Value });
 
             var quote = DeserializeQuote(transaction.BookingHold?.QuoteSnapshotJson) ?? new CheckoutQuoteViewModel
             {
@@ -81,7 +81,8 @@ namespace CarRentalSystem.Controllers
                 Quote = quote
             };
 
-            return View(vm);
+            TempData["Info"] = "PayOS chưa xác nhận giao dịch thành công. Nếu bạn đã thanh toán, hệ thống sẽ tự động cập nhật trong giây lát.";
+            return View("Pending", transaction);
         }
 
         [HttpGet]
@@ -124,9 +125,17 @@ namespace CarRentalSystem.Controllers
             if (transaction?.BookingTransaction == null)
                 return NotFound();
 
+            if (reconcile.IsPaid || transaction.Status == PaymentStatusConstants.Paid)
+                return RedirectToAction("SuccessTransaction", "Payment", new { transactionId = transaction.BookingTransaction.TransactionID });
+
+            TempData["Error"] = "PayOS chưa xác nhận giao dịch thành công. Nếu bạn đã thanh toán, vui lòng chờ trong giây lát rồi kiểm tra lại chuyến xe.";
+            return RedirectToAction("Index", "Cart");
+
+#if false
             if (!reconcile.IsPaid)
                 TempData["Success"] = "Thanh toán đã được gửi về PayOS. Hệ thống sẽ cập nhật đơn khi webhook xác nhận tiền đã vào.";
-            return RedirectToAction("DepositTransaction", "Booking", new { id = transaction.BookingTransaction.TransactionID });
+            return RedirectToAction("SuccessTransaction", "Payment", new { transactionId = transaction.BookingTransaction.TransactionID });
+#endif
         }
 
         [HttpGet]
@@ -146,7 +155,7 @@ namespace CarRentalSystem.Controllers
             TempData["Error"] = "Bạn đã hủy thanh toán giỏ hàng. Các phiếu giữ xe đã được giải phóng.";
             return transaction.BookingTransaction == null
                 ? RedirectToAction("Index", "Cart")
-                : RedirectToAction("DepositTransaction", "Booking", new { id = transaction.BookingTransaction.TransactionID });
+                : RedirectToAction("Index", "Cart");
         }
 
         [HttpGet]
@@ -223,7 +232,14 @@ namespace CarRentalSystem.Controllers
                 TempData["Success"] = "Thanh toán đã được gửi về PayOS. Hệ thống sẽ cập nhật đơn khi webhook xác nhận tiền đã vào.";
             }
 
-            return RedirectToAction("Deposit", "Booking", new { id = bookingId });
+            var latestTransaction = await _context.PayOSTransactions
+                .Where(t => t.BookingID == bookingId)
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync();
+            ViewBag.PaidAmount = latestTransaction?.Amount ?? booking.Payment?.Amount ?? booking.ReservationFee;
+            ViewBag.PayOSStatus = latestTransaction?.Status ?? booking.Payment?.PaymentStatus;
+
+            return View(booking);
         }
 
         [HttpGet]
@@ -237,11 +253,20 @@ namespace CarRentalSystem.Controllers
 
             var transaction = await _context.BookingTransactions
                 .Include(t => t.Bookings).ThenInclude(b => b.BookingStatus)
+                .Include(t => t.Bookings).ThenInclude(b => b.Payment)
+                .Include(t => t.Bookings).ThenInclude(b => b.Car).ThenInclude(c => c!.CarBrand)
                 .FirstOrDefaultAsync(t => t.TransactionID == transactionId &&
                     (t.UserID == userId || User.IsInRole("Admin")));
 
             if (transaction == null)
                 return NotFound();
+
+            var payOSTransaction = await _context.PayOSTransactions
+                .Where(t => t.TransactionID == transactionId)
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync();
+            ViewBag.PaidAmount = payOSTransaction?.Amount ?? transaction.Bookings.Sum(b => b.Payment?.Amount ?? b.ReservationFee);
+            ViewBag.PayOSStatus = payOSTransaction?.Status ?? transaction.Status;
 
             return View(transaction);
         }

@@ -61,6 +61,7 @@ builder.Services.AddScoped<IFileUploadValidationService, FileUploadValidationSer
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
+builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<ISnapshotService, SnapshotService>(); // Database snapshot & backup
 builder.Services.AddHttpClient<IDeliveryService, DeliveryService>();
 builder.Services.AddHttpClient<IPayOSPayoutService, PayOSPayoutService>();
@@ -275,12 +276,22 @@ if (!app.Environment.IsEnvironment("Testing") &&
         context.Database.Migrate();
         
         if (app.Environment.IsDevelopment() &&
-            app.Configuration.GetValue<bool>("Security:SeedReferenceDataOnStartup") &&
-            !context.Users.Any())
+            app.Configuration.GetValue<bool>("Security:SeedReferenceDataOnStartup"))
         {
-            DbSeeder.Seed(context);
+            if (!context.Users.Any())
+                DbSeeder.Seed(context);
+            else
+                BlogMockDataSeeder.Seed(context);
         }
     }
+}
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (!context.Database.GetPendingMigrations().Contains("20260514092145_AddBlogModule"))
+        BlogMockDataSeeder.Seed(context);
 }
 
 // Configure the HTTP request pipeline.

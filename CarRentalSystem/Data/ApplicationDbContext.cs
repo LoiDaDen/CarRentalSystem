@@ -32,6 +32,10 @@ namespace CarRentalSystem.Data
         // CRM & Marketing
         public DbSet<Promotion> Promotions { get; set; }
         public DbSet<ContactMessage> ContactMessages { get; set; }
+        public DbSet<Blog> Blogs { get; set; }
+        public DbSet<BlogCategory> BlogCategories { get; set; }
+        public DbSet<BlogTag> BlogTags { get; set; }
+        public DbSet<BlogTagMapping> BlogTagMappings { get; set; }
         
         // Phase 3: Add-ons
         public DbSet<AddOn> AddOns { get; set; }
@@ -211,6 +215,45 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<PaymentWebhookEvent>()
                 .HasIndex(e => new { e.Provider, e.EventKey })
                 .IsUnique();
+
+            modelBuilder.Entity<BlogCategory>()
+                .HasIndex(c => c.Slug)
+                .IsUnique();
+
+            modelBuilder.Entity<BlogTag>()
+                .HasIndex(t => t.Slug)
+                .IsUnique();
+
+            modelBuilder.Entity<Blog>()
+                .HasIndex(b => b.Slug)
+                .IsUnique();
+
+            modelBuilder.Entity<Blog>()
+                .HasIndex(b => new { b.Status, b.PublishedDate });
+
+            modelBuilder.Entity<Blog>()
+                .HasIndex(b => b.IsFeatured);
+
+            modelBuilder.Entity<Blog>()
+                .HasOne(b => b.Category)
+                .WithMany(c => c.Blogs)
+                .HasForeignKey(b => b.CategoryID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<BlogTagMapping>()
+                .HasKey(m => new { m.BlogID, m.BlogTagID });
+
+            modelBuilder.Entity<BlogTagMapping>()
+                .HasOne(m => m.Blog)
+                .WithMany(b => b.BlogTagMappings)
+                .HasForeignKey(m => m.BlogID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BlogTagMapping>()
+                .HasOne(m => m.BlogTag)
+                .WithMany(t => t.BlogTagMappings)
+                .HasForeignKey(m => m.BlogTagID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<RefundRequest>()
                 .Property(r => r.Amount)

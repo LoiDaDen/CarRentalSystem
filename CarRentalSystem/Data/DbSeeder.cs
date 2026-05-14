@@ -243,7 +243,7 @@ namespace CarRentalSystem.Data
             CarMockDataSeeder.Seed(context);
             DriverMockDataSeeder.Seed(context);
             PartnerMockDataSeeder.Seed(context);
+            BlogMockDataSeeder.Seed(context);
         }
     }
 }
-

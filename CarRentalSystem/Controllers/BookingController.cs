@@ -390,7 +390,7 @@ namespace CarRentalSystem.Controllers
 
                 var domain = PaymentUrlResolver.ResolvePublicBaseUrl(HttpContext);
                 var payOSResult = await _payOSPaymentService.CreateHoldPaymentAsync(holdResult.Hold, quote, domain);
-                if (!payOSResult.IsSuccess || payOSResult.Transaction == null)
+                if (!payOSResult.IsSuccess || payOSResult.Transaction == null || string.IsNullOrWhiteSpace(payOSResult.CheckoutUrl))
                 {
                     await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "PayOS create payment failed.");
                     TempData["BookingError"] = payOSResult.ErrorMessage ?? "Không thể tạo thanh toán PayOS.";
@@ -420,7 +420,7 @@ namespace CarRentalSystem.Controllers
                     _logger.LogWarning(auditException, "Failed to write PayOS hold audit log for hold {HoldId}.", holdResult.Hold.BookingHoldID);
                 }
 
-                return RedirectToAction("Hold", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
+                return Redirect(payOSResult.CheckoutUrl);
             }
             catch (Exception ex)
             {

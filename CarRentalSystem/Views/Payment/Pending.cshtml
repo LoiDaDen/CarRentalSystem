@@ -1,0 +1,45 @@
+@model CarRentalSystem.Models.PayOSTransaction
+@{
+    ViewData["Title"] = "Đang chờ xác nhận PayOS";
+}
+
+<div class="container py-5">
+    <div class="mx-auto bg-white border rounded-4 shadow-sm p-4 p-md-5 text-center" style="max-width: 720px;">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning-subtle text-warning mb-4" style="width:88px;height:88px;">
+            <i class="bi bi-hourglass-split display-5"></i>
+        </div>
+        <h1 class="h3 fw-800 mb-2">Đang chờ PayOS xác nhận</h1>
+        <p class="text-muted mb-4">Giao dịch chưa được PayOS báo thành công. Nếu bạn đã thanh toán, hệ thống sẽ tự cập nhật khi nhận xác nhận.</p>
+
+        @if (TempData["Info"] != null)
+        {
+            <div class="alert alert-info text-start rounded-3">
+                <i class="bi bi-info-circle me-2"></i>@TempData["Info"]
+            </div>
+        }
+
+        <div class="bg-light rounded-4 p-3 text-start mb-4">
+            <div class="d-flex justify-content-between py-2 border-bottom">
+                <span class="text-muted">Mã PayOS</span>
+                <span class="fw-bold">@Model.OrderCode</span>
+            </div>
+            <div class="d-flex justify-content-between py-2 border-bottom">
+                <span class="text-muted">Số tiền</span>
+                <span class="fw-bold">@Model.Amount.ToString("N0")đ</span>
+            </div>
+            <div class="d-flex justify-content-between py-2">
+                <span class="text-muted">Trạng thái</span>
+                <span class="fw-bold">@Model.Status</span>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            @if (!string.IsNullOrWhiteSpace(Model.CheckoutUrl))
+            {
+                <a href="@Model.CheckoutUrl" class="btn btn-primary rounded-3 fw-bold px-4">Mở lại PayOS</a>
+            }
+            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-outline-primary rounded-3 fw-bold px-4">Chuyến xe của tôi</a>
+            <a asp-controller="Car" asp-action="Index" class="btn btn-outline-secondary rounded-3 fw-bold px-4">Xem xe</a>
+        </div>
+    </div>
+</div>
