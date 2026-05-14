@@ -6,6 +6,7 @@ using CarRentalSystem.Services;
 using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Middleware;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
@@ -54,6 +55,7 @@ builder.Services.AddScoped<IBookingQuoteService, BookingQuoteService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<IEligibilityService, EligibilityService>();
 builder.Services.AddScoped<IPaymentLedgerService, PaymentLedgerService>();
+builder.Services.AddScoped<IRefundService, RefundService>();
 builder.Services.AddScoped<IBookingTransitionService, BookingTransitionService>();
 builder.Services.AddScoped<IFileUploadValidationService, FileUploadValidationService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
@@ -61,6 +63,7 @@ builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
 builder.Services.AddScoped<ISnapshotService, SnapshotService>(); // Database snapshot & backup
 builder.Services.AddHttpClient<IDeliveryService, DeliveryService>();
+builder.Services.AddHttpClient<IPayOSPayoutService, PayOSPayoutService>();
 builder.Services.AddSingleton<IDeliveryScopeService, DeliveryScopeService>();
 
 // ═══════════════════════════════════════════════════
@@ -90,7 +93,12 @@ builder.Services.AddSingleton<IHolidayPricingService, HolidayPricingService>();
 // ═══════════════════════════════════════════════════
 // 🔒 PII ENCRYPTION — Mã hóa CCCD/GPLX at rest
 // ═══════════════════════════════════════════════════
-builder.Services.AddDataProtection();
+var dataProtectionBuilder = builder.Services.AddDataProtection();
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
 builder.Services.AddScoped<IPiiEncryptionService, PiiEncryptionService>();
 
 builder.Services.AddHttpClient<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>();
@@ -164,6 +172,7 @@ builder.Services.AddScoped<ContractExpirationJob>();
 builder.Services.AddScoped<MaintenanceAlertJob>();
 builder.Services.AddScoped<DepositRefundJob>();
 builder.Services.AddScoped<ExpireBookingHoldsJob>();
+builder.Services.AddScoped<RefundPayoutPollingJob>();
 builder.Services.AddScoped<CleanupUnverifiedAccountsJob>();
 
 builder.Services.AddAuthentication("Cookies")
@@ -183,7 +192,7 @@ builder.Services.AddAuthentication("Cookies")
         options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
             ? CookieSecurePolicy.SameAsRequest
             : CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.Name = "CarRental.Auth";
     });
 
@@ -217,7 +226,7 @@ builder.Services.AddSession(options =>
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
         ? CookieSecurePolicy.SameAsRequest
         : CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
 // ═══════════════════════════════════════════════════
@@ -228,9 +237,19 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
 });
 
+var allowedCorsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options => {
     options.AddDefaultPolicy(policy => {
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        if (builder.Environment.IsDevelopment() && allowedCorsOrigins.Length == 0)
+        {
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            return;
+        }
+
+        policy.WithOrigins(allowedCorsOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -357,7 +376,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 // Chỉ đăng ký recurring jobs khi KHÔNG phải môi trường Testing
 // (Testing dùng InMemory DB, không có SQL Server cho Hangfire)
 if (!app.Environment.IsEnvironment("Testing") &&
-    app.Configuration.GetValue<bool>("Security:SeedReferenceDataOnStartup"))
+    app.Configuration.GetValue("Security:EnableRecurringJobs", true))
 {
     RecurringJob.AddOrUpdate<ContractExpirationJob>(
         "contract-expiration-check",
@@ -379,6 +398,11 @@ if (!app.Environment.IsEnvironment("Testing") &&
         job => job.Execute(),
         "*/5 * * * *");
 
+    RecurringJob.AddOrUpdate<RefundPayoutPollingJob>(
+        "refund-payout-polling",
+        job => job.Execute(),
+        "*/10 * * * *");
+
     // Xóa tài khoản chưa xác thực email sau 24 giờ
     RecurringJob.AddOrUpdate<CleanupUnverifiedAccountsJob>(
         "cleanup-unverified-accounts",
@@ -390,7 +414,8 @@ if (!app.Environment.IsEnvironment("Testing") &&
 // 📦 DATABASE SEED — Đảm bảo có gói thuê dài hạn
 // Chỉ chạy khi KHÔNG phải Testing (Testing dùng InMemory DB đã seed sẵn)
 // ═══════════════════════════════════════════════════
-if (!app.Environment.IsEnvironment("Testing"))
+if (app.Environment.IsDevelopment() &&
+    app.Configuration.GetValue<bool>("Security:SeedReferenceDataOnStartup"))
 {
     using (var scope = app.Services.CreateScope())
     {

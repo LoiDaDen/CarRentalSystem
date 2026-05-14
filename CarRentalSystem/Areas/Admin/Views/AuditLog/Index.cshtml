@@ -7,32 +7,32 @@
 @functions {
     private static string FriendlyAction(string? action) => action switch
     {
-        "GetRecentNotifications" => "Tai thong bao",
-        "GetSecureImage" => "Tai anh bao mat",
-        "GetCartCount" => "Cap nhat gio xe",
-        "CreatePayment" => "Mo cong PayOS",
-        "Webhook" => "PayOS xac nhan",
-        "Book" => "Gui dat xe",
-        "Deposit" => "Mo dat coc",
+        "GetRecentNotifications" => "Tải thông báo",
+        "GetSecureImage" => "Tải ảnh bảo mật",
+        "GetCartCount" => "Cập nhật giỏ xe",
+        "CreatePayment" => "Mở cổng PayOS",
+        "Webhook" => "PayOS xác nhận",
+        "Book" => "Gửi đặt xe",
+        "Deposit" => "Mở đặt cọc",
         "View" => "Xem",
-        "Create" => "Tao moi",
-        "Update" => "Cap nhat",
-        "Delete" => "Xoa",
-        null or "" => "He thong",
+        "Create" => "Tạo mới",
+        "Update" => "Cập nhật",
+        "Delete" => "Xóa",
+        null or "" => "Hệ thống",
         _ => action
     };
 
     private static string FriendlyModule(string? module) => module switch
     {
-        "Booking" => "Don thue xe",
-        "Payment" => "Thanh toan",
+        "Booking" => "Đơn thuê xe",
+        "Payment" => "Thanh toán",
         "Car" => "Xe",
-        "Cart" => "Gio xe",
-        "SecureFile" => "Tep bao mat",
-        "Admin" => "Quan tri",
-        "Auth" => "Tai khoan",
+        "Cart" => "Giỏ xe",
+        "SecureFile" => "Tệp bảo mật",
+        "Admin" => "Quản trị",
+        "Auth" => "Tài khoản",
         "Ekyc" => "eKYC",
-        null or "" => "He thong",
+        null or "" => "Hệ thống",
         _ => module
     };
 
@@ -41,28 +41,28 @@
         if (string.IsNullOrWhiteSpace(description)) return "";
 
         if (description.Contains("GetRecentNotifications", StringComparison.OrdinalIgnoreCase))
-            return "He thong tai thong bao moi cho quan tri.";
+            return "Hệ thống tải thông báo mới cho quản trị.";
         if (description.Contains("GetSecureImage", StringComparison.OrdinalIgnoreCase))
-            return "He thong tai anh bao mat trong phien dang nhap.";
+            return "Hệ thống tải ảnh bảo mật trong phiên đăng nhập.";
         if (description.Contains("GetCartCount", StringComparison.OrdinalIgnoreCase))
-            return "Cap nhat so luong xe trong gio.";
+            return "Cập nhật số lượng xe trong giỏ.";
         if (description.Contains("/Booking/Book", StringComparison.OrdinalIgnoreCase))
-            return "Khach gui yeu cau dat xe.";
+            return "Khách gửi yêu cầu đặt xe.";
         if (description.Contains("/Payment/CreatePayment", StringComparison.OrdinalIgnoreCase))
-            return "Tao link thanh toan PayOS cho khach.";
+            return "Tạo link thanh toán PayOS cho khách.";
         if (description.Contains("/Payment/Webhook", StringComparison.OrdinalIgnoreCase))
-            return "PayOS gui ket qua thanh toan ve he thong.";
+            return "PayOS gửi kết quả thanh toán về hệ thống.";
 
         return description;
     }
 
     private static string ActionBadge(string action) => action switch
     {
-        "Tao moi" or "Gui dat xe" or "Gui yeu cau dat xe" => "bg-success",
-        "Cap nhat" => "bg-warning text-dark",
-        "Xoa" or "Huy" => "bg-danger",
-        "Dang nhap" or "PayOS xac nhan" => "bg-info",
-        "Dang xuat" => "bg-secondary",
+        "Tạo mới" or "Gửi đặt xe" or "Gửi yêu cầu đặt xe" => "bg-success",
+        "Cập nhật" => "bg-warning text-dark",
+        "Xóa" or "Hủy" => "bg-danger",
+        "Đăng nhập" or "PayOS xác nhận" => "bg-info",
+        "Đăng xuất" => "bg-secondary",
         _ => "bg-primary"
     };
 }

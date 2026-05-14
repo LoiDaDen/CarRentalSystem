@@ -33,6 +33,9 @@ namespace CarRentalSystem.ViewModels
         public string? DeliveryAddress { get; set; }
         public decimal InsuranceFee { get; set; }
         public string InsuranceTier { get; set; } = "Basic";
+        public int? ContractTypeID { get; set; }
+        public bool IsLongTerm { get; set; }
+        public int? LongTermMonths { get; set; }
         public decimal AddOnFee { get; set; }
         public decimal DriverFee { get; set; }
         public int? DriverID { get; set; }

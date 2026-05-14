@@ -2083,6 +2083,9 @@ namespace CarRentalSystem.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<int?>("TransactionID")
+                        .HasColumnType("int");
+
                     b.Property<int?>("UserID")
                         .HasColumnType("int");
 
@@ -2099,6 +2102,8 @@ namespace CarRentalSystem.Migrations
                         .IsUnique();
 
                     b.HasIndex("PaymentID");
+
+                    b.HasIndex("TransactionID");
 
                     b.HasIndex("UserID");
 
@@ -2353,6 +2358,107 @@ namespace CarRentalSystem.Migrations
                     b.HasKey("PromotionID");
 
                     b.ToTable("Promotions");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.RefundPayout", b =>
+                {
+                    b.Property<int>("RefundPayoutID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RefundPayoutID"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ApprovalState")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("EncryptedRecipientAccountName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EncryptedRecipientAccountNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EncryptedRecipientBin")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("MaskedRecipientAccount")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("PayOSPayoutId")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("RawResponse")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReferenceId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<int>("RefundRequestID")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TransactionState")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.HasKey("RefundPayoutID");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("ReferenceId")
+                        .IsUnique();
+
+                    b.HasIndex("RefundRequestID");
+
+                    b.ToTable("RefundPayouts");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.RefundRequest", b =>
@@ -3318,6 +3424,11 @@ namespace CarRentalSystem.Migrations
                         .HasForeignKey("PaymentID")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("CarRentalSystem.Models.BookingTransaction", "BookingTransaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("CarRentalSystem.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserID")
@@ -3326,6 +3437,8 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("Booking");
 
                     b.Navigation("BookingHold");
+
+                    b.Navigation("BookingTransaction");
 
                     b.Navigation("Payment");
 
@@ -3373,6 +3486,17 @@ namespace CarRentalSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("LongTermRental");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.RefundPayout", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.RefundRequest", "RefundRequest")
+                        .WithMany()
+                        .HasForeignKey("RefundRequestID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RefundRequest");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.RefundRequest", b =>

@@ -22,7 +22,9 @@ namespace CarRentalSystem.Services
         bool IsConfigured { get; }
         Task<PayOSCreatePaymentResult> CreateDepositPaymentAsync(Booking booking, string returnUrl, string cancelUrl);
         Task<PayOSCreatePaymentResult> CreateHoldPaymentAsync(BookingHold hold, CheckoutQuoteViewModel quote, string baseUrl);
+        Task<PayOSCreatePaymentResult> CreateCartHoldPaymentAsync(BookingTransaction transaction, decimal holdingFee, string baseUrl);
         Task<PayOSWebhookResult> HandleWebhookAsync(Webhook webhookData);
+        Task<PayOSWebhookResult> ReconcilePaymentAsync(long orderCode, string source);
         Task MarkCancelledAsync(int bookingId);
         Task MarkHoldCancelledAsync(long orderCode);
     }

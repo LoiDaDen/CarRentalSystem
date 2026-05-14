@@ -1,6 +1,7 @@
 // CarRentalSystem/Areas/Admin/Controllers/AreaApiController.cs
 using CarRentalSystem.Data;
 using CarRentalSystem.ViewModels.Areas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -15,6 +16,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     /// </summary>
     [Route("admin/api")]
     [ApiController]
+    [Authorize(Roles = "Admin,Manager")]
     public class AreaApiController : ControllerBase
     {
         private readonly ApplicationDbContext _context;

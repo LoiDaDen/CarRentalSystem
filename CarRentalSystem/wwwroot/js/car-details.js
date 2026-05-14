@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (err) {
             console.error('Delivery quote error', err);
             deliveryInScope = false;
-            deliveryScopeMessage = 'Khong the kiem tra pham vi giao xe. Vui long thu lai.';
+            deliveryScopeMessage = 'Không thể kiểm tra phạm vi giao xe. Vui lòng thử lại.';
         }
 
         updatePrices();
@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (locOwner && locOwner.checked && !deliveryInScope) {
                 e.preventDefault();
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire('Thong bao', deliveryScopeMessage || 'Da lo pham vi co the ship.', 'warning');
+                    Swal.fire('Thông báo', deliveryScopeMessage || 'Đã lỡ phạm vi có thể giao xe.', 'warning');
                 } else {
                     alert(deliveryScopeMessage || 'Da lo pham vi co the ship.');
                 }

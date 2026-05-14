@@ -309,6 +309,7 @@
 
 @section Scripts {
 <script>
+    const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
     // ═══ Auto-focus giữa các ô PIN digit ═══
     document.querySelectorAll('.pin-digit').forEach((input, idx, inputs) => {
         input.addEventListener('input', e => {
@@ -369,7 +370,7 @@
 
         fetch('/Auth/VerifyPiiPin', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
             body: JSON.stringify({ pin: digits })
         })
         .then(r => r.json())
@@ -437,7 +438,7 @@
 
         fetch('/Auth/SetPiiPin', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
             body: JSON.stringify({ pin: newPin, oldPin: oldPin || null })
         })
         .then(r => r.json())

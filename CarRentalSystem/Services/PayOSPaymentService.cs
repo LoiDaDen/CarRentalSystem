@@ -24,6 +24,7 @@ namespace CarRentalSystem.Services
         private readonly IPaymentLedgerService _ledger;
         private readonly IReservationService _reservationService;
         private readonly IReferralService _referralService;
+        private readonly ILongTermRentalService _longTermRentalService;
         private readonly PayOSClient? _payOS;
         private readonly ILogger<PayOSPaymentService> _logger;
 
@@ -36,6 +37,7 @@ namespace CarRentalSystem.Services
             IPaymentLedgerService ledger,
             IReservationService reservationService,
             IReferralService referralService,
+            ILongTermRentalService longTermRentalService,
             ILogger<PayOSPaymentService> logger)
         {
             _context = context;
@@ -43,6 +45,7 @@ namespace CarRentalSystem.Services
             _ledger = ledger;
             _reservationService = reservationService;
             _referralService = referralService;
+            _longTermRentalService = longTermRentalService;
             _logger = logger;
 
             var clientId = configuration["PayOS:ClientId"] ?? string.Empty;
@@ -82,9 +85,6 @@ namespace CarRentalSystem.Services
                 PayOSDescription = description
             };
 
-            _context.PayOSTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
-
             var cleanBaseUrl = baseUrl.TrimEnd('/');
             var amountAsLong = (long)Math.Round(quote.HoldingFee, 0, MidpointRounding.AwayFromZero);
             var request = new CreatePaymentLinkRequest
@@ -99,7 +99,7 @@ namespace CarRentalSystem.Services
                 {
                     new()
                     {
-                        Name = $"Phi giu cho xe {quote.CarName}",
+                        Name = $"Phí giữ chỗ xe {quote.CarName}",
                         Quantity = 1,
                         Price = amountAsLong
                     }
@@ -110,6 +110,9 @@ namespace CarRentalSystem.Services
 
             try
             {
+                _context.PayOSTransactions.Add(transaction);
+                await _context.SaveChangesAsync();
+
                 var response = await _payOS.PaymentRequests.CreateAsync(request);
                 ApplyPayOSResponse(transaction, response);
 
@@ -129,11 +132,78 @@ namespace CarRentalSystem.Services
             }
             catch (Exception ex)
             {
-                transaction.Status = PaymentStatusConstants.Failed;
-                transaction.FailedAt = DateTime.UtcNow;
-                transaction.PayOSDescription = ex.Message;
+                await MarkCreatePaymentFailedAsync(transaction, ex, "Failed to create PayOS hold payment for hold {EntityId}.", hold.BookingHoldID);
+                return new PayOSCreatePaymentResult(false, null, "Không thể tạo thanh toán giữ chỗ PayOS. Vui lòng thử lại sau.", transaction.PayOSTransactionID > 0 ? transaction : null);
+            }
+        }
+
+        public async Task<PayOSCreatePaymentResult> CreateCartHoldPaymentAsync(BookingTransaction cartTransaction, decimal holdingFee, string baseUrl)
+        {
+            if (_payOS == null)
+                return new PayOSCreatePaymentResult(false, null, "PayOS is not configured.", null);
+
+            if (holdingFee <= 0)
+                return new PayOSCreatePaymentResult(false, null, "Holding fee is invalid.", null);
+
+            var orderCode = await GenerateUniqueOrderCodeAsync(cartTransaction.TransactionID);
+            var description = $"GIO HANG {cartTransaction.TransactionID}";
+            var transaction = new PayOSTransaction
+            {
+                TransactionID = cartTransaction.TransactionID,
+                UserID = cartTransaction.UserID,
+                OrderCode = orderCode,
+                Amount = holdingFee,
+                Status = PaymentStatusConstants.Pending,
+                PayOSDescription = description
+            };
+
+            var cleanBaseUrl = baseUrl.TrimEnd('/');
+            var amountAsLong = (long)Math.Round(holdingFee, 0, MidpointRounding.AwayFromZero);
+            var request = new CreatePaymentLinkRequest
+            {
+                OrderCode = orderCode,
+                Amount = amountAsLong,
+                Description = description,
+                Items = new List<PaymentLinkItem>
+                {
+                    new()
+                    {
+                        Name = $"Phí giữ chỗ giỏ hàng #{cartTransaction.TransactionID}",
+                        Quantity = 1,
+                        Price = amountAsLong
+                    }
+                },
+                ReturnUrl = $"{cleanBaseUrl}/Payment/Transaction?orderCode={orderCode}",
+                CancelUrl = $"{cleanBaseUrl}/Payment/CancelTransaction?orderCode={orderCode}"
+            };
+
+            try
+            {
+                _context.PayOSTransactions.Add(transaction);
                 await _context.SaveChangesAsync();
-                return new PayOSCreatePaymentResult(false, null, ex.Message, transaction);
+
+                var response = await _payOS.PaymentRequests.CreateAsync(request);
+                ApplyPayOSResponse(transaction, response);
+
+                await _ledger.RecordAsync(new PaymentLedgerEntry
+                {
+                    TransactionID = cartTransaction.TransactionID,
+                    Provider = "PayOS",
+                    OrderCode = transaction.OrderCode,
+                    EntryType = PaymentLedgerEntryTypeConstants.DepositCharge,
+                    Amount = holdingFee,
+                    Status = PaymentStatusConstants.Pending,
+                    IdempotencyKey = $"payos-cart-created:{transaction.OrderCode}",
+                    Description = $"PayOS cart holding payment created for transaction #{cartTransaction.TransactionID}."
+                });
+
+                await _context.SaveChangesAsync();
+                return new PayOSCreatePaymentResult(true, transaction.CheckoutUrl, null, transaction);
+            }
+            catch (Exception ex)
+            {
+                await MarkCreatePaymentFailedAsync(transaction, ex, "Failed to create PayOS cart payment for transaction {EntityId}.", cartTransaction.TransactionID);
+                return new PayOSCreatePaymentResult(false, null, "Không thể tạo thanh toán giữ chỗ giỏ hàng. Vui lòng thử lại sau.", transaction.PayOSTransactionID > 0 ? transaction : null);
             }
         }
 
@@ -209,7 +279,7 @@ namespace CarRentalSystem.Services
                 {
                     new()
                     {
-                        Name = $"Phi giu cho booking #{bookingFromDb.BookingID}",
+                        Name = $"Phí giữ chỗ booking #{bookingFromDb.BookingID}",
                         Quantity = 1,
                         Price = amountAsLong
                     }
@@ -291,6 +361,7 @@ namespace CarRentalSystem.Services
                     .ThenInclude(h => h!.Car)
                 .Include(t => t.BookingHold)
                     .ThenInclude(h => h!.User)
+                .Include(t => t.BookingTransaction)
                 .Include(t => t.Payment)
                 .FirstOrDefaultAsync(t => t.OrderCode == data.OrderCode);
 
@@ -316,6 +387,9 @@ namespace CarRentalSystem.Services
             transaction.WebhookPayload = rawPayload;
 
             var isPaid = string.Equals(data.Code, "00", StringComparison.OrdinalIgnoreCase);
+            if (isPaid && transaction.TransactionID.HasValue && !transaction.BookingID.HasValue && !transaction.BookingHoldID.HasValue)
+                return await ConvertPaidCartToBookingsAsync(transaction, webhookEvent);
+
             if (isPaid && transaction.BookingHoldID.HasValue && !transaction.BookingID.HasValue)
                 return await ConvertPaidHoldToBookingAsync(transaction, webhookEvent);
 
@@ -324,6 +398,111 @@ namespace CarRentalSystem.Services
 
             await MarkTransactionFailedAsync(transaction, webhookEvent);
             return new PayOSWebhookResult(true, false, "Payment failed", transaction.BookingID, transaction.Amount);
+        }
+
+        public async Task<PayOSWebhookResult> ReconcilePaymentAsync(long orderCode, string source)
+        {
+            if (_payOS == null)
+                return new PayOSWebhookResult(false, false, "PayOS not configured", null, null);
+
+            PaymentLink paymentLink;
+            try
+            {
+                paymentLink = await _payOS.PaymentRequests.GetAsync(orderCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not reconcile PayOS order {OrderCode} from {Source}.", orderCode, source);
+                return new PayOSWebhookResult(false, false, "Could not query PayOS payment status", null, null);
+            }
+
+            var paidAmount = Math.Round((decimal)paymentLink.AmountPaid, 0, MidpointRounding.AwayFromZero);
+            if (paymentLink.Status != PaymentLinkStatus.Paid)
+                return new PayOSWebhookResult(true, false, $"Payment status is {paymentLink.Status}", null, paidAmount);
+
+            var transaction = await _context.PayOSTransactions
+                .Include(t => t.Booking)
+                    .ThenInclude(b => b!.User)
+                .Include(t => t.Booking)
+                    .ThenInclude(b => b!.Car)
+                .Include(t => t.BookingHold)
+                    .ThenInclude(h => h!.Car)
+                .Include(t => t.BookingHold)
+                    .ThenInclude(h => h!.User)
+                .Include(t => t.BookingTransaction)
+                .Include(t => t.Payment)
+                .FirstOrDefaultAsync(t => t.OrderCode == orderCode);
+
+            var rawPayload = JsonSerializer.Serialize(new
+            {
+                source,
+                paymentLink.Id,
+                paymentLink.OrderCode,
+                paymentLink.Amount,
+                paymentLink.AmountPaid,
+                paymentLink.AmountRemaining,
+                status = paymentLink.Status.ToString(),
+                paymentLink.Transactions
+            });
+            var eventKey = $"payos-return:{orderCode}:paid:{paidAmount}";
+            var existingEvent = await _context.PaymentWebhookEvents
+                .FirstOrDefaultAsync(e => e.Provider == "PayOS" && e.EventKey == eventKey);
+            if (existingEvent?.Status == "Processed")
+            {
+                return new PayOSWebhookResult(
+                    true,
+                    transaction?.Status == PaymentStatusConstants.Paid,
+                    "Duplicate return reconciliation ignored",
+                    transaction?.BookingID,
+                    paidAmount);
+            }
+
+            var reconcileEvent = existingEvent ?? new PaymentWebhookEvent
+            {
+                Provider = "PayOS",
+                EventKey = eventKey,
+                PayloadHash = ComputeSha256(rawPayload),
+                OrderCode = orderCode,
+                RawPayload = rawPayload,
+                Status = "Received"
+            };
+            if (existingEvent == null)
+                _context.PaymentWebhookEvents.Add(reconcileEvent);
+            else
+            {
+                reconcileEvent.PayloadHash = ComputeSha256(rawPayload);
+                reconcileEvent.RawPayload = rawPayload;
+                reconcileEvent.Error = null;
+                reconcileEvent.Status = "Received";
+            }
+
+            if (transaction == null)
+            {
+                reconcileEvent.Status = "Failed";
+                reconcileEvent.Error = "Transaction not found.";
+                await _context.SaveChangesAsync();
+                return new PayOSWebhookResult(false, true, "Transaction not found", null, paidAmount);
+            }
+
+            var expectedAmount = Math.Round(transaction.Amount, 0, MidpointRounding.AwayFromZero);
+            if (paidAmount != expectedAmount)
+            {
+                reconcileEvent.Status = "Rejected";
+                reconcileEvent.Error = $"Amount mismatch. Expected {expectedAmount}, received {paidAmount}.";
+                await _context.SaveChangesAsync();
+                return new PayOSWebhookResult(false, false, "Amount mismatch", transaction.BookingID, paidAmount);
+            }
+
+            transaction.PayOSCode = "00";
+            transaction.WebhookPayload = rawPayload;
+
+            if (transaction.TransactionID.HasValue && !transaction.BookingID.HasValue && !transaction.BookingHoldID.HasValue)
+                return await ConvertPaidCartToBookingsAsync(transaction, reconcileEvent);
+
+            if (transaction.BookingHoldID.HasValue && !transaction.BookingID.HasValue)
+                return await ConvertPaidHoldToBookingAsync(transaction, reconcileEvent);
+
+            return await ConfirmExistingBookingPaymentAsync(transaction, reconcileEvent);
         }
 
         public async Task MarkCancelledAsync(int bookingId)
@@ -383,6 +562,22 @@ namespace CarRentalSystem.Services
 
             if (transaction.BookingHoldID.HasValue)
                 await _reservationService.ReleaseHoldAsync(transaction.BookingHoldID.Value, "PayOS checkout cancelled.");
+
+            if (transaction.TransactionID.HasValue)
+            {
+                var holds = await _context.BookingHolds
+                    .Where(h => h.TransactionID == transaction.TransactionID.Value && h.Status == BookingHoldStatusConstants.Active)
+                    .ToListAsync();
+                foreach (var hold in holds)
+                {
+                    hold.Status = BookingHoldStatusConstants.Released;
+                    hold.ReleasedAt = DateTime.UtcNow;
+                }
+
+                var bookingTransaction = await _context.BookingTransactions.FindAsync(transaction.TransactionID.Value);
+                if (bookingTransaction != null && bookingTransaction.Status == BookingStatusConstants.Unpaid)
+                    bookingTransaction.Status = PaymentStatusConstants.Cancelled;
+            }
 
             await _context.SaveChangesAsync();
         }
@@ -474,6 +669,7 @@ namespace CarRentalSystem.Services
                     ReservationFee = transaction.Amount,
                     DepositStatus = DepositStatusConstants.Holding,
                     PromotionID = quote.PromotionID,
+                    ContractTypeID = quote.ContractTypeID,
                     DiscountAmount = quote.DiscountAmount,
                     DeliveryAddress = quote.DeliveryAddress,
                     DeliveryFee = quote.DeliveryFee,
@@ -507,6 +703,16 @@ namespace CarRentalSystem.Services
                 if (quote.ReferralDiscountAmount > 0)
                     await _referralService.MarkReferralDiscountUsedAsync(hold.UserID);
 
+                if (quote.IsLongTerm)
+                {
+                    var longTermResult = await _longTermRentalService.CreatePostPaymentLongTermRecordsAsync(
+                        booking.BookingID,
+                        quote.CustomerName,
+                        quote.CustomerPhone);
+                    if (!longTermResult.IsSuccess)
+                        throw new InvalidOperationException(longTermResult.ErrorMessage ?? "Long-term rental records could not be created.");
+                }
+
                 transaction.BookingID = booking.BookingID;
                 transaction.PaymentID = payment.PaymentID;
                 transaction.Status = PaymentStatusConstants.Paid;
@@ -532,12 +738,12 @@ namespace CarRentalSystem.Services
 
                 _context.AuditLogs.Add(new AuditLog
                 {
-                    Action = "Tao don sau thanh toan",
+                    Action = "Tạo đơn sau thanh toán",
                     EntityType = "Thanh toan",
                     EntityId = booking.BookingID,
                     UserId = hold.UserID,
                     UserName = quote.CustomerName,
-                    Description = $"PayOS da xac nhan {transaction.Amount:N0} VND. He thong tao don #{booking.BookingID} tu hold #{hold.BookingHoldID}.",
+                    Description = $"PayOS đã xác nhận {transaction.Amount:N0} VND. Hệ thống tạo đơn #{booking.BookingID} từ hold #{hold.BookingHoldID}.",
                     RequestUrl = "POST /Payment/Webhook",
                     Timestamp = DateTime.UtcNow
                 });
@@ -652,6 +858,214 @@ namespace CarRentalSystem.Services
             await _context.SaveChangesAsync();
         }
 
+        private async Task<PayOSWebhookResult> ConvertPaidCartToBookingsAsync(PayOSTransaction transaction, PaymentWebhookEvent webhookEvent)
+        {
+            var bookingTransaction = transaction.BookingTransaction ??
+                await _context.BookingTransactions.FirstOrDefaultAsync(t => t.TransactionID == transaction.TransactionID);
+            if (bookingTransaction == null)
+            {
+                webhookEvent.Status = "Failed";
+                webhookEvent.Error = "Cart transaction not found.";
+                await _context.SaveChangesAsync();
+                return new PayOSWebhookResult(false, true, "Cart transaction not found", null, transaction.Amount);
+            }
+
+            if (transaction.Status == PaymentStatusConstants.Paid && bookingTransaction.Status == PaymentStatusConstants.Paid)
+            {
+                webhookEvent.Status = "Processed";
+                webhookEvent.ProcessedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                return new PayOSWebhookResult(true, true, "Cart payment already processed", null, transaction.Amount);
+            }
+
+            var snapshot = DeserializeCartSnapshot(bookingTransaction.PendingCartSnapshot);
+            if (snapshot?.Quotes == null || snapshot.Quotes.Count == 0)
+            {
+                webhookEvent.Status = "Failed";
+                webhookEvent.Error = "Cart quote snapshot not found.";
+                await _context.SaveChangesAsync();
+                return new PayOSWebhookResult(false, true, "Cart quote snapshot not found", null, transaction.Amount);
+            }
+
+            var holds = await _context.BookingHolds
+                .Where(h => h.TransactionID == bookingTransaction.TransactionID)
+                .OrderBy(h => h.BookingHoldID)
+                .ToListAsync();
+
+            if (holds.Count != snapshot.Quotes.Count ||
+                holds.Any(h => h.Status != BookingHoldStatusConstants.Active || h.ExpiresAt <= DateTime.UtcNow))
+            {
+                transaction.Status = DepositStatusConstants.UnderReview;
+                transaction.PaidAt = DateTime.UtcNow;
+                bookingTransaction.Status = DepositStatusConstants.UnderReview;
+                webhookEvent.Status = "Processed";
+                webhookEvent.Error = "Cart payment received after one or more holds were unavailable.";
+                webhookEvent.ProcessedAt = DateTime.UtcNow;
+                await _ledger.RecordAsync(new PaymentLedgerEntry
+                {
+                    TransactionID = bookingTransaction.TransactionID,
+                    Provider = "PayOS",
+                    OrderCode = transaction.OrderCode,
+                    EntryType = PaymentLedgerEntryTypeConstants.DepositCharge,
+                    Amount = transaction.Amount,
+                    Status = DepositStatusConstants.UnderReview,
+                    PostedAt = DateTime.UtcNow,
+                    IdempotencyKey = $"payos-cart-under-review:{transaction.OrderCode}",
+                    Description = $"Payment received for cart transaction #{bookingTransaction.TransactionID}, but holds require manual review."
+                });
+                await _context.SaveChangesAsync();
+                return new PayOSWebhookResult(true, true, "Cart payment requires manual review", null, transaction.Amount);
+            }
+
+            await using var dbTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                var pendingStatus = await _context.BookingStatuses
+                    .FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending);
+                if (pendingStatus == null)
+                    throw new InvalidOperationException("Pending booking status is missing.");
+
+                var createdBookings = new List<Booking>();
+                for (var i = 0; i < holds.Count; i++)
+                {
+                    var hold = holds[i];
+                    var quote = snapshot.Quotes[i];
+                    var availability = await _reservationService.CheckCarAvailabilityAsync(
+                        hold.CarID,
+                        hold.StartDate,
+                        hold.EndDate,
+                        ignoreHoldId: hold.BookingHoldID);
+                    if (!availability.IsAvailable)
+                        throw new InvalidOperationException(availability.Reason ?? "A held car is no longer available.");
+
+                    var booking = new Booking
+                    {
+                        UserID = hold.UserID,
+                        CarID = hold.CarID,
+                        TransactionID = bookingTransaction.TransactionID,
+                        StartDate = hold.StartDate,
+                        EndDate = hold.EndDate,
+                        PickupLocationID = quote.PickupLocationID,
+                        ReturnLocationID = quote.ReturnLocationID,
+                        TotalPrice = quote.TotalPrice,
+                        TotalHours = quote.TotalHours,
+                        BookingStatusID = pendingStatus.BookingStatusID,
+                        InsuranceTier = quote.InsuranceTier,
+                        DepositAmount = quote.CollateralAmount,
+                        ReservationFee = quote.HoldingFee,
+                        DepositStatus = DepositStatusConstants.Holding,
+                        PromotionID = quote.PromotionID,
+                        ContractTypeID = quote.ContractTypeID,
+                        DiscountAmount = quote.DiscountAmount,
+                        DeliveryAddress = quote.DeliveryAddress,
+                        DeliveryFee = quote.DeliveryFee,
+                        AddOnFee = quote.AddOnFee
+                    };
+                    _context.Bookings.Add(booking);
+                    await _context.SaveChangesAsync();
+
+                    var payment = new Payment
+                    {
+                        BookingID = booking.BookingID,
+                        Amount = quote.HoldingFee,
+                        PaymentMethod = DepositPaymentMethod,
+                        PaymentStatus = PaymentStatusConstants.Paid,
+                        PaymentDate = DateTime.UtcNow
+                    };
+                    _context.Payments.Add(payment);
+                    await _context.SaveChangesAsync();
+
+                    await AttachAddOnsAsync(booking.BookingID, quote);
+                    if (quote.DriverID.HasValue)
+                        await AttachDriverAsync(booking, quote);
+
+                    if (quote.PromotionID.HasValue)
+                    {
+                        await _context.Promotions
+                            .Where(p => p.PromotionID == quote.PromotionID.Value && p.UsedCount < p.UsageLimit)
+                            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UsedCount, p => p.UsedCount + 1));
+                    }
+
+                    if (quote.ReferralDiscountAmount > 0)
+                        await _referralService.MarkReferralDiscountUsedAsync(hold.UserID);
+
+                    if (quote.IsLongTerm)
+                    {
+                        var longTermResult = await _longTermRentalService.CreatePostPaymentLongTermRecordsAsync(
+                            booking.BookingID,
+                            quote.CustomerName,
+                            quote.CustomerPhone);
+                        if (!longTermResult.IsSuccess)
+                            throw new InvalidOperationException(longTermResult.ErrorMessage ?? "Long-term rental records could not be created.");
+                    }
+
+                    hold.BookingID = booking.BookingID;
+                    hold.Status = BookingHoldStatusConstants.Converted;
+                    hold.ConvertedAt = DateTime.UtcNow;
+
+                    await _ledger.RecordAsync(new PaymentLedgerEntry
+                    {
+                        BookingID = booking.BookingID,
+                        PaymentID = payment.PaymentID,
+                        TransactionID = bookingTransaction.TransactionID,
+                        Provider = "PayOS",
+                        OrderCode = transaction.OrderCode,
+                        EntryType = PaymentLedgerEntryTypeConstants.DepositCharge,
+                        Amount = quote.HoldingFee,
+                        Status = PaymentStatusConstants.Paid,
+                        PostedAt = DateTime.UtcNow,
+                        IdempotencyKey = $"payos-cart-paid:{transaction.OrderCode}:{booking.BookingID}",
+                        Description = $"PayOS cart payment created booking #{booking.BookingID} from hold #{hold.BookingHoldID}."
+                    });
+
+                    createdBookings.Add(booking);
+                }
+
+                transaction.Status = PaymentStatusConstants.Paid;
+                transaction.PaidAt = DateTime.UtcNow;
+                bookingTransaction.Status = PaymentStatusConstants.Paid;
+                bookingTransaction.CompletedAt = DateTime.UtcNow;
+
+                var userCartItems = await _context.CartItems
+                    .Include(ci => ci.Cart)
+                    .Where(ci => ci.Cart.UserID == bookingTransaction.UserID)
+                    .ToListAsync();
+                var cartItemsToRemove = userCartItems
+                    .Where(ci => holds.Any(h => h.CarID == ci.CarID && h.StartDate == ci.StartDate && h.EndDate == ci.EndDate))
+                    .ToList();
+                _context.CartItems.RemoveRange(cartItemsToRemove);
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    Action = "Tạo đơn giỏ hàng sau thanh toán",
+                    EntityType = "Thanh toan",
+                    EntityId = bookingTransaction.TransactionID,
+                    UserId = bookingTransaction.UserID,
+                    Description = $"PayOS confirmed {transaction.Amount:N0} VND. Created {createdBookings.Count} bookings from cart transaction #{bookingTransaction.TransactionID}.",
+                    RequestUrl = "POST /Payment/Webhook",
+                    Timestamp = DateTime.UtcNow
+                });
+
+                webhookEvent.Status = "Processed";
+                webhookEvent.ProcessedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                await dbTransaction.CommitAsync();
+
+                return new PayOSWebhookResult(true, true, "Cart payment confirmed - bookings created", createdBookings.FirstOrDefault()?.BookingID, transaction.Amount);
+            }
+            catch (Exception ex)
+            {
+                await dbTransaction.RollbackAsync();
+                transaction.Status = DepositStatusConstants.UnderReview;
+                transaction.PaidAt = DateTime.UtcNow;
+                bookingTransaction.Status = DepositStatusConstants.UnderReview;
+                webhookEvent.Status = "Failed";
+                webhookEvent.Error = ex.Message;
+                await _context.SaveChangesAsync();
+                return new PayOSWebhookResult(false, true, ex.Message, null, transaction.Amount);
+            }
+        }
+
         private async Task AttachAddOnsAsync(int bookingId, CheckoutQuoteViewModel quote)
         {
             foreach (var line in quote.AddOns.Where(a => a.TotalPrice > 0))
@@ -700,6 +1114,20 @@ namespace CarRentalSystem.Services
             return JsonSerializer.Deserialize<CheckoutQuoteViewModel>(json, JsonOptions);
         }
 
+        private static CartCheckoutSnapshot? DeserializeCartSnapshot(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            return JsonSerializer.Deserialize<CartCheckoutSnapshot>(json, JsonOptions);
+        }
+
+        private sealed class CartCheckoutSnapshot
+        {
+            public List<CheckoutQuoteViewModel> Quotes { get; set; } = new();
+            public decimal TotalAmount { get; set; }
+            public decimal HoldingFee { get; set; }
+            public decimal TotalDeposit { get; set; }
+        }
+
         private static void ApplyPayOSResponse(PayOSTransaction transaction, CreatePaymentLinkResponse response)
         {
             transaction.CheckoutUrl = response.CheckoutUrl;
@@ -716,6 +1144,30 @@ namespace CarRentalSystem.Services
         {
             if (booking.ReservationFee > 0) return booking.ReservationFee;
             return Math.Round(booking.TotalPrice * 0.2m, 0, MidpointRounding.AwayFromZero);
+        }
+
+        private async Task MarkCreatePaymentFailedAsync(PayOSTransaction transaction, Exception exception, string logMessage, int entityId)
+        {
+            _logger.LogError(exception, logMessage, entityId);
+
+            try
+            {
+                var entry = _context.Entry(transaction);
+                if (entry.State == EntityState.Added)
+                {
+                    entry.State = EntityState.Detached;
+                    return;
+                }
+
+                transaction.Status = PaymentStatusConstants.Failed;
+                transaction.FailedAt = DateTime.UtcNow;
+                transaction.PayOSDescription = exception.GetBaseException().Message;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception saveException)
+            {
+                _logger.LogError(saveException, "Failed to mark PayOS create failure for order {OrderCode}.", transaction.OrderCode);
+            }
         }
 
         private async Task<long> GenerateUniqueOrderCodeAsync(int seed)

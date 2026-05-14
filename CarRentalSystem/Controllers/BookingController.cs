@@ -20,6 +20,8 @@ namespace CarRentalSystem.Controllers
         private readonly IBookingQuoteService _quoteService;
         private readonly IPayOSPaymentService _payOSPaymentService;
         private readonly IDeliveryScopeService _deliveryScopeService;
+        private readonly IEligibilityService _eligibilityService;
+        private readonly ILogger<BookingController> _logger;
         private readonly Data.ApplicationDbContext _context;
 
         public BookingController(
@@ -30,6 +32,8 @@ namespace CarRentalSystem.Controllers
             IBookingQuoteService quoteService,
             IPayOSPaymentService payOSPaymentService,
             IDeliveryScopeService deliveryScopeService,
+            IEligibilityService eligibilityService,
+            ILogger<BookingController> logger,
             Data.ApplicationDbContext context)
         {
             _bookingService = bookingService;
@@ -39,6 +43,8 @@ namespace CarRentalSystem.Controllers
             _quoteService = quoteService;
             _payOSPaymentService = payOSPaymentService;
             _deliveryScopeService = deliveryScopeService;
+            _eligibilityService = eligibilityService;
+            _logger = logger;
             _context = context;
         }
 
@@ -57,11 +63,20 @@ namespace CarRentalSystem.Controllers
                         TempData["BookingError"] = "Tài khoản của bạn đã bị khóa: " + user.BlacklistReason;
                         return RedirectToAction("Details", "Car", new { id = CarID });
                     }
-                    if (!user.IsVerified)
+                    var eligibility = await _eligibilityService.CheckRentalEligibilityAsync(userId);
+                    if (!eligibility.IsEligible)
                     {
-                        TempData["BookingError"] = "Vui lòng Xác thực danh tính (eKYC) bằng cách cập nhật CCCD trước khi đặt xe.";
-                        TempData["ShowEkycModal"] = "true";
-                        TempData["EkycReturnUrl"] = $"{Request.Path}{Request.QueryString}";
+                        if (eligibility.FailureCode == EligibilityFailureCode.EkycNotVerified ||
+                            eligibility.FailureCode == EligibilityFailureCode.MissingIdentityDocuments)
+                        {
+                            TempData["ShowEkycModal"] = "true";
+                            TempData["EkycReturnUrl"] = $"{Request.Path}{Request.QueryString}";
+                            TempData["WarningMessage"] = eligibility.Reason ?? "Cần xác thực eKYC trước khi thuê xe.";
+                        }
+                        else
+                        {
+                            TempData["BookingError"] = eligibility.Reason ?? "Tài khoản chưa đủ điều kiện đặt xe.";
+                        }
                         return RedirectToAction("Details", "Car", new { id = CarID });
                     }
                 }
@@ -299,9 +314,20 @@ namespace CarRentalSystem.Controllers
                 var user = await _authService.GetUserByIdAsync(userId);
                 if (user != null)
                 {
-                    if (user.IsBlacklisted || !user.IsVerified)
+                    var eligibility = await _eligibilityService.CheckRentalEligibilityAsync(userId);
+                    if (!eligibility.IsEligible)
                     {
-                        TempData["BookingError"] = "Lỗi xác thực. Vui lòng kiểm tra lại trạng thái tài khoản.";
+                        if (eligibility.FailureCode == EligibilityFailureCode.EkycNotVerified ||
+                            eligibility.FailureCode == EligibilityFailureCode.MissingIdentityDocuments)
+                        {
+                            TempData["ShowEkycModal"] = "true";
+                            TempData["EkycReturnUrl"] = Url.Action("Details", "Car", new { id = booking.CarID }) ?? "/";
+                            TempData["WarningMessage"] = eligibility.Reason ?? "Cần xác thực eKYC trước khi thuê xe.";
+                        }
+                        else
+                        {
+                            TempData["BookingError"] = eligibility.Reason ?? "Lỗi xác thực. Vui lòng kiểm tra lại trạng thái tài khoản.";
+                        }
                         return RedirectToAction("Details", "Car", new { id = booking.CarID });
                     }
                     booking.UserID = userId;
@@ -329,6 +355,9 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
+            BookingHoldResult? holdResult = null;
+            var paymentCreated = false;
+
             try
             {
                 var quote = await _quoteService.BuildQuoteAsync(new BookingQuoteRequest
@@ -348,46 +377,58 @@ namespace CarRentalSystem.Controllers
                 var availability = await _reservationService.CheckCarAvailabilityAsync(booking.CarID, booking.StartDate, booking.EndDate);
                 if (!availability.IsAvailable)
                 {
-                    TempData["BookingError"] = availability.Reason ?? "Xe nay da duoc giu hoac dat trong thoi gian ban chon.";
+                    TempData["BookingError"] = availability.Reason ?? "Xe này đã được giữ hoặc đặt trong thời gian bạn chọn.";
                     return RedirectToAction("Details", "Car", new { id = booking.CarID });
                 }
 
-                var holdResult = await _reservationService.CreateHoldAsync(booking.UserID, booking.CarID, booking.StartDate, booking.EndDate, quote);
+                holdResult = await _reservationService.CreateHoldAsync(booking.UserID, booking.CarID, booking.StartDate, booking.EndDate, quote);
                 if (!holdResult.IsSuccess || holdResult.Hold == null)
                 {
-                    TempData["BookingError"] = holdResult.ErrorMessage ?? "Khong the giu xe. Vui long thu lai.";
+                    TempData["BookingError"] = holdResult.ErrorMessage ?? "Không thể giữ xe. Vui lòng thử lại.";
                     return RedirectToAction("Details", "Car", new { id = booking.CarID });
                 }
 
-                var domain = $"{Request.Scheme}://{Request.Host}";
+                var domain = PaymentUrlResolver.ResolvePublicBaseUrl(HttpContext);
                 var payOSResult = await _payOSPaymentService.CreateHoldPaymentAsync(holdResult.Hold, quote, domain);
                 if (!payOSResult.IsSuccess || payOSResult.Transaction == null)
                 {
                     await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "PayOS create payment failed.");
-                    TempData["BookingError"] = payOSResult.ErrorMessage ?? "Khong the tao thanh toan PayOS.";
+                    TempData["BookingError"] = payOSResult.ErrorMessage ?? "Không thể tạo thanh toán PayOS.";
                     return RedirectToAction("Details", "Car", new { id = booking.CarID });
                 }
+                paymentCreated = true;
 
-                _context.AuditLogs.Add(new AuditLog
+                try
                 {
-                    Action = "Tao QR PayOS",
-                    EntityType = "Thanh toan",
-                    EntityId = holdResult.Hold.BookingHoldID,
-                    UserId = booking.UserID,
-                    UserName = User.Identity?.Name,
-                    Description = $"Khach tao phieu giu cho #{holdResult.Hold.BookingHoldID}, so tien PayOS {quote.HoldingFee:N0} VND. Chua tao don thue.",
-                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                    UserAgent = Request.Headers["User-Agent"].ToString(),
-                    RequestUrl = "POST /Booking/Book",
-                    Timestamp = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync();
+                    _context.AuditLogs.Add(new AuditLog
+                    {
+                        Action = "Tạo QR PayOS",
+                        EntityType = "Thanh toán",
+                        EntityId = holdResult.Hold.BookingHoldID,
+                        UserId = booking.UserID,
+                        UserName = User.Identity?.Name,
+                        Description = $"Khách tạo phiếu giữ chỗ #{holdResult.Hold.BookingHoldID}, số tiền PayOS {quote.HoldingFee:N0} VND. Chưa tạo đơn thuê.",
+                        IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                        UserAgent = Request.Headers["User-Agent"].ToString(),
+                        RequestUrl = "POST /Booking/Book",
+                        Timestamp = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception auditException)
+                {
+                    _logger.LogWarning(auditException, "Failed to write PayOS hold audit log for hold {HoldId}.", holdResult.Hold.BookingHoldID);
+                }
 
                 return RedirectToAction("Hold", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
             }
             catch (Exception ex)
             {
-                TempData["BookingError"] = "Da xay ra loi khi tao thanh toan giu cho: " + ex.Message;
+                if (!paymentCreated && holdResult?.Hold != null)
+                    await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "Exception while creating hold payment.");
+
+                _logger.LogError(ex, "Error while creating hold payment for car {CarId}.", booking.CarID);
+                TempData["BookingError"] = "Đã xảy ra lỗi khi tạo thanh toán giữ chỗ. Hệ thống đã giải phóng giữ chỗ nếu chưa tạo được PayOS. Vui lòng thử lại.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
         }
@@ -1164,12 +1205,12 @@ namespace CarRentalSystem.Controllers
 {termsCarsStr}
 
 ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG, PHƯƠNG THỨC THANH TOÁN
-- Tong tien thue: {baseTotal:N0} VNĐ.
-- Tong cong: {transaction.TotalAmount:N0} VNĐ.
-- Tien coc: {totalDeposit:N0} VNĐ.
+- Tổng tiền thuê: {baseTotal:N0} VNĐ.
+- Tổng cộng: {transaction.TotalAmount:N0} VNĐ.
+- Tiền cọc: {totalDeposit:N0} VNĐ.
 
 ĐIỀU 3: TRÁCH NHIỆM CHUNG
-- Khong su dung xe thue vao muc dich vi pham phap luat.
+- Không sử dụng xe thuê vào mục đích vi phạm pháp luật.
 - Chịu toàn bộ chi phí nhiên liệu, cầu đường, đỗ xe.
 - Trả xe đúng thời gian và địa điểm.
 
@@ -1251,7 +1292,7 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                 }
                 catch (Exception ex)
                 {
-                    TempData["Error"] = "Loi khi tao don: " + ex.Message;
+                    TempData["Error"] = "Lỗi khi tạo đơn: " + ex.Message;
                     return RedirectToAction("Index", "Cart");
                 }
             }

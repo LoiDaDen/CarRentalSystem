@@ -49,6 +49,8 @@ namespace CarRentalSystem.Models
         public const string Cancelled = "Cancelled";
         public const string RefundPending = "RefundPending";
         public const string Refunded = "Refunded";
+        public const string Processing = "Processing";
+        public const string PendingManual = "PendingManual";
     }
 
     public static class BookingHoldStatusConstants
@@ -71,6 +73,8 @@ namespace CarRentalSystem.Models
     {
         public const string PendingReview = "PendingReview";
         public const string Approved = "Approved";
+        public const string Processing = "Processing";
+        public const string PendingManual = "PendingManual";
         public const string Paid = "Paid";
         public const string Rejected = "Rejected";
         public const string Failed = "Failed";

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 using CarRentalSystem.Services;
+using CarRentalSystem.ViewModels;
 
 namespace CarRentalSystem.Controllers
 {
@@ -14,11 +15,25 @@ namespace CarRentalSystem.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IPiiEncryptionService _piiEncryption;
+        private readonly IReservationService _reservationService;
+        private readonly IBookingQuoteService _quoteService;
+        private readonly IPayOSPaymentService _payOSPaymentService;
+        private readonly IEligibilityService _eligibilityService;
 
-        public CartController(ApplicationDbContext context, IPiiEncryptionService piiEncryption)
+        public CartController(
+            ApplicationDbContext context,
+            IPiiEncryptionService piiEncryption,
+            IReservationService reservationService,
+            IBookingQuoteService quoteService,
+            IPayOSPaymentService payOSPaymentService,
+            IEligibilityService eligibilityService)
         {
             _context = context;
             _piiEncryption = piiEncryption;
+            _reservationService = reservationService;
+            _quoteService = quoteService;
+            _payOSPaymentService = payOSPaymentService;
+            _eligibilityService = eligibilityService;
         }
 
         public async Task<IActionResult> Index()
@@ -43,6 +58,9 @@ namespace CarRentalSystem.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            if (HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+            {
+
             // Ensure standard 'Theo tuần' (Weekly) package exists if not already present
             if (!await _context.ContractTypes.AnyAsync(c => c.Name == "Theo tuần"))
             {
@@ -56,6 +74,8 @@ namespace CarRentalSystem.Controllers
                     Description = "Thuê xe theo tuần, giảm 5%"
                 });
                 await _context.SaveChangesAsync();
+            }
+
             }
 
             var currentUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
@@ -84,23 +104,22 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> AddToCart(int carId, DateTime startDate, DateTime endDate, bool withDriver, decimal? estimatedPrice)
         {
             // Validate input
             if (carId <= 0)
             {
-                return Json(new { success = false, message = "ID xe khong hop le." });
+                return Json(new { success = false, message = "ID xe không hợp lệ." });
             }
 
             if (startDate >= endDate)
             {
-                return Json(new { success = false, message = "Ngay bat dau phai truoc ngay ket thuc." });
+                return Json(new { success = false, message = "Ngày bắt đầu phải trước ngày kết thúc." });
             }
 
             if (startDate < DateTime.UtcNow.AddHours(-1))
             {
-                return Json(new { success = false, message = "Khong the dat xe trong qua khu." });
+                return Json(new { success = false, message = "Không thể đặt xe trong quá khứ." });
             }
 
             var userId = GetUserId();
@@ -117,7 +136,7 @@ namespace CarRentalSystem.Controllers
             var existing = cart.CartItems.FirstOrDefault(ci => ci.CarID == carId && ci.StartDate == startDate && ci.EndDate == endDate);
             if (existing != null)
             {
-                return Json(new { success = false, message = "Xe nay da co trong gio hang voi cung khoang thoi gian." });
+                return Json(new { success = false, message = "Xe này đã có trong giỏ hàng với cùng khoảng thời gian." });
             }
 
             // Kiem tra car co ton tai va available khong
@@ -127,28 +146,18 @@ namespace CarRentalSystem.Controllers
 
             if (car == null)
             {
-                return Json(new { success = false, message = "Xe khong ton tai." });
+                return Json(new { success = false, message = "Xe không tồn tại." });
             }
 
             if (car.CarStatus?.Name != "Available")
             {
-                return Json(new { success = false, message = "Xe nay hien khong co san de thue." });
+                return Json(new { success = false, message = "Xe này hiện không có sẵn để thuê." });
             }
 
-            // Kiem tra car khong bi booking trong khoang thoi gian nay
-            var hasBooking = await _context.Bookings
-                .Include(b => b.BookingStatus)
-                .AnyAsync(b => b.CarID == carId &&
-                    b.BookingStatus != null &&
-                    b.BookingStatus.Name != "Cancelled" &&
-                    b.BookingStatus.Name != "Completed" &&
-                    b.BookingStatus.Name != "Rejected" &&
-                    startDate < b.EndDate &&
-                    endDate > b.StartDate);
-
-            if (hasBooking)
+            var availability = await _reservationService.CheckCarAvailabilityAsync(carId, startDate, endDate);
+            if (!availability.IsAvailable)
             {
-                return Json(new { success = false, message = "Xe nay da co nguoi dat trong khoang thoi gian ban chon." });
+                return Json(new { success = false, message = availability.Reason ?? "Xe này đã có người đặt trong khoảng thời gian bạn chọn." });
             }
 
             // =========================================
@@ -175,7 +184,6 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> RemoveFromCart(int id)
         {
             var userId = GetUserId();
@@ -212,7 +220,6 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UpdateCartItemDates(int cartItemId, DateTime startDate, DateTime endDate, decimal? estimatedPrice)
         {
             var userId = GetUserId();
@@ -239,10 +246,9 @@ namespace CarRentalSystem.Controllers
                 return Json(new { success = true, cartTotal = cartTotal });
             }
 
-            return Json(new { success = false, message = "Khong tim thay xe trong gio hang." });
+            return Json(new { success = false, message = "Không tìm thấy xe trong giỏ hàng." });
         }
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UpdateCartItemDriver(int cartItemId, int? driverId)
         {
             var userId = GetUserId();
@@ -267,7 +273,6 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UpdateCartItemPackage(int cartItemId, int packageId)
         {
             var userId = GetUserId();
@@ -277,11 +282,11 @@ namespace CarRentalSystem.Controllers
                 .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
 
             if (item == null)
-                return Json(new { success = false, message = "Khong tim thay san pham" });
+                return Json(new { success = false, message = "Không tìm thấy sản phẩm" });
 
             var package = await _context.ContractTypes.FindAsync(packageId);
             if (package == null)
-                return Json(new { success = false, message = "Khong tim thay goi thue" });
+                return Json(new { success = false, message = "Không tìm thấy gói thuê" });
 
             item.ContractTypeID = packageId;
 
@@ -330,25 +335,25 @@ namespace CarRentalSystem.Controllers
 
             decimal originalPrice = carAndDriverPrice + addonTotal;
 
-            // Ap dung discount goi
-            decimal discountedCarPrice = originalPrice;
+            // Ap dung discount goi cho gia xe/tai xe; addon duoc tinh rieng khi checkout.
+            decimal discountedCarPrice = carAndDriverPrice;
             if (package.DiscountPercent > 0)
             {
-                discountedCarPrice = carAndDriverPrice * (1 - package.DiscountPercent / 100m) + addonTotal;
+                discountedCarPrice = carAndDriverPrice * (1 - package.DiscountPercent / 100m);
             }
 
             decimal originalPrice_rounded = Math.Round(originalPrice);
             decimal estimatedPrice = Math.Round(discountedCarPrice);
+            decimal displayPrice = Math.Round(estimatedPrice + addonTotal);
 
             item.EstimatedPrice = estimatedPrice;
             _context.CartItems.Update(item);
             await _context.SaveChangesAsync();
 
-            return Json(new { success = true, packageName = package.Name, discount = package.DiscountPercent, estimatedPrice, originalPrice = originalPrice_rounded });
+            return Json(new { success = true, packageName = package.Name, discount = package.DiscountPercent, estimatedPrice = displayPrice, basePrice = estimatedPrice, addonTotal, originalPrice = originalPrice_rounded });
         }
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> ToggleAddon(int cartItemId, int addonId, bool selected)
         {
             var userId = GetUserId();
@@ -358,7 +363,7 @@ namespace CarRentalSystem.Controllers
                 .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
 
             if (item == null)
-                return Json(new { success = false, message = "Khong tim thay san pham" });
+                return Json(new { success = false, message = "Không tìm thấy sản phẩm" });
 
             var currentAddOns = item.AddOnIDs;
 
@@ -410,14 +415,11 @@ namespace CarRentalSystem.Controllers
             var driverDays = Math.Max(1, days);
             decimal estimatedPrice = basePrice + (driverRate * driverDays);
 
-            // Cong addon vao
-            estimatedPrice += addonTotal;
-
             item.EstimatedPrice = estimatedPrice;
             _context.CartItems.Update(item);
             await _context.SaveChangesAsync();
 
-            return Json(new { success = true, estimatedPrice = item.EstimatedPrice, addonTotal });
+            return Json(new { success = true, estimatedPrice = item.EstimatedPrice + addonTotal, basePrice = item.EstimatedPrice, addonTotal });
         }
 
         [HttpPost]
@@ -443,17 +445,24 @@ namespace CarRentalSystem.Controllers
             if (user == null) return RedirectToAction("Login", "Auth");
 
             // =========================================
-            // SECURITY: Kiem tra Blacklist va eKYC truoc khi checkout
+            // SECURITY: Kiểm tra blacklist và eKYC trước khi checkout
             // =========================================
-            if (user.IsBlacklisted)
+            var eligibility = await _eligibilityService.CheckRentalEligibilityAsync(userId);
+            if (!eligibility.IsEligible)
             {
-                TempData["Error"] = "Tai khoan cua ban da bi khoa. Vui long lien he ho tro.";
+                if (eligibility.FailureCode == EligibilityFailureCode.EkycNotVerified ||
+                    eligibility.FailureCode == EligibilityFailureCode.MissingIdentityDocuments)
+                {
+                    TempData["ShowEkycModal"] = "true";
+                    TempData["EkycReturnUrl"] = Url.Action("Index", "Cart") ?? "/Cart";
+                    TempData["WarningMessage"] = eligibility.Reason ?? "Cần xác thực eKYC trước khi thuê xe.";
+                }
+                else
+                {
+                    TempData["Error"] = eligibility.Reason ?? "Tài khoản chưa đủ điều kiện đặt xe.";
+                }
+
                 return RedirectToAction("Index");
-            }
-            if (!user.IsVerified)
-            {
-                TempData["Error"] = "Vui long xac thuc danh tinh (eKYC) truoc khi dat xe.";
-                return RedirectToAction("Profile", "Auth");
             }
 
             // ===== 1. Validate: Tat ca cac xe trong cart phai khong overlap voi nhau =====
@@ -469,7 +478,7 @@ namespace CarRentalSystem.Controllers
                         bool overlap = items[i].StartDate < items[j].EndDate && items[i].EndDate > items[j].StartDate;
                         if (overlap)
                         {
-                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' co 2 don overlap nhau. Vui long chon khoang thoi gian khac.";
+                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' có 2 đơn bị trùng lịch. Vui lòng chọn khoảng thời gian khác.";
                             return RedirectToAction("Index");
                         }
 
@@ -480,32 +489,22 @@ namespace CarRentalSystem.Controllers
                             (items[j].StartDate - items[i].EndDate).TotalHours);
                         if (gapHours < 1 && gapHours > -1) // -1 to 1 means they're close
                         {
-                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' cac don phai cach nhau it nhat 1 tieng.";
+                            TempData["Error"] = $"Xe '{items[i].Car?.CarName}' các đơn phải cách nhau ít nhất 1 tiếng.";
                             return RedirectToAction("Index");
                         }
                     }
                 }
             }
 
-            // ===== 2. Kiem tra overlap voi booking da ton tai =====
+            // ===== 2. Kiem tra availability/hold bang ReservationService =====
             var overlapErrors = new List<string>();
-            var excludedStatuses = new[] { "Cancelled", "Completed", "Rejected" };
 
             foreach (var item in items)
             {
-                // Correct overlap check: Two bookings overlap if startA < endB AND endA > startB
-                // With 1-hour gap requirement: new booking must end at least 1 hour before existing starts
-                bool hasOverlap = await _context.Bookings
-                    .Include(b => b.BookingStatus)
-                    .AnyAsync(b => b.CarID == item.CarID &&
-                        b.BookingStatus != null &&
-                        !excludedStatuses.Contains(b.BookingStatus.Name) &&
-                        item.StartDate < b.EndDate.AddHours(-1) && // Starts before existing ends (minus 1hr gap)
-                        item.EndDate.AddHours(1) > b.StartDate);   // Ends after existing starts (plus 1hr gap)
-
-                if (hasOverlap)
+                var availability = await _reservationService.CheckCarAvailabilityAsync(item.CarID, item.StartDate, item.EndDate);
+                if (!availability.IsAvailable)
                 {
-                    overlapErrors.Add($"'{item.Car?.CarName}' da co nguoi dat trong khoang thoi gian ban chon (can cach it nhat 1 tieng).");
+                    overlapErrors.Add($"'{item.Car?.CarName}': {availability.Reason ?? "Không còn khả dụng."}");
                 }
             }
 
@@ -515,94 +514,143 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Index");
             }
 
-            // ===== 3. Tinh toan tong tien (bao gom add-ons) =====
+            // ===== 3. Build server quotes, then hold every car atomically =====
             var addons = await _context.AddOns.ToListAsync();
-            decimal baseTotal = 0;
+            var quotes = new List<CheckoutQuoteViewModel>();
             var itemDetails = new List<object>();
 
             foreach (var item in items)
             {
-                var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
-                var days = (int)Math.Ceiling(hours / 24.0);
+                var selectedAddons = item.AddOnIDs
+                    .Select(addonId => addons.FirstOrDefault(a => a.AddOnID == addonId))
+                    .Where(a => a != null)
+                    .Select(a => $"{a!.Name}|{a.PricePerDay}")
+                    .ToList();
 
-                // Lay addon da chon
-                var selectedAddonIds = item.AddOnIDs;
-                decimal addonTotal = 0;
-                var addonDetails = new List<object>();
-                foreach (var addonId in selectedAddonIds)
+                var quote = await _quoteService.BuildQuoteAsync(new BookingQuoteRequest
                 {
-                    var addon = addons.FirstOrDefault(a => a.AddOnID == addonId);
-                    if (addon != null)
-                    {
-                        var addonCost = addon.PricePerDay * days;
-                        addonTotal += addonCost;
-                        addonDetails.Add(new { id = addon.AddOnID, name = addon.Name, pricePerDay = addon.PricePerDay, total = addonCost });
-                    }
-                }
-
-                decimal itemTotal = item.EstimatedPrice + addonTotal;
-                baseTotal += itemTotal;
+                    UserID = userId,
+                    CarID = item.CarID,
+                    StartDate = item.StartDate,
+                    EndDate = item.EndDate,
+                    InsuranceTier = "Basic",
+                    SelectedAddons = selectedAddons,
+                    SelectedDriverID = item.DriverID,
+                    ContractTypeID = item.ContractTypeID
+                });
+                quotes.Add(quote);
 
                 itemDetails.Add(new
                 {
                     carId = item.CarID,
-                    carName = item.Car?.CarName,
-                    carBrand = item.Car?.CarBrand?.Name,
-                    licensePlate = item.Car?.LicensePlate,
-                    locationId = item.Car?.LocationID,
-                    startDate = item.StartDate,
-                    endDate = item.EndDate,
-                    hours,
-                    days,
+                    carName = quote.CarName,
+                    carBrand = quote.CarBrand,
+                    licensePlate = quote.LicensePlate,
+                    locationId = quote.PickupLocationID,
+                    startDate = quote.StartDate,
+                    endDate = quote.EndDate,
+                    hours = quote.TotalHours,
+                    days = quote.RentalDays,
                     withDriver = item.WithDriver,
                     driverId = item.DriverID,
                     contractTypeId = item.ContractTypeID,
-                    basePrice = item.EstimatedPrice,
-                    addonTotal,
-                    addonDetails,
-                    totalPrice = itemTotal,
-                    defaultDeposit = item.Car?.DefaultDeposit ?? 0
+                    basePrice = quote.BaseRentalAmount,
+                    addonTotal = quote.AddOnFee,
+                    addonDetails = quote.AddOns,
+                    totalPrice = quote.TotalPrice,
+                    defaultDeposit = quote.CollateralAmount
                 });
             }
 
+            decimal baseTotal = quotes.Sum(q => q.TotalBeforeDiscount);
+            decimal discountAmount = quotes.Sum(q => q.DiscountAmount);
+            decimal totalAmount = quotes.Sum(q => q.TotalPrice);
+            decimal holdingFee = quotes.Sum(q => q.HoldingFee);
+            decimal totalDeposit = quotes.Sum(q => q.CollateralAmount);
             decimal memDiscount = user?.MembershipTier?.DiscountPercent ?? 0;
-            decimal discountAmount = baseTotal * (memDiscount / 100m);
-            decimal totalAmount = baseTotal - discountAmount;
-            decimal totalDeposit = items.Sum(i => (i.Car?.DefaultDeposit ?? 0));
 
-            // ===== 4. Luu transaction voi PendingCartSnapshot (chua tao booking) =====
-            var transaction = new BookingTransaction
+            // ===== 4. Luu transaction va giu xe, nhung chua xoa cart cho den khi PayOS webhook thanh cong =====
+            BookingTransaction? transaction = null;
+            BookingHoldsResult? holdResult = null;
+
+            try
             {
-                UserID = userId,
-                TotalAmount = totalAmount,
-                DiscountAmount = discountAmount,
-                MembershipDiscountPercent = (int)memDiscount,
-                Status = BookingStatusConstants.Unpaid,
-                CreatedAt = DateTime.UtcNow,
-                PendingCartSnapshot = System.Text.Json.JsonSerializer.Serialize(new
+                transaction = new BookingTransaction
                 {
-                    items = itemDetails,
-                    totalDeposit,
-                    baseTotal,
-                    discountAmount,
-                    totalAmount,
-                    membershipName = user?.MembershipTier?.Name,
-                    userName = user?.Name,
-                    userEmail = user?.Email,
-                    userPhone = user?.Phone,
-                    userAddress = user?.Address
-                })
-            };
+                    UserID = userId,
+                    TotalAmount = totalAmount,
+                    DiscountAmount = discountAmount,
+                    MembershipDiscountPercent = (int)memDiscount,
+                    Status = BookingStatusConstants.Unpaid,
+                    CreatedAt = DateTime.UtcNow,
+                    PendingCartSnapshot = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        items = itemDetails,
+                        quotes,
+                        holdingFee,
+                        totalDeposit,
+                        baseTotal,
+                        discountAmount,
+                        totalAmount,
+                        membershipName = user?.MembershipTier?.Name,
+                        userName = user?.Name,
+                        userEmail = user?.Email,
+                        userPhone = user?.Phone,
+                        userAddress = user?.Address
+                    })
+                };
 
-            _context.BookingTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
+                _context.BookingTransactions.Add(transaction);
+                await _context.SaveChangesAsync();
 
-            // ===== 5. Xoa cart items =====
-            _context.CartItems.RemoveRange(cart.CartItems);
-            await _context.SaveChangesAsync();
+                var holdRequests = quotes.Select(q => new BookingHoldRequest(
+                    userId,
+                    q.CarID,
+                    q.StartDate,
+                    q.EndDate,
+                    q)).ToList();
+                holdResult = await _reservationService.CreateHoldsAsync(holdRequests, transaction.TransactionID);
+                if (!holdResult.IsSuccess)
+                {
+                    transaction.Status = BookingStatusConstants.Cancelled;
+                    await _context.SaveChangesAsync();
+                    TempData["Error"] = holdResult.ErrorMessage ?? "Không thể giữ tất cả xe trong giỏ hàng.";
+                    return RedirectToAction("Index");
+                }
 
-            TempData["Success"] = $"Don hang #{transaction.TransactionID} da duoc tao. Vui long thanh toan tien coc {totalDeposit.ToString("N0")}d de xac nhan.";
-            return RedirectToAction("DepositTransaction", "Booking", new { id = transaction.TransactionID });
+                var domain = PaymentUrlResolver.ResolvePublicBaseUrl(HttpContext);
+                var payOSResult = await _payOSPaymentService.CreateCartHoldPaymentAsync(transaction, holdingFee, domain);
+                if (!payOSResult.IsSuccess || string.IsNullOrWhiteSpace(payOSResult.CheckoutUrl))
+                {
+                    foreach (var hold in holdResult.Holds)
+                        await _reservationService.ReleaseHoldAsync(hold.BookingHoldID, "PayOS cart payment create failed.");
+
+                    transaction.Status = PaymentStatusConstants.Failed;
+                    await _context.SaveChangesAsync();
+                    TempData["Error"] = payOSResult.ErrorMessage ?? "Không thể tạo thanh toán PayOS cho giỏ hàng.";
+                    return RedirectToAction("Index");
+                }
+
+                TempData["Success"] = $"Đơn hàng #{transaction.TransactionID} đã được giữ. Vui lòng thanh toán {holdingFee:N0}đ để xác nhận.";
+                return Redirect(payOSResult.CheckoutUrl);
+            }
+            catch
+            {
+                if (holdResult?.Holds != null)
+                {
+                    foreach (var hold in holdResult.Holds)
+                        await _reservationService.ReleaseHoldAsync(hold.BookingHoldID, "Exception while creating cart payment.");
+                }
+
+                if (transaction != null)
+                {
+                    transaction.Status = PaymentStatusConstants.Failed;
+                    await _context.SaveChangesAsync();
+                }
+
+                TempData["Error"] = "Đã xảy ra lỗi khi tạo thanh toán giữ chỗ giỏ hàng. Hệ thống đã giải phóng giữ chỗ, vui lòng thử lại.";
+                return RedirectToAction("Index");
+            }
         }
 
         // =========================================

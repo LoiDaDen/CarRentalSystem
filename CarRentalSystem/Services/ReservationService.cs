@@ -7,11 +7,14 @@ namespace CarRentalSystem.Services
 {
     public record ReservationCheckResult(bool IsAvailable, string? Reason);
     public record BookingHoldResult(bool IsSuccess, BookingHold? Hold, string? ErrorMessage);
+    public record BookingHoldRequest(int UserId, int CarId, DateTime StartDate, DateTime EndDate, object? QuoteSnapshot = null);
+    public record BookingHoldsResult(bool IsSuccess, List<BookingHold> Holds, string? ErrorMessage);
 
     public interface IReservationService
     {
         Task<ReservationCheckResult> CheckCarAvailabilityAsync(int carId, DateTime startDate, DateTime endDate, int? ignoreBookingId = null, int? ignoreHoldId = null);
         Task<BookingHoldResult> CreateHoldAsync(int userId, int carId, DateTime startDate, DateTime endDate, object? quoteSnapshot = null, int? transactionId = null);
+        Task<BookingHoldsResult> CreateHoldsAsync(IEnumerable<BookingHoldRequest> requests, int? transactionId = null);
         Task MarkHoldConvertedAsync(int holdId, int bookingId);
         Task ReleaseHoldAsync(int holdId, string? reason = null);
         Task<int> ExpireHoldsAsync(DateTime? now = null);
@@ -92,6 +95,45 @@ namespace CarRentalSystem.Services
             await transaction.CommitAsync();
 
             return new BookingHoldResult(true, hold, null);
+        }
+
+        public async Task<BookingHoldsResult> CreateHoldsAsync(IEnumerable<BookingHoldRequest> requests, int? transactionId = null)
+        {
+            var requestList = requests.ToList();
+            if (!requestList.Any())
+                return new BookingHoldsResult(false, new List<BookingHold>(), "No holds requested.");
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var holds = new List<BookingHold>();
+
+            foreach (var request in requestList)
+            {
+                var availability = await CheckCarAvailabilityAsync(request.CarId, request.StartDate, request.EndDate);
+                if (!availability.IsAvailable)
+                {
+                    await transaction.RollbackAsync();
+                    return new BookingHoldsResult(false, new List<BookingHold>(), availability.Reason);
+                }
+
+                var hold = new BookingHold
+                {
+                    UserID = request.UserId,
+                    CarID = request.CarId,
+                    StartDate = request.StartDate,
+                    EndDate = request.EndDate,
+                    ExpiresAt = DateTime.UtcNow.Add(DefaultHoldDuration),
+                    Status = BookingHoldStatusConstants.Active,
+                    TransactionID = transactionId,
+                    QuoteSnapshotJson = request.QuoteSnapshot == null ? null : JsonSerializer.Serialize(request.QuoteSnapshot)
+                };
+
+                _context.BookingHolds.Add(hold);
+                holds.Add(hold);
+                await _context.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+            return new BookingHoldsResult(true, holds, null);
         }
 
         public async Task MarkHoldConvertedAsync(int holdId, int bookingId)

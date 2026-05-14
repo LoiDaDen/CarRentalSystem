@@ -17,6 +17,9 @@ namespace CarRentalSystem.Services
         public List<string>? SelectedAddons { get; set; }
         public int? SelectedDriverID { get; set; }
         public int? PromotionID { get; set; }
+        public int? ContractTypeID { get; set; }
+        public bool IsLongTerm { get; set; }
+        public int? LongTermMonths { get; set; }
     }
 
     public interface IBookingQuoteService
@@ -92,6 +95,20 @@ namespace CarRentalSystem.Services
             var totalBeforeDiscount = baseRental + ServiceFee + request.DeliveryFee + insuranceFee + addOnFee + driverFee;
             var discountTotal = 0m;
 
+            var contractDiscount = 0m;
+            if (request.ContractTypeID.HasValue)
+            {
+                var contractType = await _context.ContractTypes
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.ContractTypeID == request.ContractTypeID.Value && c.IsActive);
+                if (contractType?.DiscountPercent > 0)
+                {
+                    var contractDiscountBase = baseRental + driverFee;
+                    contractDiscount = contractDiscountBase * (contractType.DiscountPercent / 100m);
+                    discountTotal += contractDiscount;
+                }
+            }
+
             var membershipDiscount = 0m;
             if (user.MembershipTier?.DiscountPercent > 0)
             {
@@ -152,6 +169,9 @@ namespace CarRentalSystem.Services
                 DeliveryAddress = request.DeliveryAddress,
                 InsuranceFee = insuranceFee,
                 InsuranceTier = insuranceTier,
+                ContractTypeID = request.ContractTypeID,
+                IsLongTerm = request.IsLongTerm,
+                LongTermMonths = request.LongTermMonths,
                 AddOnFee = addOnFee,
                 DriverFee = driverFee,
                 DriverID = driverId,
@@ -169,7 +189,7 @@ namespace CarRentalSystem.Services
                 AddOns = addOns
             };
 
-            quote.Items.Add(new CheckoutQuoteLineItem { Category = "Rental", Name = "Tien thue xe", Quantity = 1, UnitPrice = baseRental, TotalPrice = baseRental });
+            quote.Items.Add(new CheckoutQuoteLineItem { Category = "Rental", Name = "Tiền thuê xe", Quantity = 1, UnitPrice = baseRental, TotalPrice = baseRental });
             quote.Items.Add(new CheckoutQuoteLineItem { Category = "Service", Name = "Phi dich vu", Quantity = 1, UnitPrice = ServiceFee, TotalPrice = ServiceFee });
             if (request.DeliveryFee > 0)
                 quote.Items.Add(new CheckoutQuoteLineItem { Category = "Delivery", Name = "Giao xe tan noi", Quantity = 1, UnitPrice = request.DeliveryFee, TotalPrice = request.DeliveryFee });

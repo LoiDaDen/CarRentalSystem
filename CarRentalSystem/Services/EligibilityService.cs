@@ -4,7 +4,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Services
 {
-    public record EligibilityResult(bool IsEligible, string? Reason);
+    public enum EligibilityFailureCode
+    {
+        None,
+        UserNotFound,
+        LockedOrBlacklisted,
+        EmailNotVerified,
+        EkycNotVerified,
+        MissingIdentityDocuments
+    }
+
+    public record EligibilityResult(
+        bool IsEligible,
+        string? Reason,
+        EligibilityFailureCode FailureCode = EligibilityFailureCode.None);
 
     public interface IEligibilityService
     {
@@ -24,19 +37,19 @@ namespace CarRentalSystem.Services
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userId);
             if (user == null)
-                return new EligibilityResult(false, "User not found.");
+                return new EligibilityResult(false, "Không tìm thấy tài khoản.", EligibilityFailureCode.UserNotFound);
 
             if (user.IsLocked || user.IsBlacklisted)
-                return new EligibilityResult(false, user.BlacklistReason ?? "Account is locked or blacklisted.");
+                return new EligibilityResult(false, user.BlacklistReason ?? "Tài khoản đang bị khóa hoặc nằm trong danh sách hạn chế.", EligibilityFailureCode.LockedOrBlacklisted);
 
             if (!user.IsEmailVerified)
-                return new EligibilityResult(false, "Email is not verified.");
+                return new EligibilityResult(false, "Email chưa được xác minh.", EligibilityFailureCode.EmailNotVerified);
 
             if (!user.IsVerified || !string.Equals(user.VerificationStatus, "Verified", StringComparison.OrdinalIgnoreCase))
-                return new EligibilityResult(false, "Identity verification is required before renting.");
+                return new EligibilityResult(false, "Cần xác thực eKYC trước khi thuê xe.", EligibilityFailureCode.EkycNotVerified);
 
             if (string.IsNullOrWhiteSpace(user.CitizenIdHash) || string.IsNullOrWhiteSpace(user.DrivingLicenseHash))
-                return new EligibilityResult(false, "Citizen ID and driving license must be verified.");
+                return new EligibilityResult(false, "Vui lòng xác thực CCCD và giấy phép lái xe trước khi thuê xe.", EligibilityFailureCode.MissingIdentityDocuments);
 
             return new EligibilityResult(true, null);
         }

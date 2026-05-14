@@ -1,6 +1,7 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +11,20 @@ namespace CarRentalSystem.Controllers
     public class SeedController : Controller
     {
         private readonly ApplicationDbContext _context;
-        public SeedController(ApplicationDbContext context) { _context = context; }
+        private readonly IWebHostEnvironment _environment;
+
+        public SeedController(ApplicationDbContext context, IWebHostEnvironment environment)
+        {
+            _context = context;
+            _environment = environment;
+        }
 
         [HttpGet]
         public async Task<IActionResult> SeedCars()
         {
+            if (!_environment.IsDevelopment())
+                return NotFound();
+
             if (await _context.Cars.CountAsync() >= 50)
                 return Content("DB already has 50+ cars. Skipping seed.");
 

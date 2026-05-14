@@ -53,6 +53,7 @@ namespace CarRentalSystem.Data
         public DbSet<PaymentLedgerEntry> PaymentLedgerEntries { get; set; }
         public DbSet<PaymentWebhookEvent> PaymentWebhookEvents { get; set; }
         public DbSet<RefundRequest> RefundRequests { get; set; }
+        public DbSet<RefundPayout> RefundPayouts { get; set; }
         
         // Scheduling
         public DbSet<AvailabilitySchedule> AvailabilitySchedules { get; set; }
@@ -122,6 +123,9 @@ namespace CarRentalSystem.Data
                 .HasIndex(t => t.BookingHoldID);
 
             modelBuilder.Entity<PayOSTransaction>()
+                .HasIndex(t => t.TransactionID);
+
+            modelBuilder.Entity<PayOSTransaction>()
                 .HasIndex(t => t.UserID);
 
             modelBuilder.Entity<PayOSTransaction>()
@@ -134,6 +138,12 @@ namespace CarRentalSystem.Data
                 .HasOne(t => t.BookingHold)
                 .WithMany()
                 .HasForeignKey(t => t.BookingHoldID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PayOSTransaction>()
+                .HasOne(t => t.BookingTransaction)
+                .WithMany()
+                .HasForeignKey(t => t.TransactionID)
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<PayOSTransaction>()
@@ -212,6 +222,31 @@ namespace CarRentalSystem.Data
 
             modelBuilder.Entity<RefundRequest>()
                 .HasIndex(r => new { r.BookingID, r.Status });
+
+            modelBuilder.Entity<RefundPayout>()
+                .Property(p => p.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<RefundPayout>()
+                .Property(p => p.RowVersion)
+                .IsRowVersion();
+
+            modelBuilder.Entity<RefundPayout>()
+                .HasIndex(p => p.RefundRequestID);
+
+            modelBuilder.Entity<RefundPayout>()
+                .HasIndex(p => p.ReferenceId)
+                .IsUnique();
+
+            modelBuilder.Entity<RefundPayout>()
+                .HasIndex(p => p.IdempotencyKey)
+                .IsUnique();
+
+            modelBuilder.Entity<RefundPayout>()
+                .HasOne(p => p.RefundRequest)
+                .WithMany()
+                .HasForeignKey(p => p.RefundRequestID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<RentalContract>()
                 .Property(r => r.StartKm)
@@ -651,6 +686,7 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Payment>().HasQueryFilter(p => !p.IsDeleted);
             modelBuilder.Entity<PayOSTransaction>().HasQueryFilter(t => !t.IsDeleted);
             modelBuilder.Entity<RefundRequest>().HasQueryFilter(r => !r.Booking!.IsDeleted);
+            modelBuilder.Entity<RefundPayout>().HasQueryFilter(rp => !rp.RefundRequest!.Booking!.IsDeleted);
             modelBuilder.Entity<RentalContract>().HasQueryFilter(rc => !rc.IsDeleted);
             modelBuilder.Entity<Review>().HasQueryFilter(r => !r.IsDeleted);
             modelBuilder.Entity<Models.Route>().HasQueryFilter(r => !r.IsDeleted);

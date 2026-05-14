@@ -16,11 +16,13 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly IRefundService _refundService;
 
-        public PaymentController(ApplicationDbContext context, IEmailService emailService)
+        public PaymentController(ApplicationDbContext context, IEmailService emailService, IRefundService refundService)
         {
             _context = context;
             _emailService = emailService;
+            _refundService = refundService;
         }
 
         public async Task<IActionResult> Index()
@@ -50,6 +52,15 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (payment == null)
                 return NotFound();
 
+            var isPayOSPayment = string.Equals(payment.PaymentMethod, "PayOS", StringComparison.OrdinalIgnoreCase)
+                || await _context.PayOSTransactions.AnyAsync(t => t.PaymentID == payment.PaymentID || t.BookingID == payment.BookingID);
+
+            if (isPayOSPayment)
+            {
+                TempData["Error"] = "PayOS payment chi duoc xac nhan boi webhook sau khi tien da vao.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var booking = payment.Booking;
             if (booking != null && booking.DepositAmount > 0)
             {
@@ -67,6 +78,36 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             }
 
             TempData["Success"] = $"Đã xác nhận thanh toán cho đơn #{payment.BookingID}";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RequestRefund(int bookingId, decimal amount, string reason)
+        {
+            var request = await _refundService.RequestRefundAsync(bookingId, amount, reason);
+            TempData["Success"] = $"Da tao yeu cau hoan tien #{request.RefundRequestID}.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveRefund(
+            int refundRequestId,
+            string recipientBin,
+            string recipientAccountNumber,
+            string? recipientAccountName)
+        {
+            var userIdText = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            _ = int.TryParse(userIdText, out var approvedByUserId);
+            var result = await _refundService.ApproveAndStartPayoutAsync(
+                refundRequestId,
+                approvedByUserId,
+                recipientBin,
+                recipientAccountNumber,
+                recipientAccountName);
+
+            TempData[result.IsSuccess ? "Success" : "Error"] = result.Message;
             return RedirectToAction(nameof(Index));
         }
     }

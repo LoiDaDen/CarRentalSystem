@@ -6,6 +6,7 @@ using CarRentalSystem.Controllers;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
+using CarRentalSystem.ViewModels;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -26,6 +27,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IEmailService> _mockEmailService;
         private readonly Mock<IPiiEncryptionService> _mockPiiEncryption;
         private readonly Mock<IRecaptchaService> _mockRecaptchaService;
+        private readonly Mock<IReferralService> _mockReferralService;
         private readonly ApplicationDbContext _context;
         private readonly AuthController _controller;
 
@@ -36,6 +38,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockEmailService = new Mock<IEmailService>();
             _mockPiiEncryption = new Mock<IPiiEncryptionService>();
             _mockRecaptchaService = new Mock<IRecaptchaService>();
+            _mockReferralService = new Mock<IReferralService>();
             _context = MockRepositoryHelper.CreateSeededDbContext();
 
             _controller = new AuthController(
@@ -44,7 +47,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 _mockEmailService.Object,
                 _mockPiiEncryption.Object,
                 _context,
-                _mockRecaptchaService.Object);
+                _mockRecaptchaService.Object,
+                _mockReferralService.Object);
             _controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
@@ -52,6 +56,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
 
             var mockUrlHelper = new Mock<IUrlHelper>();
             mockUrlHelper.Setup(u => u.Action(It.IsAny<UrlActionContext>())).Returns("http://localhost/verify");
+            mockUrlHelper.Setup(u => u.IsLocalUrl(It.IsAny<string>()))
+                .Returns<string>(url => !string.IsNullOrWhiteSpace(url) && url.StartsWith("/") && !url.StartsWith("//"));
             _controller.Url = mockUrlHelper.Object;
         }
 
@@ -72,6 +78,22 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
 
             // Assert
             result.Should().BeOfType<ViewResult>();
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public void Login_Get_PreservesLocalReturnUrl_ForExternalPaymentReturn()
+        {
+            // Arrange
+            _controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+
+            // Act
+            var result = _controller.Login("/Payment/Hold?orderCode=123") as ViewResult;
+
+            // Assert
+            result.Should().NotBeNull();
+            _controller.ViewData["ReturnUrl"].Should().Be("/Payment/Hold?orderCode=123");
         }
 
         [Fact]
@@ -120,7 +142,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         {
             // Arrange
             _controller.ModelState.AddModelError("Email", "Required");
-            var newUser = new User { Email = "fail@test.com", Name = "Test", PasswordHash = "x" };
+            var newUser = new RegisterViewModel { Email = "fail@test.com", Name = "Test", Phone = "0900000000", Password = "secret1", ConfirmPassword = "secret1" };
 
             // Act
             var result = await _controller.Register(newUser, null) as ViewResult;
@@ -140,11 +162,11 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockAuthService.Setup(s => s.GetUserByEmailAsync("exist@test.com")).ReturnsAsync(existingUser);
 
             // Act
-            var result = await _controller.Register(new User { Email = "exist@test.com", Name = "Test", PasswordHash = "x" }, null) as ViewResult;
+            var result = await _controller.Register(new RegisterViewModel { Email = "exist@test.com", Name = "Test", Phone = "0900000000", Password = "secret1", ConfirmPassword = "secret1" }, null) as ViewResult;
 
             // Assert
             result.Should().NotBeNull();
-            result!.ViewData["Error"].Should().Be("Email already registered");
+            result!.ViewData["Error"].Should().Be("Email nay da duoc dang ky.");
         }
     }
 }

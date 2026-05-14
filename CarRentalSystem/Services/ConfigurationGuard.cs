@@ -10,9 +10,15 @@ namespace CarRentalSystem.Services
             var required = new[]
             {
                 ("ConnectionStrings:DefaultConnection", configuration.GetConnectionString("DefaultConnection")),
+                ("Cors:AllowedOrigins", string.Join(",", configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())),
+                ("Tracking:IngestSecret", configuration["Tracking:IngestSecret"]),
+                ("DataProtection:KeysPath", configuration["DataProtection:KeysPath"]),
                 ("PayOS:ClientId", configuration["PayOS:ClientId"]),
                 ("PayOS:ApiKey", configuration["PayOS:ApiKey"]),
                 ("PayOS:ChecksumKey", configuration["PayOS:ChecksumKey"]),
+                ("SmtpSettings:Host", configuration["SmtpSettings:Host"]),
+                ("SmtpSettings:User", configuration["SmtpSettings:User"]),
+                ("SmtpSettings:Pass", configuration["SmtpSettings:Pass"]),
                 ("Recaptcha:SecretKey", configuration["Recaptcha:SecretKey"]),
                 ("FptAi:ApiKey", configuration["FptAi:ApiKey"])
             };

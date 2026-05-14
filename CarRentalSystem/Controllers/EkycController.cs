@@ -54,9 +54,9 @@ namespace CarRentalSystem.Controllers
         {
             // Bat buoc phai co ca mat truoc va mat sau CCCD
             if (idFront == null)
-                return Json(new { success = false, message = "Vui long tai len anh CCCD mat truoc." });
+                return Json(new { success = false, message = "Vui lòng tải lên ảnh CCCD mặt trước." });
             if (idBack == null)
-                return Json(new { success = false, message = "Vui long tai len anh CCCD mat sau." });
+                return Json(new { success = false, message = "Vui lòng tải lên ảnh CCCD mặt sau." });
 
             var formatError = ValidateImageFormat(idFront);
             if (!string.IsNullOrEmpty(formatError))
@@ -96,7 +96,7 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> ScanLicense(IFormFile license)
         {
             if (license == null)
-                return Json(new { success = false, message = "Vui long tai len anh GPLX." });
+                return Json(new { success = false, message = "Vui lòng tải lên ảnh GPLX." });
 
             var formatError = ValidateImageFormat(license);
             if (!string.IsNullOrEmpty(formatError))
@@ -132,9 +132,9 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> VerifyFace(IFormFile face, IFormFile idCard)
         {
             if (face == null)
-                return Json(new { success = false, message = "Vui long tai len anh selfie." });
+                return Json(new { success = false, message = "Vui lòng tải lên ảnh selfie." });
             if (idCard == null)
-                return Json(new { success = false, message = "Vui long tai len anh CCCD mat truoc." });
+                return Json(new { success = false, message = "Vui lòng tải lên ảnh CCCD mặt trước." });
 
             var formatError = ValidateImageFormat(face);
             if (!string.IsNullOrEmpty(formatError))
@@ -238,7 +238,7 @@ namespace CarRentalSystem.Controllers
 
             if (validationErrors.Count > 0)
             {
-                TempData["ErrorMessage"] = "Vui long kiem tra lai cac truong sau:";
+                TempData["ErrorMessage"] = "Vui lòng kiểm tra lại các trường sau:";
                 TempData["EkycWarnings"] = string.Join("|", validationErrors);
                 return RedirectAfterEkyc(returnUrl);
             }
@@ -499,7 +499,10 @@ namespace CarRentalSystem.Controllers
 
                 // Lưu thông tin đã OCR vào user
                 if (!string.IsNullOrWhiteSpace(citizenId))
+                {
                     user.CitizenId = _piiEncryption.Encrypt(citizenId);
+                    user.CitizenIdHash = ComputePiiHash(citizenId);
+                }
                 if (!string.IsNullOrWhiteSpace(fullNameCccd))
                     user.Name = fullNameCccd.Trim();
                 if (!string.IsNullOrWhiteSpace(genderCccd))
@@ -509,7 +512,10 @@ namespace CarRentalSystem.Controllers
                 if (!string.IsNullOrWhiteSpace(dobCccd) && DateTime.TryParse(dobCccd, out var dob))
                     user.DateOfBirth = dob;
                 if (!string.IsNullOrWhiteSpace(licenseNumber))
+                {
                     user.DrivingLicenseNumber = _piiEncryption.Encrypt(licenseNumber);
+                    user.DrivingLicenseHash = ComputePiiHash(licenseNumber);
+                }
 
                 if (hasWarnings)
                 {

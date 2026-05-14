@@ -16,17 +16,29 @@ namespace CarRentalSystem.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IPiiEncryptionService _piiEncryption;
         private readonly ILongTermRentalService _rentalService;
+        private readonly IReservationService _reservationService;
+        private readonly IBookingQuoteService _quoteService;
+        private readonly IPayOSPaymentService _payOSPaymentService;
+        private readonly IEligibilityService _eligibilityService;
         private readonly ILogger<LongTermController> _logger;
 
         public LongTermController(
             ApplicationDbContext context,
             IPiiEncryptionService piiEncryption,
             ILongTermRentalService rentalService,
+            IReservationService reservationService,
+            IBookingQuoteService quoteService,
+            IPayOSPaymentService payOSPaymentService,
+            IEligibilityService eligibilityService,
             ILogger<LongTermController> logger)
         {
             _context = context;
             _piiEncryption = piiEncryption;
             _rentalService = rentalService;
+            _reservationService = reservationService;
+            _quoteService = quoteService;
+            _payOSPaymentService = payOSPaymentService;
+            _eligibilityService = eligibilityService;
             _logger = logger;
         }
 
@@ -383,16 +395,93 @@ namespace CarRentalSystem.Controllers
             }
 
             // Tạo long-term rental với service mới
-            var result = await _rentalService.CreateLongTermRentalAsync(
-                userId: userId,
-                carId: carId,
-                contractTypeId: contractId,
-                startDate: startDate,
-                endDate: endDate,
-                customerName: customerName,
-                customerPhone: customerPhone,
-                notes: null);
+            var eligibility = await _eligibilityService.CheckRentalEligibilityAsync(userId);
+            if (!eligibility.IsEligible)
+            {
+                if (eligibility.FailureCode == EligibilityFailureCode.EkycNotVerified ||
+                    eligibility.FailureCode == EligibilityFailureCode.MissingIdentityDocuments)
+                {
+                    var returnRoute = new
+                    {
+                        carId,
+                        contractId,
+                        duration,
+                        customerName,
+                        customerPhone,
+                        startDateStr,
+                        selectedDates,
+                        selectedDriverId
+                    };
 
+                    TempData["ShowEkycModal"] = "true";
+                    TempData["EkycReturnUrl"] = Url.Action("VehicleInspection", "LongTerm", returnRoute) ?? "/LongTerm";
+                    TempData["WarningMessage"] = eligibility.Reason ?? "Cần xác thực eKYC trước khi thuê xe dài hạn.";
+                    return RedirectToAction("VehicleInspection", returnRoute);
+                }
+
+                TempData["Error"] = eligibility.Reason ?? "Tài khoản chưa đủ điều kiện thuê xe dài hạn.";
+                return RedirectToAction("Index");
+            }
+
+            var availability = await _reservationService.CheckCarAvailabilityAsync(carId, startDate, endDate);
+            if (!availability.IsAvailable)
+            {
+                TempData["Error"] = availability.Reason ?? "Xe không còn khả dụng trong thời gian thuê dài hạn.";
+                return RedirectToAction("Index");
+            }
+
+            BookingHoldResult? holdResult = null;
+            try
+            {
+                var quote = await _quoteService.BuildQuoteAsync(new BookingQuoteRequest
+                {
+                    UserID = userId,
+                    CarID = carId,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    InsuranceTier = "Basic",
+                    SelectedDriverID = selectedDriverId,
+                    ContractTypeID = contractId,
+                    IsLongTerm = true,
+                    LongTermMonths = CalculateTermMonths(startDate, endDate)
+                });
+                quote.CustomerName = customerName ?? quote.CustomerName;
+                quote.CustomerPhone = customerPhone ?? quote.CustomerPhone;
+
+                holdResult = await _reservationService.CreateHoldAsync(userId, carId, startDate, endDate, quote);
+                if (!holdResult.IsSuccess || holdResult.Hold == null)
+                {
+                    TempData["Error"] = holdResult.ErrorMessage ?? "Không thể giữ xe dài hạn. Vui lòng thử lại.";
+                    return RedirectToAction("Index");
+                }
+
+                var domain = PaymentUrlResolver.ResolvePublicBaseUrl(HttpContext);
+                var payOSResult = await _payOSPaymentService.CreateHoldPaymentAsync(holdResult.Hold, quote, domain);
+                if (!payOSResult.IsSuccess || payOSResult.Transaction == null)
+                {
+                    await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "Long-term PayOS create payment failed.");
+                    TempData["Error"] = payOSResult.ErrorMessage ?? "Không thể tạo thanh toán giữ chỗ thuê dài hạn.";
+                    return RedirectToAction("Index");
+                }
+
+                _logger.LogInformation(
+                    "Long-term hold created successfully. HoldID: {HoldId}, OrderCode: {OrderCode}",
+                    holdResult.Hold.BookingHoldID,
+                    payOSResult.Transaction.OrderCode);
+
+                TempData["Success"] = "Xe đã được giữ cho thuê dài hạn. Vui lòng thanh toán giữ chỗ/cọc để hoàn tất.";
+                return RedirectToAction("Hold", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
+            }
+            catch (Exception ex)
+            {
+                if (holdResult?.Hold != null)
+                    await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "Exception while creating long-term payment.");
+
+                _logger.LogError(ex, "Failed to create long-term hold payment for car {CarId}.", carId);
+                TempData["Error"] = "Đã xảy ra lỗi khi tạo thanh toán giữ chỗ thuê dài hạn. Hệ thống đã giải phóng giữ chỗ, vui lòng thử lại.";
+                return RedirectToAction("Index");
+            }
+            /*
             if (!result.IsSuccess)
             {
                 TempData["Error"] = result.ErrorMessage ?? "Đã xảy ra lỗi khi tạo đơn thuê. Vui lòng thử lại.";
@@ -434,6 +523,7 @@ namespace CarRentalSystem.Controllers
             TempData["ContractNo"] = result.ContractNo;
 
             return RedirectToAction("Deposit", "Booking", new { id = result.BookingID, area = "" });
+            */
         }
 
         /// <summary>

@@ -46,6 +46,11 @@ namespace CarRentalSystem.Services
             string customerPhone,
             string? notes);
 
+        Task<LongTermRentalResult> CreatePostPaymentLongTermRecordsAsync(
+            int bookingId,
+            string? customerName,
+            string? customerPhone);
+
         /// <summary>
         /// Validate yêu cầu thuê dài hạn
         /// </summary>
@@ -60,6 +65,7 @@ namespace CarRentalSystem.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IPiiEncryptionService _piiEncryption;
+        private readonly IReservationService _reservationService;
         private readonly ILogger<LongTermRentalService> _logger;
 
         // Car Status Constants
@@ -70,10 +76,12 @@ namespace CarRentalSystem.Services
         public LongTermRentalService(
             ApplicationDbContext context,
             IPiiEncryptionService piiEncryption,
+            IReservationService reservationService,
             ILogger<LongTermRentalService> logger)
         {
             _context = context;
             _piiEncryption = piiEncryption;
+            _reservationService = reservationService;
             _logger = logger;
         }
 
@@ -112,21 +120,12 @@ namespace CarRentalSystem.Services
             var availableCars = await query.ToListAsync();
 
             // Bước 4: Kiểm tra availability theo thời gian
-            var confirmedStatuses = await _context.BookingStatuses
-                .Where(s => s.Name == "Confirmed" || s.Name == "Active" || s.Name == "CheckedOut")
-                .Select(s => s.BookingStatusID)
-                .ToListAsync();
-
             foreach (var car in availableCars)
             {
                 // Kiểm tra booking trùng lịch
-                var hasConflict = await _context.Bookings
-                    .AnyAsync(b => b.CarID == car.CarID
-                        && confirmedStatuses.Contains(b.BookingStatusID)
-                        && b.StartDate < endDate
-                        && b.EndDate > startDate);
+                var availability = await _reservationService.CheckCarAvailabilityAsync(car.CarID, startDate, endDate);
 
-                if (!hasConflict)
+                if (availability.IsAvailable)
                 {
                     result.AvailableCars.Add(car);
                 }
@@ -257,6 +256,14 @@ namespace CarRentalSystem.Services
                 }
 
                 // Tính số tháng thuê
+                var availability = await _reservationService.CheckCarAvailabilityAsync(carId, startDate, endDate);
+                if (!availability.IsAvailable)
+                {
+                    result.IsSuccess = false;
+                    result.ErrorMessage = availability.Reason ?? "Xe không còn khả dụng trong thời gian thuê dài hạn.";
+                    return result;
+                }
+
                 var termMonths = CalculateTermMonths(startDate, endDate);
 
                 // Tính giá
@@ -375,6 +382,129 @@ namespace CarRentalSystem.Services
                 result.IsSuccess = false;
                 result.ErrorMessage = $"Lỗi khi tạo thuê dài hạn: {ex.Message}";
                 _logger.LogError(ex, "Error creating long-term rental for user {UserId}", userId);
+            }
+
+            return result;
+        }
+
+        public async Task<LongTermRentalResult> CreatePostPaymentLongTermRecordsAsync(
+            int bookingId,
+            string? customerName,
+            string? customerPhone)
+        {
+            var result = new LongTermRentalResult();
+
+            try
+            {
+                var booking = await _context.Bookings
+                    .Include(b => b.User)
+                        .ThenInclude(u => u!.MembershipTier)
+                    .Include(b => b.Car)
+                        .ThenInclude(c => c!.CarBrand)
+                    .FirstOrDefaultAsync(b => b.BookingID == bookingId);
+
+                if (booking?.Car == null || booking.User == null || !booking.ContractTypeID.HasValue)
+                {
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "Thong tin booking dai han khong hop le.";
+                    return result;
+                }
+
+                var contractType = await _context.ContractTypes.FindAsync(booking.ContractTypeID.Value);
+                if (contractType == null)
+                {
+                    result.IsSuccess = false;
+                    result.ErrorMessage = "Không tìm thấy gói thuê dài hạn.";
+                    return result;
+                }
+
+                var existingRental = await _context.LongTermRentals
+                    .FirstOrDefaultAsync(r => r.BookingID == booking.BookingID);
+                if (existingRental != null)
+                {
+                    result.IsSuccess = true;
+                    result.Booking = booking;
+                    result.BookingID = booking.BookingID;
+                    result.LongTermRental = existingRental;
+                    result.RentalID = existingRental.RentalID;
+                    result.DigitalContract = await _context.DigitalContracts
+                        .FirstOrDefaultAsync(c => c.BookingID == booking.BookingID);
+                    result.ContractNo = result.DigitalContract?.ContractNo;
+                    return result;
+                }
+
+                var termMonths = booking.TotalHours > 0
+                    ? Math.Max(1, (int)Math.Ceiling(booking.TotalHours / 24m / 30m))
+                    : CalculateTermMonths(booking.StartDate, booking.EndDate);
+                var pricing = await CalculateRentalPriceAsync(
+                    booking.Car,
+                    contractType,
+                    booking.User,
+                    booking.StartDate,
+                    booking.EndDate,
+                    termMonths);
+
+                var longTermRental = new LongTermRental
+                {
+                    BookingID = booking.BookingID,
+                    DepositAmount = booking.DepositAmount > 0 ? booking.DepositAmount : pricing.DepositAmount,
+                    MonthlyRate = pricing.MonthlyRate,
+                    TermMonths = termMonths
+                };
+
+                _context.LongTermRentals.Add(longTermRental);
+                await _context.SaveChangesAsync();
+
+                for (var month = 1; month <= termMonths; month++)
+                {
+                    _context.PaymentSchedules.Add(new PaymentSchedule
+                    {
+                        RentalID = longTermRental.RentalID,
+                        DueDate = booking.StartDate.AddMonths(month),
+                        Amount = pricing.MonthlyRate,
+                        Status = month == 1 ? "Due" : "Unpaid"
+                    });
+                }
+
+                var contractNo = GenerateContractNo(booking.BookingID);
+                var decryptedCccd = _piiEncryption.DecryptIfNotEmpty(booking.User.CitizenId) ?? "000000000000";
+                _context.DigitalContracts.Add(new DigitalContract
+                {
+                    ContractNo = contractNo,
+                    BookingID = booking.BookingID,
+                    CustomerName = customerName ?? booking.User.Name,
+                    CustomerIdentityCard = decryptedCccd.Length > 20 ? decryptedCccd.Substring(0, 20) : decryptedCccd,
+                    CustomerPhone = customerPhone ?? booking.User.Phone ?? "",
+                    CustomerAddress = booking.User.Address ?? "Van phong cong ty",
+                    CarLicensePlate = booking.Car.LicensePlate,
+                    CarModel = $"{booking.Car.CarBrand?.Name} {booking.Car.CarName}",
+                    RentalStartDate = booking.StartDate,
+                    RentalEndDate = booking.EndDate,
+                    RentalPricePerDay = booking.Car.PricePerDay,
+                    TotalContractValue = booking.TotalPrice,
+                    DepositAmount = booking.DepositAmount,
+                    TermsAndConditions = GenerateTermsAndConditions(booking.Car, contractType, pricing, termMonths),
+                    IsSignedByCustomer = false,
+                    CustomerSignDate = null,
+                    IsSignedByOwner = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await _context.SaveChangesAsync();
+
+                result.IsSuccess = true;
+                result.Booking = booking;
+                result.BookingID = booking.BookingID;
+                result.LongTermRental = longTermRental;
+                result.RentalID = longTermRental.RentalID;
+                result.ContractNo = contractNo;
+                result.Pricing = pricing;
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = $"Lỗi khi tạo hồ sơ thuê dài hạn sau thanh toán: {ex.Message}";
+                _logger.LogError(ex, "Error creating post-payment long-term records for booking {BookingId}", bookingId);
             }
 
             return result;
@@ -500,18 +630,18 @@ DIEU 3: GIA TRI
 - Chiet khau ({contractType.Name}): -{pricing.ContractDiscount:N0}VND ({contractType.DiscountPercent}%)
 {(pricing.MembershipDiscount > 0 ? $"- Thanh vien: -{pricing.MembershipDiscount:N0}VND" : "")}
 - TONG: {pricing.FinalPrice:N0}VND
-- Tien coc: {pricing.DepositAmount:N0}VND
+- Tiền cọc: {pricing.DepositAmount:N0}VND
 
 DIEU 4: LICH THANH TOAN
 - Hang thang: {pricing.MonthlyRate:N0}VND, Lan 2+ truoc ngay 05/thang
 
 DIEU 5: QUYEN LOI
-{(contractType.FreeMaintenanceCount > 0 ? $"- Mien phi {contractType.FreeMaintenanceCount} lan bao duong" : "- Khong co bao duong mien phi")}
-{(contractType.FreeInsurance ? "- Mien phi bao hiem" : "")}
+{(contractType.FreeMaintenanceCount > 0 ? $"- Miễn phí {contractType.FreeMaintenanceCount} lần bảo dưỡng" : "- Không có bảo dưỡng miễn phí")}
+{(contractType.FreeInsurance ? "- Miễn phí bảo hiểm" : "")}
 
 DIEU 6: NGHIA VU
 - Bao quan xe dung cach, Thanh toan dung han
-- Bao cao su cuoc trong 24h, Khong cho thue lai
+- Báo cáo sự cố trong 24h, không cho thuê lại
 
 DIEU 7: HIEU LUC
 - Hieu luc khi dat coc thanh cong

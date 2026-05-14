@@ -11,6 +11,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -25,6 +26,12 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IBookingService> _mockBookingService;
         private readonly Mock<ICarService> _mockCarService;
         private readonly Mock<IAuthService> _mockAuthService;
+        private readonly Mock<IReservationService> _mockReservationService;
+        private readonly Mock<IBookingQuoteService> _mockQuoteService;
+        private readonly Mock<IPayOSPaymentService> _mockPayOSPaymentService;
+        private readonly Mock<IDeliveryScopeService> _mockDeliveryScopeService;
+        private readonly Mock<IEligibilityService> _mockEligibilityService;
+        private readonly Mock<ILogger<BookingController>> _mockLogger;
 
         public BookingControllerTests()
         {
@@ -32,13 +39,29 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockBookingService = new Mock<IBookingService>();
             _mockCarService = new Mock<ICarService>();
             _mockAuthService = new Mock<IAuthService>();
+            _mockReservationService = new Mock<IReservationService>();
+            _mockQuoteService = new Mock<IBookingQuoteService>();
+            _mockPayOSPaymentService = new Mock<IPayOSPaymentService>();
+            _mockDeliveryScopeService = new Mock<IDeliveryScopeService>();
+            _mockEligibilityService = new Mock<IEligibilityService>();
+            _mockLogger = new Mock<ILogger<BookingController>>();
+            _mockEligibilityService
+                .Setup(s => s.CheckRentalEligibilityAsync(It.IsAny<int>()))
+                .ReturnsAsync(new EligibilityResult(true, null));
         }
 
         private BookingController CreateController(int loggedInUserId = 1)
         {
             var controller = new BookingController(
                 _mockBookingService.Object, _mockCarService.Object,
-                _mockAuthService.Object, _context);
+                _mockAuthService.Object,
+                _mockReservationService.Object,
+                _mockQuoteService.Object,
+                _mockPayOSPaymentService.Object,
+                _mockDeliveryScopeService.Object,
+                _mockEligibilityService.Object,
+                _mockLogger.Object,
+                _context);
 
             var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, loggedInUserId.ToString()) };
             var identity = new ClaimsIdentity(claims, "Cookies");
@@ -112,7 +135,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             };
 
             // Act
-            var result = await controller.Book(booking, null, 0) as RedirectToActionResult;
+            var result = await controller.Book(booking, null, 0, null) as RedirectToActionResult;
 
             // Assert — Có thể redirect hoặc NotFound tùy vào car có tồn tại không
             // Test xác minh không bị crash/exception

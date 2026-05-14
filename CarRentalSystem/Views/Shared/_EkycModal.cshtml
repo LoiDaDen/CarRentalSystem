@@ -12,12 +12,20 @@
                 <input type="hidden" name="returnUrl" value="@returnUrl" />
                 <div class="modal-header border-0 bg-primary bg-opacity-10 rounded-top-4 ekyc-readable">
                     <div>
-                        <h5 class="modal-title fw-bold"><i class="bi bi-shield-check text-primary me-2"></i>Xác thực eKYC</h5>
-                        <div class="small text-muted">Tải ảnh CCCD, GPLX và selfie. Hệ thống sẽ tự cập nhật hồ sơ của bạn.</div>
+                        <h5 class="modal-title fw-bold"><i class="bi bi-shield-check text-primary me-2"></i>Cần xác thực eKYC trước khi thuê xe</h5>
+                        <div class="small text-muted">Tải ảnh CCCD, GPLX và chụp selfie bằng camera để hệ thống cập nhật hồ sơ của bạn.</div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4 ekyc-readable">
+                    <div class="alert alert-info border-0 rounded-3 mb-3 d-flex gap-2">
+                        <i class="bi bi-info-circle-fill text-primary mt-1"></i>
+                        <div>
+                            <div class="fw-bold">Checkout đang được tạm dừng để bảo vệ tài khoản.</div>
+                            <div class="small text-muted">Sau khi gửi eKYC thành công, bạn sẽ quay lại đúng trang hiện tại để tiếp tục thuê xe.</div>
+                        </div>
+                    </div>
+
                     @if (TempData["ErrorMessage"] != null)
                     {
                         <div class="alert alert-danger rounded-3">
@@ -74,18 +82,18 @@
                                 <canvas id="quickFaceCanvas" class="d-none"></canvas>
                                 <img id="quickFacePreview" class="rounded-3 d-none mb-2" alt="Selfie preview" style="max-height:260px;max-width:100%;object-fit:cover;" />
                                 <div class="d-flex gap-2 justify-content-center">
-                                    <button type="button" class="btn btn-outline-primary btn-sm" id="quickStartCameraBtn">Mo camera</button>
-                                    <button type="button" class="btn btn-primary btn-sm d-none" id="quickCaptureFaceBtn">Chup anh</button>
-                                    <button type="button" class="btn btn-light btn-sm d-none" id="quickRetakeFaceBtn">Chup lai</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="quickStartCameraBtn">Mở camera</button>
+                                    <button type="button" class="btn btn-primary btn-sm d-none" id="quickCaptureFaceBtn">Chụp ảnh</button>
+                                    <button type="button" class="btn btn-light btn-sm d-none" id="quickRetakeFaceBtn">Chụp lại</button>
                                 </div>
-                                <div class="form-text mt-2">Bat buoc dung camera that, chup ro mat, khong upload anh selfie.</div>
-                                <div class="text-danger small mt-2 d-none" id="quickFaceError">Vui long chup selfie bang camera.</div>
+                                <div class="form-text mt-2">Bắt buộc dùng camera thật, chụp rõ mặt, không upload ảnh selfie có sẵn.</div>
+                                <div class="text-danger small mt-2 d-none" id="quickFaceError">Vui lòng chụp selfie bằng camera.</div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4 pt-0">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Để sau</button>
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Quay lại</button>
                     <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
                         <i class="bi bi-cloud-upload me-2"></i>Gửi xác thực
                     </button>
@@ -132,7 +140,7 @@
         async function startCamera() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 error.classList.remove('d-none');
-                error.textContent = 'Trinh duyet khong ho tro camera.';
+                error.textContent = 'Trình duyệt không hỗ trợ camera.';
                 return;
             }
             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
@@ -152,7 +160,7 @@
             try { await startCamera(); }
             catch {
                 error.classList.remove('d-none');
-                error.textContent = 'Khong mo duoc camera. Vui long cap quyen camera.';
+                error.textContent = 'Không mở được camera. Vui lòng cấp quyền camera.';
             }
         });
 
@@ -187,7 +195,7 @@
             if (!input.files.length) {
                 event.preventDefault();
                 error.classList.remove('d-none');
-                error.textContent = 'Vui long chup selfie bang camera.';
+                error.textContent = 'Vui lòng chụp selfie bằng camera.';
             }
         });
     })();

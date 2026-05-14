@@ -27,6 +27,9 @@ namespace CarRentalSystem.Middleware
         private const int ApiMaxAttempts = 60;
         private static readonly TimeSpan ApiWindow = TimeSpan.FromMinutes(1);
 
+        private const int TrackingMaxAttempts = 30;
+        private static readonly TimeSpan TrackingWindow = TimeSpan.FromMinutes(1);
+
         // Cấu hình: tối đa 5 PIN attempts / 5 phút
         private const int PinMaxAttempts = 5;
         private static readonly TimeSpan PinWindow = TimeSpan.FromMinutes(5);
@@ -80,6 +83,20 @@ namespace CarRentalSystem.Middleware
                     context.Response.Headers["Retry-After"] = ApiWindow.TotalSeconds.ToString();
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync("{\"error\":\"Too many requests. Please slow down.\"}");
+                    return;
+                }
+            }
+
+            if (path.Equals("/tracking/receivedata", StringComparison.OrdinalIgnoreCase) && method == "POST")
+            {
+                var key = $"tracking:{clientIp}";
+                if (IsRateLimited(key, TrackingMaxAttempts, TrackingWindow))
+                {
+                    _logger.LogWarning("Tracking ingest rate limit exceeded from IP: {IP}", clientIp);
+                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    context.Response.Headers["Retry-After"] = TrackingWindow.TotalSeconds.ToString();
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync("{\"error\":\"Too many tracking requests.\"}");
                     return;
                 }
             }

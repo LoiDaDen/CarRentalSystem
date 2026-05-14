@@ -62,9 +62,45 @@
     }
     .upload-zone.is-invalid i,
     .upload-zone.is-invalid span { color: #dc2626 !important; }
+    .ekyc-submit-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 5000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.72);
+        backdrop-filter: blur(3px);
+    }
+    .ekyc-submit-overlay.active { display: flex; }
+    .ekyc-submit-panel {
+        width: min(420px, calc(100vw - 32px));
+        border-radius: 16px;
+        background: white;
+        padding: 28px;
+        text-align: center;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.35);
+    }
+    .ekyc-submit-spinner {
+        width: 54px;
+        height: 54px;
+        margin: 0 auto 18px;
+        border-radius: 50%;
+        border: 5px solid #dbeafe;
+        border-top-color: #2563eb;
+        animation: spin 0.8s linear infinite;
+    }
 </style>
 
 <div class="container my-4">
+    <div class="ekyc-submit-overlay" id="ekycSubmitOverlay" aria-live="polite" aria-busy="true">
+        <div class="ekyc-submit-panel">
+            <div class="ekyc-submit-spinner"></div>
+            <h5 class="fw-bold mb-2">Đang xác thực hồ sơ</h5>
+            <p class="text-muted mb-0">Hệ thống đang xử lý OCR, đối chiếu khuôn mặt và lưu hồ sơ. Vui lòng không tắt trang.</p>
+        </div>
+    </div>
+
     <div class="ekyc-header text-center">
         <h1><i class="bi bi-shield-check me-2"></i>Hồ sơ eKYC</h1>
         <p class="mb-0 text-white-50">Quét CCCD/GPLX bằng FPT.AI OCR — thông tin sẽ được tự động điền</p>
@@ -272,7 +308,7 @@
                     Tôi xác nhận các giấy tờ tải lên là chính xác. Hệ thống sẽ tự động xác minh.
                 </label>
             </div>
-            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm">
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm" id="ekycSubmitBtn">
                 <i class="bi bi-send me-2"></i>Gửi &amp; Xác thực ngay
             </button>
         </div>
@@ -405,7 +441,7 @@
             } catch {
                 if (error) {
                     error.style.display = 'block';
-                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Khong mo duoc camera. Vui long cap quyen camera.';
+                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Không mở được camera. Vui lòng cấp quyền camera.';
                 }
             }
         });
@@ -520,10 +556,36 @@
             form.addEventListener('submit', function(e) {
                 if (!validateAllZones()) {
                     e.preventDefault();
+                    resetEkycSubmitLoading();
+                    return;
                 }
+                showEkycSubmitLoading();
             });
         }
+
+        window.addEventListener('pageshow', resetEkycSubmitLoading);
     });
+
+    function showEkycSubmitLoading() {
+        const overlay = document.getElementById('ekycSubmitOverlay');
+        const btn = document.getElementById('ekycSubmitBtn');
+        if (overlay) overlay.classList.add('active');
+        if (btn) {
+            btn.disabled = true;
+            btn.dataset.originalHtml = btn.dataset.originalHtml || btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Đang xác thực...';
+        }
+    }
+
+    function resetEkycSubmitLoading() {
+        const overlay = document.getElementById('ekycSubmitOverlay');
+        const btn = document.getElementById('ekycSubmitBtn');
+        if (overlay) overlay.classList.remove('active');
+        if (btn) {
+            btn.disabled = false;
+            if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+        }
+    }
 
     // --- CCCD OCR ---
     async function scanCccd() {

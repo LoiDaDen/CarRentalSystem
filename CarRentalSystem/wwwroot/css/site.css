@@ -1942,3 +1942,177 @@ body.theme-admin,
 [data-bs-theme="light"] .theme-admin .text-white {
     color: #0f172a !important;
 }
+
+/* =========================================================
+   25. ENTERPRISE RESPONSIVE REFINEMENTS
+   ========================================================= */
+:root {
+    --cr-enterprise-border: #d8e0eb;
+    --cr-enterprise-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.theme-carrental {
+    --bs-body-color: var(--cr-text);
+    --bs-body-bg: var(--cr-bg);
+}
+
+.theme-carrental .card,
+.theme-carrental .modal-content,
+.theme-carrental .dropdown-menu,
+.theme-carrental .summary-card,
+.theme-carrental .benefit-card,
+.theme-carrental .contract-pillar,
+.theme-carrental .booking-card,
+.theme-carrental .car-row {
+    border-radius: 8px !important;
+}
+
+.theme-carrental .card,
+.theme-carrental .summary-card,
+.theme-carrental .benefit-card,
+.theme-carrental .contract-pillar,
+.theme-carrental .booking-card {
+    border: 1px solid var(--cr-enterprise-border);
+    box-shadow: var(--cr-enterprise-shadow);
+}
+
+.theme-carrental .page-header,
+.theme-carrental .section-header,
+.theme-carrental .enterprise-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.theme-carrental .page-header h1,
+.theme-carrental .page-header h2,
+.theme-carrental .section-header h1,
+.theme-carrental .section-header h2,
+.theme-carrental .enterprise-header h1,
+.theme-carrental .enterprise-header h2 {
+    margin-bottom: 0.25rem;
+    color: var(--cr-text);
+}
+
+.theme-carrental .filter-bar,
+.theme-carrental .toolbar,
+.theme-carrental .enterprise-toolbar {
+    background: var(--cr-surface);
+    border: 1px solid var(--cr-enterprise-border);
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: var(--cr-shadow-xs);
+}
+
+.theme-carrental .table-responsive {
+    border-radius: 8px;
+    border: 1px solid var(--cr-enterprise-border);
+    background: var(--cr-surface);
+}
+
+.theme-carrental .table {
+    margin-bottom: 0;
+}
+
+.theme-carrental .btn {
+    border-radius: 8px !important;
+}
+
+.theme-carrental .rounded-pill {
+    border-radius: 999px !important;
+}
+
+.theme-carrental .text-muted {
+    color: #526173 !important;
+}
+
+.theme-carrental .bg-light,
+.theme-carrental .bg-white {
+    color: var(--cr-text) !important;
+}
+
+.theme-carrental .alert-warning,
+.theme-carrental .alert-info,
+.theme-carrental .alert-light {
+    color: #0f172a;
+}
+
+.theme-carrental .dropdown-menu:not(.dropdown-menu-dark) {
+    background: #ffffff !important;
+    color: #0f172a;
+}
+
+.theme-carrental .dropdown-menu:not(.dropdown-menu-dark) .dropdown-item {
+    color: #1e293b !important;
+}
+
+.theme-carrental .dropdown-menu:not(.dropdown-menu-dark) .dropdown-item:hover {
+    color: #0f172a !important;
+    background: #eef4ff !important;
+}
+
+.theme-public .app-navbar {
+    position: sticky;
+    top: 0;
+}
+
+.theme-public .app-main-shell {
+    width: min(100%, 1280px);
+}
+
+.cart-badge {
+    min-width: 1.35rem;
+    min-height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#chatbot-widget {
+    max-width: calc(100vw - 24px) !important;
+}
+
+@media (max-width: 991.98px) {
+    .theme-carrental .page-header,
+    .theme-carrental .section-header,
+    .theme-carrental .enterprise-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .theme-carrental .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .theme-carrental .btn,
+    .theme-carrental .form-control,
+    .theme-carrental .form-select {
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .theme-carrental .container,
+    .theme-carrental .container-fluid {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .theme-carrental .card-body,
+    .theme-carrental .modal-body {
+        padding: 1rem !important;
+    }
+
+    .theme-public .app-footer {
+        padding-bottom: 5rem;
+    }
+
+    #chatbot-widget {
+        right: 12px !important;
+        bottom: 84px !important;
+        width: calc(100vw - 24px) !important;
+    }
+}

@@ -49,6 +49,7 @@
 
         <div class="card border-0 shadow-lg p-4 p-md-5 rounded-4">
             <form asp-action="Login" method="post">
+                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                 <div class="mb-4">
                     <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ Email</label>
                     <div class="input-group bg-light rounded-3 overflow-hidden border-0">

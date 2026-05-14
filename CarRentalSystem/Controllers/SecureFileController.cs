@@ -59,7 +59,8 @@ namespace CarRentalSystem.Controllers
 
             // Prevent directory traversal
             var resolvedPath = Path.GetFullPath(fullPath);
-            if (!resolvedPath.StartsWith(Path.GetFullPath(basePath)))
+            var resolvedBasePath = Path.GetFullPath(basePath);
+            if (!resolvedPath.StartsWith(resolvedBasePath, StringComparison.OrdinalIgnoreCase))
                 return NotFound("Invalid path");
 
             if (!System.IO.File.Exists(resolvedPath))
@@ -77,6 +78,9 @@ namespace CarRentalSystem.Controllers
             };
 
             // Serve file với cache headers bảo mật
+            Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
+            Response.Headers.Pragma = "no-cache";
+            Response.Headers.Expires = "0";
             var fileStream = System.IO.File.OpenRead(resolvedPath);
             return File(fileStream, contentType, enableRangeProcessing: true);
         }
@@ -110,7 +114,8 @@ namespace CarRentalSystem.Controllers
             var fullPath = Path.Combine(basePath, fileName);
 
             var resolvedPath = Path.GetFullPath(fullPath);
-            if (!resolvedPath.StartsWith(Path.GetFullPath(basePath)))
+            var resolvedBasePath = Path.GetFullPath(basePath);
+            if (!resolvedPath.StartsWith(resolvedBasePath, StringComparison.OrdinalIgnoreCase))
                 return Json(new { success = false, message = "Invalid path" });
 
             if (System.IO.File.Exists(resolvedPath))

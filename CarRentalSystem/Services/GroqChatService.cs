@@ -91,29 +91,29 @@ public class GroqChatService
 
         if (normalized.Contains("ekyc") || normalized.Contains("xac thuc") || normalized.Contains("cccd") || normalized.Contains("gplx"))
         {
-            return "Minh dang dung che do ho tro noi bo. De eKYC de qua hon, ban chup CCCD/GPLX ro 4 goc, khong loe sang, anh selfie thay ro mat va trung voi giay to. Neu he thong bao loi dich vu, ho so se duoc giu de xac minh lai.";
+            return "Mình đang dùng chế độ hỗ trợ nội bộ. Để eKYC dễ qua hơn, bạn chụp CCCD/GPLX rõ 4 góc, không lóa sáng, ảnh selfie thấy rõ mặt và trùng với giấy tờ. Nếu hệ thống báo lỗi dịch vụ, hồ sơ sẽ được giữ để xác minh lại.";
         }
 
         if (normalized.Contains("thanh toan") || normalized.Contains("coc") || normalized.Contains("payos"))
         {
-            return "Minh dang dung che do ho tro noi bo. He thong ho tro thanh toan/dat coc online qua PayOS. Ban nen kiem tra lai so tien, noi dung thanh toan va trang thai don trong muc chuyen xe cua toi.";
+            return "Mình đang dùng chế độ hỗ trợ nội bộ. Hệ thống hỗ trợ thanh toán/đặt cọc online qua PayOS. Bạn nên kiểm tra lại số tiền, nội dung thanh toán và trạng thái đơn trong mục chuyến xe của tôi.";
         }
 
         if (normalized.Contains("huy") || normalized.Contains("hoan") || normalized.Contains("doi xe"))
         {
-            return "Minh dang dung che do ho tro noi bo. Neu can huy, doi xe hoac hoan coc, ban mo chi tiet don dat xe va kiem tra trang thai hien tai. Don da nhan xe hoac dang xu ly co the can admin ho tro.";
+            return "Mình đang dùng chế độ hỗ trợ nội bộ. Nếu cần hủy, đổi xe hoặc hoàn cọc, bạn mở chi tiết đơn đặt xe và kiểm tra trạng thái hiện tại. Đơn đã nhận xe hoặc đang xử lý có thể cần admin hỗ trợ.";
         }
 
         if (normalized.Contains("gia") || normalized.Contains("thue") || normalized.Contains("xe") || normalized.Contains("dat"))
         {
-            return "Minh dang dung che do ho tro noi bo. Ban cho minh biet khu vuc, so nguoi di, ngay gio nhan/tra xe, ngan sach va muon tu lai hay co tai xe. Minh se goi y loai xe phu hop nhu sedan tiet kiem, SUV gia dinh, xe dien hoac xe premium.";
+            return "Mình đang dùng chế độ hỗ trợ nội bộ. Bạn cho mình biết khu vực, số người đi, ngày giờ nhận/trả xe, ngân sách và muốn tự lái hay có tài xế. Mình sẽ gợi ý loại xe phù hợp như sedan tiết kiệm, SUV gia đình, xe điện hoặc xe premium.";
         }
 
         if (normalized.Contains("khuyen mai") || normalized.Contains("ma giam") || normalized.Contains("thanh vien"))
         {
-            return "Minh dang dung che do ho tro noi bo. Ban co the kiem tra uu dai trong muc hang thanh vien/khuyen mai. Neu da co ma giam gia, hay nhap o buoc thanh toan de he thong tinh lai tong tien.";
+            return "Mình đang dùng chế độ hỗ trợ nội bộ. Bạn có thể kiểm tra ưu đãi trong mục hạng thành viên/khuyến mãi. Nếu đã có mã giảm giá, hãy nhập ở bước thanh toán để hệ thống tính lại tổng tiền.";
         }
 
-        return "Minh dang dung che do ho tro noi bo nen cau tra loi se ngan gon hon. Ban co the hoi ve thue xe, gia xe, eKYC, GPLX, thanh toan/dat coc, huy don, khuyen mai hoac chinh sach giao nhan xe.";
+        return "Mình đang dùng chế độ hỗ trợ nội bộ nên câu trả lời sẽ ngắn gọn hơn. Bạn có thể hỏi về thuê xe, giá xe, eKYC, GPLX, thanh toán/đặt cọc, hủy đơn, khuyến mãi hoặc chính sách giao nhận xe.";
     }
 }

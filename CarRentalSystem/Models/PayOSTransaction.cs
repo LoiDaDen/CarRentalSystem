@@ -16,6 +16,10 @@ namespace CarRentalSystem.Models
         [ForeignKey("BookingHoldID")]
         public BookingHold? BookingHold { get; set; }
 
+        public int? TransactionID { get; set; }
+        [ForeignKey("TransactionID")]
+        public BookingTransaction? BookingTransaction { get; set; }
+
         public int? UserID { get; set; }
         [ForeignKey("UserID")]
         public User? User { get; set; }

@@ -41,17 +41,26 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpGet]
-        public IActionResult Login()
+        public IActionResult Login(string? returnUrl = null)
         {
             if (User.Identity.IsAuthenticated)
+            {
+                if (IsSafeLocalReturnUrl(returnUrl))
+                    return LocalRedirect(returnUrl!);
+
                 return RedirectToAction("Index", "Home");
+            }
+
+            ViewData["ReturnUrl"] = IsSafeLocalReturnUrl(returnUrl) ? returnUrl : null;
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string email, string password, string? recaptchaToken)
+        public async Task<IActionResult> Login(string email, string password, string? recaptchaToken, string? returnUrl = null)
         {
+            ViewData["ReturnUrl"] = IsSafeLocalReturnUrl(returnUrl) ? returnUrl : null;
+
             // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
             // if (string.IsNullOrEmpty(recaptchaToken))
             // {
@@ -105,6 +114,9 @@ namespace CarRentalSystem.Controllers
 
             await HttpContext.SignInAsync("Cookies", principal);
 
+            if (IsSafeLocalReturnUrl(returnUrl))
+                return LocalRedirect(returnUrl!);
+
             if (user.Role == UserRoleConstants.Admin)
                 return RedirectToAction("Index", "Dashboard", new { area = "Admin" });
 
@@ -112,6 +124,11 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Index", "AreaDashboard", new { area = "Admin" });
 
             return RedirectToAction("Index", "Home");
+        }
+
+        private bool IsSafeLocalReturnUrl(string? returnUrl)
+        {
+            return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl);
         }
 
         [HttpGet]
@@ -171,7 +188,7 @@ namespace CarRentalSystem.Controllers
                 referrer = await _referralService.GetVerifiedReferrerAsync(model.ReferralCode);
                 if (referrer == null)
                 {
-                    ViewBag.Error = "Ma gioi thieu khong hop le hoac tai khoan gioi thieu chua xac thuc eKYC.";
+                    ViewBag.Error = "Mã giới thiệu không hợp lệ hoặc tài khoản giới thiệu chưa xác thực eKYC.";
                     return View(model);
                 }
             }
@@ -969,7 +986,6 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [Authorize]
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> SetPiiPin([FromBody] SetPinRequest request)
         {
             if (string.IsNullOrEmpty(request?.Pin) || !System.Text.RegularExpressions.Regex.IsMatch(request.Pin, @"^\d{6}$"))
@@ -1000,7 +1016,6 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [Authorize]
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> VerifyPiiPin([FromBody] VerifyPinRequest request)
         {
             if (string.IsNullOrEmpty(request?.Pin))
@@ -1038,7 +1053,6 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> BackfillPiiHashes()
         {
             var users = await _context.Users

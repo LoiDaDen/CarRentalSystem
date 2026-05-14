@@ -55,7 +55,7 @@
             const data = await response.json();
             messages.innerHTML += `<div style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);color:#0f172a;padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;white-space:pre-line;">${escape(data.reply || '')}</div>`;
         } catch {
-            messages.innerHTML += '<div style="background:#fee2e2;padding:10px 16px;border-radius:16px;max-width:85%;font-size:.85rem;color:#dc2626;">Loi ket noi. Vui long thu lai.</div>';
+            messages.innerHTML += '<div style="background:#fee2e2;padding:10px 16px;border-radius:16px;max-width:85%;font-size:.85rem;color:#dc2626;">Lỗi kết nối. Vui lòng thử lại.</div>';
         }
         messages.scrollTop = messages.scrollHeight;
     };

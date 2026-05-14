@@ -66,7 +66,7 @@ namespace CarRentalSystem.Services
 <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
-    <title>Xac thuc tai khoan</title>
+    <title>Xác thực tài khoản</title>
 </head>
 <body style='margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;'>
     <table width='100%' cellpadding='0' cellspacing='0' style='background:#f1f5f9;padding:30px 10px;'>
@@ -76,13 +76,13 @@ namespace CarRentalSystem.Services
                     <tr>
                         <td style='background:linear-gradient(135deg,#0369a1 0%,#0ea5e9 50%,#38bdf8 100%);padding:32px 40px;text-align:center;'>
                             <h1 style='color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:0.5px;'>CarRental</h1>
-                            <p style='color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;'>Xac thuc tai khoan cua ban</p>
+                            <p style='color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;'>Xác thực tài khoản của bạn</p>
                         </td>
                     </tr>
                     <tr>
                         <td style='padding:30px 40px;text-align:center;'>
-                            <p style='margin:0 0 8px;font-size:15px;color:#1e293b;'>Cam on ban da dang ky tai khoan.</p>
-                            <p style='margin:0 0 24px;font-size:14px;color:#64748b;'>Su dung ma OTP ben duoi de xac thuc tai khoan cua ban:</p>
+                            <p style='margin:0 0 8px;font-size:15px;color:#1e293b;'>Cảm ơn bạn đã đăng ký tài khoản.</p>
+                            <p style='margin:0 0 24px;font-size:14px;color:#64748b;'>Sử dụng mã OTP bên dưới để xác thực tài khoản của bạn:</p>
                             <div style='background:#f0f9ff;border:2px dashed #0ea5e9;border-radius:12px;padding:20px 32px;display:inline-block;margin-bottom:20px;'>
                                 <span style='font-size:36px;font-weight:800;color:#0369a1;letter-spacing:8px;'>{otp}</span>
                             </div>
@@ -93,15 +93,15 @@ namespace CarRentalSystem.Services
                         <td style='padding:0 40px 30px;'>
                             <div style='background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px 18px;'>
                                 <p style='margin:0;font-size:12px;color:#92400e;line-height:1.6;'>
-                                    Neu ban khong thuc hien yeu cau nay, vui long bo qua email nay.<br/>
-                                    Khong chia se ma OTP cho bat ky ai.
+                                    Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.<br/>
+                                    Không chia sẻ mã OTP cho bất kỳ ai.
                                 </p>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td style='background:#0f172a;padding:20px 40px;text-align:center;'>
-                            <p style='margin:0;font-size:12px;color:#64748b;'>CarRental - He thong thue xe thong minh | 1900 1234</p>
+                            <p style='margin:0;font-size:12px;color:#64748b;'>CarRental - Hệ thống thuê xe thông minh | 1900 1234</p>
                         </td>
                     </tr>
                 </table>
@@ -129,7 +129,7 @@ namespace CarRentalSystem.Services
 <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
-    <title>Dat lai mat khau</title>
+    <title>Đặt lại mật khẩu</title>
 </head>
 <body style='margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;'>
     <table width='100%' cellpadding='0' cellspacing='0' style='background:#f1f5f9;padding:30px 10px;'>
@@ -139,32 +139,32 @@ namespace CarRentalSystem.Services
                     <tr>
                         <td style='background:linear-gradient(135deg,#0f172a 0%,#2563eb 100%);padding:32px 40px;text-align:center;'>
                             <h1 style='color:#ffffff;margin:0;font-size:24px;font-weight:700;'>CarRental</h1>
-                            <p style='color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;'>Dat lai mat khau cua ban</p>
+                            <p style='color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;'>Đặt lại mật khẩu của bạn</p>
                         </td>
                     </tr>
                     <tr>
                         <td style='padding:30px 40px;text-align:center;'>
-                            <p style='margin:0 0 8px;font-size:15px;color:#1e293b;'>Chung toi da nhan duoc yeu cau dat lai mat khau.</p>
-                            <p style='margin:0 0 24px;font-size:14px;color:#64748b;'>Su dung ma OTP ben duoi de tao mat khau moi:</p>
+                            <p style='margin:0 0 8px;font-size:15px;color:#1e293b;'>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu.</p>
+                            <p style='margin:0 0 24px;font-size:14px;color:#64748b;'>Sử dụng mã OTP bên dưới để tạo mật khẩu mới:</p>
                             <div style='background:#eff6ff;border:2px dashed #2563eb;border-radius:12px;padding:20px 32px;display:inline-block;margin-bottom:20px;'>
                                 <span style='font-size:36px;font-weight:800;color:#1d4ed8;letter-spacing:8px;'>{otp}</span>
                             </div>
-                            <p style='margin:0;font-size:13px;color:#dc2626;font-weight:600;'>&#9888; Ma nay chi co hieu luc trong <strong>5 phut</strong>.</p>
+                            <p style='margin:0;font-size:13px;color:#dc2626;font-weight:600;'>&#9888; Mã này chỉ có hiệu lực trong <strong>5 phút</strong>.</p>
                         </td>
                     </tr>
                     <tr>
                         <td style='padding:0 40px 30px;'>
                             <div style='background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px 18px;'>
                                 <p style='margin:0;font-size:12px;color:#92400e;line-height:1.6;'>
-                                    Neu ban khong yeu cau dat lai mat khau, vui long bo qua email nay.<br/>
-                                    Khong chia se ma OTP cho bat ky ai.
+                                    Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.<br/>
+                                    Không chia sẻ mã OTP cho bất kỳ ai.
                                 </p>
                             </div>
                         </td>
                     </tr>
                     <tr>
                         <td style='background:#0f172a;padding:20px 40px;text-align:center;'>
-                            <p style='margin:0;font-size:12px;color:#64748b;'>CarRental - He thong thue xe thong minh | 1900 1234</p>
+                            <p style='margin:0;font-size:12px;color:#64748b;'>CarRental - Hệ thống thuê xe thông minh | 1900 1234</p>
                         </td>
                     </tr>
                 </table>
@@ -210,16 +210,16 @@ namespace CarRentalSystem.Services
 
             var subject = isEnglish
                 ? $"[CarRental] Your {roleName} profile has been approved"
-                : $"[CarRental] Ho so {roleName} cua ban da duoc duyet";
+                : $"[CarRental] Hồ sơ {roleName} của bạn đã được duyệt";
 
-            var title = isEnglish ? "Profile approved" : "Ho so da duoc duyet";
+            var title = isEnglish ? "Profile approved" : "Hồ sơ đã được duyệt";
             var intro = isEnglish
                 ? $"Congratulations {System.Net.WebUtility.HtmlEncode(recipientName)}, your {roleName} profile has been approved."
-                : $"Chuc mung {System.Net.WebUtility.HtmlEncode(recipientName)}, ho so {roleName} cua ban da duoc duyet.";
+                : $"Chúc mừng {System.Net.WebUtility.HtmlEncode(recipientName)}, hồ sơ {roleName} của bạn đã được duyệt.";
             var deadline = isEnglish
                 ? $"Please sign contract #{System.Net.WebUtility.HtmlEncode(contractNo)} before {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}."
-                : $"Vui long ky hop dong #{System.Net.WebUtility.HtmlEncode(contractNo)} truoc {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}.";
-            var button = isEnglish ? "Open contract" : "Mo hop dong";
+                : $"Vui lòng ký hợp đồng #{System.Net.WebUtility.HtmlEncode(contractNo)} trước {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}.";
+            var button = isEnglish ? "Open contract" : "Mở hợp đồng";
 
             var body = BuildContractNoticeEmailHtml(title, intro, deadline, contractUrl, button);
             await SendEmailAsync(smtpSettings["Host"], smtpSettings["Port"], smtpSettings["User"], smtpSettings["Pass"], toEmail, subject, body);
@@ -233,16 +233,16 @@ namespace CarRentalSystem.Services
 
             var subject = isEnglish
                 ? $"[CarRental] Contract signing reminder: {daysBeforeDeadline} day(s) left"
-                : $"[CarRental] Nhac ky hop dong: con {daysBeforeDeadline} ngay";
+                : $"[CarRental] Nhắc ký hợp đồng: còn {daysBeforeDeadline} ngày";
 
-            var title = isEnglish ? "Contract signing reminder" : "Nhac ky hop dong";
+            var title = isEnglish ? "Contract signing reminder" : "Nhắc ký hợp đồng";
             var intro = isEnglish
                 ? $"Hi {System.Net.WebUtility.HtmlEncode(recipientName)}, your {roleName} contract is still waiting for your signature."
-                : $"Chao {System.Net.WebUtility.HtmlEncode(recipientName)}, hop dong {roleName} cua ban van dang cho ky.";
+                : $"Chào {System.Net.WebUtility.HtmlEncode(recipientName)}, hợp đồng {roleName} của bạn vẫn đang chờ ký.";
             var deadline = isEnglish
                 ? $"Contract #{System.Net.WebUtility.HtmlEncode(contractNo)} expires at {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}."
-                : $"Hop dong #{System.Net.WebUtility.HtmlEncode(contractNo)} het han luc {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}.";
-            var button = isEnglish ? "Sign contract now" : "Ky hop dong ngay";
+                : $"Hợp đồng #{System.Net.WebUtility.HtmlEncode(contractNo)} hết hạn lúc {expiresAt.ToLocalTime():HH:mm dd/MM/yyyy}.";
+            var button = isEnglish ? "Sign contract now" : "Ký hợp đồng ngay";
 
             var body = BuildContractNoticeEmailHtml(title, intro, deadline, contractUrl, button);
             await SendEmailAsync(smtpSettings["Host"], smtpSettings["Port"], smtpSettings["User"], smtpSettings["Pass"], toEmail, subject, body);
@@ -288,7 +288,7 @@ namespace CarRentalSystem.Services
 <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
-    <title>Hoa don dat xe</title>
+    <title>Hóa đơn đặt xe</title>
 </head>
 <body style='margin:0;padding:0;font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;'>
     <table width='100%' cellpadding='0' cellspacing='0' style='background:#f1f5f9;padding:30px 10px;'>
@@ -315,7 +315,7 @@ namespace CarRentalSystem.Services
                     <tr>
                         <td style='padding:24px 40px 0;text-align:center;'>
                             <span style='display:inline-block;background:{statusBg};color:{statusColor};padding:8px 24px;border-radius:50px;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border:1px solid rgba(14,165,233,0.2);'>
-                                &#10003; Thanh toan thanh cong
+                                &#10003; Thanh toán thành công
                             </span>
                         </td>
                     </tr>
@@ -323,8 +323,8 @@ namespace CarRentalSystem.Services
                     <!-- Greeting -->
                     <tr>
                         <td style='padding:24px 40px 0;'>
-                            <p style='margin:0 0 4px;font-size:15px;color:#1e293b;'>Kinh gui <strong>{user.Name}</strong>,</p>
-                            <p style='margin:0;font-size:14px;color:#64748b;'>Cam on ban da dat xe tai CarRental. Dưới đây là chi tiết đơn đặt xe của ban.</p>
+                            <p style='margin:0 0 4px;font-size:15px;color:#1e293b;'>Kính gửi <strong>{user.Name}</strong>,</p>
+                            <p style='margin:0;font-size:14px;color:#64748b;'>Cảm ơn bạn đã đặt xe tại CarRental. Dưới đây là chi tiết đơn đặt xe của bạn.</p>
                         </td>
                     </tr>
 
@@ -334,7 +334,7 @@ namespace CarRentalSystem.Services
                             <table width='100%' cellpadding='0' cellspacing='0' style='background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;overflow:hidden;'>
                                 <tr>
                                     <td colspan='2' style='padding:14px 20px;background:#0ea5e9;color:#fff;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;'>
-                                        Thong tin dat xe - #{booking.BookingID:D4}
+                                        Thông tin đặt xe - #{booking.BookingID:D4}
                                     </td>
                                 </tr>
                                 <tr>
@@ -344,27 +344,27 @@ namespace CarRentalSystem.Services
                                         <div style='font-size:12px;color:#64748b;'>{car?.LicensePlate ?? ""}</div>
                                     </td>
                                     <td style='padding:12px 20px;border-bottom:1px solid #e2e8f0;vertical-align:top;'>
-                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Bao hiem</div>
+                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Bảo hiểm</div>
                                         <div style='font-size:14px;color:#1e293b;font-weight:600;'>{booking.InsuranceTier}</div>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style='padding:12px 20px;border-bottom:1px solid #e2e8f0;vertical-align:top;'>
-                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Nhan xe</div>
+                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Nhận xe</div>
                                         <div style='font-size:14px;color:#1e293b;font-weight:600;'>{booking.StartDate:HH:mm, dd/MM/yyyy}</div>
                                     </td>
                                     <td style='padding:12px 20px;border-bottom:1px solid #e2e8f0;vertical-align:top;'>
-                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Tra xe</div>
+                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Trả xe</div>
                                         <div style='font-size:14px;color:#1e293b;font-weight:600;'>{booking.EndDate:HH:mm, dd/MM/yyyy}</div>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style='padding:12px 20px;vertical-align:top;'>
-                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Dia diem nhan</div>
+                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Địa điểm nhận</div>
                                         <div style='font-size:14px;color:#1e293b;font-weight:600;'>{booking.PickupLocation?.Name ?? "N/A"}</div>
                                     </td>
                                     <td style='padding:12px 20px;vertical-align:top;'>
-                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Dia diem tra</div>
+                                        <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;'>Địa điểm trả</div>
                                         <div style='font-size:14px;color:#1e293b;font-weight:600;'>{booking.ReturnLocation?.Name ?? "N/A"}</div>
                                     </td>
                                 </tr>
@@ -378,30 +378,30 @@ namespace CarRentalSystem.Services
                             <table width='100%' cellpadding='0' cellspacing='0' style='background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;overflow:hidden;'>
                                 <tr>
                                     <td colspan='2' style='padding:14px 20px;background:#0ea5e9;color:#fff;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;'>
-                                        Chi tiet thanh toan
+                                        Chi tiết thanh toán
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style='padding:10px 20px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;'>Tong tien thue xe</td>
+                                    <td style='padding:10px 20px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;'>Tổng tiền thuê xe</td>
                                     <td style='padding:10px 20px;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;'>{booking.TotalPrice:N0} VND</td>
                                 </tr>
                                 <tr>
-                                    <td style='padding:10px 20px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;'>Tong so gio thue</td>
-                                    <td style='padding:10px 20px;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;'>{booking.TotalHours} gio</td>
+                                    <td style='padding:10px 20px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;'>Tổng số giờ thuê</td>
+                                    <td style='padding:10px 20px;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;'>{booking.TotalHours} giờ</td>
                                 </tr>
                                 <tr>
-                                    <td style='padding:10px 20px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;'>Tien dat coc (20%)</td>
+                                    <td style='padding:10px 20px;font-size:13px;color:#475569;border-bottom:1px solid #e2e8f0;'>Tiền đặt cọc (20%)</td>
                                     <td style='padding:10px 20px;font-size:13px;color:#16a34a;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;'>-{depositAmount:N0} VND</td>
                                 </tr>
                                 <tr>
-                                    <td style='padding:10px 20px;font-size:13px;color:#475569;'>Con lai (thanh toan khi nhan xe)</td>
+                                    <td style='padding:10px 20px;font-size:13px;color:#475569;'>Còn lại (thanh toán khi nhận xe)</td>
                                     <td style='padding:10px 20px;font-size:13px;color:#1e293b;font-weight:600;text-align:right;'>{remainingAmount:N0} VND</td>
                                 </tr>
                                 <tr>
                                     <td colspan='2' style='padding:14px 20px;background:#e0f2fe;border-top:2px solid #0ea5e9;'>
                                         <table width='100%' cellpadding='0' cellspacing='0'>
                                             <tr>
-                                                <td style='font-size:15px;color:#0369a1;font-weight:700;'>So du tong thanh toan</td>
+                                                <td style='font-size:15px;color:#0369a1;font-weight:700;'>Số dư tổng thanh toán</td>
                                                 <td style='font-size:18px;color:#0369a1;font-weight:800;text-align:right;'>{booking.TotalPrice:N0} VND</td>
                                             </tr>
                                         </table>
@@ -416,12 +416,12 @@ namespace CarRentalSystem.Services
                         <td style='padding:0 40px 20px;'>
                             <div style='background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:14px 18px;'>
                                 <p style='margin:0 0 6px;font-size:13px;color:#92400e;font-weight:700;'>
-                                    <span style='font-size:16px;margin-right:6px;'>&#9888;</span>Luu y quan trong
+                                    <span style='font-size:16px;margin-right:6px;'>&#9888;</span>Lưu ý quan trọng
                                 </p>
                                 <ul style='margin:0;padding-left:18px;font-size:12px;color:#78350f;line-height:1.7;'>
-                                    <li>Vui long co the CCCD va bang lai xe khi nhan xe.</li>
-                                    <li>Dat coc se duoc hoan tra trong 15 ngay sau khi tra xe (neu khong co vi pham).</li>
-                                    <li>Lien he 1900 1234 neu can ho tro.</li>
+                                    <li>Vui lòng có thẻ CCCD và bằng lái xe khi nhận xe.</li>
+                                    <li>Đặt cọc sẽ được hoàn trả trong 15 ngày sau khi trả xe (nếu không có vi phạm).</li>
+                                    <li>Liên hệ 1900 1234 nếu cần hỗ trợ.</li>
                                 </ul>
                             </div>
                         </td>
@@ -431,7 +431,7 @@ namespace CarRentalSystem.Services
                     <tr>
                         <td style='padding:0 40px 24px;text-align:center;'>
                             <a href='https://localhost:7285/Booking/MyBookings' style='display:inline-block;background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:700;letter-spacing:0.5px;'>
-                                Xem danh sach chuyen xe cua toi
+                                Xem danh sách chuyến xe của tôi
                             </a>
                         </td>
                     </tr>
@@ -439,9 +439,9 @@ namespace CarRentalSystem.Services
                     <!-- Footer -->
                     <tr>
                         <td style='background:#0f172a;padding:24px 40px;text-align:center;'>
-                            <p style='margin:0 0 6px;font-size:14px;color:#94a3b8;font-weight:600;'>CarRental - He thong thue xe thong minh</p>
+                            <p style='margin:0 0 6px;font-size:14px;color:#94a3b8;font-weight:600;'>CarRental - Hệ thống thuê xe thông minh</p>
                             <p style='margin:0;font-size:12px;color:#64748b;'>1900 1234 | support@carrental.vn | www.carrental.vn</p>
-                            <p style='margin:12px 0 0;font-size:11px;color:#475569;'>Email nay duoc gui tu dong. Vui long khong tra loi email nay.</p>
+                            <p style='margin:12px 0 0;font-size:11px;color:#475569;'>Email này được gửi tự động. Vui lòng không trả lời email này.</p>
                         </td>
                     </tr>
 
@@ -458,7 +458,7 @@ namespace CarRentalSystem.Services
             if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user))
             {
                 _logger.LogError("SMTP settings are not configured. Email to {Email} with subject {Subject} was not sent.", toEmail, subject);
-                throw new InvalidOperationException("SMTP settings are not configured.");
+                return;
             }
 
             try
@@ -487,7 +487,6 @@ namespace CarRentalSystem.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send email to {Email} with subject {Subject}", toEmail, subject);
-                throw;
             }
         }
     }
