@@ -108,6 +108,12 @@ namespace CarRentalSystem.Controllers
             int? CarID,
             int? SelectedDriverID)
         {
+            if (SelectedDriverID.HasValue)
+            {
+                TempData["Error"] = "Thuê xe tự lái không được gán tài xế.";
+                return RedirectToAction("RequestForm", new { contractId = ContractTypeID });
+            }
+
             _logger.LogInformation("SubmitRequest started for ContractTypeID: {ContractTypeID}, CarID: {CarID}", ContractTypeID, CarID);
 
             // Validate cơ bản
@@ -217,8 +223,7 @@ namespace CarRentalSystem.Controllers
                 customerName = FullName,
                 customerPhone = Phone,
                 startDateStr = StartDate.ToString("yyyy-MM-ddTHH:mm"),
-                selectedDates = SelectedDates ?? "",
-                selectedDriverId = SelectedDriverID
+                selectedDates = SelectedDates ?? ""
             });
         }
 
@@ -238,6 +243,8 @@ namespace CarRentalSystem.Controllers
             int? selectedDriverId)
         {
             // Lấy thông tin user
+            selectedDriverId = null;
+
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdStr, out int currentUserId))
             {
@@ -341,7 +348,7 @@ namespace CarRentalSystem.Controllers
             ViewBag.CustomerPhone = customerPhone;
             ViewBag.StartDateStr = startDateStr;
             ViewBag.SelectedDates = selectedDates;
-            ViewBag.SelectedDriverId = selectedDriverId;
+            ViewBag.SelectedDriverId = null;
 
             return View();
         }
@@ -363,6 +370,12 @@ namespace CarRentalSystem.Controllers
             int? selectedDriverId)
         {
             // Lấy user ID
+            if (selectedDriverId.HasValue)
+            {
+                TempData["Error"] = "Thuê xe tự lái không được gán tài xế.";
+                return RedirectToAction("Index");
+            }
+
             if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out int userId))
             {
                 return Unauthorized();
@@ -409,8 +422,7 @@ namespace CarRentalSystem.Controllers
                         customerName,
                         customerPhone,
                         startDateStr,
-                        selectedDates,
-                        selectedDriverId
+                        selectedDates
                     };
 
                     TempData["ShowEkycModal"] = "true";
@@ -440,7 +452,7 @@ namespace CarRentalSystem.Controllers
                     StartDate = startDate,
                     EndDate = endDate,
                     InsuranceTier = "Basic",
-                    SelectedDriverID = selectedDriverId,
+                    SelectedDriverID = null,
                     ContractTypeID = contractId,
                     IsLongTerm = true,
                     LongTermMonths = CalculateTermMonths(startDate, endDate)

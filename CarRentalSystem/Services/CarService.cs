@@ -82,6 +82,9 @@ namespace CarRentalSystem.Services
                 .Include(c => c.CarType)
                 .Include(c => c.Location)
                 .Include(c => c.CarBrand)
+                .Include(c => c.CarModel)
+                .Include(c => c.CarAmenityMappings)
+                    .ThenInclude(m => m.CarAmenity)
                 .FirstOrDefaultAsync(m => m.CarID == id);
         }
 

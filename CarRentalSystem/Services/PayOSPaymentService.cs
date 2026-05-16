@@ -331,7 +331,7 @@ namespace CarRentalSystem.Services
             if (data == null)
                 return new PayOSWebhookResult(false, false, "Invalid webhook signature", null, null);
 
-            var eventKey = $"payos:{data.OrderCode}:{data.Code}:{data.Amount}:{payloadHash}";
+            var eventKey = $"payos:webhook:{data.OrderCode}:{data.Code}:{data.Amount}";
             var existingEvent = await _context.PaymentWebhookEvents
                 .FirstOrDefaultAsync(e => e.Provider == "PayOS" && e.EventKey == eventKey);
             if (existingEvent?.Status == "Processed")
@@ -351,6 +351,13 @@ namespace CarRentalSystem.Services
             };
             if (existingEvent == null)
                 _context.PaymentWebhookEvents.Add(webhookEvent);
+            else
+            {
+                webhookEvent.PayloadHash = payloadHash;
+                webhookEvent.RawPayload = rawPayload;
+                webhookEvent.Error = null;
+                webhookEvent.Status = "Received";
+            }
 
             var transaction = await _context.PayOSTransactions
                 .Include(t => t.Booking)
@@ -657,6 +664,9 @@ namespace CarRentalSystem.Services
                 {
                     UserID = hold.UserID,
                     CarID = hold.CarID,
+                    ServiceTypeID = quote.ServiceTypeID ?? await GetSelfDriveServiceTypeIdAsync(),
+                    CustomerDrivingLicenseID = quote.CustomerDrivingLicenseID,
+                    ContractTypeCode = "SELF_DRIVE_CONTRACT",
                     StartDate = hold.StartDate,
                     EndDate = hold.EndDate,
                     PickupLocationID = quote.PickupLocationID,
@@ -690,8 +700,6 @@ namespace CarRentalSystem.Services
                 await _context.SaveChangesAsync();
 
                 await AttachAddOnsAsync(booking.BookingID, quote);
-                if (quote.DriverID.HasValue)
-                    await AttachDriverAsync(booking, quote);
 
                 if (quote.PromotionID.HasValue)
                 {
@@ -942,6 +950,9 @@ namespace CarRentalSystem.Services
                     {
                         UserID = hold.UserID,
                         CarID = hold.CarID,
+                        ServiceTypeID = quote.ServiceTypeID ?? await GetSelfDriveServiceTypeIdAsync(),
+                        CustomerDrivingLicenseID = quote.CustomerDrivingLicenseID,
+                        ContractTypeCode = "SELF_DRIVE_CONTRACT",
                         TransactionID = bookingTransaction.TransactionID,
                         StartDate = hold.StartDate,
                         EndDate = hold.EndDate,
@@ -976,8 +987,6 @@ namespace CarRentalSystem.Services
                     await _context.SaveChangesAsync();
 
                     await AttachAddOnsAsync(booking.BookingID, quote);
-                    if (quote.DriverID.HasValue)
-                        await AttachDriverAsync(booking, quote);
 
                     if (quote.PromotionID.HasValue)
                     {
@@ -1093,19 +1102,13 @@ namespace CarRentalSystem.Services
             }
         }
 
-        private async Task AttachDriverAsync(Booking booking, CheckoutQuoteViewModel quote)
+        private async Task<int> GetSelfDriveServiceTypeIdAsync()
         {
-            var driverBooking = new DriverBooking
-            {
-                BookingID = booking.BookingID,
-                DriverID = quote.DriverID!.Value,
-                DriverFee = quote.DriverFee,
-                Status = BookingStatusConstants.Pending
-            };
-            _context.DriverBookings.Add(driverBooking);
-            await _context.SaveChangesAsync();
+            var serviceType = await _context.ServiceTypes.FirstOrDefaultAsync(s => s.Code == ServiceTypeConstants.SelfDrive);
+            if (serviceType == null)
+                throw new InvalidOperationException("ServiceType SELF_DRIVE is missing.");
 
-            booking.DriverBookingID = driverBooking.DriverBookingID;
+            return serviceType.ServiceTypeID;
         }
 
         private static CheckoutQuoteViewModel? DeserializeQuote(string? json)

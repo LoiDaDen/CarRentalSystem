@@ -9,6 +9,11 @@
 }
 
 <style>
+    #driverOverlay,
+    .driver-popup-overlay {
+        display: none !important;
+    }
+
     .checkout-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
     .form-control { border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; }
     .form-control:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
@@ -293,40 +298,22 @@
                         </div>
                     </div>
 
-                    <!-- Lựa chọn tài xế -->
-                    @if (totalHours <= 4)
-                    {
-                        <div class="border rounded-3 p-3 mt-3 bg-light border-warning">
-                            <div class="fw-bold text-warning mb-2"><i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>Chỉ hỗ trợ Tự Lái</div>
-                            <small class="text-muted d-block">Lịch trình thuê từ 1 - 4 tiếng đồng hồ không hỗ trợ tùy chọn kèm Tài xế. Bạn sẽ tự điều khiển phương tiện của mình.</small>
-                            <input type="hidden" name="SelectedDriverID" value="" />
-                            <input type="hidden" name="DriverFee" value="0" />
-                        </div>
-                    }
-                    else if (ViewBag.Drivers != null && ((IEnumerable<Driver>)ViewBag.Drivers).Any())
-                    {
-                        <div class="border rounded-3 p-3 mt-3 bg-light border-success">
-                            <div class="fw-bold mb-3"><i class="bi bi-person-badge me-2 text-success fs-5"></i>Tùy chọn Tài xế (Tùy chọn)</div>
-                            <input type="hidden" name="SelectedDriverID" id="selectedDriverIdInput" value="" />
-                            <input type="hidden" name="DriverFee" id="driverFeeInput" value="0" />
-                            
-                            <!-- Compact trigger button -->
-                            <div class="drv-selfdrive active p-2 m-0" id="selectedDriverBtn" style="cursor:pointer;" onclick="openDriverPopup()">
-                                <div class="drv-selfdrive-icon" style="width:46px; height:46px; font-size:1.2rem;" id="selectedDriverIcon"><i class="bi bi-steering-wheel"></i></div>
-                                <div class="drv-card-info ms-2">
-                                    <div class="drv-card-name fs-6" id="selectedDriverName">Tự lái (Không kèm tài xế)</div>
-                                    <div class="drv-card-meta"><span id="selectedDriverMeta">Bạn sẽ tự điều khiển phương tiện của mình</span></div>
-                                </div>
-                                <div class="drv-card-price ms-auto me-2">
-                                    <div class="price-val fs-5" id="selectedDriverPrice">0đ</div>
-                                </div>
-                                <div class="text-success"><i class="bi bi-check-circle-fill fs-5"></i></div>
-                            </div>
-                        </div>
-                    }
-                        
+                    <div class="border rounded-3 p-3 mt-3 bg-light border-success">
+                        <div class="fw-bold text-success mb-2"><i class="bi bi-steering-wheel me-2 fs-5"></i>Thuê xe tự lái</div>
+                        <small class="text-muted d-block">Bạn sẽ tự điều khiển xe. Dịch vụ này không bao gồm tài xế và không phát sinh phí tài xế.</small>
+                    </div>
                         <!-- Submit Action inside Left Sidebar -->
                         <div class="mt-4">
+                            <div class="alert alert-success rounded-3 mb-3">
+                                <div class="fw-bold mb-1">Loại dịch vụ: Thuê xe tự lái</div>
+                                <div class="small">Khách thuê phải tự điều khiển xe và có giấy phép lái xe phù hợp. Dịch vụ này không bao gồm tài xế.</div>
+                            </div>
+                            <div class="form-check p-3 border rounded-3 mb-3 bg-light">
+                                <input class="form-check-input" type="checkbox" name="SelfDriveAgreement" value="true" id="SelfDriveAgreement" required />
+                                <label class="form-check-label fw-semibold" for="SelfDriveAgreement">
+                                    Tôi xác nhận là người trực tiếp điều khiển xe, có giấy phép lái xe phù hợp, còn hiệu lực và không sử dụng xe thuê để vận tải hành khách/hàng hóa có thu tiền.
+                                </label>
+                            </div>
                             @if(User?.Identity?.IsAuthenticated == true)
                             {
                                 <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3" id="confirmBookingBtn" style="font-size: 1.1rem;">
@@ -346,80 +333,6 @@
             </form>
     </div>
 </div>
-
-@if (ViewBag.Drivers != null && ((IEnumerable<Driver>)ViewBag.Drivers).Any())
-{
-<div class="driver-popup-overlay" id="driverOverlay" onclick="closeDriverPopup(event)">
-    <div class="driver-popup" onclick="event.stopPropagation()">
-        <div class="driver-popup-header">
-            <div>
-                <h5>Tùy chọn Tài xế</h5>
-                @if (ViewBag.CarLocationName != null && ViewBag.CarLocationName != "")
-                {
-                    <div class="subtitle">Tài xế ở <strong>@ViewBag.CarLocationName</strong></div>
-                }
-                else
-                {
-                    <div class="subtitle">Tăng thêm sự thoải mái cho chuyến đi của bạn</div>
-                }
-            </div>
-            <button class="btn-close btn-close-white" onclick="closeDriverPopup()"></button>
-        </div>
-        <div class="driver-popup-body" id="driverPopupBody">
-            <div class="drv-selfdrive active" id="drv-0" onclick="selectDriverNew('', 0, 'drv-0', 'Tự lái (Không kèm tài xế)', 'Bạn sẽ tự điều khiển phương tiện', '')">
-                <div class="drv-selfdrive-icon"><i class="bi bi-steering-wheel"></i></div>
-                <div class="drv-card-info">
-                    <div class="drv-card-name">Tự lái (Không kèm tài xế)</div>
-                    <div class="drv-card-meta"><span><i class="bi bi-check-circle me-1"></i>Bạn sẽ tự điều khiển phương tiện</span></div>
-                </div>
-                <div class="drv-card-price">
-                    <div class="price-val">0đ</div>
-                </div>
-                <div class="ms-2 active-indicator" style="display: block; color:#65a30d; font-weight:bold; font-size: 1.2rem;">
-                    <i class="bi bi-check-circle-fill"></i>
-                </div>
-            </div>
-
-            @foreach (var driver in (IEnumerable<Driver>)ViewBag.Drivers)
-            {
-                var dFee = driver.DailyRate * rentalDays;
-                <div class="drv-card" id="drv-@driver.DriverID" onclick="selectDriverNew('@driver.DriverID', @dFee, 'drv-@driver.DriverID', '@driver.FullName', '@driver.ExperienceYears năm KN - Bằng @driver.LicenseType', '@driver.AvatarUrl')">
-                    @if (!string.IsNullOrEmpty(driver.AvatarUrl))
-                    {
-                        <img src="@driver.AvatarUrl" class="drv-card-avatar" alt="Avatar" />
-                    }
-                    else
-                    {
-                        <div class="drv-card-avatar-placeholder"><i class="bi bi-person-fill"></i></div>
-                    }
-                    <div class="drv-card-info">
-                        <div class="drv-card-name">@driver.FullName</div>
-                        <div class="drv-card-meta">
-                            <span><i class="bi bi-geo-alt"></i> @driver.Location?.Name</span>
-                            <span><i class="bi bi-award"></i> @driver.ExperienceYears năm KN</span>
-                            <span><i class="bi bi-card-checklist"></i> Bằng @driver.LicenseType</span>
-                        </div>
-                        <div class="drv-card-stars">
-                            @for (int s = 0; s < (int)Math.Round((double)driver.Rating); s++)
-                            {
-                                <i class="bi bi-star-fill"></i>
-                            }
-                            <span class="drv-card-rating-text">@driver.Rating.ToString("0.0")</span>
-                        </div>
-                    </div>
-                    <div class="drv-card-price">
-                        <div class="price-val">@dFee.ToString("N0")đ</div>
-                        <div class="price-unit">(@driver.DailyRate.ToString("N0")đ x @rentalDays ngày)</div>
-                    </div>
-                    <div class="ms-2 active-indicator" style="display: none; color:#3b82f6; font-weight:bold; font-size: 1.2rem;">
-                        <i class="bi bi-check-circle-fill"></i>
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
-</div>
-}
 
 @section Scripts {
     <script>
@@ -479,65 +392,7 @@
             document.getElementById('insuranceFeeInput').value = fee;
         }
         function toggleAddon(row) {}
-        
-        function selectDriverNew(driverId, fee, elemId, name, metaLabel, iconUrl) {
-            document.getElementById('selectedDriverIdInput').value = driverId;
-            document.getElementById('driverFeeInput').value = fee;
-            
-            // Remove active classes
-            document.querySelectorAll('.drv-card, .drv-selfdrive').forEach(el => {
-                el.classList.remove('active');
-                if(el.querySelector('.active-indicator')) {
-                    el.querySelector('.active-indicator').style.display = 'none';
-                }
-            });
-            
-            // Set active
-            let sel = document.getElementById(elemId);
-            if(sel) {
-                sel.classList.add('active');
-                if(sel.querySelector('.active-indicator')) {
-                    sel.querySelector('.active-indicator').style.display = 'block';
-                }
-            }
-            
-            // Sync with parent trigger button
-            document.getElementById('selectedDriverName').innerText = name;
-            document.getElementById('selectedDriverPrice').innerText = fee > 0 ? (fee.toLocaleString('vi-VN') + 'đ') : '0đ';
-            document.getElementById('selectedDriverMeta').innerText = metaLabel;
-
-            let iconHtml = '';
-            if (driverId) {
-                 if (iconUrl && iconUrl !== '') {
-                     iconHtml = '<img src="' + iconUrl + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
-                 } else {
-                     iconHtml = '<i class="bi bi-person-fill"></i>';
-                 }
-                 document.getElementById('selectedDriverIcon').innerHTML = iconHtml;
-                 document.getElementById('selectedDriverIcon').style.background = 'linear-gradient(135deg, #3b82f6, #8b5cf6)';
-                 document.getElementById('selectedDriverBtn').classList.remove('drv-selfdrive');
-                 document.getElementById('selectedDriverBtn').classList.add('drv-card');
-                 document.getElementById('selectedDriverBtn').classList.add('active'); // mimic active card styling
-            } else {
-                 document.getElementById('selectedDriverIcon').innerHTML = '<i class="bi bi-steering-wheel"></i>';
-                 document.getElementById('selectedDriverIcon').style.background = 'linear-gradient(135deg, #65a30d, #84cc16)';
-                 document.getElementById('selectedDriverBtn').classList.remove('drv-card');
-                 document.getElementById('selectedDriverBtn').classList.add('drv-selfdrive');
-            }
-
-            closeDriverPopup();
-            updateTotal();
-        }
-
-        function openDriverPopup() {
-            document.getElementById('driverOverlay').classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
-        
-        function closeDriverPopup(e) {
-            if (e && e.target !== document.getElementById('driverOverlay')) return;
-            document.getElementById('driverOverlay').classList.remove('show');
-            document.body.style.overflow = '';
-        }
-    </script>
+</script>
 }
+
+

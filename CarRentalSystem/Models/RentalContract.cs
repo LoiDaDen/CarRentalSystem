@@ -18,6 +18,22 @@ namespace CarRentalSystem.Models
         [ForeignKey("BookingID")]
         public Booking? Booking { get; set; }
 
+        public int ContractVersion { get; set; } = 1;
+
+        [MaxLength(64)]
+        public string? RenderedContentHash { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? SignerIdentitySnapshotJson { get; set; }
+
+        [MaxLength(45)]
+        public string? SignedIpAddress { get; set; }
+
+        [MaxLength(500)]
+        public string? SignedUserAgent { get; set; }
+
+        public DateTime? SignedAt { get; set; }
+
         /// <summary>
         /// Tính phí cuối cùng của hợp đồng cho thuê:
         /// - TotalKm = EndKm - StartKm

@@ -241,10 +241,7 @@
                 <!-- Badge counts from database (set before nav renders) -->
                 @await Component.InvokeAsync("AdminBadgeCounts")
 
-                @{
-                    var pendingDriverCount = ViewData["PendingDriverCount"] as int? ?? 0;
-                    var contractBadgeCount = ViewData["ContractBadgeCount"] as int? ?? 0;
-                }
+                @{                }
 
                 <nav class="nav flex-column px-2 pb-4 flex-grow-1">
                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
@@ -258,7 +255,7 @@
                                 <span><i class="bi bi-kanban-fill"></i> Quản lý</span>
                                 <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
-                            <div class="collapse @(new[]{"Car", "CarApproval", "Booking", "User", "Maintenance", "Driver", "Membership", "PartnerContract", "DigitalContract", "HolidayPricing"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
+                            <div class="collapse @(new[]{"Car", "CarApproval", "Booking", "User", "Maintenance", "Membership", "HolidayPricing"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
                                 @if (User.IsInRole("Admin"))
                                 {
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Car" && ViewContext.RouteData.Values["action"]?.ToString() == "Manage" ? "active" : "")" asp-area="Admin" asp-controller="Car" asp-action="Manage">
@@ -279,32 +276,8 @@
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Payment" ? "active" : "")" asp-area="Admin" asp-controller="Payment" asp-action="Index">
                                         <i class="bi bi-currency-exchange" style="font-size: 1.1rem;"></i> Lịch sử Giao dịch
                                     </a>
-                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "DigitalContract" ? "active" : "")" asp-area="Admin" asp-controller="DigitalContract" asp-action="Index">
-                                        <i class="bi bi-file-earmark-medical-fill" style="font-size: 1.1rem;"></i> Hợp đồng số
-                                    </a>
-                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "PartnerContract" ? "active" : "")" asp-area="Admin" asp-controller="PartnerContract" asp-action="Index">
-                                        <i class="bi bi-file-earmark-person-fill" style="font-size: 1.1rem;"></i> HĐ Đối tác/Tài xế
-                                        @if (contractBadgeCount > 0)
-                                        {
-                                            <span class="badge bg-danger rounded-pill ms-auto" style="font-size: 0.65rem; padding: 2px 6px;">
-                                                @(contractBadgeCount > 99 ? "99+" : contractBadgeCount)
-                                            </span>
-                                        }
-                                    </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="Index">
                                         <i class="bi bi-people-fill" style="font-size: 1.1rem;"></i> Người dùng
-                                    </a>
-                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "User" && ViewContext.RouteData.Values["action"]?.ToString() == "PartnerRequests" ? "active" : "")" asp-area="Admin" asp-controller="User" asp-action="PartnerRequests">
-                                        <i class="bi bi-person-badge-fill" style="font-size: 1.1rem;"></i> Duyệt Đối tác
-                                    </a>
-                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Driver" ? "active" : "")" asp-area="Admin" asp-controller="Driver" asp-action="Index">
-                                        <i class="bi bi-person-workspace" style="font-size: 1.1rem;"></i> Hồ sơ Tài xế
-                                        @if (pendingDriverCount > 0)
-                                        {
-                                            <span class="badge bg-danger rounded-pill ms-auto" style="font-size: 0.65rem; padding: 2px 6px;">
-                                                @(pendingDriverCount > 99 ? "99+" : pendingDriverCount)
-                                            </span>
-                                        }
                                     </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Membership" ? "active" : "")" asp-area="Admin" asp-controller="Membership" asp-action="Index">
                                         <i class="bi bi-gem text-info" style="font-size: 1.1rem;"></i> Hạng TV & Hợp đồng
@@ -638,3 +611,5 @@
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+
+

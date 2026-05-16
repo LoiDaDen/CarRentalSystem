@@ -17,6 +17,10 @@ namespace CarRentalSystem.Models
         [ForeignKey("Car")]
         public int CarID { get; set; }
 
+        [ForeignKey("ServiceType")]
+        public int? ServiceTypeID { get; set; }
+        public ServiceType? ServiceType { get; set; }
+
         [Required]
         public DateTime StartDate { get; set; }
 
@@ -115,12 +119,23 @@ namespace CarRentalSystem.Models
         public int? ContractTypeID { get; set; }
         public ContractType? ContractType { get; set; }
 
+        [MaxLength(50)]
+        public string ContractTypeCode { get; set; } = "SELF_DRIVE_CONTRACT";
+
         [Range(0, double.MaxValue)]
         [Column(TypeName = "decimal(18,2)")]
         public decimal LateFeeAmount { get; set; } = 0;
 
         // Driver
         public int? DriverBookingID { get; set; }
+
+        [ForeignKey("Driver")]
+        public int? DriverID { get; set; }
+        public Driver? Driver { get; set; }
+
+        [ForeignKey("CustomerDrivingLicense")]
+        public int? CustomerDrivingLicenseID { get; set; }
+        public CustomerDrivingLicense? CustomerDrivingLicense { get; set; }
 
         [ForeignKey("TransactionID")]
         public int? TransactionID { get; set; }
@@ -138,5 +153,7 @@ namespace CarRentalSystem.Models
         [Range(0, double.MaxValue)]
         [Column(TypeName = "decimal(18,2)")]
         public decimal FuelFee { get; set; } = 0;
+
+        public DateTime? UpdatedAt { get; set; }
     }
 }

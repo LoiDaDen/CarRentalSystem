@@ -1,0 +1,198 @@
+@model CarRentalSystem.Controllers.OwnerCarCreateViewModel
+@{
+    ViewData["Title"] = "Đăng xe";
+    var brands = ViewBag.Brands as IEnumerable<CarRentalSystem.Models.CarBrand> ?? Enumerable.Empty<CarRentalSystem.Models.CarBrand>();
+    var serviceTypes = ViewBag.ServiceTypes as IEnumerable<CarRentalSystem.Models.ServiceType> ?? Enumerable.Empty<CarRentalSystem.Models.ServiceType>();
+    var amenities = ViewBag.Amenities as IEnumerable<CarRentalSystem.Models.CarAmenity> ?? Enumerable.Empty<CarRentalSystem.Models.CarAmenity>();
+}
+
+<form asp-action="Create" method="post" enctype="multipart/form-data" class="mioto-form" id="ownerCarForm">
+    @Html.AntiForgeryToken()
+    <div class="steps">
+        <button type="button" class="step active" data-step="1"><span>1</span>Thông tin</button>
+        <button type="button" class="step" data-step="2"><span>2</span>Cho thuê</button>
+        <button type="button" class="step" data-step="3"><span>3</span>Hình ảnh</button>
+    </div>
+
+    <section class="panel step-panel" data-panel="1">
+        <h2>Biển số xe</h2>
+        <p class="note">Lưu ý: Biển số sẽ không thể thay đổi sau khi đăng ký.</p>
+        <input asp-for="LicensePlate" class="input short" required />
+
+        <h2>Thông tin cơ bản</h2>
+        <p class="note">Lưu ý: Các thông tin cơ bản sẽ không thể thay đổi sau khi đăng ký.</p>
+        <div class="grid-2">
+            <label>Hãng xe
+                <select asp-for="BrandID" id="brandSelect" required>
+                    <option value="">Chọn hãng xe</option>
+                    @foreach (var brand in brands)
+                    {
+                        <option value="@brand.BrandID">@brand.Name</option>
+                    }
+                </select>
+            </label>
+            <label>Mẫu xe
+                <select asp-for="CarModelID" id="modelSelect" required>
+                    <option value="">Chọn hãng xe trước</option>
+                </select>
+            </label>
+            <label>Số ghế
+                <select asp-for="Seats">
+                    <option>4</option><option>5</option><option>7</option><option>9</option><option>16</option>
+                </select>
+            </label>
+            <label>Năm sản xuất
+                <select asp-for="ManufactureYear">
+                    @for (var y = DateTime.UtcNow.Year; y >= 1990; y--) { <option value="@y">@y</option> }
+                </select>
+            </label>
+            <label>Truyền động
+                <select asp-for="Transmission"><option>Tự động</option><option>Số sàn</option></select>
+            </label>
+            <label>Nhiên liệu
+                <select asp-for="FuelType"><option>Xăng</option><option>Dầu</option><option>Điện</option><option>Hybrid</option></select>
+            </label>
+        </div>
+        <h2>Mức tiêu thụ nhiên liệu</h2>
+        <p class="muted">Số lít nhiên liệu cho quãng đường 100km.</p>
+        <input asp-for="FuelConsumption" class="input short" placeholder="10" />
+        <h2>Mô tả</h2>
+        <textarea asp-for="Description" rows="4" placeholder="Mô tả tình trạng, trang bị, ưu điểm của xe..."></textarea>
+        <h2>Tính năng</h2>
+        <div class="amenities">
+            @foreach (var amenity in amenities)
+            {
+                <label class="amenity">
+                    <input type="checkbox" name="AmenityIDs" value="@amenity.CarAmenityID" />
+                    <i class="bi @amenity.Icon"></i>
+                    <span>@amenity.Name</span>
+                </label>
+            }
+        </div>
+    </section>
+
+    <section class="panel step-panel d-none" data-panel="2">
+        <h2>Đơn giá thuê mặc định</h2>
+        <p class="muted">Giá đề xuất: <span id="suggestedPrice">440K</span></p>
+        <div class="money-row"><input asp-for="PricePerDay" type="number" min="100000" value="440000" required /><span>đ/ngày</span></div>
+
+        <h2>Loại dịch vụ</h2>
+        <select asp-for="ServiceTypeID">
+            @foreach (var serviceType in serviceTypes)
+            {
+                <option value="@serviceType.ServiceTypeID">@serviceType.Name</option>
+            }
+        </select>
+
+        <div class="toggle-row"><h2>Giảm giá thuê tuần</h2><input type="checkbox" checked /></div>
+        <label>Giảm giá thuê tuần (% trên đơn giá)
+            <input asp-for="WeeklyDiscountPercent" type="range" min="0" max="40" />
+        </label>
+
+        <h2>Địa chỉ xe</h2>
+        <div class="address-row">
+            <input asp-for="CarAddress" id="carAddressInput" placeholder="Địa chỉ mặc định để giao nhận xe." required />
+            <button type="button" id="btnUseCurrentLocation"><i class="bi bi-crosshair"></i></button>
+        </div>
+        <div class="grid-3">
+            <input asp-for="CityOrProvince" placeholder="Tỉnh/Thành phố" />
+            <input asp-for="District" placeholder="Quận/Huyện" />
+            <input asp-for="Ward" placeholder="Phường/Xã" />
+        </div>
+        <input asp-for="Latitude" type="hidden" id="latInput" />
+        <input asp-for="Longitude" type="hidden" id="lngInput" />
+
+        <div class="toggle-row"><h2>Giao xe tận nơi</h2><input asp-for="DeliveryEnabled" type="checkbox" /></div>
+        <div class="grid-3">
+            <label>Quãng đường giao xe tối đa<input asp-for="MaxDeliveryDistanceKm" type="number" min="0" /></label>
+            <label>Phí giao nhận mỗi km<input asp-for="DeliveryFeePerKm" type="number" min="0" /></label>
+            <label>Miễn phí trong vòng<input asp-for="FreeDeliveryRadiusKm" type="number" min="0" /></label>
+        </div>
+
+        <div class="toggle-row"><h2>Giới hạn số km</h2><input asp-for="MileageLimitEnabled" type="checkbox" /></div>
+        <div class="grid-2">
+            <label>Số km tối đa trong 1 ngày<input asp-for="DailyMileageLimitKm" type="number" min="0" /></label>
+            <label>Phí vượt giới hạn mỗi km<input asp-for="ExtraMileageFeePerKm" type="number" min="0" /></label>
+        </div>
+
+        <h2>Điều khoản thuê xe</h2>
+        <textarea asp-for="RentalTerms" rows="4" placeholder="Ghi rõ các yêu cầu để khách có thể thuê xe."></textarea>
+    </section>
+
+    <section class="panel step-panel d-none" data-panel="3">
+        <h2>Hình ảnh xe</h2>
+        <p class="note">Bắt buộc upload ít nhất 4 ảnh. Nên có ảnh trước, sau, hai bên và nội thất.</p>
+        <input asp-for="ImageFiles" type="file" accept="image/*" multiple required id="imageInput" />
+        <span asp-validation-for="ImageFiles" class="text-danger"></span>
+        <div id="imagePreviewGrid" class="image-grid"></div>
+    </section>
+
+    <div class="form-actions">
+        <button type="button" class="btn-back" id="btnBack" disabled>Quay lại</button>
+        <button type="button" class="btn-next" id="btnNext">Kế tiếp</button>
+        <button type="submit" class="btn-next d-none" id="btnSubmit">Gửi duyệt</button>
+    </div>
+</form>
+
+<style>
+    .mioto-form{max-width:900px;margin:0 auto;background:#f7f7f7;padding:0 0 24px}
+    .steps{display:flex;justify-content:center;gap:56px;background:#fff;padding:36px 0 24px;border-bottom:1px solid #ddd}
+    .step{border:0;background:transparent;color:#9ca3af;text-align:center}.step span{display:grid;place-items:center;width:50px;height:50px;border-radius:50%;background:#f4f8fb;color:#111;margin:0 auto 10px;font-weight:800}.step.active span{background:#5bd486;color:#fff}
+    .panel{background:#fff;padding:36px 52px}.panel h2{font-size:22px;font-weight:800;margin:28px 0 12px}.note{color:red;font-size:14px}.muted{color:#b8bec8}.input,select,textarea,input[type=number],input[type=text]{width:100%;border:1px solid #ddd;border-radius:7px;padding:13px 16px;background:#fff}.short{max-width:360px}.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}.amenities{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.amenity{border:1px solid #ddd;border-radius:4px;min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer}.amenity input{display:none}.amenity:has(input:checked){border-color:#5bd486;background:#effdf4}.amenity i{font-size:22px}.money-row{display:flex;align-items:center;gap:14px}.money-row input{max-width:240px}.toggle-row{display:flex;align-items:center;justify-content:space-between}.address-row{display:flex;gap:10px}.address-row button{width:52px;border:1px solid #ddd;background:#fff;border-radius:7px}.image-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.image-grid img{width:100%;height:110px;object-fit:cover;border-radius:6px}.form-actions{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:24px 6px 0}.btn-back,.btn-next{border-radius:7px;padding:16px;border:1px solid #5bd486;font-weight:800}.btn-back{background:#fff;color:#5bd486}.btn-back:disabled{border-color:#ddd;color:#ddd}.btn-next{background:#5bd486;color:#fff;border-color:#5bd486}
+    @@media(max-width:760px){.grid-2,.grid-3,.amenities{grid-template-columns:1fr}.panel{padding:24px}.steps{gap:18px}.image-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+@section Scripts {
+<script>
+let currentStep = 1;
+const panels = document.querySelectorAll('.step-panel');
+const steps = document.querySelectorAll('.step');
+const btnBack = document.getElementById('btnBack');
+const btnNext = document.getElementById('btnNext');
+const btnSubmit = document.getElementById('btnSubmit');
+function showStep(step){
+    currentStep = step;
+    panels.forEach(p=>p.classList.toggle('d-none', p.dataset.panel != step));
+    steps.forEach(s=>s.classList.toggle('active', s.dataset.step == step));
+    btnBack.disabled = step === 1;
+    btnNext.classList.toggle('d-none', step === 3);
+    btnSubmit.classList.toggle('d-none', step !== 3);
+}
+btnBack.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
+btnNext.addEventListener('click',()=>showStep(Math.min(3,currentStep+1)));
+steps.forEach(s=>s.addEventListener('click',()=>showStep(Number(s.dataset.step))));
+
+document.getElementById('brandSelect').addEventListener('change', async function(){
+    const modelSelect = document.getElementById('modelSelect');
+    modelSelect.innerHTML = '<option value="">Đang tải...</option>';
+    const res = await fetch(`/CarCatalog/Models?brandId=${this.value}`);
+    const models = await res.json();
+    modelSelect.innerHTML = '<option value="">Chọn mẫu xe</option>' + models.map(m=>`<option value="${m.id}" data-seats="${m.seatCount||''}" data-fuel="${m.fuelType||''}" data-transmission="${m.transmission||''}">${m.name}</option>`).join('');
+});
+document.getElementById('btnUseCurrentLocation').addEventListener('click', function(){
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos=>{
+        document.getElementById('latInput').value = pos.coords.latitude;
+        document.getElementById('lngInput').value = pos.coords.longitude;
+        document.getElementById('carAddressInput').value ||= `Vị trí hiện tại (${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)})`;
+    });
+});
+document.getElementById('imageInput').addEventListener('change', function(){
+    const grid = document.getElementById('imagePreviewGrid');
+    grid.innerHTML = '';
+    [...this.files].forEach(file=>{
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        grid.appendChild(img);
+    });
+});
+document.getElementById('ownerCarForm').addEventListener('submit', function(e){
+    const count = document.getElementById('imageInput').files.length;
+    if(count < 4){
+        e.preventDefault();
+        alert('Vui lòng upload tối thiểu 4 ảnh xe.');
+        showStep(3);
+    }
+});
+</script>
+}

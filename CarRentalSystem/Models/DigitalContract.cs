@@ -78,6 +78,22 @@ namespace CarRentalSystem.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        public int ContractVersion { get; set; } = 1;
+
+        [MaxLength(64)]
+        public string? RenderedContentHash { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? SignerIdentitySnapshotJson { get; set; }
+
+        [MaxLength(45)]
+        public string? SignedIpAddress { get; set; }
+
+        [MaxLength(500)]
+        public string? SignedUserAgent { get; set; }
+
+        public DateTime? SignedAt { get; set; }
+
         // Phase 10: Soft Delete
         public bool IsDeleted { get; set; } = false;
     }

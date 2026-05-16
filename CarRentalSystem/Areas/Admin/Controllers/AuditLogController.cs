@@ -16,11 +16,13 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<AuditLogController> _logger;
+        private readonly CarRentalSystem.Services.IAuditTrailService _auditTrail;
 
-        public AuditLogController(ApplicationDbContext context, ILogger<AuditLogController> logger)
+        public AuditLogController(ApplicationDbContext context, ILogger<AuditLogController> logger, CarRentalSystem.Services.IAuditTrailService auditTrail)
         {
             _context = context;
             _logger = logger;
+            _auditTrail = auditTrail;
         }
 
         /// <summary>
@@ -106,6 +108,22 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (log == null) return NotFound();
 
             return View(log);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> VerifyChain(DateTime? fromDate, DateTime? toDate, string? entityType)
+        {
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (role != "Admin") return Forbid();
+
+            var result = await _auditTrail.VerifyAsync(fromDate, toDate?.AddDays(1), entityType);
+            return Json(new
+            {
+                result.IsValid,
+                result.CheckedCount,
+                result.FailedAuditLogID,
+                result.Message
+            });
         }
     }
 }

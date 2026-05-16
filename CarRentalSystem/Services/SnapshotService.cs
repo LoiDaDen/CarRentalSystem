@@ -6,7 +6,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace CarRentalSystem.Services;
@@ -34,6 +36,8 @@ public class SnapshotService : ISnapshotService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<SnapshotService> _logger;
+    private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _environment;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -41,10 +45,16 @@ public class SnapshotService : ISnapshotService
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    public SnapshotService(ApplicationDbContext context, ILogger<SnapshotService> logger)
+    public SnapshotService(
+        ApplicationDbContext context,
+        ILogger<SnapshotService> logger,
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         _context = context;
         _logger = logger;
+        _configuration = configuration;
+        _environment = environment;
     }
 
     public async Task<SnapshotResult> CreateSnapshotAsync(string name, string? description, string type = "Full", bool isAuto = false)
@@ -74,6 +84,9 @@ public class SnapshotService : ISnapshotService
                 data["AreaLocations"] = await GetTableData<AreaLocation>();
                 data["AreaStaffs"] = await GetTableData<AreaStaff>();
                 data["Cars"] = await GetTableData<Car>();
+                data["CarModels"] = await GetTableData<CarModel>();
+                data["CarAmenities"] = await GetTableData<CarAmenity>();
+                data["CarAmenityMappings"] = await GetTableData<CarAmenityMapping>();
                 data["CarBrands"] = await GetTableData<CarBrand>();
                 data["CarStatuses"] = await GetTableData<CarStatus>();
                 data["CarTypes"] = await GetTableData<CarType>();
@@ -86,16 +99,14 @@ public class SnapshotService : ISnapshotService
                 data["MembershipTiers"] = await GetTableData<MembershipTier>();
                 data["Reviews"] = await GetTableData<Review>();
                 data["MaintenanceLogs"] = await GetTableData<MaintenanceLog>();
-                data["PartnerContracts"] = await GetTableData<PartnerContract>();
-                data["DriverContracts"] = await GetTableData<DriverContract>();
-                data["Drivers"] = await GetTableData<Driver>();
                 data["AddOns"] = await GetTableData<AddOn>();
                 data["ContractTypes"] = await GetTableData<ContractType>();
                 data["HolidayPricing"] = await GetTableData<HolidayPricing>();
                 data["Routes"] = await GetTableData<Models.Route>();
                 data["Invoices"] = await GetTableData<Invoice>();
                 data["AuditLogs"] = await GetTableData<AuditLog>();
-                data["DigitalContracts"] = await GetTableData<DigitalContract>();
+                data["PhysicalContractTypes"] = await GetTableData<PhysicalContractType>();
+                data["PhysicalContracts"] = await GetTableData<PhysicalContract>();
                 data["LongTermRentals"] = await GetTableData<LongTermRental>();
                 data["HandoverRecords"] = await GetTableData<HandoverRecord>();
                 data["InspectionRecords"] = await GetTableData<InspectionRecord>();
@@ -107,7 +118,6 @@ public class SnapshotService : ISnapshotService
                 data["AlertLogs"] = await GetTableData<Alert>();
                 data["CarImages"] = await GetTableData<CarImage>();
                 data["BookingAddOns"] = await GetTableData<BookingAddOn>();
-                data["DriverBookings"] = await GetTableData<DriverBooking>();
                 data["PaymentSchedules"] = await GetTableData<PaymentSchedule>();
                 data["AvailabilitySchedules"] = await GetTableData<AvailabilitySchedule>();
                 data["DynamicPricingRules"] = await GetTableData<DynamicPricingRule>();
@@ -225,6 +235,25 @@ public class SnapshotService : ISnapshotService
 
     public async Task<SnapshotResult> RestoreSnapshotAsync(int snapshotId, int userId)
     {
+        if (_environment.IsProduction() && !_configuration.GetValue("Snapshot:AllowUnsafeRestore", false))
+        {
+            _context.AuditLogs.Add(new AuditLog
+            {
+                Action = "SnapshotRestoreBlocked",
+                EntityType = "DbSnapshot",
+                EntityId = snapshotId,
+                UserId = userId == 0 ? null : userId,
+                Description = "Unsafe JSON snapshot restore is disabled in Production.",
+                Timestamp = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+            return new SnapshotResult
+            {
+                Success = false,
+                Message = "Snapshot restore is disabled in Production. Use managed database point-in-time restore."
+            };
+        }
+
         var snapshot = await _context.DbSnapshots
             .FirstOrDefaultAsync(s => s.SnapshotID == snapshotId);
 
@@ -301,6 +330,9 @@ public class SnapshotService : ISnapshotService
                 "AreaLocations" => typeof(AreaLocation),
                 "AreaStaffs" => typeof(AreaStaff),
                 "Cars" => typeof(Car),
+                "CarModels" => typeof(CarModel),
+                "CarAmenities" => typeof(CarAmenity),
+                "CarAmenityMappings" => typeof(CarAmenityMapping),
                 "CarBrands" => typeof(CarBrand),
                 "CarStatuses" => typeof(CarStatus),
                 "CarTypes" => typeof(CarType),
@@ -313,16 +345,14 @@ public class SnapshotService : ISnapshotService
                 "MembershipTiers" => typeof(MembershipTier),
                 "Reviews" => typeof(Review),
                 "MaintenanceLogs" => typeof(MaintenanceLog),
-                "PartnerContracts" => typeof(PartnerContract),
-                "DriverContracts" => typeof(DriverContract),
-                "Drivers" => typeof(Driver),
                 "AddOns" => typeof(AddOn),
                 "ContractTypes" => typeof(ContractType),
                 "HolidayPricing" => typeof(HolidayPricing),
                 "Routes" => typeof(Models.Route),
                 "Invoices" => typeof(Invoice),
                 "AuditLogs" => typeof(AuditLog),
-                "DigitalContracts" => typeof(DigitalContract),
+                "PhysicalContractTypes" => typeof(PhysicalContractType),
+                "PhysicalContracts" => typeof(PhysicalContract),
                 "LongTermRentals" => typeof(LongTermRental),
                 "HandoverRecords" => typeof(HandoverRecord),
                 "InspectionRecords" => typeof(InspectionRecord),
@@ -334,7 +364,6 @@ public class SnapshotService : ISnapshotService
                 "AlertLogs" => typeof(Alert),
                 "CarImages" => typeof(CarImage),
                 "BookingAddOns" => typeof(BookingAddOn),
-                "DriverBookings" => typeof(DriverBooking),
                 "PaymentSchedules" => typeof(PaymentSchedule),
                 "AvailabilitySchedules" => typeof(AvailabilitySchedule),
                 "DynamicPricingRules" => typeof(DynamicPricingRule),

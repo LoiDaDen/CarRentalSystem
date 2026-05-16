@@ -109,7 +109,7 @@ namespace CarRentalSystem.Data
                     new Location { Name = "Đồng Nai" },
                     new Location { Name = "Nha Trang" },
                     new Location { Name = "Hải Phòng" },
-                    new Location { Name = "Bà Rịa - Vũng Tàu" },
+                    new Location { Name = "Bà Rịa - VÅ©ng Tàu" },
                     new Location { Name = "Cà Mau" },
                     new Location { Name = "Lâm Đồng" },
                     new Location { Name = "Phú Quốc" }
@@ -241,9 +241,8 @@ namespace CarRentalSystem.Data
 
             // ═══ 8. SUB-SEEDERS (Xe mở rộng, Tài xế, Đối tác) ═══
             CarMockDataSeeder.Seed(context);
-            DriverMockDataSeeder.Seed(context);
-            PartnerMockDataSeeder.Seed(context);
             BlogMockDataSeeder.Seed(context);
         }
     }
 }
+

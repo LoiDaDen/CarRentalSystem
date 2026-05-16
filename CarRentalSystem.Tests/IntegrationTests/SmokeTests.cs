@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using CarRentalSystem.Data;
 using System.Net;
+using System.Text.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -317,6 +318,35 @@ namespace CarRentalSystem.Tests.IntegrationTests
             var content = await response.Content.ReadAsStringAsync();
             content.Should().Contain("<link", "Trang phải có link đến CSS");
             _output.WriteLine($"   ✅ CSS — Trang có reference đến stylesheets");
+        }
+
+        [Fact]
+        [Trait("Type", "Smoke")]
+        [Trait("Module", "SRE")]
+        public async Task Live_ReturnsHealthyWithoutDatabaseDependency()
+        {
+            var response = await _client.GetAsync("/live");
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(content);
+            json.RootElement.GetProperty("status").GetString().Should().Be("Healthy");
+            json.RootElement.GetProperty("checks").GetArrayLength().Should().BeGreaterThan(0);
+        }
+
+        [Fact]
+        [Trait("Type", "Smoke")]
+        [Trait("Module", "SRE")]
+        public async Task Ready_ReturnsStructuredReadinessPayload()
+        {
+            var response = await _client.GetAsync("/ready");
+
+            ((int)response.StatusCode == 200 || (int)response.StatusCode == 503).Should().BeTrue();
+            var content = await response.Content.ReadAsStringAsync();
+            using var json = JsonDocument.Parse(content);
+            json.RootElement.TryGetProperty("status", out _).Should().BeTrue();
+            json.RootElement.GetProperty("checks").EnumerateArray()
+                .Should().Contain(check => check.GetProperty("name").GetString() == "database");
         }
 
         public void Dispose()

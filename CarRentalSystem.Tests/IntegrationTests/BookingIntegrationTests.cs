@@ -50,6 +50,10 @@ namespace CarRentalSystem.Tests.IntegrationTests
             var carRepo = new Repository<Car>(_context);
             var carStatusRepo = new Repository<CarStatus>(_context);
             var transitionService = new Mock<IBookingTransitionService>();
+            var businessRules = new Mock<IBookingBusinessRuleService>();
+            businessRules
+                .Setup(r => r.ValidateSelfDriveAsync(It.IsAny<Booking>(), It.IsAny<decimal>()))
+                .Returns(Task.CompletedTask);
             transitionService
                 .Setup(t => t.TransitionAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
                 .Callback<int, string, int?, string, string?>((bookingId, statusName, _, _, reason) =>
@@ -90,7 +94,7 @@ namespace CarRentalSystem.Tests.IntegrationTests
 
             _bookingService = new BookingService(
                 bookingRepo, paymentRepo, contractRepo,
-                statusRepo, carRepo, carStatusRepo, transitionService.Object
+                statusRepo, carRepo, carStatusRepo, transitionService.Object, businessRules.Object
             );
         }
 

@@ -5,7 +5,7 @@ Ngay cap nhat: 2026-05-13
 ## Trang thai hien tai
 
 - Build local: `dotnet build --no-restore` pass.
-- Test local: `dotnet test ..\CarRentalSystem.Tests\CarRentalSystem.Tests.csproj --no-restore` pass 146/146.
+- Test local: `dotnet test ..\CarRentalSystem.Tests\CarRentalSystem.Tests.csproj --configuration Release --no-restore /p:UseAppHost=false` pass 154/154.
 - Migration script check: `dotnet ef migrations script --idempotent --no-build` pass.
 - Readiness script: `scripts/Test-ProductionReadiness.ps1` pass, report tai `artifacts/readiness-20260513-183153.txt`.
 - Release package script: `scripts/New-ProductionMvpRelease.ps1` pass day du build + test + migration + publish, package tai `artifacts/release-20260513-183223/`.
@@ -20,6 +20,7 @@ Ghi chu local: build/publish release da chuyen sang scratch output rieng trong r
 - Dong CORS theo allowlist.
 - Them DataProtection key path cho IIS/Production.
 - Them tracking HMAC + timestamp + device id.
+- Them privileged MFA bang email OTP cho Admin/Manager/Staff trong Production.
 - Them rate limit rieng cho tracking ingest.
 - Bao ve `/admin/api/users` va `/admin/api/locations`.
 - Tat runtime seed/demo endpoint ngoai Development.
@@ -59,6 +60,7 @@ Ghi chu local: build/publish release da chuyen sang scratch output rieng trong r
 - Xac nhan `/health` OK.
 - Xac nhan admin API anonymous bi chan.
 - Xac nhan tracking thieu HMAC bi chan.
+- Xac nhan Admin/Manager/Staff bi bat MFA khi dang nhap production.
 - Xac nhan cart 3 xe neu 1 xe fail thi rollback hold.
 - Xac nhan duplicate PayOS webhook idempotent.
 - Xac nhan amount mismatch bi reject.

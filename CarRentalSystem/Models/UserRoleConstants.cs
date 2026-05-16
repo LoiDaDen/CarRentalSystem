@@ -9,8 +9,6 @@ namespace CarRentalSystem.Models
         public const string Manager = "Manager";
         public const string Staff = "Staff";
         public const string Customer = "Customer";
-        public const string Partner = "Partner";
-        public const string Driver = "Driver";
         public const string Viewer = "Viewer";
 
         /// <summary>
@@ -26,6 +24,6 @@ namespace CarRentalSystem.Models
         /// <summary>
         /// All roles (for [Authorize(Roles = ...)] when any authenticated user is OK)
         /// </summary>
-        public const string AllRoles = "Admin,Manager,Staff,Customer,Partner,Driver,Viewer";
+        public const string AllRoles = "Admin,Manager,Staff,Customer,Viewer";
     }
 }

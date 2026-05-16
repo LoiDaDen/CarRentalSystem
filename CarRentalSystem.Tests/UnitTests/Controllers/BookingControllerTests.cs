@@ -10,6 +10,7 @@ using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -31,6 +32,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IPayOSPaymentService> _mockPayOSPaymentService;
         private readonly Mock<IDeliveryScopeService> _mockDeliveryScopeService;
         private readonly Mock<IEligibilityService> _mockEligibilityService;
+        private readonly Mock<IBookingBusinessRuleService> _mockBusinessRules;
+        private readonly Mock<IBookingTransitionService> _mockBookingTransitionService;
         private readonly Mock<ILogger<BookingController>> _mockLogger;
 
         public BookingControllerTests()
@@ -44,10 +47,18 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockPayOSPaymentService = new Mock<IPayOSPaymentService>();
             _mockDeliveryScopeService = new Mock<IDeliveryScopeService>();
             _mockEligibilityService = new Mock<IEligibilityService>();
+            _mockBusinessRules = new Mock<IBookingBusinessRuleService>();
+            _mockBookingTransitionService = new Mock<IBookingTransitionService>();
             _mockLogger = new Mock<ILogger<BookingController>>();
             _mockEligibilityService
                 .Setup(s => s.CheckRentalEligibilityAsync(It.IsAny<int>()))
                 .ReturnsAsync(new EligibilityResult(true, null));
+            _mockBusinessRules
+                .Setup(s => s.ValidateSelfDriveAsync(It.IsAny<Booking>(), It.IsAny<decimal>()))
+                .Returns(Task.CompletedTask);
+            _mockBookingTransitionService
+                .Setup(s => s.CancelAsync(It.IsAny<int>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
+                .ReturnsAsync(new BookingTransitionResult(true, null));
         }
 
         private BookingController CreateController(int loggedInUserId = 1)
@@ -60,6 +71,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 _mockPayOSPaymentService.Object,
                 _mockDeliveryScopeService.Object,
                 _mockEligibilityService.Object,
+                _mockBusinessRules.Object,
+                _mockBookingTransitionService.Object,
                 _mockLogger.Object,
                 _context);
 
@@ -72,6 +85,9 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 HttpContext = new DefaultHttpContext { User = principal }
             };
             controller.TempData = new TempDataDictionary(controller.HttpContext, Mock.Of<ITempDataProvider>());
+            var urlHelper = new Mock<IUrlHelper>();
+            urlHelper.Setup(u => u.Action(It.IsAny<UrlActionContext>())).Returns("http://localhost/payment");
+            controller.Url = urlHelper.Object;
 
             return controller;
         }
@@ -135,7 +151,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             };
 
             // Act
-            var result = await controller.Book(booking, null, 0, null) as RedirectToActionResult;
+            var result = await controller.Book(booking, true, null, 0, null) as RedirectToActionResult;
 
             // Assert — Có thể redirect hoặc NotFound tùy vào car có tồn tại không
             // Test xác minh không bị crash/exception

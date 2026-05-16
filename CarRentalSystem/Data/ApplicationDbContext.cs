@@ -17,6 +17,7 @@ namespace CarRentalSystem.Data
         public DbSet<RentalContract> RentalContracts { get; set; }
         public DbSet<DigitalContract> DigitalContracts { get; set; }
         public DbSet<VehicleTracking> VehicleTrackings { get; set; }
+        public DbSet<TrackingIngestNonce> TrackingIngestNonces { get; set; }
         public DbSet<CarRentalSystem.Models.Route> Routes { get; set; }
         public DbSet<Alert> Alerts { get; set; }
         public DbSet<MaintenanceLog> MaintenanceLogs { get; set; }
@@ -25,9 +26,19 @@ namespace CarRentalSystem.Data
         
         public DbSet<Location> Locations { get; set; }
         public DbSet<CarBrand> CarBrands { get; set; }
+        public DbSet<CarModel> CarModels { get; set; }
         public DbSet<CarType> CarTypes { get; set; }
         public DbSet<CarStatus> CarStatuses { get; set; }
+        public DbSet<CarAmenity> CarAmenities { get; set; }
+        public DbSet<CarAmenityMapping> CarAmenityMappings { get; set; }
         public DbSet<BookingStatus> BookingStatuses { get; set; }
+        public DbSet<ServiceType> ServiceTypes { get; set; }
+        public DbSet<TripType> TripTypes { get; set; }
+        public DbSet<CustomerDrivingLicense> CustomerDrivingLicenses { get; set; }
+        public DbSet<TripBooking> TripBookings { get; set; }
+        public DbSet<TripStop> TripStops { get; set; }
+        public DbSet<RoutePrice> RoutePrices { get; set; }
+        public DbSet<Surcharge> Surcharges { get; set; }
         
         // CRM & Marketing
         public DbSet<Promotion> Promotions { get; set; }
@@ -58,6 +69,7 @@ namespace CarRentalSystem.Data
         public DbSet<PaymentWebhookEvent> PaymentWebhookEvents { get; set; }
         public DbSet<RefundRequest> RefundRequests { get; set; }
         public DbSet<RefundPayout> RefundPayouts { get; set; }
+        public DbSet<SettlementReview> SettlementReviews { get; set; }
         
         // Scheduling
         public DbSet<AvailabilitySchedule> AvailabilitySchedules { get; set; }
@@ -75,6 +87,8 @@ namespace CarRentalSystem.Data
         // Phase 7: Partner & Driver Contracts
         public DbSet<DriverContract> DriverContracts { get; set; }
         public DbSet<PartnerContract> PartnerContracts { get; set; }
+        public DbSet<PhysicalContract> PhysicalContracts { get; set; }
+        public DbSet<PhysicalContractType> PhysicalContractTypes { get; set; }
 
         // Phase 8: Driver Reviews
         public DbSet<DriverReview> DriverReviews { get; set; }
@@ -107,6 +121,29 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Booking>()
                 .Property(b => b.TotalPrice)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<ServiceType>()
+                .HasIndex(st => st.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<TripType>()
+                .HasIndex(tt => tt.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<Surcharge>()
+                .HasIndex(s => s.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<CustomerDrivingLicense>()
+                .HasIndex(l => new { l.UserID, l.LicenseNumberHash })
+                .HasFilter("[LicenseNumberHash] IS NOT NULL");
+
+            modelBuilder.Entity<TrackingIngestNonce>()
+                .HasIndex(n => new { n.DeviceId, n.Nonce })
+                .IsUnique();
+
+            modelBuilder.Entity<TrackingIngestNonce>()
+                .HasIndex(n => n.CreatedAt);
 
             modelBuilder.Entity<Payment>()
                 .Property(p => p.Amount)
@@ -203,6 +240,43 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<PaymentLedgerEntry>()
                 .Property(l => l.RowVersion)
                 .IsRowVersion();
+
+            modelBuilder.Entity<PaymentLedgerEntry>()
+                .HasIndex(l => l.IdempotencyKey)
+                .IsUnique()
+                .HasFilter("[IdempotencyKey] IS NOT NULL");
+
+            modelBuilder.Entity<PaymentLedgerEntry>()
+                .HasIndex(l => new { l.BookingID, l.EntryType, l.CreatedAt });
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => new { p.BookingID, p.PaymentDate });
+
+            modelBuilder.Entity<PaymentWebhookEvent>()
+                .HasIndex(e => new { e.Provider, e.EventKey })
+                .IsUnique();
+
+            modelBuilder.Entity<PaymentWebhookEvent>()
+                .HasIndex(e => new { e.OrderCode, e.Status });
+
+            modelBuilder.Entity<SettlementReview>()
+                .Property(s => s.RowVersion)
+                .IsRowVersion();
+
+            modelBuilder.Entity<SettlementReview>()
+                .HasIndex(s => new { s.BookingID, s.Status, s.CreatedAt });
+
+            modelBuilder.Entity<SettlementReview>()
+                .HasOne(s => s.Booking)
+                .WithMany()
+                .HasForeignKey(s => s.BookingID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<SettlementReview>()
+                .HasOne(s => s.HandoverRecord)
+                .WithMany()
+                .HasForeignKey(s => s.HandoverID)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<PaymentLedgerEntry>()
                 .HasIndex(l => l.IdempotencyKey)
@@ -352,12 +426,64 @@ namespace CarRentalSystem.Data
                 .HasForeignKey(b => b.CarID)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.ServiceType)
+                .WithMany(st => st.Bookings)
+                .HasForeignKey(b => b.ServiceTypeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.Driver)
+                .WithMany()
+                .HasForeignKey(b => b.DriverID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.CustomerDrivingLicense)
+                .WithMany()
+                .HasForeignKey(b => b.CustomerDrivingLicenseID)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Configure DeleteBehavior for Location in Car
             modelBuilder.Entity<Car>()
                 .HasOne(c => c.Location)
                 .WithMany(l => l.Cars)
                 .HasForeignKey(c => c.LocationID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Car>()
+                .HasOne(c => c.ServiceType)
+                .WithMany(st => st.Cars)
+                .HasForeignKey(c => c.ServiceTypeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CarModel>()
+                .HasIndex(cm => new { cm.BrandID, cm.Name })
+                .IsUnique();
+
+            modelBuilder.Entity<CarModel>()
+                .HasOne(cm => cm.CarBrand)
+                .WithMany(cb => cb.CarModels)
+                .HasForeignKey(cm => cm.BrandID);
+
+            modelBuilder.Entity<CarAmenity>()
+                .HasIndex(ca => ca.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<CarAmenityMapping>()
+                .HasKey(cam => new { cam.CarID, cam.CarAmenityID });
+
+            modelBuilder.Entity<CarAmenityMapping>()
+                .HasOne(cam => cam.Car)
+                .WithMany(c => c.CarAmenityMappings)
+                .HasForeignKey(cam => cam.CarID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CarAmenityMapping>()
+                .HasOne(cam => cam.CarAmenity)
+                .WithMany(ca => ca.CarAmenityMappings)
+                .HasForeignKey(cam => cam.CarAmenityID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Car>()
                 .Property(c => c.DiscountPrice)
@@ -426,6 +552,16 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Driver>()
                 .Property(d => d.HourlyRate)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Driver>()
+                .HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserID);
+
+            modelBuilder.Entity<Driver>()
+                .HasOne(d => d.Partner)
+                .WithMany()
+                .HasForeignKey(d => d.PartnerID);
 
             modelBuilder.Entity<DriverBooking>()
                 .Property(db => db.DriverFee)
@@ -538,6 +674,34 @@ namespace CarRentalSystem.Data
                 .HasForeignKey(pc => pc.PartnerUserID)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<PhysicalContractType>()
+                .HasIndex(pct => pct.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<PhysicalContract>()
+                .HasOne(pc => pc.Booking)
+                .WithMany()
+                .HasForeignKey(pc => pc.BookingID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PhysicalContract>()
+                .HasOne(pc => pc.Car)
+                .WithMany()
+                .HasForeignKey(pc => pc.CarID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PhysicalContract>()
+                .HasOne(pc => pc.Owner)
+                .WithMany()
+                .HasForeignKey(pc => pc.OwnerID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<PhysicalContract>()
+                .HasOne(pc => pc.PhysicalContractType)
+                .WithMany()
+                .HasForeignKey(pc => pc.PhysicalContractTypeID)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // ═══ Driver Review Configuration ═══
             modelBuilder.Entity<DriverReview>()
                 .HasOne(dr => dr.Driver)
@@ -550,6 +714,66 @@ namespace CarRentalSystem.Data
                 .WithMany()
                 .HasForeignKey(dr => dr.UserID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CustomerDrivingLicense>()
+                .HasOne(l => l.User)
+                .WithMany(u => u.CustomerDrivingLicenses)
+                .HasForeignKey(l => l.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TripBooking>()
+                .HasOne(t => t.Booking)
+                .WithMany()
+                .HasForeignKey(t => t.BookingID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TripBooking>()
+                .HasOne(t => t.Customer)
+                .WithMany()
+                .HasForeignKey(t => t.CustomerID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TripBooking>()
+                .HasOne(t => t.Car)
+                .WithMany()
+                .HasForeignKey(t => t.CarID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<TripBooking>()
+                .HasOne(t => t.Driver)
+                .WithMany()
+                .HasForeignKey(t => t.DriverID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<TripBooking>()
+                .HasOne(t => t.TripType)
+                .WithMany()
+                .HasForeignKey(t => t.TripTypeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TripStop>()
+                .HasOne(s => s.TripBooking)
+                .WithMany(t => t.TripStops)
+                .HasForeignKey(s => s.TripBookingID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RoutePrice>()
+                .HasOne(r => r.TripType)
+                .WithMany()
+                .HasForeignKey(r => r.TripTypeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RoutePrice>()
+                .HasOne(r => r.CarType)
+                .WithMany()
+                .HasForeignKey(r => r.CarTypeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Surcharge>()
+                .HasOne(s => s.ApplyToTripType)
+                .WithMany()
+                .HasForeignKey(s => s.ApplyToTripTypeID)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // ═══ Invoice Configuration ═══
             modelBuilder.Entity<Invoice>()
@@ -700,6 +924,12 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => new { b.CarID, b.StartDate, b.EndDate, b.BookingStatusID });
 
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.CreatedAt, b.BookingStatusID });
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.UserID, b.CreatedAt });
+
             // Payment index
             modelBuilder.Entity<Payment>()
                 .HasIndex(p => p.BookingID);
@@ -711,8 +941,15 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<AuditLog>()
                 .HasIndex(a => new { a.EntityType, a.Action });
 
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => new { a.Timestamp, a.EntityType, a.Action });
+
+            modelBuilder.Entity<AuditLog>()
+                .HasIndex(a => new { a.UserId, a.Timestamp });
+
             // Phase 10: Soft Delete Global Query Filters
             modelBuilder.Entity<Car>().HasQueryFilter(c => !c.IsDeleted);
+            modelBuilder.Entity<CarAmenityMapping>().HasQueryFilter(cam => !cam.IsDeleted && !cam.Car!.IsDeleted);
             modelBuilder.Entity<BookingHold>().HasQueryFilter(h => !h.Car!.IsDeleted);
             modelBuilder.Entity<Alert>().HasQueryFilter(a => !a.IsDeleted);
             modelBuilder.Entity<Booking>().HasQueryFilter(b => !b.IsDeleted);
@@ -721,6 +958,8 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<CartItem>().HasQueryFilter(ci => !ci.IsDeleted);
             modelBuilder.Entity<DigitalContract>().HasQueryFilter(dc => !dc.IsDeleted);
             modelBuilder.Entity<DriverBooking>().HasQueryFilter(db => !db.IsDeleted);
+            modelBuilder.Entity<TripBooking>().HasQueryFilter(tb => !tb.IsDeleted);
+            modelBuilder.Entity<TripStop>().HasQueryFilter(ts => !ts.TripBooking!.IsDeleted);
             modelBuilder.Entity<HandoverRecord>().HasQueryFilter(hr => !hr.IsDeleted);
             modelBuilder.Entity<InspectionRecord>().HasQueryFilter(ir => !ir.IsDeleted);
             modelBuilder.Entity<Invoice>().HasQueryFilter(i => !i.IsDeleted);
@@ -730,6 +969,7 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<PayOSTransaction>().HasQueryFilter(t => !t.IsDeleted);
             modelBuilder.Entity<RefundRequest>().HasQueryFilter(r => !r.Booking!.IsDeleted);
             modelBuilder.Entity<RefundPayout>().HasQueryFilter(rp => !rp.RefundRequest!.Booking!.IsDeleted);
+            modelBuilder.Entity<SettlementReview>().HasQueryFilter(sr => !sr.Booking!.IsDeleted);
             modelBuilder.Entity<RentalContract>().HasQueryFilter(rc => !rc.IsDeleted);
             modelBuilder.Entity<Review>().HasQueryFilter(r => !r.IsDeleted);
             modelBuilder.Entity<Models.Route>().HasQueryFilter(r => !r.IsDeleted);
@@ -787,6 +1027,9 @@ namespace CarRentalSystem.Data
                         break;
                     case DriverBooking driverBooking:
                         driverBooking.IsDeleted = true;
+                        break;
+                    case TripBooking tripBooking:
+                        tripBooking.IsDeleted = true;
                         break;
                     case HandoverRecord handoverRecord:
                         handoverRecord.IsDeleted = true;

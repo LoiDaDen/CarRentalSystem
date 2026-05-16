@@ -16,5 +16,7 @@ namespace CarRentalSystem.Models
         
         [StringLength(255)]
         public string? LogoUrl { get; set; }
+
+        public ICollection<CarModel> CarModels { get; set; } = new List<CarModel>();
     }
 }

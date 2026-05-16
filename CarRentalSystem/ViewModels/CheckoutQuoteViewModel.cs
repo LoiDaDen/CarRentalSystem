@@ -14,6 +14,9 @@ namespace CarRentalSystem.ViewModels
     {
         public int UserID { get; set; }
         public int CarID { get; set; }
+        public int? ServiceTypeID { get; set; }
+        public string ServiceTypeCode { get; set; } = "SELF_DRIVE";
+        public int? CustomerDrivingLicenseID { get; set; }
         public string CarName { get; set; } = string.Empty;
         public string CarBrand { get; set; } = string.Empty;
         public string LicensePlate { get; set; } = string.Empty;

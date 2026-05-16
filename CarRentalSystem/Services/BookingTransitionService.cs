@@ -31,7 +31,6 @@ namespace CarRentalSystem.Services
                 .Include(b => b.BookingStatus)
                 .Include(b => b.Payment)
                 .Include(b => b.Car)
-                .Include(b => b.DigitalContract)
                 .Include(b => b.HandoverRecords)
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
 
@@ -107,12 +106,16 @@ namespace CarRentalSystem.Services
             booking.BookingStatus = cancelled;
             booking.CancelReason = reason;
 
-            if (booking.Payment != null && booking.Payment.PaymentStatus == PaymentStatusConstants.Paid)
+            if (current == BookingStatusConstants.Active)
             {
-                booking.DepositStatus = current == BookingStatusConstants.Active
-                    ? DepositStatusConstants.UnderReview
-                    : DepositStatusConstants.PendingRefund;
-
+                booking.ActualReturnDate ??= DateTime.UtcNow;
+                booking.DepositStatus = DepositStatusConstants.UnderReview;
+                if (booking.Payment != null && booking.Payment.PaymentStatus == PaymentStatusConstants.Paid)
+                    await _ledger.CreateRefundRequestAsync(booking.BookingID, booking.DepositAmount, reason ?? "Active booking cancelled.");
+            }
+            else if (booking.Payment != null && booking.Payment.PaymentStatus == PaymentStatusConstants.Paid)
+            {
+                booking.DepositStatus = DepositStatusConstants.PendingRefund;
                 await _ledger.CreateRefundRequestAsync(booking.BookingID, booking.DepositAmount, reason ?? "Booking cancelled.");
             }
             else
@@ -152,8 +155,6 @@ namespace CarRentalSystem.Services
             {
                 if (current != BookingStatusConstants.Confirmed)
                     return new BookingTransitionResult(false, "Only confirmed bookings can become active.");
-                if (booking.DigitalContract == null)
-                    return new BookingTransitionResult(false, "Digital contract must exist before pickup.");
                 if (booking.HandoverRecords == null || !booking.HandoverRecords.Any(h => h.Type == "CheckIn"))
                     return new BookingTransitionResult(false, "Check-in handover record is required before pickup.");
             }

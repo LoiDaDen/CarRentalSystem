@@ -18,14 +18,15 @@ namespace CarRentalSystem.Models
         [Required]
         public required string PasswordHash { get; set; }
         [MaxLength(20)]
-        public string Role { get; set; } = "Customer"; // Admin, Manager, Staff, Customer, Partner
+        public string Role { get; set; } = "Customer"; // Admin, Manager, Staff, Customer, Viewer
 
-        public static readonly string[] AllRoles = { "Admin", "Manager", "Staff", "Customer", "Partner" };
+        public static readonly string[] AllRoles = { "Admin", "Manager", "Staff", "Customer", "Viewer" };
         public static readonly string[] ManageableRoles = { "Manager", "Staff", "Customer" }; // Roles that can be changed by Admin
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Booking>? Bookings { get; set; } = new List<Booking>();
         public ICollection<Review>? Reviews { get; set; } = new List<Review>();
+        public ICollection<CustomerDrivingLicense>? CustomerDrivingLicenses { get; set; } = new List<CustomerDrivingLicense>();
         
         // Phase 4: P2P Host Engine (Marketplace)
         [InverseProperty("Owner")]

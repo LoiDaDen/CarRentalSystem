@@ -1,5 +1,6 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
+using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -17,11 +18,15 @@ namespace CarRentalSystem.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _env;
+        private readonly IEvidenceHashService _evidenceHash;
+        private readonly IAuditTrailService _auditTrail;
 
-        public HandoverController(ApplicationDbContext context, IWebHostEnvironment env)
+        public HandoverController(ApplicationDbContext context, IWebHostEnvironment env, IEvidenceHashService evidenceHash, IAuditTrailService auditTrail)
         {
             _context = context;
             _env = env;
+            _evidenceHash = evidenceHash;
+            _auditTrail = auditTrail;
         }
 
         [HttpGet]
@@ -99,7 +104,8 @@ namespace CarRentalSystem.Controllers
                 Type = Type == "CheckOut" ? "CheckOut" : "CheckIn",
                 RecordDate = DateTime.UtcNow,
                 Odo = Odo,
-                FuelLevel = FuelLevel
+                FuelLevel = FuelLevel,
+                RecordedByUserId = userId
             };
 
             string uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "Handovers");
@@ -142,8 +148,10 @@ namespace CarRentalSystem.Controllers
                 string signPath = Path.Combine(uploadPath, signFileName);
                 await System.IO.File.WriteAllBytesAsync(signPath, bytes);
                 record.SignatureUrl = $"/SecureFile/GetSecureImage?folder=Handovers&fileName={signFileName}";
+                record.CustomerSignatureHash = _evidenceHash.ComputeTextHash(SignatureBase64);
             }
 
+            record.EvidenceHash = _evidenceHash.ComputeHandoverEvidenceHash(record);
             _context.HandoverRecords.Add(record);
             
             if(record.Type == "CheckOut")
@@ -153,6 +161,15 @@ namespace CarRentalSystem.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await _auditTrail.RecordAsync(new AuditLog
+            {
+                Action = "CreateHandoverEvidence",
+                EntityType = nameof(HandoverRecord),
+                EntityId = record.HandoverID,
+                UserId = userId,
+                Reason = $"Handover {record.Type} evidence captured.",
+                NewValues = System.Text.Json.JsonSerializer.Serialize(new { record.BookingID, record.Type, record.EvidenceHash })
+            });
 
             TempData["SuccessMessage"] = $"Biên bản {record.Type} đã được lưu trữ an toàn.";
             return RedirectToAction("Details", "Booking", new { id = BookingID }); // Fallback or MyBookings

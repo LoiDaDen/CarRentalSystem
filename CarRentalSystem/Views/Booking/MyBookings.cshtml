@@ -185,28 +185,10 @@ else
                                         }
                                         @if (statusName == "Confirmed")
                                         {
-                                            @if (booking.TransactionID != null)
+                                            @if (cardCheckInRecord == null)
                                             {
-                                                <a asp-controller="Booking" asp-action="TransactionContract" asp-route-id="@booking.TransactionID" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold">
-                                                    <i class="bi bi-pencil-square me-1"></i>Ký Hợp Đồng Giỏ Hàng
-                                                </a>
-                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Bạn cần ký hợp đồng trước">
-                                                    <i class="bi bi-key me-1"></i>Nhận xe
-                                                </button>
-                                            }
-                                            else if (booking.DigitalContract == null || !booking.DigitalContract.IsSignedByCustomer)
-                                            {
-                                                <a asp-controller="Booking" asp-action="Contract" asp-route-id="@booking.BookingID" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold">
-                                                    <i class="bi bi-pencil-square me-1"></i>Ký hợp đồng
-                                                </a>
-                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Bạn cần ký hợp đồng trước">
-                                                    <i class="bi bi-key me-1"></i>Nhận xe
-                                                </button>
-                                            }
-                                            else if (cardCheckInRecord == null)
-                                            {
-                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Bạn cần tạo biên bản nhận xe trước">
-                                                    <i class="bi bi-key me-1"></i>Nhận xe
+                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Can tao bien ban nhan xe truoc">
+                                                    <i class="bi bi-key me-1"></i>Nhan xe
                                                 </button>
                                             }
                                             else
@@ -215,12 +197,11 @@ else
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="id" value="@booking.BookingID" />
                                                     <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm fw-bold">
-                                                        <i class="bi bi-key me-1"></i>NHẬN XE NGAY
+                                                        <i class="bi bi-key me-1"></i>NHAN XE NGAY
                                                     </button>
                                                 </form>
                                             }
-                                        }
-                                        @if (statusName == "Active")
+                                        }                                        @if (statusName == "Active")
                                         {
                                             <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#returnModal-@booking.BookingID">
                                                 <i class="bi bi-check2-circle me-1"></i>Trả xe
@@ -237,21 +218,11 @@ else
                                         }
                                         @if (statusName == "Active" || statusName == "Completed")
                                         {
-                                            @if (booking.TransactionID != null)
-                                            {
-                                                <a asp-controller="Booking" asp-action="TransactionContract" asp-route-id="@booking.TransactionID" class="btn btn-outline-info btn-sm rounded-pill px-3">
-                                                    <i class="bi bi-file-earmark-text me-1"></i>Hợp đồng Giỏ hàng
-                                                </a>
-                                            }
-                                            else
-                                            {
-                                                <a asp-controller="Booking" asp-action="Contract" asp-route-id="@booking.BookingID" class="btn btn-outline-info btn-sm rounded-pill px-3">
-                                                    <i class="bi bi-file-earmark-text me-1"></i>Hợp đồng
-                                                </a>
-                                            }
-                                        }
-                                        @* Nút tạo biên bản nhận xe (sau khi ký hợp đồng, trước khi nhận xe) *@
-                                        @if (statusName == "Confirmed" && cardCheckInRecord == null && booking.DigitalContract?.IsSignedByCustomer == true)
+                                            <a asp-controller="PhysicalContracts" asp-action="Index" asp-route-bookingId="@booking.BookingID" class="btn btn-outline-info btn-sm rounded-pill px-3">
+                                                <i class="bi bi-file-earmark-text me-1"></i>Hop dong vat ly
+                                            </a>
+                                        }                                        @* Nút tạo biên bản nhận xe (sau khi ký hợp đồng, trước khi nhận xe) *@
+                                        @if (statusName == "Confirmed" && cardCheckInRecord == null)
                                         {
                                             <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckIn" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-bold">
                                                 <i class="bi bi-clipboard-plus me-1"></i>Tạo biên bản nhận xe
@@ -450,3 +421,5 @@ else
     </script>
 }
 </div>
+
+

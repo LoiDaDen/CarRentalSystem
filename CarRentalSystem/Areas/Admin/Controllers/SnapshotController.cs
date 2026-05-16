@@ -1,9 +1,11 @@
 // CarRentalSystem/Areas/Admin/Controllers/SnapshotController.cs
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
+using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
 namespace CarRentalSystem.Areas.Admin.Controllers
@@ -13,10 +15,20 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     public class SnapshotController : Controller
     {
         private readonly ISnapshotService _snapshotService;
+        private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
-        public SnapshotController(ISnapshotService snapshotService)
+        public SnapshotController(
+            ISnapshotService snapshotService,
+            ApplicationDbContext context,
+            IConfiguration configuration,
+            IWebHostEnvironment environment)
         {
             _snapshotService = snapshotService;
+            _context = context;
+            _configuration = configuration;
+            _environment = environment;
         }
 
         private int GetCurrentUserId()
@@ -66,6 +78,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> Restore(int id)
         {
             var userId = GetCurrentUserId();
+            await WriteSnapshotAuditAsync("SnapshotRestoreAttempt", id, userId);
             var result = await _snapshotService.RestoreSnapshotAsync(id, userId);
 
             if (result.Success)
@@ -99,14 +112,42 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> Download(int id)
         {
+            var userId = GetCurrentUserId();
+            await WriteSnapshotAuditAsync("SnapshotDownloadAttempt", id, userId);
+
+            if (_environment.IsProduction() && !_configuration.GetValue("Snapshot:AllowUnsafeDownload", false))
+            {
+                await WriteSnapshotAuditAsync("SnapshotDownloadBlocked", id, userId);
+                return Forbid();
+            }
+
             var snapshot = await _snapshotService.GetSnapshotByIdAsync(id);
             if (snapshot == null)
                 return NotFound();
 
+            await WriteSnapshotAuditAsync("SnapshotDownload", id, userId);
             var bytes = System.Text.Encoding.UTF8.GetBytes(snapshot.DataJson);
             var fileName = $"snapshot_{snapshot.Name.Replace(" ", "_")}_{snapshot.CreatedAt:yyyyMMdd_HHmmss}.json";
 
             return File(bytes, "application/json", fileName);
+        }
+
+        private async Task WriteSnapshotAuditAsync(string action, int snapshotId, int userId)
+        {
+            _context.AuditLogs.Add(new AuditLog
+            {
+                Action = action,
+                EntityType = "DbSnapshot",
+                EntityId = snapshotId,
+                UserId = userId == 0 ? null : userId,
+                UserName = User.Identity?.Name,
+                Description = $"{action} for snapshot #{snapshotId}",
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers.UserAgent.ToString(),
+                RequestUrl = $"{Request.Method} {Request.Path}{Request.QueryString}",
+                Timestamp = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
         }
 
         // ═══════════════════════════════════════════════

@@ -142,9 +142,7 @@
                             <td>
                                 @if (booking.DigitalContract != null)
                                 {
-                                    <a asp-area="Admin" asp-controller="DigitalContract" asp-action="Details" asp-route-id="@booking.DigitalContract.DigitalContractID" class="badge bg-primary-subtle text-primary border border-primary text-decoration-none" title="Xem Hợp Đồng">
-                                        <i class="bi bi-file-earmark-text me-1"></i> @booking.DigitalContract.ContractNo
-                                    </a>
+                                    <a asp-area="" asp-controller="PhysicalContracts" asp-action="Index" asp-route-bookingId="@booking.BookingID" class="badge bg-primary-subtle text-primary border border-primary text-decoration-none"><i class="bi bi-file-earmark-arrow-up me-1"></i>Hop dong vat ly</a>
                                 }
                                 else
                                 {
@@ -190,3 +188,4 @@
         </div>
     </div>
 </div>
+

@@ -1,72 +1,44 @@
+using CarRentalSystem.Data;
+using CarRentalSystem.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace CarRentalSystem.Controllers
 {
-    /// <summary>
-    /// Controller bảo mật để serve file eKYC từ App_Data/SecureUploads
-    /// Chỉ user sở hữu hoặc Admin mới có quyền truy cập
-    /// </summary>
     [Authorize]
     public class SecureFileController : Controller
     {
-        private readonly IWebHostEnvironment _env;
-        private readonly Data.ApplicationDbContext _context;
+        private static readonly HashSet<string> AllowedFolders = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "eKyc",
+            "Handovers",
+            "Contracts",
+            "PhysicalContracts"
+        };
 
-        public SecureFileController(IWebHostEnvironment env, Data.ApplicationDbContext context)
+        private readonly IWebHostEnvironment _env;
+        private readonly ApplicationDbContext _context;
+
+        public SecureFileController(IWebHostEnvironment env, ApplicationDbContext context)
         {
             _env = env;
             _context = context;
         }
 
-        /// <summary>
-        /// Lấy hình ảnh eKYC bảo mật
-        /// VD: /SecureFile/GetSecureImage?folder=eKyc&fileName=123/id_front.jpg
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetSecureImage(string folder, string fileName)
         {
-            if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(fileName))
-                return NotFound("Invalid path");
+            var validation = await ValidateSecureFileAccessAsync(folder, fileName);
+            if (!validation.IsValid)
+                return validation.Result!;
 
-            // Parse userId từ fileName (format: {userId}/filename)
-            var parts = fileName.Split('/');
-            if (parts.Length < 2)
-                return NotFound("Invalid file path");
-
-            if (!int.TryParse(parts[0], out int fileOwnerId))
-                return NotFound("Invalid user ID");
-
-            // Lấy userId hiện tại
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(userIdClaim, out int currentUserId))
-                return Unauthorized();
-
-            // Kiểm tra quyền: chỉ chủ sở hữu hoặc Admin mới được xem
-            if (fileOwnerId != currentUserId && !User.IsInRole("Admin"))
-            {
-                return Forbid();
-            }
-
-            // Verify user exists and has permission
-            var fileOwner = await _context.Users.FindAsync(fileOwnerId);
-            if (fileOwner == null)
-                return NotFound("User not found");
-
-            // Build secure path
-            var basePath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", folder);
-            var fullPath = Path.Combine(basePath, fileName);
-
-            // Prevent directory traversal
-            var resolvedPath = Path.GetFullPath(fullPath);
-            var resolvedBasePath = Path.GetFullPath(basePath);
-            if (!resolvedPath.StartsWith(resolvedBasePath, StringComparison.OrdinalIgnoreCase))
-                return NotFound("Invalid path");
-
+            var resolvedPath = validation.ResolvedPath!;
             if (!System.IO.File.Exists(resolvedPath))
                 return NotFound("File not found");
 
-            // Determine content type
+            await WriteAuditLogAsync("SecureFileDownload", folder, validation.FileOwnerId, fileName);
+
             var extension = Path.GetExtension(resolvedPath).ToLowerInvariant();
             var contentType = extension switch
             {
@@ -77,54 +49,101 @@ namespace CarRentalSystem.Controllers
                 _ => "application/octet-stream"
             };
 
-            // Serve file với cache headers bảo mật
             Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
             Response.Headers.Pragma = "no-cache";
             Response.Headers.Expires = "0";
-            var fileStream = System.IO.File.OpenRead(resolvedPath);
-            return File(fileStream, contentType, enableRangeProcessing: true);
+            return PhysicalFile(resolvedPath, contentType, enableRangeProcessing: false);
         }
 
-        /// <summary>
-        /// Xóa file eKYC (chỉ chủ sở hữu hoặc Admin)
-        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteSecureFile(string folder, string fileName)
         {
-            if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(fileName))
-                return Json(new { success = false, message = "Invalid path" });
+            var validation = await ValidateSecureFileAccessAsync(folder, fileName);
+            if (!validation.IsValid)
+                return validation.Result is ForbidResult ? Forbid() : Json(new { success = false, message = "Invalid file path" });
 
-            var parts = fileName.Split('/');
-            if (parts.Length < 2)
-                return Json(new { success = false, message = "Invalid file path" });
-
-            if (!int.TryParse(parts[0], out int fileOwnerId))
-                return Json(new { success = false, message = "Invalid user ID" });
-
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(userIdClaim, out int currentUserId))
-                return Unauthorized();
-
-            // Chỉ chủ sở hữu hoặc Admin được xóa
-            if (fileOwnerId != currentUserId && !User.IsInRole("Admin"))
-                return Forbid();
-
-            var basePath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", folder);
-            var fullPath = Path.Combine(basePath, fileName);
-
-            var resolvedPath = Path.GetFullPath(fullPath);
-            var resolvedBasePath = Path.GetFullPath(basePath);
-            if (!resolvedPath.StartsWith(resolvedBasePath, StringComparison.OrdinalIgnoreCase))
-                return Json(new { success = false, message = "Invalid path" });
-
-            if (System.IO.File.Exists(resolvedPath))
+            if (System.IO.File.Exists(validation.ResolvedPath!))
             {
-                System.IO.File.Delete(resolvedPath);
+                System.IO.File.Delete(validation.ResolvedPath!);
+                await WriteAuditLogAsync("SecureFileDelete", folder, validation.FileOwnerId, fileName);
                 return Json(new { success = true, message = "File deleted" });
             }
 
             return Json(new { success = false, message = "File not found" });
+        }
+
+        private async Task<SecureFileValidation> ValidateSecureFileAccessAsync(string? folder, string? fileName)
+        {
+            if (!IsAllowedFolder(folder) || !IsSafeRelativeFileName(fileName))
+                return SecureFileValidation.Invalid(NotFound("Invalid path"));
+
+            var normalizedFileName = fileName!.Replace('\\', '/');
+            var parts = normalizedFileName.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2 || !int.TryParse(parts[0], out var fileOwnerId))
+                return SecureFileValidation.Invalid(NotFound("Invalid file path"));
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var currentUserId))
+                return SecureFileValidation.Invalid(Unauthorized());
+
+            if (fileOwnerId != currentUserId && !User.IsInRole("Admin"))
+                return SecureFileValidation.Invalid(Forbid());
+
+            var fileOwner = await _context.Users.FindAsync(fileOwnerId);
+            if (fileOwner == null)
+                return SecureFileValidation.Invalid(NotFound("User not found"));
+
+            var basePath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", folder!);
+            var fullPath = Path.Combine(basePath, normalizedFileName);
+            var resolvedPath = Path.GetFullPath(fullPath);
+            var resolvedBasePath = Path.GetFullPath(basePath);
+            if (!resolvedPath.StartsWith(resolvedBasePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                return SecureFileValidation.Invalid(NotFound("Invalid path"));
+
+            return SecureFileValidation.Valid(resolvedPath, fileOwnerId);
+        }
+
+        private static bool IsAllowedFolder(string? folder)
+        {
+            return !string.IsNullOrWhiteSpace(folder) &&
+                   folder.IndexOfAny(new[] { '/', '\\' }) < 0 &&
+                   !folder.Contains("..", StringComparison.Ordinal) &&
+                   AllowedFolders.Contains(folder);
+        }
+
+        private static bool IsSafeRelativeFileName(string? fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName)) return false;
+            if (Path.IsPathRooted(fileName)) return false;
+            if (fileName.Contains('\\')) return false;
+            if (fileName.Split('/').Any(part => part is "" or "." or "..")) return false;
+            return true;
+        }
+
+        private async Task WriteAuditLogAsync(string action, string? folder, int fileOwnerId, string fileName)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            _context.AuditLogs.Add(new AuditLog
+            {
+                Action = action,
+                EntityType = "SecureFile",
+                EntityId = fileOwnerId,
+                UserId = int.TryParse(userIdClaim, out var currentUserId) ? currentUserId : null,
+                UserName = User.Identity?.Name,
+                Description = $"{action} folder={folder}, file={fileName}",
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers.UserAgent.ToString(),
+                RequestUrl = $"{Request.Method} {Request.Path}{Request.QueryString}",
+                Timestamp = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        private sealed record SecureFileValidation(bool IsValid, IActionResult? Result, string? ResolvedPath, int FileOwnerId)
+        {
+            public static SecureFileValidation Invalid(IActionResult result) => new(false, result, null, 0);
+            public static SecureFileValidation Valid(string resolvedPath, int fileOwnerId) => new(true, null, resolvedPath, fileOwnerId);
         }
     }
 }

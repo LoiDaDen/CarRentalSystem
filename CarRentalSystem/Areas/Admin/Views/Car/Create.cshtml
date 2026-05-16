@@ -41,6 +41,13 @@
             <div class="section-card">
                 <div class="section-title"><i class="bi bi-info-circle me-2"></i>Thông tin cơ bản</div>
                 <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label">Loại dịch vụ <span class="text-danger">*</span></label>
+                        <select asp-for="ServiceTypeID" asp-items="ViewBag.ServiceTypes" class="form-select" required>
+                            <option value="">-- Chọn loại dịch vụ --</option>
+                        </select>
+                        <small class="text-muted">Thuê xe tự lái không bao gồm tài xế. Xe có tài xế sẽ chờ duyệt riêng trước khi hoạt động.</small>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Hãng xe <span class="text-danger">*</span></label>
                         <select asp-for="BrandID" asp-items="ViewBag.Brands" class="form-select" required>

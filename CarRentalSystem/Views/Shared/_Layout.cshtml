@@ -27,9 +27,10 @@
         && string.Equals(layoutAction, "MapSearch", StringComparison.OrdinalIgnoreCase);
     var isBlogActive = string.Equals(layoutController, "Blog", StringComparison.OrdinalIgnoreCase);
     var isLongTermActive = string.Equals(layoutController, "LongTerm", StringComparison.OrdinalIgnoreCase);
-    var isDriverActive = string.Equals(layoutController, "Driver", StringComparison.OrdinalIgnoreCase);
+    var isOwnerCarsActive = string.Equals(layoutController, "OwnerCars", StringComparison.OrdinalIgnoreCase);
     var isMembershipActive = string.Equals(layoutController, "Membership", StringComparison.OrdinalIgnoreCase);
     var isAdminAreaActive = string.Equals(layoutArea, "Admin", StringComparison.OrdinalIgnoreCase);
+    var isWithDriverPublicEnabled = false;
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -229,8 +230,24 @@
                             <a class="main-nav-btn @(isHomeActive ? "active" : "")" asp-controller="Home" asp-action="Index">Trang chủ</a>
                         </li>
                         <li class="nav-item">
-                            <a class="main-nav-btn @(isCarListActive ? "active" : "")" asp-controller="Car" asp-action="Index">Đội xe</a>
+                            <a class="main-nav-btn @(isCarListActive ? "active" : "")" asp-controller="Car" asp-action="Index">Thuê xe tự lái</a>
                         </li>
+                        @if (isWithDriverPublicEnabled)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="main-nav-btn dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-signpost-2 me-1"></i>Xe có tài xế
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark shadow border-0">
+                                    <li><span class="dropdown-item disabled">Đưa đón nội thành</span></li>
+                                    <li><span class="dropdown-item disabled">Đưa đón sân bay</span></li>
+                                    <li><span class="dropdown-item disabled">Liên tỉnh một chiều</span></li>
+                                    <li><span class="dropdown-item disabled">Liên tỉnh hai chiều</span></li>
+                                    <li><span class="dropdown-item disabled">Thuê xe theo giờ</span></li>
+                                    <li><span class="dropdown-item disabled">Thuê xe theo ngày</span></li>
+                                </ul>
+                            </li>
+                        }
                         <li class="nav-item">
                             <a class="main-nav-btn @(isBlogActive ? "active" : "")" asp-controller="Blog" asp-action="Index">
                                 <i class="bi bi-journal-text"></i>Blog
@@ -246,11 +263,14 @@
                                 <i class="bi bi-briefcase me-1"></i>Thuê dài hạn
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="main-nav-btn @(isDriverActive ? "active" : "")" asp-controller="Driver" asp-action="Index">
-                                <i class="bi bi-person-badge me-1"></i> Tài xế
-                            </a>
-                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="main-nav-btn @(isOwnerCarsActive ? "active" : "")" asp-controller="OwnerCars" asp-action="Index">
+                                    <i class="bi bi-car-front me-1"></i>Quản lý cho thuê
+                                </a>
+                            </li>
+                        }
                         <li class="nav-item">
                             <a class="main-nav-btn @(isMembershipActive ? "active" : "")" asp-controller="Membership" asp-action="Index">
                                 <i class="bi bi-gem me-1"></i>Hạng thành viên
@@ -334,7 +354,6 @@
                                         <h6 class="mb-0 text-white fw-bold">@User.Identity.Name</h6>
                                         <small class="text-white-50">
                                             @if (User.IsInRole("Admin")) { <text>Quản trị viên</text> }
-                                            else if (User.IsInRole("Partner")) { <text>Đối tác</text> }
                                             else if (User.IsInRole("Staff")) { <text>Nhân viên</text> }
                                             else { <text>Thành viên</text> }
                                         </small>
@@ -350,8 +369,13 @@
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item py-2 d-flex align-items-center text-warning" asp-area="Partner" asp-controller="Dashboard" asp-action="Index">
-                                            <i class="bi bi-building-check text-warning opacity-75 me-3 fs-5"></i><span class="fw-bold">Cổng Đối Tác (Partner)</span>
+                                        <a class="dropdown-item py-2 d-flex align-items-center text-white" asp-controller="OwnerCars" asp-action="Index">
+                                            <i class="bi bi-car-front text-white-50 me-3 fs-5"></i><span>Quản lý cho thuê</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center text-white" asp-controller="PhysicalContracts" asp-action="Index">
+                                            <i class="bi bi-file-earmark-text text-white-50 me-3 fs-5"></i><span>Hợp đồng vật lý</span>
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider border-light border-opacity-10 my-2"></li>
@@ -419,7 +443,7 @@
                     <h6 class="text-uppercase fw-bold text-primary mb-4" style="letter-spacing: 1px;">Khám Phá</h6>
                     <ul class="list-unstyled mb-0">
                         <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Về chúng tôi</a></li>
-                        <li class="mb-2"><a asp-controller="Car" asp-action="Index" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Đội xe</a></li>
+                        <li class="mb-2"><a asp-controller="Car" asp-action="Index" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Thuê xe tự lái</a></li>
                         <li class="mb-2"><a asp-controller="Blog" asp-action="Index" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Blog thuê xe</a></li>
                         <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Bảng giá</a></li>
                         <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Ưu đãi</a></li>

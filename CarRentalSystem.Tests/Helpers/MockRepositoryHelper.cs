@@ -2,6 +2,7 @@ using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Moq;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,6 +45,7 @@ namespace CarRentalSystem.Tests.Helpers
                 .UseInMemoryDatabase(databaseName: string.IsNullOrEmpty(dbName)
                     ? $"TestDb_{System.Guid.NewGuid()}"
                     : dbName)
+                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
                 .Options;
             return new ApplicationDbContext(options);
         }

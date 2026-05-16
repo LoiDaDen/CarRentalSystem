@@ -184,6 +184,12 @@
         font-size: 0.62rem; color: #3b82f6; margin-top: 2px;
         display: flex; align-items: center; gap: 2px;
     }
+    [id^="driver-tab-"],
+    #driverOverlay,
+    .car-price-driver,
+    #summaryDriverRow {
+        display: none !important;
+    }
 
     /* ===== Driver button (replaces select) ===== */
     .driver-pick-btn {
@@ -522,7 +528,6 @@
 }
 else
 {
-    var drivers = ViewBag.Drivers as List<CarRentalSystem.Models.Driver>;
     var contractTypes = ViewBag.ContractTypes as List<CarRentalSystem.Models.ContractType>;
     var addons = ViewBag.AddOns as List<CarRentalSystem.Models.AddOn>;
 
@@ -548,17 +553,12 @@ else
                 var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
                 var fDays = hours / 24;
                 var rHours = hours % 24;
-                var currentDriver = drivers?.FirstOrDefault(d => d.DriverID == item.DriverID);
-                var driverRate = currentDriver?.DailyRate ?? 0;
-                var driverDays = Math.Max(1, (int)Math.Ceiling(hours / 24.0));
                 
-                var basePrice = (fDays * (item.Car?.PricePerDay ?? 600000)) + Math.Min(rHours * (item.Car?.PricePerHour ?? 50000), (item.Car?.PricePerDay ?? 600000)) + (driverRate * driverDays);
+                var basePrice = (fDays * (item.Car?.PricePerDay ?? 600000)) + Math.Min(rHours * (item.Car?.PricePerHour ?? 50000), (item.Car?.PricePerDay ?? 600000));
                 
                 <div class="car-row selected" id="car-card-@item.CartItemID" data-item-id="@item.CartItemID"
                      data-price-per-hour="@(item.Car?.PricePerHour ?? 50000)"
                      data-price-per-day="@(item.Car?.PricePerDay ?? 600000)"
-                     data-driver-id="@(item.DriverID ?? 0)"
-                     data-driver-rate="@driverRate"
                      data-package-id="@(item.ContractTypeID ?? contractTypes?.FirstOrDefault()?.ContractTypeID ?? 0)"
                      data-location-id="@(item.Car?.Location?.LocationID ?? 0)"
                      data-location-name="@item.Car?.Location?.Name">
@@ -623,34 +623,7 @@ else
                                         }
                                     }
                                 </button>
-                            </div>
-                            <div class="cfg-tab" id="driver-tab-@item.CartItemID" style="@(hours <= 4 ? "opacity:0.5; pointer-events:none;" : "")">
-                                <div class="cfg-tab-label"><i class="bi bi-person-badge"></i> Tài xế</div>
-                                <button type="button" class="driver-pick-btn" id="driver-btn-@item.CartItemID"
-                                        onclick="openDriverPopup(@item.CartItemID)">
-                                    @if (currentDriver != null)
-                                    {
-                                        if (!string.IsNullOrEmpty(currentDriver.AvatarUrl))
-                                        {
-                                            <img src="@currentDriver.AvatarUrl" class="driver-pick-avatar">
-                                        }
-                                        <span>@currentDriver.FullName</span>
-                                        <span class="driver-pick-stars">
-                                            @for (int s = 0; s < (int)Math.Round((double)currentDriver.Rating); s++)
-                                            {
-                                                <text>★</text>
-                                            }
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-steering-wheel" style="font-size: 0.8rem; color: #65a30d;"></i>
-                                        <span style="color: #65a30d;">Tự lái</span>
-                                        <i class="bi bi-chevron-right ms-auto" style="font-size: 0.55rem; color: #94a3b8;"></i>
-                                    }
-                                </button>
-                            </div>
-                        </div>
+                            </div>\r\n                        </div>
                         @if (addons != null && addons.Any())
                         {
                             <div class="car-addon-row">
@@ -674,10 +647,6 @@ else
                         <div class="car-price-original item-original-price-@item.CartItemID" style="@(basePrice > item.EstimatedPrice ? "" : "display:none;")">@basePrice.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</div>
                         <div class="car-price-value item-price-@item.CartItemID">@item.EstimatedPrice.ToString("N0", new System.Globalization.CultureInfo("vi-VN")) đ</div>
                         <div class="car-price-hours item-badge-@item.CartItemID">@hours giờ</div>
-                        @if (item.DriverID > 0)
-                        {
-                            <div class="car-price-driver"><i class="bi bi-person-badge"></i> Có tài xế</div>
-                        }
                     </div>
                 </div>
             }
@@ -770,42 +739,7 @@ else
     </div>
 </div>
 
-<!-- ===== DRIVER POPUP ===== -->
-<div class="driver-popup-overlay" id="driverOverlay" onclick="closeDriverPopup(event)">
-    <div class="driver-popup" onclick="event.stopPropagation()">
-        <div class="driver-popup-header">
-            <div>
-                <h5><i class="bi bi-person-badge me-2"></i>Chọn tài xế</h5>
-                <div class="subtitle">Xem chi tiết, đánh giá và chọn tài xế phù hợp</div>
-            </div>
-            <button class="inspect-popup-close" onclick="closeDriverPopup()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <div class="driver-popup-body" id="driverPopupBody">
-            <div class="drv-loading">
-                <div class="spinner"></div>
-                <div>Đang tải danh sách tài xế...</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ===== PACKAGE POPUP ===== -->
-<div class="driver-popup-overlay" id="packageOverlay" onclick="closePackagePopup(event)">
-    <div class="driver-popup" onclick="event.stopPropagation()" style="max-width: 500px;">
-        <div class="driver-popup-header" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
-            <div>
-                <h5><i class="bi bi-box-seam me-2"></i>Chọn gói thuê</h5>
-                <div class="subtitle">Tối ưu chi phí bằng gói thuê dài ngày</div>
-            </div>
-            <button class="inspect-popup-close" onclick="closePackagePopup()"><i class="bi bi-x-lg"></i></button>
-        </div>
-        <div class="driver-popup-body" id="packagePopupBody">
-            <div class="drv-loading"><div class="spinner"></div><div>Đang tải gói...</div></div>
-        </div>
-    </div>
-</div>
-
-@section Scripts {
+<!-- ===== DRIVER POPUP ===== -->\r\n@section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
@@ -846,273 +780,7 @@ else
             }
         });
 
-        // ===== DRIVER POPUP =====
-        let currentDriverItemId = null;
-        let driversCache = null;
-        let driverDetailCache = {};
-
-        async function openDriverPopup(itemId) {
-            currentDriverItemId = itemId;
-            const overlay = document.getElementById('driverOverlay');
-            overlay.classList.add('show');
-            document.body.style.overflow = 'hidden';
-
-            const body = document.getElementById('driverPopupBody');
-            body.innerHTML = '<div class="drv-loading"><div class="spinner"></div><div>Đang tải danh sách tài xế...</div></div>';
-
-            const card = document.getElementById(`car-card-${itemId}`);
-            const locationId = card?.dataset?.locationId || '0';
-
-            try {
-                const res = await fetch(`/Driver/GetDriversList?locationId=${locationId}`);
-                const drivers = await res.json();
-                renderDriverList(drivers, itemId);
-            } catch (e) {
-                body.innerHTML = '<div class="drv-loading"><i class="bi bi-exclamation-circle" style="font-size:2rem;color:#ef4444;"></i><div style="margin-top:8px;color:#ef4444;">Lỗi tải dữ liệu</div></div>';
-            }
-        }
-
-        function closeDriverPopup(e) {
-            if (e && e.target !== document.getElementById('driverOverlay')) return;
-            document.getElementById('driverOverlay').classList.remove('show');
-            document.body.style.overflow = '';
-            currentDriverItemId = null;
-        }
-
-        function renderDriverList(drivers, itemId) {
-            const body = document.getElementById('driverPopupBody');
-            const card = document.getElementById(`car-card-${itemId}`);
-            const currentDriverId = parseInt(card?.dataset?.driverId || '0');
-            const locationName = card?.dataset?.locationName || 'khu vực này';
-
-            let html = '';
-
-            // Self-drive option
-            html += `<div class="drv-selfdrive ${currentDriverId === 0 ? 'active' : ''}" onclick="selectDriver(${itemId}, 0)">
-                <div class="drv-selfdrive-icon"><i class="bi bi-steering-wheel"></i></div>
-                <div class="drv-card-info">
-                    <div class="drv-card-name">Tự lái</div>
-                    <div class="drv-card-meta"><span><i class="bi bi-check-circle me-1"></i>Không phụ thu phí tài xế</span></div>
-                </div>
-                ${currentDriverId === 0 ? '<span style="color:#65a30d;font-weight:700;font-size:0.75rem;"><i class="bi bi-check-circle-fill me-1"></i>Đang chọn</span>' : ''}
-            </div>`;
-
-            // Show message if no drivers available
-            if (!drivers || drivers.length === 0) {
-                html += `<div style="text-align:center; padding: 40px 20px; color: #64748b;">
-                    <i class="bi bi-car-front" style="font-size: 3rem; opacity: 0.3;"></i>
-                    <p style="margin-top: 12px; font-weight: 600;">Không có tài xế ở ${locationName}</p>
-                    <p style="font-size: 0.85rem;">Vui lòng chọn "Tự lái" hoặc liên hệ hotline.</p>
-                </div>`;
-            }
-
-            // Driver cards
-            drivers.forEach(d => {
-                const stars = renderStars(d.rating);
-                const isActive = d.driverID === currentDriverId;
-                const avatarHtml = d.avatarUrl
-                    ? `<img src="${d.avatarUrl}" class="drv-card-avatar" onerror="this.outerHTML='<div class=\\'drv-card-avatar-placeholder\\'><i class=\\'bi bi-person-fill\\'></i></div>'">`
-                    : `<div class="drv-card-avatar-placeholder"><i class="bi bi-person-fill"></i></div>`;
-
-                html += `<div class="drv-card ${isActive ? 'active' : ''}" id="drv-card-${d.driverID}" onclick="showDriverDetail(${d.driverID}, ${itemId})">
-                    ${avatarHtml}
-                    <div class="drv-card-info">
-                        <div class="drv-card-name">${d.fullName}</div>
-                        <div class="drv-card-meta">
-                            <span><i class="bi bi-geo-alt"></i> ${d.location}</span>
-                            <span><i class="bi bi-award"></i> ${d.experienceYears} năm KN</span>
-                            <span><i class="bi bi-car-front"></i> ${d.totalTrips} chuyến</span>
-                            <span><i class="bi bi-card-checklist"></i> ${d.licenseType}</span>
-                        </div>
-                        <div class="drv-card-stars">
-                            ${stars}
-                            <span class="drv-card-rating-text">${Number(d.rating).toFixed(1)} (${d.reviewCount} đánh giá)</span>
-                        </div>
-                    </div>
-                    <div class="drv-card-price">
-                        <div class="price-val">${Number(d.dailyRate).toLocaleString('vi-VN')}đ</div>
-                        <div class="price-unit">/ngày</div>
-                    </div>
-                    <div class="drv-card-actions">
-                        <button class="btn-pick" onclick="event.stopPropagation(); selectDriver(${itemId}, ${d.driverID})">
-                            ${isActive ? '<i class="bi bi-check-lg me-1"></i>Đã chọn' : '<i class="bi bi-plus-lg me-1"></i>Chọn'}
-                        </button>
-                    </div>
-                </div>`;
-            });
-
-            body.innerHTML = html;
-        }
-
-        async function showDriverDetail(driverId, itemId) {
-            const body = document.getElementById('driverPopupBody');
-            const card = document.getElementById(`car-card-${itemId}`);
-            const currentDriverId = parseInt(card?.dataset?.driverId || '0');
-
-            body.innerHTML = '<div class="drv-loading"><div class="spinner"></div><div>Đang tải chi tiết tài xế...</div></div>';
-
-            try {
-                let data;
-                if (driverDetailCache[driverId]) {
-                    data = driverDetailCache[driverId];
-                } else {
-                    const res = await fetch(`/Driver/GetDriverDetail?id=${driverId}`);
-                    data = await res.json();
-                    if (data.success) driverDetailCache[driverId] = data;
-                }
-
-                if (!data.success) {
-                    body.innerHTML = '<div class="drv-loading"><div style="color:#ef4444;">Không tìm thấy tài xế</div></div>';
-                    return;
-                }
-
-                const d = data.driver;
-                const reviews = data.reviews || [];
-                const stars = renderStars(d.averageRating);
-                const isActive = d.driverID === currentDriverId;
-
-                const avatarHtml = d.avatarUrl
-                    ? `<img src="${d.avatarUrl}" class="drv-detail-avatar" onerror="this.outerHTML='<div class=\\'drv-detail-avatar-placeholder\\'><i class=\\'bi bi-person-fill\\'></i></div>'">`
-                    : `<div class="drv-detail-avatar-placeholder"><i class="bi bi-person-fill"></i></div>`;
-
-                let reviewsHtml = '';
-                if (reviews.length > 0) {
-                    reviews.forEach(r => {
-                        const rStars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
-                        const avatarR = `<div class="drv-review-avatar" style="display:flex;align-items:center;justify-content:center;background:#3b82f6;color:white;font-size:0.65rem;font-weight:700;">${r.userName.charAt(0)}</div>`;
-                        reviewsHtml += `<div class="drv-review-item">
-                            ${avatarR}
-                            <div class="drv-review-content">
-                                <div class="drv-review-user">${r.userName} <span class="drv-review-stars">${rStars}</span></div>
-                                ${r.comment ? `<div class="drv-review-text">${r.comment}</div>` : ''}
-                                <div class="drv-review-date">${r.date}</div>
-                            </div>
-                        </div>`;
-                    });
-                } else {
-                    reviewsHtml = '<div class="drv-no-reviews"><i class="bi bi-chat-dots" style="font-size:1.5rem;display:block;margin-bottom:4px;"></i>Chưa có đánh giá nào</div>';
-                }
-
-                body.innerHTML = `
-                    <button class="btn btn-sm btn-light rounded-pill px-3 mb-3" onclick="renderDriverList(driversCache, ${itemId})" style="font-size:0.75rem;">
-                        <i class="bi bi-arrow-left me-1"></i>Quay lại danh sách
-                    </button>
-                    <div class="drv-detail-panel">
-                        <div class="drv-detail-header">
-                            ${avatarHtml}
-                            <div style="flex:1;">
-                                <div style="font-weight:800;font-size:1.1rem;color:#1e293b;">${d.fullName}</div>
-                                <div style="font-size:0.72rem;color:#64748b;"><i class="bi bi-geo-alt me-1"></i>${d.location}</div>
-                                <div class="drv-card-stars" style="margin-top:4px;">
-                                    ${stars}
-                                    <span class="drv-card-rating-text">${Number(d.averageRating).toFixed(1)} (${d.reviewCount} đánh giá)</span>
-                                </div>
-                            </div>
-                            <div style="text-align:right;">
-                                <div style="font-weight:800;font-size:1.15rem;color:#059669;">${Number(d.dailyRate).toLocaleString('vi-VN')}đ</div>
-                                <div style="font-size:0.6rem;color:#94a3b8;">/ngày</div>
-                            </div>
-                        </div>
-                        ${d.description ? `<div style="font-size:0.75rem;color:#64748b;margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:8px;"><i class="bi bi-chat-quote me-1 text-primary"></i>${d.description}</div>` : ''}
-                        <div class="drv-detail-stats">
-                            <div class="drv-detail-stat">
-                                <div class="val">${d.experienceYears}</div>
-                                <div class="lbl">Năm KN</div>
-                            </div>
-                            <div class="drv-detail-stat">
-                                <div class="val">${d.totalTrips}</div>
-                                <div class="lbl">Chuyến</div>
-                            </div>
-                            <div class="drv-detail-stat">
-                                <div class="val">${d.licenseType}</div>
-                                <div class="lbl">Bằng lái</div>
-                            </div>
-                            <div class="drv-detail-stat">
-                                <div class="val">${Number(d.hourlyRate).toLocaleString('vi-VN')}đ</div>
-                                <div class="lbl">Giá/Giờ</div>
-                            </div>
-                        </div>
-                        <div class="drv-detail-reviews">
-                            <h6><i class="bi bi-chat-left-heart me-2"></i>Đánh giá gần đây</h6>
-                            ${reviewsHtml}
-                        </div>
-                        <div style="display:flex;gap:8px;margin-top:14px;">
-                            <button class="btn-pick" style="flex:1;padding:10px;border-radius:12px;font-size:0.82rem;" onclick="selectDriver(${itemId}, ${d.driverID})">
-                                ${isActive ? '<i class="bi bi-check-circle-fill me-1"></i>Đã chọn tài xế này' : '<i class="bi bi-plus-circle me-1"></i>Chọn tài xế này'}
-                            </button>
-                            <a href="/Driver/Profile/${d.driverID}" target="_blank" class="btn-detail" style="padding:10px 16px;border-radius:12px;font-size:0.82rem;text-decoration:none;display:flex;align-items:center;">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>Xem trang đầy đủ
-                            </a>
-                        </div>
-                    </div>`;
-            } catch (e) {
-                body.innerHTML = '<div class="drv-loading"><div style="color:#ef4444;">Lỗi tải chi tiết</div></div>';
-            }
-        }
-
-        async function selectDriver(itemId, driverId) {
-            const fd = new FormData();
-            fd.append('cartItemId', itemId);
-            fd.append('driverId', driverId);
-
-            try {
-                const res = await postCartForm('/Cart/UpdateCartItemDriver', fd);
-                const data = await res.json();
-
-                if (data.success) {
-                    const card = document.getElementById(`car-card-${itemId}`);
-                    card.dataset.driverId = driverId;
-
-                    // Update driver button text
-                    const btn = document.getElementById(`driver-btn-${itemId}`);
-                    if (driverId === 0) {
-                        btn.innerHTML = `<i class="bi bi-steering-wheel" style="font-size:0.8rem;color:#65a30d;"></i>
-                            <span style="color:#65a30d;">Tự lái</span>
-                            <i class="bi bi-chevron-right ms-auto" style="font-size:0.55rem;color:#94a3b8;"></i>`;
-                    } else {
-                        const driver = driversCache?.find(d => d.driverID === driverId);
-                        if (driver) {
-                            const avatarImg = driver.avatarUrl ? `<img src="${driver.avatarUrl}" class="driver-pick-avatar">` : '';
-                            const starCount = Math.round(driver.rating);
-                            btn.innerHTML = `${avatarImg}<span>${driver.fullName}</span>
-                                <span class="driver-pick-stars">${'★'.repeat(starCount)}</span>`;
-                        } else {
-                            btn.innerHTML = `<i class="bi bi-person-badge" style="color:#3b82f6;"></i><span>${data.driverName}</span>`;
-                        }
-                    }
-
-                    // Update price badge
-                    let badge = card.querySelector('.car-price-driver');
-                    if (data.withDriver) {
-                        if (!badge) {
-                            badge = document.createElement('div');
-                            badge.className = 'car-price-driver';
-                            badge.innerHTML = '<i class="bi bi-person-badge"></i> Có tài xế';
-                            card.querySelector('.car-price-col').appendChild(badge);
-                        }
-                    } else {
-                        badge?.remove();
-                    }
-
-                    closeDriverPopup();
-                    
-                    // Parse dailyRate and trigger price recalculation in UI
-                    card.dataset.driverRate = data.dailyRate || 0;
-                    handleDateChange(itemId);
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: driverId === 0 ? 'Đã chuyển sang tự lái' : `Đã chọn tài xế ${data.driverName}`,
-                        toast: true, position: 'top-end', showConfirmButton: false, timer: 1800,
-                        timerProgressBar: true
-                    });
-                }
-            } catch (e) {
-                Swal.fire('Lỗi', 'Không thể cập nhật tài xế.', 'error');
-            }
-        }
-
-        // ===== PACKAGE POPUP =====
+        // ===== DRIVER POPUP =====\r\n// ===== PACKAGE POPUP =====
         
         function openPackagePopup(itemId) {
             document.getElementById('packageOverlay').classList.add('show');
@@ -1323,7 +991,7 @@ else
             
             // Original un-discounted calculation
             let carBasePrice = fullDays * pricePerDay + Math.min(rem * pricePerHour, pricePerDay);
-            let basePrice = carBasePrice + (driverRate * driverDays);
+            let basePrice = carBasePrice;
 
             // DP - Minimum Cost Covering Time
             const dpPkgs = [];
@@ -1552,3 +1220,4 @@ else
         }
     </script>
 }
+

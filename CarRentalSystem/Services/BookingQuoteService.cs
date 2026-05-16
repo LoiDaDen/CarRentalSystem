@@ -33,15 +33,21 @@ namespace CarRentalSystem.Services
         private readonly ApplicationDbContext _context;
         private readonly IReferralService _referralService;
         private readonly IReservationService _reservationService;
+        private readonly ISelfDrivePricingService _selfDrivePricingService;
+        private readonly IBookingBusinessRuleService _businessRules;
 
         public BookingQuoteService(
             ApplicationDbContext context,
             IReferralService referralService,
-            IReservationService reservationService)
+            IReservationService reservationService,
+            ISelfDrivePricingService selfDrivePricingService,
+            IBookingBusinessRuleService businessRules)
         {
             _context = context;
             _referralService = referralService;
             _reservationService = reservationService;
+            _selfDrivePricingService = selfDrivePricingService;
+            _businessRules = businessRules;
         }
 
         public async Task<CheckoutQuoteViewModel> BuildQuoteAsync(BookingQuoteRequest request)
@@ -49,12 +55,23 @@ namespace CarRentalSystem.Services
             if (request.EndDate <= request.StartDate)
                 throw new InvalidOperationException("End date must be after start date.");
 
+            if (request.SelectedDriverID.HasValue)
+                throw new InvalidOperationException("Đơn thuê xe tự lái không được gán tài xế.");
+
             var car = await _context.Cars
                 .Include(c => c.CarBrand)
                 .Include(c => c.Location)
+                .Include(c => c.ServiceType)
                 .FirstOrDefaultAsync(c => c.CarID == request.CarID);
             if (car == null)
                 throw new InvalidOperationException("Car not found.");
+
+            var selfDriveServiceTypeId = await _businessRules.GetServiceTypeIdAsync(ServiceTypeConstants.SelfDrive);
+            if (car.ServiceTypeID.HasValue && car.ServiceTypeID != selfDriveServiceTypeId)
+                throw new InvalidOperationException("Xe này không thuộc luồng thuê xe tự lái.");
+
+            if (!car.IsSelfDriveAllowed || car.IsWithDriverAllowed)
+                throw new InvalidOperationException("Xe tự lái không được cấu hình kèm tài xế.");
 
             var user = await _context.Users
                 .Include(u => u.MembershipTier)
@@ -62,11 +79,14 @@ namespace CarRentalSystem.Services
             if (user == null)
                 throw new InvalidOperationException("User not found.");
 
-            var totalHours = (int)Math.Ceiling((request.EndDate - request.StartDate).TotalHours);
-            if (totalHours <= 0) totalHours = 1;
-            var rentalDays = Math.Max(1, (int)Math.Ceiling(totalHours / 24.0));
+            var drivingLicense = await _businessRules.GetValidCustomerDrivingLicenseAsync(user.UserID);
+            if (drivingLicense == null)
+                throw new InvalidOperationException("Khách thuê xe tự lái phải cung cấp giấy phép lái xe hợp lệ.");
 
-            var baseRental = CalculateRental(car, totalHours);
+            var selfDrivePrice = _selfDrivePricingService.Calculate(car, request.StartDate, request.EndDate);
+            var totalHours = selfDrivePrice.TotalHours;
+            var rentalDays = selfDrivePrice.RentalDays;
+            var baseRental = selfDrivePrice.BaseRentalAmount;
             var insuranceTier = NormalizeInsuranceTier(request.InsuranceTier);
             var insuranceFee = GetDailyInsuranceFee(insuranceTier) * rentalDays;
 
@@ -76,21 +96,6 @@ namespace CarRentalSystem.Services
             decimal driverFee = 0m;
             int? driverId = null;
             string? driverName = null;
-            if (request.SelectedDriverID.HasValue && totalHours > 4)
-            {
-                var driver = await _context.Drivers
-                    .FirstOrDefaultAsync(d => d.DriverID == request.SelectedDriverID.Value && d.IsApproved && d.IsAvailable);
-                if (driver != null)
-                {
-                    var available = await _reservationService.IsDriverAvailableAsync(driver.DriverID, request.StartDate, request.EndDate);
-                    if (!available)
-                        throw new InvalidOperationException("Driver is not available for the selected time.");
-
-                    driverId = driver.DriverID;
-                    driverName = driver.FullName;
-                    driverFee = driver.DailyRate * rentalDays;
-                }
-            }
 
             var totalBeforeDiscount = baseRental + ServiceFee + request.DeliveryFee + insuranceFee + addOnFee + driverFee;
             var discountTotal = 0m;
@@ -150,6 +155,9 @@ namespace CarRentalSystem.Services
             {
                 UserID = user.UserID,
                 CarID = car.CarID,
+                ServiceTypeID = selfDriveServiceTypeId,
+                ServiceTypeCode = ServiceTypeConstants.SelfDrive,
+                CustomerDrivingLicenseID = drivingLicense.CustomerDrivingLicenseID,
                 CarName = car.CarName ?? string.Empty,
                 CarBrand = car.CarBrand?.Name ?? string.Empty,
                 LicensePlate = car.LicensePlate ?? string.Empty,
@@ -196,38 +204,7 @@ namespace CarRentalSystem.Services
             if (insuranceFee > 0)
                 quote.Items.Add(new CheckoutQuoteLineItem { Category = "Insurance", Name = $"Goi bao ve {insuranceTier}", Quantity = rentalDays, UnitPrice = GetDailyInsuranceFee(insuranceTier), TotalPrice = insuranceFee });
             quote.Items.AddRange(addOns);
-            if (driverFee > 0)
-                quote.Items.Add(new CheckoutQuoteLineItem { Category = "Driver", Name = driverName ?? "Tai xe", Quantity = rentalDays, UnitPrice = driverFee / rentalDays, TotalPrice = driverFee });
-
             return quote;
-        }
-
-        private static decimal CalculateRental(Car car, int hours)
-        {
-            var pricePerHour = car.PricePerHour > 0 ? car.PricePerHour : Math.Round(car.PricePerDay / 8m);
-            var p4 = car.PricePerDay > 0 ? car.PricePerDay * 0.4m : 4 * pricePerHour;
-            var p8 = car.PricePerDay > 0 ? car.PricePerDay * 0.7m : 8 * pricePerHour;
-            var p12 = car.PricePerDay > 0 ? car.PricePerDay * 0.85m : 12 * pricePerHour;
-            var p24 = car.PricePerDay > 0 ? car.PricePerDay : 24 * pricePerHour;
-
-            if (hours <= 0) return 0m;
-            if (hours <= 4) return Math.Min(hours * pricePerHour, p4);
-            if (hours <= 8) return Math.Min(p4 + (hours - 4) * pricePerHour, p8);
-            if (hours <= 12) return Math.Min(p8 + (hours - 8) * pricePerHour, p12);
-            if (hours <= 24) return Math.Min(p12 + (hours - 12) * pricePerHour, p24);
-
-            var fullDays = hours / 24;
-            var rem = hours % 24;
-            var remPrice = rem switch
-            {
-                <= 0 => 0m,
-                <= 4 => Math.Min(rem * pricePerHour, p4),
-                <= 8 => Math.Min(p4 + (rem - 4) * pricePerHour, p8),
-                <= 12 => Math.Min(p8 + (rem - 8) * pricePerHour, p12),
-                _ => Math.Min(p12 + (rem - 12) * pricePerHour, p24)
-            };
-
-            return (fullDays * p24) + remPrice;
         }
 
         private static List<CheckoutQuoteLineItem> BuildAddOnLines(List<string>? selectedAddons, int rentalDays)

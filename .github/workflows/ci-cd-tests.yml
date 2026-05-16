@@ -46,7 +46,7 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
         severity: 'CRITICAL,HIGH,MEDIUM'
-        exit-code: '0'
+        exit-code: '1'
 
     - name: "🔍 Check if Image SARIF exists"
       id: check_image_sarif
@@ -72,7 +72,7 @@ jobs:
         format: 'sarif'
         output: 'trivy-fs-results.sarif'
         severity: 'CRITICAL,HIGH'
-        exit-code: '0'
+        exit-code: '1'
 
     - name: "🔍 Check if FS SARIF exists"
       id: check_fs_sarif
@@ -191,7 +191,6 @@ jobs:
     # 🌐 SMOKE TESTS — Separate step (InMemory DB via WebApplicationFactory)
     # ============================================================
     - name: "🌐 Smoke Tests (WebApplicationFactory + InMemory DB)"
-      continue-on-error: true
       run: |
         echo "=========================================="
         echo "🌐 CHẠY SMOKE TESTS"

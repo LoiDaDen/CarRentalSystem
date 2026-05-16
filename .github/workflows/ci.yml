@@ -25,6 +25,10 @@ jobs:
         run: |
           dotnet restore CarRentalSystem/CarRentalSystem.csproj
           dotnet restore CarRentalSystem.Tests/CarRentalSystem.Tests.csproj
+      - name: NuGet audit critical and high
+        run: |
+          dotnet restore CarRentalSystem/CarRentalSystem.csproj /p:NuGetAudit=true /p:NuGetAuditLevel=high "/p:WarningsAsErrors=NU1903;NU1904"
+          dotnet restore CarRentalSystem.Tests/CarRentalSystem.Tests.csproj /p:NuGetAudit=true /p:NuGetAuditLevel=high "/p:WarningsAsErrors=NU1903;NU1904"
       - name: Build
         run: dotnet build CarRentalSystem/CarRentalSystem.csproj --no-restore --configuration Release
       - name: Test
@@ -32,10 +36,10 @@ jobs:
       - name: Local tracked secret scan
         shell: pwsh
         run: ./CarRentalSystem/scripts/Test-TrackedSecrets.ps1 -RepoRoot ./CarRentalSystem
-      - name: Install EF tool
-        run: dotnet tool install --global dotnet-ef --version 10.0.3
+      - name: Restore local tools
+        run: dotnet tool restore --tool-manifest CarRentalSystem/dotnet-tools.json
       - name: Check idempotent migration script
-        run: dotnet ef migrations script --idempotent --project CarRentalSystem/CarRentalSystem.csproj --startup-project CarRentalSystem/CarRentalSystem.csproj --no-build --configuration Release --output migration-check.sql
+        run: dotnet tool run dotnet-ef --tool-manifest CarRentalSystem/dotnet-tools.json -- migrations script --idempotent --project CarRentalSystem/CarRentalSystem.csproj --startup-project CarRentalSystem/CarRentalSystem.csproj --no-build --configuration Release --output migration-check.sql
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -46,3 +50,16 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy-filesystem-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'

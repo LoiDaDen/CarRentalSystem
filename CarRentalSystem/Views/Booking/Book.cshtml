@@ -90,6 +90,11 @@
 
                         <div id="map" class="rounded-4 mb-4 shadow-sm border" style="height: 300px; z-index: 1;"></div>
 
+                        <div class="alert alert-success rounded-4 mb-4">
+                            <div class="fw-bold mb-1">Loại dịch vụ: Thuê xe tự lái</div>
+                            <div class="small">Khách thuê phải tự điều khiển xe và có giấy phép lái xe phù hợp. Dịch vụ này không bao gồm tài xế.</div>
+                        </div>
+
                         <div class="bg-light rounded-4 mb-4 overflow-hidden">
 @if (ViewBag.Error != null)
 {
@@ -116,6 +121,13 @@
                                     <span class="fw-800" style="color:#d97706; font-size:1.1rem;"><span id="depositAmount">0</span> đ</span>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="form-check p-3 border rounded-4 mb-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" name="SelfDriveAgreement" value="true" id="SelfDriveAgreement" required />
+                            <label class="form-check-label fw-semibold ps-4" for="SelfDriveAgreement">
+                                Tôi xác nhận là người trực tiếp điều khiển xe, có giấy phép lái xe phù hợp, còn hiệu lực và không sử dụng xe thuê để vận tải hành khách/hàng hóa có thu tiền.
+                            </label>
                         </div>
 
                         <div class="d-flex gap-3">

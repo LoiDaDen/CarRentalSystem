@@ -244,24 +244,12 @@
                 </div>
             }
 
-            <!-- Digital Contract -->
-            @if (Model.DigitalContract != null)
-            {
-                <div class="card shadow-sm mt-3">
-                    <div class="card-header d-flex justify-content-between">
-                        <h6 class="mb-0">Hợp đồng điện tử</h6>
-                        @if (Model.DigitalContract.IsSignedByCustomer)
-                        {
-                            <span class="badge bg-success">Đã ký</span>
-                        }
-                        else
-                        {
-                            <a asp-controller="Booking" asp-action="Contract" asp-route-id="@Model.BookingID" class="btn btn-sm btn-outline-primary">Xem & Ký</a>
-                        }
-                    </div>
+            <div class="card shadow-sm mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Hop dong vat ly</h6>
+                    <a asp-controller="PhysicalContracts" asp-action="Index" asp-route-bookingId="@Model.BookingID" class="btn btn-sm btn-outline-primary">Upload / xem hop dong</a>
                 </div>
-            }
-
+            </div>
             <!-- Handover Records -->
             @if (Model.HandoverRecords != null && Model.HandoverRecords.Any())
             {
@@ -290,3 +278,4 @@
         </div>
     </div>
 </div>
+

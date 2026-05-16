@@ -5,13 +5,21 @@ using CarRentalSystem.Repositories;
 using CarRentalSystem.Services;
 using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Middleware;
+using CarRentalSystem.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
 using Hangfire.SqlServer;
 using DotNetEnv;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using System.Globalization;
+using System.Text.Json;
 
 var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
 if (File.Exists(envFilePath))
@@ -40,6 +48,9 @@ builder.Services.AddControllersWithViews(options =>
     // ═══════════════════════════════════════════════════
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute());
 });
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -52,17 +63,30 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPayOSPaymentService, PayOSPaymentService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IBookingQuoteService, BookingQuoteService>();
+builder.Services.AddScoped<ISelfDrivePricingService, SelfDrivePricingService>();
+builder.Services.AddScoped<IWithDriverPricingService, WithDriverPricingService>();
+builder.Services.AddScoped<IBookingBusinessRuleService, BookingBusinessRuleService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<IEligibilityService, EligibilityService>();
 builder.Services.AddScoped<IPaymentLedgerService, PaymentLedgerService>();
 builder.Services.AddScoped<IRefundService, RefundService>();
 builder.Services.AddScoped<IBookingTransitionService, BookingTransitionService>();
 builder.Services.AddScoped<IFileUploadValidationService, FileUploadValidationService>();
+builder.Services.AddScoped<IContractClassificationService, ContractClassificationService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
 builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<ISnapshotService, SnapshotService>(); // Database snapshot & backup
+builder.Services.AddScoped<IAuditTrailService, AuditTrailService>();
+builder.Services.AddScoped<IEvidenceHashService, EvidenceHashService>();
+builder.Services.AddScoped<IDisputeExportService, DisputeExportService>();
+builder.Services.AddScoped<ISettlementReviewService, SettlementReviewService>();
+builder.Services.AddScoped<ISloMetricsService, SloMetricsService>();
+builder.Services.AddSingleton<IEnterpriseTelemetryService, EnterpriseTelemetryService>();
+builder.Services.AddScoped<IProductAnalyticsService, NoopProductAnalyticsService>();
+builder.Services.AddScoped<ILocaleFormatService, LocaleFormatService>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<IDeliveryService, DeliveryService>();
 builder.Services.AddHttpClient<IPayOSPayoutService, PayOSPayoutService>();
 builder.Services.AddSingleton<IDeliveryScopeService, DeliveryScopeService>();
@@ -86,6 +110,7 @@ else
     builder.Services.AddDistributedMemoryCache();
 }
 builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<ICatalogCacheService, CatalogCacheService>();
 
 // ═══════════════════════════════════════════════════
 // 📅 HOLIDAY PRICING — Tăng giá ngày lễ/cuối tuần
@@ -137,6 +162,48 @@ builder.Services.AddScoped<IRecaptchaService, RecaptchaService>();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ApplicationDbContext>("database");
 
+if (builder.Configuration.GetValue("Observability:OpenTelemetry:Enabled", false))
+{
+    var serviceName = builder.Configuration["Observability:OpenTelemetry:ServiceName"] ?? "CarRentalSystem";
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(resource => resource.AddService(serviceName))
+        .WithTracing(tracing =>
+        {
+            tracing
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddEntityFrameworkCoreInstrumentation()
+                .AddSource(EnterpriseTelemetryService.ActivitySourceName);
+
+            var endpoint = builder.Configuration["Observability:OpenTelemetry:OtlpEndpoint"];
+            if (!string.IsNullOrWhiteSpace(endpoint))
+            {
+                tracing.AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri(endpoint);
+                    options.Headers = builder.Configuration["Observability:OpenTelemetry:Headers"];
+                });
+            }
+        })
+        .WithMetrics(metrics =>
+        {
+            metrics
+                .AddRuntimeInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddAspNetCoreInstrumentation();
+
+            var endpoint = builder.Configuration["Observability:OpenTelemetry:OtlpEndpoint"];
+            if (!string.IsNullOrWhiteSpace(endpoint))
+            {
+                metrics.AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri(endpoint);
+                    options.Headers = builder.Configuration["Observability:OpenTelemetry:Headers"];
+                });
+            }
+        });
+}
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -176,7 +243,16 @@ builder.Services.AddScoped<ExpireBookingHoldsJob>();
 builder.Services.AddScoped<RefundPayoutPollingJob>();
 builder.Services.AddScoped<CleanupUnverifiedAccountsJob>();
 
-builder.Services.AddAuthentication("Cookies")
+var authenticationBuilder = builder.Services.AddAuthentication("Cookies")
+    .AddCookie("External", options =>
+    {
+        options.Cookie.Name = "CarRental.ExternalAuth";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+    })
     .AddCookie("Cookies", options =>
     {
         options.LoginPath = "/Auth/Login";
@@ -196,6 +272,32 @@ builder.Services.AddAuthentication("Cookies")
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.Name = "CarRental.Auth";
     });
+
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret))
+{
+    authenticationBuilder.AddGoogle("Google", options =>
+    {
+        options.SignInScheme = "External";
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+        options.CallbackPath = "/signin-google";
+    });
+}
+
+var microsoftClientId = builder.Configuration["Authentication:Microsoft:ClientId"];
+var microsoftClientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"];
+if (!string.IsNullOrWhiteSpace(microsoftClientId) && !string.IsNullOrWhiteSpace(microsoftClientSecret))
+{
+    authenticationBuilder.AddMicrosoftAccount("Microsoft", options =>
+    {
+        options.SignInScheme = "External";
+        options.ClientId = microsoftClientId;
+        options.ClientSecret = microsoftClientSecret;
+        options.CallbackPath = "/signin-microsoft";
+    });
+}
 
 // ═══════════════════════════════════════════════════
 // 🔐 AREA AUTHORIZATION — Phân quyền theo Area
@@ -257,6 +359,15 @@ builder.Services.AddCors(options => {
 var app = builder.Build();
 AuditLogServiceAccessor.ScopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 
+var supportedCultureNames = app.Configuration.GetSection("Localization:SupportedCultures").Get<string[]>() ?? new[] { "vi-VN", "en-US" };
+var supportedCultures = supportedCultureNames.Select(CultureInfo.GetCultureInfo).ToList();
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(app.Configuration["Localization:DefaultCulture"] ?? "vi-VN"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures
+});
+
 app.UseForwardedHeaders();
 
 // ═══════════════════════════════════════════════════
@@ -310,9 +421,12 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     context.Response.Headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=(self)";
+    var scriptSrc = app.Environment.IsProduction()
+        ? "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; "
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; ";
     context.Response.Headers["Content-Security-Policy"] =
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; " +
+        scriptSrc +
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; " +
         "img-src 'self' data: blob: https:; " +
         "font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
@@ -356,6 +470,54 @@ app.UseGlobalExceptionHandler();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else if (app.Configuration.GetValue("ApiDocs:Enabled", false))
+{
+    if (app.Configuration.GetValue("ApiDocs:RequireAuth", true))
+    {
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/swagger") &&
+                !(context.User.Identity?.IsAuthenticated == true &&
+                  (context.User.IsInRole(UserRoleConstants.Admin) || context.User.IsInRole(UserRoleConstants.Manager))))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            await next();
+        });
+    }
+
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+    if (path.StartsWith("/Partner", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/Driver", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Redirect("/OwnerCars");
+        return;
+    }
+
+    if (path.StartsWith("/Admin/Driver", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/Admin/PartnerContract", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/Admin/DigitalContract", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Redirect("/Admin/Dashboard");
+        return;
+    }
+
+    await next();
+});
 
 // ═══════════════════════════════════════════════
 // 🔒 ACCOUNT LOCK CHECKER — Kiểm tra IsLocked/IsBlacklisted
@@ -561,6 +723,9 @@ if (app.Environment.IsDevelopment() &&
             );
             db.SaveChanges();
         }
+
+        await CarRentalSystem.Data.BusinessReferenceDataSeeder.SeedAsync(db);
+        await CarRentalSystem.Data.OwnerCarReferenceDataSeeder.SeedAsync(db);
     }
 }
 
@@ -568,6 +733,71 @@ if (app.Environment.IsDevelopment() &&
 // 🏥 HEALTH CHECK ENDPOINT — /health
 // ═══════════════════════════════════════════════════
 app.MapHealthChecks("/health");
+
+app.MapGet("/live", () => Results.Json(new
+{
+    status = "Healthy",
+    checks = new[] { new { name = "process", status = "Healthy", description = "Application process is running." } },
+    durationMs = 0,
+    timestampUtc = DateTime.UtcNow
+})).AllowAnonymous();
+
+app.MapGet("/ready", async (IServiceProvider services, IConfiguration configuration) =>
+{
+    var started = System.Diagnostics.Stopwatch.StartNew();
+    var checks = new List<object>();
+    var healthy = true;
+
+    await using (var scope = services.CreateAsyncScope())
+    {
+        try
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var canConnect = await db.Database.CanConnectAsync();
+            healthy &= canConnect;
+            checks.Add(new { name = "database", status = canConnect ? "Healthy" : "Unhealthy", description = canConnect ? "Database connection is available." : "Database connection failed." });
+        }
+        catch (Exception ex)
+        {
+            healthy = false;
+            checks.Add(new { name = "database", status = "Unhealthy", description = ex.GetType().Name });
+        }
+    }
+
+    var dataProtectionPath = configuration["DataProtection:KeysPath"];
+    var dataProtectionReady = string.IsNullOrWhiteSpace(dataProtectionPath) || Directory.Exists(dataProtectionPath);
+    healthy &= dataProtectionReady;
+    checks.Add(new { name = "data_protection_keys", status = dataProtectionReady ? "Healthy" : "Unhealthy", description = dataProtectionReady ? "Keys path is available or not required." : "Configured keys path does not exist." });
+
+    var payosReady = !string.IsNullOrWhiteSpace(configuration["PayOS:ClientId"]) &&
+                     !string.IsNullOrWhiteSpace(configuration["PayOS:ApiKey"]) &&
+                     !string.IsNullOrWhiteSpace(configuration["PayOS:ChecksumKey"]);
+    healthy &= payosReady;
+    checks.Add(new { name = "payos_config", status = payosReady ? "Healthy" : "Unhealthy", description = payosReady ? "PayOS config is present." : "PayOS config is incomplete." });
+
+    var fptReady = !string.IsNullOrWhiteSpace(configuration["FptAi:ApiKey"]);
+    healthy &= fptReady;
+    checks.Add(new { name = "fpt_ekyc_config", status = fptReady ? "Healthy" : "Unhealthy", description = fptReady ? "FPT eKYC config is present." : "FPT eKYC config is missing." });
+
+    if (!string.IsNullOrWhiteSpace(configuration["Redis:ConnectionString"]))
+        checks.Add(new { name = "redis_config", status = "Healthy", description = "Redis connection string is configured." });
+
+    if (configuration.GetValue("Security:EnableRecurringJobs", true))
+        checks.Add(new { name = "hangfire_config", status = "Healthy", description = "Recurring jobs are enabled; storage follows application database configuration." });
+
+    started.Stop();
+    var body = new
+    {
+        status = healthy ? "Healthy" : "Unhealthy",
+        checks,
+        durationMs = started.ElapsedMilliseconds,
+        timestampUtc = DateTime.UtcNow
+    };
+
+    return healthy
+        ? Results.Json(body)
+        : Results.Json(body, statusCode: StatusCodes.Status503ServiceUnavailable);
+}).AllowAnonymous();
 
 app.MapStaticAssets();
 

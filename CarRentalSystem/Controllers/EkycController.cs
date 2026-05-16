@@ -17,19 +17,22 @@ namespace CarRentalSystem.Controllers
         private readonly IPiiEncryptionService _piiEncryption;
         private readonly IWebHostEnvironment _env;
         private readonly IReferralService _referralService;
+        private readonly IFileUploadValidationService _fileUploadValidation;
 
         public EkycController(
             ApplicationDbContext context,
             IEkycService ekycService,
             IPiiEncryptionService piiEncryption,
             IWebHostEnvironment env,
-            IReferralService referralService)
+            IReferralService referralService,
+            IFileUploadValidationService fileUploadValidation)
         {
             _context = context;
             _ekycService = ekycService;
             _piiEncryption = piiEncryption;
             _env = env;
             _referralService = referralService;
+            _fileUploadValidation = fileUploadValidation;
         }
 
         [HttpGet]
@@ -46,7 +49,7 @@ namespace CarRentalSystem.Controllers
         }
 
         /// <summary>
-        /// AJAX: OCR ảnh CCCD
+        /// AJAX: OCR áº£nh CCCD
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -54,14 +57,14 @@ namespace CarRentalSystem.Controllers
         {
             // Bat buoc phai co ca mat truoc va mat sau CCCD
             if (idFront == null)
-                return Json(new { success = false, message = "Vui lòng tải lên ảnh CCCD mặt trước." });
+                return Json(new { success = false, message = "Vui lÃ²ng táº£i lÃªn áº£nh CCCD máº·t trÆ°á»›c." });
             if (idBack == null)
-                return Json(new { success = false, message = "Vui lòng tải lên ảnh CCCD mặt sau." });
+                return Json(new { success = false, message = "Vui lÃ²ng táº£i lÃªn áº£nh CCCD máº·t sau." });
 
-            var formatError = ValidateImageFormat(idFront);
+            var formatError = await ValidateUploadedImageAsync(idFront);
             if (!string.IsNullOrEmpty(formatError))
                 return Json(new { success = false, message = "Anh CCCD mat truoc: " + formatError });
-            formatError = ValidateImageFormat(idBack);
+            formatError = await ValidateUploadedImageAsync(idBack);
             if (!string.IsNullOrEmpty(formatError))
                 return Json(new { success = false, message = "Anh CCCD mat sau: " + formatError });
 
@@ -82,23 +85,23 @@ namespace CarRentalSystem.Controllers
                     message = result.Message
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Json(new { success = false, message = "Lỗi OCR: " + ex.Message });
+                return Json(new { success = false, message = "Khong the xu ly eKYC luc nay. Vui long thu lai sau." });
             }
         }
 
         /// <summary>
-        /// AJAX: OCR ảnh GPLX
+        /// AJAX: OCR áº£nh GPLX
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ScanLicense(IFormFile license)
         {
             if (license == null)
-                return Json(new { success = false, message = "Vui lòng tải lên ảnh GPLX." });
+                return Json(new { success = false, message = "Vui lÃ²ng táº£i lÃªn áº£nh GPLX." });
 
-            var formatError = ValidateImageFormat(license);
+            var formatError = await ValidateUploadedImageAsync(license);
             if (!string.IsNullOrEmpty(formatError))
                 return Json(new { success = false, message = "Anh GPLX: " + formatError });
 
@@ -118,28 +121,28 @@ namespace CarRentalSystem.Controllers
                     message = result.Message
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Json(new { success = false, message = "Lỗi OCR GPLX: " + ex.Message });
+                return Json(new { success = false, message = "Khong the xu ly eKYC luc nay. Vui long thu lai sau." });
             }
         }
 
         /// <summary>
-        /// AJAX: So sánh khuôn mặt selfie vs CCCD
+        /// AJAX: So sÃ¡nh khuÃ´n máº·t selfie vs CCCD
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> VerifyFace(IFormFile face, IFormFile idCard)
         {
             if (face == null)
-                return Json(new { success = false, message = "Vui lòng tải lên ảnh selfie." });
+                return Json(new { success = false, message = "Vui lÃ²ng táº£i lÃªn áº£nh selfie." });
             if (idCard == null)
-                return Json(new { success = false, message = "Vui lòng tải lên ảnh CCCD mặt trước." });
+                return Json(new { success = false, message = "Vui lÃ²ng táº£i lÃªn áº£nh CCCD máº·t trÆ°á»›c." });
 
-            var formatError = ValidateImageFormat(face);
+            var formatError = await ValidateUploadedImageAsync(face);
             if (!string.IsNullOrEmpty(formatError))
                 return Json(new { success = false, message = "Anh selfie: " + formatError });
-            formatError = ValidateImageFormat(idCard);
+            formatError = await ValidateUploadedImageAsync(idCard);
             if (!string.IsNullOrEmpty(formatError))
                 return Json(new { success = false, message = "Anh CCCD: " + formatError });
 
@@ -157,20 +160,20 @@ namespace CarRentalSystem.Controllers
                     message = result.Message
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Json(new { success = false, message = "Lỗi so sánh khuôn mặt: " + ex.Message });
+                return Json(new { success = false, message = "Khong the xu ly eKYC luc nay. Vui long thu lai sau." });
             }
         }
 
         /// <summary>
         /// Submit: Full verification pipeline
-        /// 1. Lưu ảnh
+        /// 1. LÆ°u áº£nh
         /// 2. OCR CCCD + GPLX
         /// 3. Face Compare: Selfie vs CCCD, GPLX vs CCCD
         /// 4. Cross-check: Profile vs CCCD
-        /// 5. Duplicate check: CCCD/GPLX đã dùng bởi tài khoản nào chưa?
-        /// Kết quả: Verified / Flagged / Rejected
+        /// 5. Duplicate check: CCCD/GPLX Ä‘Ã£ dÃ¹ng bá»Ÿi tÃ i khoáº£n nÃ o chÆ°a?
+        /// Káº¿t quáº£: Verified / Flagged / Rejected
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -196,8 +199,7 @@ namespace CarRentalSystem.Controllers
                 validationErrors.Add("Anh CCCD mat truoc la bat buoc.");
             else
             {
-                var err = ValidateImageFormat(idFront); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat truoc: " + err);
-                err = ValidateFileSize(idFront); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat truoc: " + err);
+                var err = await ValidateUploadedImageAsync(idFront); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat truoc: " + err);
             }
 
             // Bat buoc: CCCD mat sau
@@ -205,8 +207,7 @@ namespace CarRentalSystem.Controllers
                 validationErrors.Add("Anh CCCD mat sau la bat buoc.");
             else
             {
-                var err = ValidateImageFormat(idBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat sau: " + err);
-                err = ValidateFileSize(idBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat sau: " + err);
+                var err = await ValidateUploadedImageAsync(idBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat sau: " + err);
             }
 
             // Bat buoc: GPLX mat truoc
@@ -214,8 +215,7 @@ namespace CarRentalSystem.Controllers
                 validationErrors.Add("Anh GPLX mat truoc la bat buoc.");
             else
             {
-                var err = ValidateImageFormat(license); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat truoc: " + err);
-                err = ValidateFileSize(license); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat truoc: " + err);
+                var err = await ValidateUploadedImageAsync(license); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat truoc: " + err);
             }
 
             // Bat buoc: GPLX mat sau
@@ -223,8 +223,7 @@ namespace CarRentalSystem.Controllers
                 validationErrors.Add("Anh GPLX mat sau la bat buoc.");
             else
             {
-                var err = ValidateImageFormat(licenseBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat sau: " + err);
-                err = ValidateFileSize(licenseBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat sau: " + err);
+                var err = await ValidateUploadedImageAsync(licenseBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat sau: " + err);
             }
 
             // Bat buoc: Selfie
@@ -232,20 +231,19 @@ namespace CarRentalSystem.Controllers
                 validationErrors.Add("Anh selfie la bat buoc.");
             else
             {
-                var err = ValidateImageFormat(face); if (!string.IsNullOrEmpty(err)) validationErrors.Add("Anh selfie: " + err);
-                err = ValidateFileSize(face); if (!string.IsNullOrEmpty(err)) validationErrors.Add("Anh selfie: " + err);
+                var err = await ValidateUploadedImageAsync(face); if (!string.IsNullOrEmpty(err)) validationErrors.Add("Anh selfie: " + err);
             }
 
             if (validationErrors.Count > 0)
             {
-                TempData["ErrorMessage"] = "Vui lòng kiểm tra lại các trường sau:";
+                TempData["ErrorMessage"] = "Vui lÃ²ng kiá»ƒm tra láº¡i cÃ¡c trÆ°á»ng sau:";
                 TempData["EkycWarnings"] = string.Join("|", validationErrors);
                 return RedirectAfterEkyc(returnUrl);
             }
 
             try
             {
-                // --- Lưu ảnh vào App_Data/SecureUploads (PRIVATE, không public) ---
+                // --- LÆ°u áº£nh vÃ o App_Data/SecureUploads (PRIVATE, khÃ´ng public) ---
                 string uploadFolder = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "eKyc", user.UserID.ToString());
                 Directory.CreateDirectory(uploadFolder);
 
@@ -329,13 +327,13 @@ namespace CarRentalSystem.Controllers
                     }
                 }
 
-                // --- THU THẬP TẤT CẢ CẢNH BÁO & LỖI ---
-                var errors = new List<string>(); // Lỗi nghiêm trọng → Reject
-                var warnings = new List<string>(); // Cảnh báo nhẹ → Flag
+                // --- THU THáº¬P Táº¤T Cáº¢ Cáº¢NH BÃO & Lá»–I ---
+                var errors = new List<string>(); // Lá»—i nghiÃªm trá»ng â†’ Reject
+                var warnings = new List<string>(); // Cáº£nh bÃ¡o nháº¹ â†’ Flag
                 warnings.AddRange(providerWarnings);
 
                 // ============================================================
-                // BƯỚC 1: Kiểm tra trùng lặp CCCD/GPLX trên toàn hệ thống
+                // BÆ¯á»šC 1: Kiá»ƒm tra trÃ¹ng láº·p CCCD/GPLX trÃªn toÃ n há»‡ thá»‘ng
                 // ============================================================
                 if (cccdReadSuccess && !string.IsNullOrEmpty(citizenId))
                 {
@@ -344,7 +342,7 @@ namespace CarRentalSystem.Controllers
                         .AnyAsync(u => u.UserID != userId && u.CitizenIdHash == cccdHash);
                     if (cccdExists)
                     {
-                        errors.Add($"Số CCCD '{MaskPii(citizenId)}' đã được sử dụng bởi tài khoản khác. Mỗi CCCD chỉ được đăng ký 1 tài khoản.");
+                        errors.Add($"Sá»‘ CCCD '{MaskPii(citizenId)}' Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng bá»Ÿi tÃ i khoáº£n khÃ¡c. Má»—i CCCD chá»‰ Ä‘Æ°á»£c Ä‘Äƒng kÃ½ 1 tÃ i khoáº£n.");
                     }
                 }
 
@@ -355,12 +353,12 @@ namespace CarRentalSystem.Controllers
                         .AnyAsync(u => u.UserID != userId && u.DrivingLicenseHash == licHash);
                     if (licExists)
                     {
-                        errors.Add($"Số GPLX '{MaskPii(licenseNumber)}' đã được sử dụng bởi tài khoản khác. Mỗi GPLX chỉ được đăng ký 1 tài khoản.");
+                        errors.Add($"Sá»‘ GPLX '{MaskPii(licenseNumber)}' Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng bá»Ÿi tÃ i khoáº£n khÃ¡c. Má»—i GPLX chá»‰ Ä‘Æ°á»£c Ä‘Äƒng kÃ½ 1 tÃ i khoáº£n.");
                     }
                 }
 
                 // ============================================================
-                // BƯỚC 2: Face Compare — Selfie vs CCCD (BẮT BUỘC)
+                // BÆ¯á»šC 2: Face Compare â€” Selfie vs CCCD (Báº®T BUá»˜C)
                 // ============================================================
                 EkycFaceResult? faceResult = null;
                 if (face != null && idFront != null)
@@ -370,22 +368,22 @@ namespace CarRentalSystem.Controllers
                     {
                         if (!faceResult.IsMatch)
                         {
-                            errors.Add($"Khuôn mặt trong ảnh selfie không khớp với ảnh CCCD (độ tương đồng: {faceResult.SimilarityPercent:F1}%, ngưỡng yêu cầu: 80%). Đây có thể là tài khoản giả mạo.");
+                            errors.Add($"KhuÃ´n máº·t trong áº£nh selfie khÃ´ng khá»›p vá»›i áº£nh CCCD (Ä‘á»™ tÆ°Æ¡ng Ä‘á»“ng: {faceResult.SimilarityPercent:F1}%, ngÆ°á»¡ng yÃªu cáº§u: 80%). ÄÃ¢y cÃ³ thá»ƒ lÃ  tÃ i khoáº£n giáº£ máº¡o.");
                         }
-                        // isMatch = true → không thêm warning, đây là kết quả tích cực
+                        // isMatch = true â†’ khÃ´ng thÃªm warning, Ä‘Ã¢y lÃ  káº¿t quáº£ tÃ­ch cá»±c
                     }
                     else
                     {
-                        errors.Add($"Không thể so sánh khuôn mặt. Lỗi: {faceResult.Message}");
+                        errors.Add($"KhÃ´ng thá»ƒ so sÃ¡nh khuÃ´n máº·t. Lá»—i: {faceResult.Message}");
                     }
                 }
                 else if (face == null && idFront != null)
                 {
-                    warnings.Add("Bạn chưa tải lên ảnh selfie. Để xác thực chính xác hơn, vui lòng bổ sung ảnh selfie.");
+                    warnings.Add("Báº¡n chÆ°a táº£i lÃªn áº£nh selfie. Äá»ƒ xÃ¡c thá»±c chÃ­nh xÃ¡c hÆ¡n, vui lÃ²ng bá»• sung áº£nh selfie.");
                 }
 
                 // ============================================================
-                // BƯỚC 3: Face Compare — Selfie vs GPLX (nếu có ảnh GPLX)
+                // BÆ¯á»šC 3: Face Compare â€” Selfie vs GPLX (náº¿u cÃ³ áº£nh GPLX)
                 // ============================================================
                 if (faceResult?.IsProviderError == true && errors.Count > 0)
                 {
@@ -401,18 +399,18 @@ namespace CarRentalSystem.Controllers
                     {
                         if (!faceLicResult.IsMatch)
                         {
-                            errors.Add($"Khuôn mặt trong ảnh selfie không khớp với ảnh GPLX (độ tương đồng: {faceLicResult.SimilarityPercent:F1}%). Đây có thể là GPLX không thuộc về bạn.");
+                            errors.Add($"KhuÃ´n máº·t trong áº£nh selfie khÃ´ng khá»›p vá»›i áº£nh GPLX (Ä‘á»™ tÆ°Æ¡ng Ä‘á»“ng: {faceLicResult.SimilarityPercent:F1}%). ÄÃ¢y cÃ³ thá»ƒ lÃ  GPLX khÃ´ng thuá»™c vá» báº¡n.");
                         }
-                        // isMatch = true → không thêm warning, đây là kết quả tích cực
+                        // isMatch = true â†’ khÃ´ng thÃªm warning, Ä‘Ã¢y lÃ  káº¿t quáº£ tÃ­ch cá»±c
                     }
                     else
                     {
-                        errors.Add($"Không thể so sánh selfie với GPLX. Lỗi: {faceLicResult.Message}");
+                        errors.Add($"KhÃ´ng thá»ƒ so sÃ¡nh selfie vá»›i GPLX. Lá»—i: {faceLicResult.Message}");
                     }
                 }
 
                 // ============================================================
-                // BƯỚC 4: Cross-check Profile vs CCCD
+                // BÆ¯á»šC 4: Cross-check Profile vs CCCD
                 // ============================================================
                 if (faceLicResult?.IsProviderError == true && errors.Count > 0)
                 {
@@ -422,82 +420,82 @@ namespace CarRentalSystem.Controllers
 
                 if (cccdReadSuccess)
                 {
-                    // 4a) So sánh tên
+                    // 4a) So sÃ¡nh tÃªn
                     if (!string.IsNullOrEmpty(fullNameCccd) && !string.IsNullOrEmpty(user.Name))
                     {
                         var normProfile = NormalizeVietnamese(user.Name.Trim());
                         var normCccd = NormalizeVietnamese(fullNameCccd.Trim());
                         if (!normProfile.Equals(normCccd))
                         {
-                            // Cho phép trường hợp tên trên CCCD dài hơn (có thể do viết đầy đủ)
+                            // Cho phÃ©p trÆ°á»ng há»£p tÃªn trÃªn CCCD dÃ i hÆ¡n (cÃ³ thá»ƒ do viáº¿t Ä‘áº§y Ä‘á»§)
                             bool isSubset = normCccd.Contains(normProfile) && normCccd.Length - normProfile.Length <= 10;
                             if (!isSubset)
                             {
-                                errors.Add($"Tên trên CCCD ('{fullNameCccd}') không khớp với tên trong hồ sơ ('{user.Name}'). Vui lòng cập nhật hồ sơ cho đúng.");
+                                errors.Add($"TÃªn trÃªn CCCD ('{fullNameCccd}') khÃ´ng khá»›p vá»›i tÃªn trong há»“ sÆ¡ ('{user.Name}'). Vui lÃ²ng cáº­p nháº­t há»“ sÆ¡ cho Ä‘Ãºng.");
                             }
                             else
                             {
-                                warnings.Add($"Tên hồ sơ ('{user.Name}') khác biệt nhẹ so với CCCD ('{fullNameCccd}') — có thể do tên viết tắt/đầy đủ.");
+                                warnings.Add($"TÃªn há»“ sÆ¡ ('{user.Name}') khÃ¡c biá»‡t nháº¹ so vá»›i CCCD ('{fullNameCccd}') â€” cÃ³ thá»ƒ do tÃªn viáº¿t táº¯t/Ä‘áº§y Ä‘á»§.");
                             }
                         }
                     }
 
-                    // 4b) So sánh ngày sinh
+                    // 4b) So sÃ¡nh ngÃ y sinh
                     if (!string.IsNullOrEmpty(dobCccd) && user.DateOfBirth.HasValue)
                     {
                         if (DateTime.TryParse(dobCccd, out var cccdDob))
                         {
                             if (Math.Abs((cccdDob.Date - user.DateOfBirth.Value.Date).TotalDays) > 365)
                             {
-                                errors.Add($"Ngày sinh trên CCCD ({cccdDob:dd/MM/yyyy}) không khớp với ngày sinh trong hồ sơ ({user.DateOfBirth:dd/MM/yyyy}). Sự khác biệt trên 1 năm.");
+                                errors.Add($"NgÃ y sinh trÃªn CCCD ({cccdDob:dd/MM/yyyy}) khÃ´ng khá»›p vá»›i ngÃ y sinh trong há»“ sÆ¡ ({user.DateOfBirth:dd/MM/yyyy}). Sá»± khÃ¡c biá»‡t trÃªn 1 nÄƒm.");
                             }
                         }
                     }
 
-                    // 4c) So sánh giới tính
+                    // 4c) So sÃ¡nh giá»›i tÃ­nh
                     if (!string.IsNullOrEmpty(genderCccd) && !string.IsNullOrEmpty(user.Gender))
                     {
                         var normGenderCccd = NormalizeVietnamese(genderCccd.Trim());
                         var normGenderProfile = NormalizeVietnamese(user.Gender.Trim());
                         if (!normGenderCccd.Equals(normGenderProfile))
                         {
-                            errors.Add($"Giới tính trên CCCD ('{genderCccd}') không khớp với giới tính trong hồ sơ ('{user.Gender}').");
+                            errors.Add($"Giá»›i tÃ­nh trÃªn CCCD ('{genderCccd}') khÃ´ng khá»›p vá»›i giá»›i tÃ­nh trong há»“ sÆ¡ ('{user.Gender}').");
                         }
                     }
                 }
 
                 // ============================================================
-                // BƯỚC 5: Quyết định trạng thái cuối cùng
+                // BÆ¯á»šC 5: Quyáº¿t Ä‘á»‹nh tráº¡ng thÃ¡i cuá»‘i cÃ¹ng
                 // ============================================================
                 bool hasErrors = errors.Count > 0;
                 bool hasWarnings = warnings.Count > 0;
 
                 if (hasErrors)
                 {
-                    // ❌ REJECT — Có lỗi nghiêm trọng
+                    // âŒ REJECT â€” CÃ³ lá»—i nghiÃªm trá»ng
                     user.VerificationStatus = "Rejected";
                     user.IsVerified = false;
                     _context.Users.Update(user);
                     await _context.SaveChangesAsync();
 
-                    TempData["ErrorMessage"] = "Xác thực thất bại. Hệ thống phát hiện các vấn đề sau:";
+                    TempData["ErrorMessage"] = "XÃ¡c thá»±c tháº¥t báº¡i. Há»‡ thá»‘ng phÃ¡t hiá»‡n cÃ¡c váº¥n Ä‘á» sau:";
                     TempData["EkycWarnings"] = string.Join("|", errors);
                     return RedirectAfterEkyc(returnUrl);
                 }
 
                 if (!cccdReadSuccess)
                 {
-                    // ⚠️ CCCD không đọc được → Pending
+                    // âš ï¸ CCCD khÃ´ng Ä‘á»c Ä‘Æ°á»£c â†’ Pending
                     user.VerificationStatus = "Pending";
                     user.IsVerified = false;
                     _context.Users.Update(user);
                     await _context.SaveChangesAsync();
 
-                    TempData["WarningMessage"] = "Hồ sơ đã được gửi nhưng không đọc được CCCD. Hệ thống sẽ xác minh trong 24h.";
+                    TempData["WarningMessage"] = "Há»“ sÆ¡ Ä‘Ã£ Ä‘Æ°á»£c gá»­i nhÆ°ng khÃ´ng Ä‘á»c Ä‘Æ°á»£c CCCD. Há»‡ thá»‘ng sáº½ xÃ¡c minh trong 24h.";
                     return RedirectAfterEkyc(returnUrl);
                 }
 
-                // Lưu thông tin đã OCR vào user
+                // LÆ°u thÃ´ng tin Ä‘Ã£ OCR vÃ o user
                 if (!string.IsNullOrWhiteSpace(citizenId))
                 {
                     user.CitizenId = _piiEncryption.Encrypt(citizenId);
@@ -519,38 +517,38 @@ namespace CarRentalSystem.Controllers
 
                 if (hasWarnings)
                 {
-                    // ⚠️ FLAGGED — CCCD đọc được, mặt khớp, nhưng có cảnh báo nhẹ
+                    // âš ï¸ FLAGGED â€” CCCD Ä‘á»c Ä‘Æ°á»£c, máº·t khá»›p, nhÆ°ng cÃ³ cáº£nh bÃ¡o nháº¹
                     user.VerificationStatus = "Flagged";
                     user.IsVerified = false;
                     _context.Users.Update(user);
                     await _context.SaveChangesAsync();
 
-                    TempData["WarningMessage"] = "Hồ sơ đã được gửi. Hệ thống ghi nhận một số thông tin cần xác minh thêm.";
+                    TempData["WarningMessage"] = "Há»“ sÆ¡ Ä‘Ã£ Ä‘Æ°á»£c gá»­i. Há»‡ thá»‘ng ghi nháº­n má»™t sá»‘ thÃ´ng tin cáº§n xÃ¡c minh thÃªm.";
                     TempData["EkycWarnings"] = string.Join("|", warnings);
                 }
                 else
                 {
-                    // ✅ VERIFIED — Tất cả kiểm tra đều pass
+                    // âœ… VERIFIED â€” Táº¥t cáº£ kiá»ƒm tra Ä‘á»u pass
                     user.VerificationStatus = "Verified";
                     user.IsVerified = true;
                     _context.Users.Update(user);
                     await _context.SaveChangesAsync();
                     await _referralService.EnsureReferralCodeAsync(user.UserID);
 
-                    TempData["SuccessMessage"] = "Xác thực thành công! Hệ thống đã tự động xác minh danh tính từ CCCD của bạn.";
+                    TempData["SuccessMessage"] = "XÃ¡c thá»±c thÃ nh cÃ´ng! Há»‡ thá»‘ng Ä‘Ã£ tá»± Ä‘á»™ng xÃ¡c minh danh tÃ­nh tá»« CCCD cá»§a báº¡n.";
                 }
 
                 return RedirectAfterEkyc(returnUrl);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                TempData["ErrorMessage"] = "Quá trình tải lên gặp lỗi: " + ex.Message;
+                TempData["ErrorMessage"] = "Qua trinh tai len gap loi. Vui long thu lai sau.";
                 return RedirectAfterEkyc(returnUrl);
             }
         }
 
         /// <summary>
-        /// Che giấu PII — chỉ hiện 4 ký tự cuối
+        /// Che giáº¥u PII â€” chá»‰ hiá»‡n 4 kÃ½ tá»± cuá»‘i
         /// </summary>
         private IActionResult RedirectAfterEkyc(string? returnUrl)
         {
@@ -588,11 +586,27 @@ namespace CarRentalSystem.Controllers
             return null;
         }
 
+        private async Task<string?> ValidateUploadedImageAsync(IFormFile file)
+        {
+            var formatError = ValidateImageFormat(file);
+            if (!string.IsNullOrEmpty(formatError))
+                return formatError;
+
+            var sizeError = ValidateFileSize(file);
+            if (!string.IsNullOrEmpty(sizeError))
+                return sizeError;
+
+            if (!await _fileUploadValidation.IsAllowedImageAsync(file, MaxFileSizeBytes))
+                return "File khong dung dinh dang anh hop le hoac noi dung khong khop duoi file.";
+
+            return null;
+        }
+
         private static string MaskPii(string? value)
         {
-            if (string.IsNullOrEmpty(value)) return "••••••••";
-            if (value.Length <= 4) return new string('•', value.Length);
-            return new string('•', value.Length - 4) + value[^4..];
+            if (string.IsNullOrEmpty(value)) return "********";
+            if (value.Length <= 4) return new string('*', value.Length);
+            return new string('*', value.Length - 4) + value[^4..];
         }
 
         private static string ComputePiiHash(string? value)
@@ -606,7 +620,7 @@ namespace CarRentalSystem.Controllers
         {
             if (string.IsNullOrEmpty(text)) return "";
             string[] signs = { "aAeEoOuUiIyY", "aAeEoOuUiIyY", "aAeEoOuUiIyY", "aAeEoOuUiIyY", "aAeEoOuUiIyY", "aAeEoOuUiIyY", "aAeEoOuUiIyY", "aAeEoOuUiIyY" };
-            string[] chars = { "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩ", "ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨ", "èéẹẻẽêềếệểễìíịỉĩđÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨĐ", "ÌÍỊỈĨìíịỉĩÌÍỊỈĨ", "òóọỏõôồốộổỗăằắặẳẵơờớợởỡùúụủũưừứựửữìíịỉĩýỳỵỷỹ", "ÒÓỌỎÕÔỒỐỘỔỖĂẰẮẶẲẴƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮÌÍỊỈĨÝỲỴỶỸ", "đĐ", "Đ" };
+            string[] chars = { "Ã Ã¡áº¡áº£Ã£Ã¢áº§áº¥áº­áº©áº«Äƒáº±áº¯áº·áº³áºµÃ¨Ã©áº¹áº»áº½Ãªá»áº¿á»‡á»ƒá»…Ã¬Ã­á»‹á»‰Ä©", "Ã€Ãáº áº¢ÃƒÃ‚áº¦áº¤áº¬áº¨áºªÄ‚áº°áº®áº¶áº²áº´ÃˆÃ‰áº¸áººáº¼ÃŠá»€áº¾á»†á»‚á»„ÃŒÃá»Šá»ˆÄ¨", "Ã¨Ã©áº¹áº»áº½Ãªá»áº¿á»‡á»ƒá»…Ã¬Ã­á»‹á»‰Ä©Ä‘ÃˆÃ‰áº¸áººáº¼ÃŠá»€áº¾á»†á»‚á»„ÃŒÃá»Šá»ˆÄ¨Ä", "ÃŒÃá»Šá»ˆÄ¨Ã¬Ã­á»‹á»‰Ä©ÃŒÃá»Šá»ˆÄ¨", "Ã²Ã³á»á»ÃµÃ´á»“á»‘á»™á»•á»—Äƒáº±áº¯áº·áº³áºµÆ¡á»á»›á»£á»Ÿá»¡Ã¹Ãºá»¥á»§Å©Æ°á»«á»©á»±á»­á»¯Ã¬Ã­á»‹á»‰Ä©Ã½á»³á»µá»·á»¹", "Ã’Ã“á»Œá»ŽÃ•Ã”á»’á»á»˜á»”á»–Ä‚áº°áº®áº¶áº²áº´Æ á»œá»šá»¢á»žá» Ã™Ãšá»¤á»¦Å¨Æ¯á»ªá»¨á»°á»¬á»®ÃŒÃá»Šá»ˆÄ¨Ãá»²á»´á»¶á»¸", "Ä‘Ä", "Ä" };
             string result = text.ToLowerInvariant();
             for (int i = 0; i < chars.Length; i++)
                 for (int j = 0; j < chars[i].Length; j++)

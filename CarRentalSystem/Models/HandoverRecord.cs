@@ -44,6 +44,20 @@ namespace CarRentalSystem.Models
         [MaxLength(255)]
         public string? SignatureUrl { get; set; }
 
+        public double? GeoLatitude { get; set; }
+
+        public double? GeoLongitude { get; set; }
+
+        [MaxLength(64)]
+        public string? EvidenceHash { get; set; }
+
+        [MaxLength(64)]
+        public string? CustomerSignatureHash { get; set; }
+
+        public int? RecordedByUserId { get; set; }
+        [ForeignKey("RecordedByUserId")]
+        public User? RecordedByUser { get; set; }
+
         // Phase 10: Soft Delete
         public bool IsDeleted { get; set; } = false;
     }

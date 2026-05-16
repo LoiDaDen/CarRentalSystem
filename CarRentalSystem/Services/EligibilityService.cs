@@ -1,5 +1,4 @@
 using CarRentalSystem.Data;
-using CarRentalSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Services
@@ -48,8 +47,21 @@ namespace CarRentalSystem.Services
             if (!user.IsVerified || !string.Equals(user.VerificationStatus, "Verified", StringComparison.OrdinalIgnoreCase))
                 return new EligibilityResult(false, "Cần xác thực eKYC trước khi thuê xe.", EligibilityFailureCode.EkycNotVerified);
 
-            if (string.IsNullOrWhiteSpace(user.CitizenIdHash) || string.IsNullOrWhiteSpace(user.DrivingLicenseHash))
-                return new EligibilityResult(false, "Vui lòng xác thực CCCD và giấy phép lái xe trước khi thuê xe.", EligibilityFailureCode.MissingIdentityDocuments);
+            if (string.IsNullOrWhiteSpace(user.CitizenIdHash))
+                return new EligibilityResult(false, "Vui lòng xác thực CCCD trước khi thuê xe.", EligibilityFailureCode.MissingIdentityDocuments);
+
+            var hasApprovedLicense = await _context.CustomerDrivingLicenses.AnyAsync(l =>
+                l.UserID == userId &&
+                l.IsActive &&
+                l.IsApproved &&
+                l.VerificationStatus == "Verified" &&
+                (!l.ExpiryDate.HasValue || l.ExpiryDate.Value.Date >= DateTime.UtcNow.Date));
+
+            var hasLegacyVerifiedLicense = !string.IsNullOrWhiteSpace(user.DrivingLicenseHash) &&
+                !string.IsNullOrWhiteSpace(user.DrivingLicenseUrl);
+
+            if (!hasApprovedLicense && !hasLegacyVerifiedLicense)
+                return new EligibilityResult(false, "Vui lòng xác thực giấy phép lái xe trước khi thuê xe tự lái.", EligibilityFailureCode.MissingIdentityDocuments);
 
             return new EligibilityResult(true, null);
         }

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
 
@@ -28,6 +29,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IPiiEncryptionService> _mockPiiEncryption;
         private readonly Mock<IRecaptchaService> _mockRecaptchaService;
         private readonly Mock<IReferralService> _mockReferralService;
+        private readonly Mock<IAuditTrailService> _mockAuditTrail;
         private readonly ApplicationDbContext _context;
         private readonly AuthController _controller;
 
@@ -39,17 +41,32 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockPiiEncryption = new Mock<IPiiEncryptionService>();
             _mockRecaptchaService = new Mock<IRecaptchaService>();
             _mockReferralService = new Mock<IReferralService>();
+            _mockAuditTrail = new Mock<IAuditTrailService>();
             _context = MockRepositoryHelper.CreateSeededDbContext();
 
-            _controller = new AuthController(
+            _controller = CreateController(requireRecaptcha: false);
+        }
+
+        private AuthController CreateController(bool requireRecaptcha)
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Security:RequireRecaptcha"] = requireRecaptcha.ToString()
+                })
+                .Build();
+
+            var controller = new AuthController(
                 _mockAuthService.Object,
                 _mockEnv.Object,
                 _mockEmailService.Object,
                 _mockPiiEncryption.Object,
                 _context,
                 _mockRecaptchaService.Object,
-                _mockReferralService.Object);
-            _controller.ControllerContext = new ControllerContext
+                _mockReferralService.Object,
+                configuration,
+                _mockAuditTrail.Object);
+            controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
             };
@@ -58,7 +75,28 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             mockUrlHelper.Setup(u => u.Action(It.IsAny<UrlActionContext>())).Returns("http://localhost/verify");
             mockUrlHelper.Setup(u => u.IsLocalUrl(It.IsAny<string>()))
                 .Returns<string>(url => !string.IsNullOrWhiteSpace(url) && url.StartsWith("/") && !url.StartsWith("//"));
-            _controller.Url = mockUrlHelper.Object;
+            controller.Url = mockUrlHelper.Object;
+
+            return controller;
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public async Task Login_Post_ReturnsViewWithError_WhenRecaptchaFails()
+        {
+            // Arrange
+            var controller = CreateController(requireRecaptcha: true);
+            _mockRecaptchaService.Setup(s => s.VerifyAsync("bad-token", "login"))
+                                 .ReturnsAsync(new RecaptchaVerifyResult { Success = false });
+
+            // Act
+            var result = await controller.Login("test@user.com", "pass", "bad-token") as ViewResult;
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.ViewData["Error"].Should().Be("Dang nhap khong thanh cong do xac thuc bao mat that bai.");
+            _mockAuthService.Verify(s => s.AuthenticateAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         // =============================================
@@ -167,6 +205,33 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             // Assert
             result.Should().NotBeNull();
             result!.ViewData["Error"].Should().Be("Email nay da duoc dang ky.");
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public async Task Register_Post_ReturnsViewWithError_WhenRecaptchaFails()
+        {
+            // Arrange
+            var controller = CreateController(requireRecaptcha: true);
+            var model = new RegisterViewModel
+            {
+                Email = "new@test.com",
+                Name = "Test",
+                Phone = "0900000000",
+                Password = "secret1",
+                ConfirmPassword = "secret1"
+            };
+            _mockRecaptchaService.Setup(s => s.VerifyAsync("bad-token", "register"))
+                                 .ReturnsAsync(new RecaptchaVerifyResult { Success = false });
+
+            // Act
+            var result = await controller.Register(model, "bad-token") as ViewResult;
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.ViewData["Error"].Should().Be("Dang ky khong thanh cong do xac thuc bao mat that bai.");
+            _mockAuthService.Verify(s => s.GetUserByEmailAsync(It.IsAny<string>()), Times.Never);
         }
     }
 }

@@ -340,37 +340,9 @@ namespace CarRentalSystem.Services
                     await _context.SaveChangesAsync();
                 }
 
-                // Tạo DigitalContract
+                // Physical contracts are uploaded after signing; do not generate digital contracts.
                 var contractNo = GenerateContractNo(booking.BookingID);
-                var decryptedCccd = _piiEncryption.DecryptIfNotEmpty(user.CitizenId) ?? "000000000000";
-                var digitalContract = new DigitalContract
-                {
-                    ContractNo = contractNo,
-                    BookingID = booking.BookingID,
-                    CustomerName = customerName ?? user.Name,
-                    CustomerIdentityCard = decryptedCccd.Length > 20 ? decryptedCccd.Substring(0, 20) : decryptedCccd,
-                    CustomerPhone = customerPhone ?? user.Phone,
-                    CustomerAddress = user.Address ?? "Văn phòng công ty",
-                    CarLicensePlate = car.LicensePlate,
-                    CarModel = $"{car.CarBrand?.Name} {car.CarName}",
-                    RentalStartDate = startDate,
-                    RentalEndDate = endDate,
-                    RentalPricePerDay = car.PricePerDay,
-                    TotalContractValue = pricing.FinalPrice,
-                    DepositAmount = pricing.DepositAmount,
-                    TermsAndConditions = GenerateTermsAndConditions(car, contractType, pricing, termMonths),
-                    IsSignedByCustomer = false,
-                    CustomerSignDate = null,
-                    IsSignedByOwner = false,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.DigitalContracts.Add(digitalContract);
-                await _context.SaveChangesAsync();
-
-                result.DigitalContract = digitalContract;
                 result.ContractNo = contractNo;
-
                 // Cập nhật trạng thái xe (soft lock - chờ thanh toán cọc)
                 // Xe vẫn ở trạng thái Available cho đến khi thanh toán thành công
 
@@ -427,9 +399,7 @@ namespace CarRentalSystem.Services
                     result.BookingID = booking.BookingID;
                     result.LongTermRental = existingRental;
                     result.RentalID = existingRental.RentalID;
-                    result.DigitalContract = await _context.DigitalContracts
-                        .FirstOrDefaultAsync(c => c.BookingID == booking.BookingID);
-                    result.ContractNo = result.DigitalContract?.ContractNo;
+                    result.ContractNo = GenerateContractNo(booking.BookingID);
                     return result;
                 }
 
@@ -467,31 +437,6 @@ namespace CarRentalSystem.Services
                 }
 
                 var contractNo = GenerateContractNo(booking.BookingID);
-                var decryptedCccd = _piiEncryption.DecryptIfNotEmpty(booking.User.CitizenId) ?? "000000000000";
-                _context.DigitalContracts.Add(new DigitalContract
-                {
-                    ContractNo = contractNo,
-                    BookingID = booking.BookingID,
-                    CustomerName = customerName ?? booking.User.Name,
-                    CustomerIdentityCard = decryptedCccd.Length > 20 ? decryptedCccd.Substring(0, 20) : decryptedCccd,
-                    CustomerPhone = customerPhone ?? booking.User.Phone ?? "",
-                    CustomerAddress = booking.User.Address ?? "Van phong cong ty",
-                    CarLicensePlate = booking.Car.LicensePlate,
-                    CarModel = $"{booking.Car.CarBrand?.Name} {booking.Car.CarName}",
-                    RentalStartDate = booking.StartDate,
-                    RentalEndDate = booking.EndDate,
-                    RentalPricePerDay = booking.Car.PricePerDay,
-                    TotalContractValue = booking.TotalPrice,
-                    DepositAmount = booking.DepositAmount,
-                    TermsAndConditions = GenerateTermsAndConditions(booking.Car, contractType, pricing, termMonths),
-                    IsSignedByCustomer = false,
-                    CustomerSignDate = null,
-                    IsSignedByOwner = false,
-                    CreatedAt = DateTime.UtcNow
-                });
-
-                await _context.SaveChangesAsync();
-
                 result.IsSuccess = true;
                 result.Booking = booking;
                 result.BookingID = booking.BookingID;
@@ -691,7 +636,6 @@ DIEU 7: HIEU LUC
         public string? ErrorMessage { get; set; }
         public Booking? Booking { get; set; }
         public LongTermRental? LongTermRental { get; set; }
-        public DigitalContract? DigitalContract { get; set; }
         public int BookingID { get; set; }
         public int RentalID { get; set; }
         public string? ContractNo { get; set; }
@@ -707,3 +651,4 @@ DIEU 7: HIEU LUC
 
     #endregion
 }
+

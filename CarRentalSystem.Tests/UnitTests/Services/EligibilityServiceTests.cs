@@ -93,7 +93,8 @@ namespace CarRentalSystem.Tests.UnitTests.Services
             IsVerified = true,
             VerificationStatus = "Verified",
             CitizenIdHash = "citizen-hash",
-            DrivingLicenseHash = "license-hash"
+            DrivingLicenseHash = "license-hash",
+            DrivingLicenseUrl = "/secure/license-front.jpg"
         };
 
         public void Dispose()

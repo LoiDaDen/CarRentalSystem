@@ -1,0 +1,55 @@
+@{
+    ViewData["Title"] = "Multi-Factor Authentication";
+    var errorMessage = ViewBag.Error?.ToString() ?? TempData["ErrorMessage"]?.ToString();
+    var successMessage = TempData["SuccessMessage"]?.ToString();
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 mt-5">
+                <div class="card-header bg-dark text-white text-center py-4">
+                    <h3 class="mb-0">Xac thuc MFA</h3>
+                </div>
+                <div class="card-body p-4">
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">@errorMessage</div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(successMessage))
+                    {
+                        <div class="alert alert-success" role="alert">@successMessage</div>
+                    }
+
+                    <p class="text-muted text-center mb-4">
+                        Ma xac thuc da duoc gui den email
+                        <strong>@(ViewBag.Email ?? "tai khoan cua ban")</strong>.
+                    </p>
+
+                    <form asp-action="VerifyMfa" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label for="otp" class="form-label">Ma MFA 6 so</label>
+                            <input id="otp"
+                                   name="otp"
+                                   class="form-control form-control-lg text-center"
+                                   inputmode="numeric"
+                                   pattern="[0-9]{6}"
+                                   maxlength="6"
+                                   autocomplete="one-time-code"
+                                   required
+                                   autofocus />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Xac thuc</button>
+                    </form>
+
+                    <form asp-action="ResendMfa" method="post" class="text-center mt-3">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-link">Gui lai ma</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

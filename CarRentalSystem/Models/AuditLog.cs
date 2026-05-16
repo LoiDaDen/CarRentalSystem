@@ -55,6 +55,20 @@ namespace CarRentalSystem.Models
         [MaxLength(500)]
         public string? RequestUrl { get; set; }
 
+        [MaxLength(1000)]
+        public string? Reason { get; set; }
+
+        [MaxLength(64)]
+        public string? CorrelationId { get; set; }
+
+        [MaxLength(64)]
+        public string? PreviousHash { get; set; }
+
+        [MaxLength(64)]
+        public string? RecordHash { get; set; }
+
+        public int HashVersion { get; set; } = 1;
+
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }

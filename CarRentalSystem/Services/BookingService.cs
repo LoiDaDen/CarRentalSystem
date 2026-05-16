@@ -33,11 +33,13 @@ namespace CarRentalSystem.Services
         private readonly IRepository<Payment> _paymentRepo;
         private readonly IRepository<RentalContract> _contractRepo;
         private readonly IBookingTransitionService _transitionService;
+        private readonly IBookingBusinessRuleService _businessRules;
 
         public BookingService(IRepository<Booking> bookingRepo, IRepository<Payment> paymentRepo, 
             IRepository<RentalContract> contractRepo, IRepository<BookingStatus> statusRepo,
             IRepository<Car> carRepo, IRepository<CarStatus> carStatusRepo,
-            IBookingTransitionService transitionService)
+            IBookingTransitionService transitionService,
+            IBookingBusinessRuleService businessRules)
         {
             _bookingRepo = bookingRepo;
             _paymentRepo = paymentRepo;
@@ -46,6 +48,7 @@ namespace CarRentalSystem.Services
             _carRepo = carRepo;
             _carStatusRepo = carStatusRepo;
             _transitionService = transitionService;
+            _businessRules = businessRules;
         }
 
         public async Task<IEnumerable<Booking>> GetAllBookingsAsync()
@@ -120,6 +123,8 @@ namespace CarRentalSystem.Services
 
         public async Task CreateBookingAsync(Booking booking)
         {
+            await _businessRules.ValidateSelfDriveAsync(booking);
+
             var status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Unpaid);
             if (status == null) status = await _statusRepo.Query().FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending);
 

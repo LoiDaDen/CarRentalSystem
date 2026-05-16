@@ -34,6 +34,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .Include(b => b.User)
                 .Include(b => b.BookingStatus)
                 .Where(b => b.BookingStatus != null && b.BookingStatus.Name != "Draft")
+                .OrderByDescending(b => b.CreatedAt)
+                .Take(5000)
                 .ToListAsync();
 
             var completedBookings = bookings.Where(b => b.BookingStatus?.Name == "Completed" || b.BookingStatus?.Name == "Confirmed").ToList();
@@ -45,8 +47,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             var newBookingsThisMonth = bookings.Count(b => b.CreatedAt >= startOfMonth);
 
-            var cars = await _context.Cars.Include(c => c.CarStatus).Include(c => c.CarBrand).ToListAsync();
-            var maintenanceLogs = await _context.MaintenanceLogs.Include(m => m.Car).ToListAsync();
+            var cars = await _context.Cars.Include(c => c.CarStatus).Include(c => c.CarBrand).Take(1000).ToListAsync();
+            var maintenanceLogs = await _context.MaintenanceLogs.Include(m => m.Car).OrderByDescending(m => m.ServiceDate).Take(5000).ToListAsync();
 
             // Revenue last 12 months
             var last12 = Enumerable.Range(0, 12)

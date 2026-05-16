@@ -221,6 +221,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.Brands = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarBrands, "BrandID", "Name");
             ViewBag.CarTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarTypes, "CarTypeID", "Name");
             ViewBag.CarStatuses = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarStatuses, "CarStatusID", "Name");
+            ViewBag.ServiceTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.ServiceTypes.Where(s => s.IsActive), "ServiceTypeID", "Name");
             return View();
         }
 
@@ -237,6 +238,27 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (double.TryParse(Longitude?.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng)) car.Longitude = lng;
             car.PricePerHour = car.PricePerDay > 0 ? Math.Round(car.PricePerDay / 8m) : 0;
 
+            var selfDriveServiceType = await _context.ServiceTypes.FirstOrDefaultAsync(s => s.Code == ServiceTypeConstants.SelfDrive);
+            var withDriverServiceType = await _context.ServiceTypes.FirstOrDefaultAsync(s => s.Code == ServiceTypeConstants.WithDriver);
+            car.ServiceTypeID ??= selfDriveServiceType?.ServiceTypeID;
+            if (car.ServiceTypeID == withDriverServiceType?.ServiceTypeID)
+            {
+                car.IsSelfDriveAllowed = false;
+                car.IsWithDriverAllowed = true;
+                car.TransportPermitStatus = string.IsNullOrWhiteSpace(car.TransportPermitStatus) ? "Pending" : car.TransportPermitStatus;
+                car.IsApproved = false;
+            }
+            else
+            {
+                car.ServiceTypeID = selfDriveServiceType?.ServiceTypeID;
+                car.IsSelfDriveAllowed = true;
+                car.IsWithDriverAllowed = false;
+                car.TransportPermitStatus = "NotRequired";
+                car.BadgeType = null;
+                car.BadgeExpiryDate = null;
+                car.IsApproved = true;
+            }
+
             ModelState.Remove("CarImages");
             ModelState.Remove("Bookings");
             ModelState.Remove("Trackings");
@@ -247,6 +269,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ModelState.Remove("CarStatus");
             ModelState.Remove("CarType");
             ModelState.Remove("Location");
+            ModelState.Remove("ServiceType");
             ModelState.Remove("InsuranceTier");
             ModelState.Remove("PricePerHour");
 

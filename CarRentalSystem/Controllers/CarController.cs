@@ -183,31 +183,18 @@ namespace CarRentalSystem.Controllers
             var viewModel = new CarDetailsViewModel
             {
                 Car = car,
-                Amenities = new List<AmenityItem>
-                {
-                    new AmenityItem { Name = "Bluetooth", Icon = "bi-bluetooth" },
-                    new AmenityItem { Name = "Camera 360", Icon = "bi-camera-video" },
-                    new AmenityItem { Name = "Cruise Control", Icon = "bi-speedometer" },
-                    new AmenityItem { Name = "Cảm biến lốp", Icon = "bi-radioactive" },
-                    new AmenityItem { Name = "Cảnh báo tốc độ", Icon = "bi-exclamation-triangle" },
-                    new AmenityItem { Name = "Định vị GPS", Icon = "bi-geo-alt" },
-                    new AmenityItem { Name = "Khe cắm USB", Icon = "bi-usb-drive" },
-                    new AmenityItem { Name = "Màn hình DVD", Icon = "bi-display" },
-                    new AmenityItem { Name = "ETC", Icon = "bi-credit-card" },
-                    new AmenityItem { Name = "Bản đồ", Icon = "bi-map" },
-                    new AmenityItem { Name = "Camera cập lề", Icon = "bi-camera" },
-                    new AmenityItem { Name = "Camera lùi", Icon = "bi-camera-fill" },
-                    new AmenityItem { Name = "Cảnh báo va chạm", Icon = "bi-shield-exclamation" },
-                    new AmenityItem { Name = "Cửa sổ trời", Icon = "bi-sun" },
-                    new AmenityItem { Name = "Lốp dự phòng", Icon = "bi-vinyl" },
-                    new AmenityItem { Name = "Số túi khí", Icon = "bi-shield-check" },
-                    new AmenityItem { Name = "Vietmap Live", Icon = "bi-map-fill" },
-                    new AmenityItem { Name = "Màn hình cảm ứng", Icon = "bi-hand-index-thumb" },
-                    new AmenityItem { Name = "Android Box", Icon = "bi-box" },
-                    new AmenityItem { Name = "Dây đai đa năng", Icon = "bi-person-check" },
-                    new AmenityItem { Name = "Cốp điện", Icon = "bi-lightning-charge" },
-                    new AmenityItem { Name = "Phanh tay điện tử", Icon = "bi-toggles" }
-                },
+                Amenities = car.CarAmenityMappings?
+                    .Where(mapping => mapping.CarAmenity != null)
+                    .OrderBy(mapping => mapping.CarAmenity!.DisplayOrder)
+                    .ThenBy(mapping => mapping.CarAmenity!.Name)
+                    .Select(mapping => new AmenityItem
+                    {
+                        Name = mapping.CarAmenity!.Name,
+                        Icon = string.IsNullOrWhiteSpace(mapping.CarAmenity.Icon)
+                            ? "bi-check2"
+                            : mapping.CarAmenity.Icon
+                    })
+                    .ToList() ?? new List<AmenityItem>(),
                 Pricing = new PricingPackages
                 {
                     Price4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m,
@@ -259,6 +246,7 @@ namespace CarRentalSystem.Controllers
             ViewBag.Locations = _context.Locations.ToList();
             ViewBag.Brands = _context.CarBrands.ToList();
             ViewBag.CarTypes = _context.CarTypes.ToList();
+            ViewBag.ServiceTypes = _context.ServiceTypes.Where(s => s.IsActive).OrderBy(s => s.ServiceTypeID).ToList();
             return View();
         }
 
@@ -269,6 +257,27 @@ namespace CarRentalSystem.Controllers
         {
             if (ModelState.IsValid)
             {
+                var selfDriveServiceType = await _context.ServiceTypes.FirstOrDefaultAsync(s => s.Code == ServiceTypeConstants.SelfDrive);
+                var withDriverServiceType = await _context.ServiceTypes.FirstOrDefaultAsync(s => s.Code == ServiceTypeConstants.WithDriver);
+                car.ServiceTypeID ??= selfDriveServiceType?.ServiceTypeID;
+                if (car.ServiceTypeID == withDriverServiceType?.ServiceTypeID)
+                {
+                    car.IsSelfDriveAllowed = false;
+                    car.IsWithDriverAllowed = true;
+                    car.TransportPermitStatus = string.IsNullOrWhiteSpace(car.TransportPermitStatus) ? "Pending" : car.TransportPermitStatus;
+                    car.IsApproved = false;
+                }
+                else
+                {
+                    car.ServiceTypeID = selfDriveServiceType?.ServiceTypeID;
+                    car.IsSelfDriveAllowed = true;
+                    car.IsWithDriverAllowed = false;
+                    car.TransportPermitStatus = "NotRequired";
+                    car.BadgeType = null;
+                    car.BadgeExpiryDate = null;
+                    car.IsApproved = true;
+                }
+
                 await _carService.AddCarAsync(car);
                 
                 // Handle image upload if provided
@@ -640,3 +649,4 @@ namespace CarRentalSystem.Controllers
         }
     }
 }
+

@@ -12,6 +12,10 @@ namespace CarRentalSystem.Models
         public int? UserID { get; set; } // Linked user account (nullable for standalone drivers)
         public User? User { get; set; }
 
+        [ForeignKey("Partner")]
+        public int? PartnerID { get; set; }
+        public User? Partner { get; set; }
+
         [Required]
         [MaxLength(100)]
         public required string FullName { get; set; }
@@ -32,6 +36,8 @@ namespace CarRentalSystem.Models
         [MaxLength(20)]
         public string LicenseType { get; set; } = "B2"; // B1, B2, C, D, E
 
+        public DateTime? DrivingLicenseExpiryDate { get; set; }
+
         [Required]
         [Range(0, 70, ErrorMessage = "Số năm kinh nghiệm phải từ 0 đến 70 năm")]
         public int ExperienceYears { get; set; } = 1;
@@ -48,6 +54,9 @@ namespace CarRentalSystem.Models
 
         public bool IsAvailable { get; set; } = true;
         public bool IsApproved { get; set; } = false; // Admin must approve
+
+        [MaxLength(30)]
+        public string Status { get; set; } = "Pending";
 
         [Range(0, 5, ErrorMessage = "Điểm đánh giá phải từ 0 đến 5 sao")]
         [Column(TypeName = "decimal(3,1)")]
@@ -76,6 +85,7 @@ namespace CarRentalSystem.Models
         public Location? Location { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
         public ICollection<DriverBooking>? DriverBookings { get; set; } = new List<DriverBooking>();
         public ICollection<DriverReview>? DriverReviews { get; set; } = new List<DriverReview>();

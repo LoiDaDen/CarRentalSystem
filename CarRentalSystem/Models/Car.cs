@@ -22,6 +22,10 @@ namespace CarRentalSystem.Models
         public int BrandID { get; set; }
         public CarBrand? CarBrand { get; set; }
 
+        [ForeignKey("CarModel")]
+        public int? CarModelID { get; set; }
+        public CarModel? CarModel { get; set; }
+
         [Required]
         [Range(1, 50)]
         public int Seats { get; set; }
@@ -74,6 +78,22 @@ namespace CarRentalSystem.Models
         public int CarTypeID { get; set; }
         public CarType? CarType { get; set; }
 
+        [ForeignKey("ServiceType")]
+        public int? ServiceTypeID { get; set; }
+        public ServiceType? ServiceType { get; set; }
+
+        public bool IsSelfDriveAllowed { get; set; } = true;
+        public bool IsWithDriverAllowed { get; set; } = false;
+
+        [MaxLength(30)]
+        public string TransportPermitStatus { get; set; } = "NotRequired";
+
+        [MaxLength(50)]
+        public string? BadgeType { get; set; }
+
+        public DateTime? BadgeExpiryDate { get; set; }
+        public bool IsApproved { get; set; } = true;
+
         [Required]
         [ForeignKey("Location")]
         public int LocationID { get; set; }
@@ -103,6 +123,7 @@ namespace CarRentalSystem.Models
         public int CurrentOdometer { get; set; }
 
         public ICollection<CarImage>? CarImages { get; set; } = new List<CarImage>();
+        public ICollection<CarAmenityMapping> CarAmenityMappings { get; set; } = new List<CarAmenityMapping>();
         public ICollection<Booking>? Bookings { get; set; } = new List<Booking>();
         public ICollection<VehicleTracking>? Trackings { get; set; } = new List<VehicleTracking>();
         public ICollection<Alert>? Alerts { get; set; } = new List<Alert>();
@@ -146,8 +167,39 @@ namespace CarRentalSystem.Models
         [Column(TypeName = "decimal(5,2)")]
         public decimal? PartnerDiscountPercent { get; set; } // Partner can set discount, validate <= regular price
 
+        [Range(0, 100)]
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal WeeklyDiscountPercent { get; set; }
+
+        [Range(0, 100)]
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal MonthlyDiscountPercent { get; set; }
+
+        public bool DeliveryEnabled { get; set; }
+
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal MaxDeliveryDistanceKm { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal DeliveryFeePerKm { get; set; }
+
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal FreeDeliveryRadiusKm { get; set; }
+
+        public bool MileageLimitEnabled { get; set; }
+
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DailyMileageLimitKm { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal ExtraMileageFeePerKm { get; set; }
+
+        [MaxLength(1200)]
+        public string? RentalTerms { get; set; }
+
         // Phase 10: Soft Delete
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 }

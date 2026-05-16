@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -21,6 +22,14 @@ namespace CarRentalSystem.Controllers
 {
     public class AuthController : Controller
     {
+        private const string PendingMfaUserIdSessionKey = "PrivilegedMfaUserId";
+        private const string PendingMfaOtpHashSessionKey = "PrivilegedMfaOtpHash";
+        private const string PendingMfaExpiresAtSessionKey = "PrivilegedMfaExpiresAt";
+        private const string PendingMfaReturnUrlSessionKey = "PrivilegedMfaReturnUrl";
+        private const string PendingMfaAttemptCountSessionKey = "PrivilegedMfaAttemptCount";
+        private const string PendingMfaEmailSessionKey = "PrivilegedMfaEmail";
+        private static readonly TimeSpan PrivilegedMfaTtl = TimeSpan.FromMinutes(5);
+
         private readonly IAuthService _authService;
         private readonly IWebHostEnvironment _env;
         private readonly IEmailService _emailService;
@@ -28,8 +37,10 @@ namespace CarRentalSystem.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IRecaptchaService _recaptchaService;
         private readonly IReferralService _referralService;
+        private readonly IConfiguration _configuration;
+        private readonly IAuditTrailService _auditTrail;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService, IReferralService referralService)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService, IReferralService referralService, IConfiguration configuration, IAuditTrailService auditTrail)
         {
             _authService = authService;
             _env = env;
@@ -38,6 +49,8 @@ namespace CarRentalSystem.Controllers
             _context = context;
             _recaptchaService = recaptchaService;
             _referralService = referralService;
+            _configuration = configuration;
+            _auditTrail = auditTrail;
         }
 
         [HttpGet]
@@ -52,7 +65,89 @@ namespace CarRentalSystem.Controllers
             }
 
             ViewData["ReturnUrl"] = IsSafeLocalReturnUrl(returnUrl) ? returnUrl : null;
+
             return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ExternalLogin(string provider, string? returnUrl = null)
+        {
+            if (!string.Equals(provider, "Google", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(provider, "Microsoft", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Nha cung cap SSO khong hop le.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Auth", new { returnUrl });
+            var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
+            return Challenge(properties, provider);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExternalLoginCallback(string? returnUrl = null)
+        {
+            var result = await HttpContext.AuthenticateAsync("External");
+            if (!result.Succeeded || result.Principal == null)
+            {
+                await _auditTrail.RecordAsync(new AuditLog
+                {
+                    Action = "ExternalLoginFailed",
+                    EntityType = "Auth",
+                    Reason = "External provider did not return an authenticated principal."
+                });
+                TempData["ErrorMessage"] = "Dang nhap SSO khong thanh cong.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            var email = result.Principal.FindFirstValue(ClaimTypes.Email);
+            await HttpContext.SignOutAsync("External");
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                await _auditTrail.RecordAsync(new AuditLog
+                {
+                    Action = "ExternalLoginFailed",
+                    EntityType = "Auth",
+                    Reason = "External provider did not return email."
+                });
+                TempData["ErrorMessage"] = "Tai khoan SSO khong co email hop le.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null || !IsPrivilegedRole(user.Role) || !user.IsEmailVerified || user.IsLocked || user.IsBlacklisted)
+            {
+                await _auditTrail.RecordAsync(new AuditLog
+                {
+                    Action = "ExternalLoginRejected",
+                    EntityType = "Auth",
+                    EntityId = user?.UserID,
+                    UserId = user?.UserID,
+                    Reason = "SSO is restricted to existing verified privileged users.",
+                    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Email = email, Role = user?.Role })
+                });
+                TempData["ErrorMessage"] = "SSO chi danh cho tai khoan quan tri/nhan su da duoc xac thuc.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            await _auditTrail.RecordAsync(new AuditLog
+            {
+                Action = "ExternalLoginAccepted",
+                EntityType = nameof(User),
+                EntityId = user.UserID,
+                UserId = user.UserID,
+                Reason = "Privileged SSO principal matched an existing verified user."
+            });
+
+            if (RequiresPrivilegedMfa(user))
+            {
+                await BeginPrivilegedMfaChallengeAsync(user, returnUrl);
+                return RedirectToAction(nameof(VerifyMfa));
+            }
+
+            await SignInUserAsync(user);
+            return RedirectAfterLogin(user, returnUrl);
         }
 
         [HttpPost]
@@ -60,6 +155,9 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> Login(string email, string password, string? recaptchaToken, string? returnUrl = null)
         {
             ViewData["ReturnUrl"] = IsSafeLocalReturnUrl(returnUrl) ? returnUrl : null;
+
+            if (!await ValidateRecaptchaForViewAsync(recaptchaToken, "login", "Dang nhap khong thanh cong do xac thuc bao mat that bai."))
+                return View();
 
             // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
             // if (string.IsNullOrEmpty(recaptchaToken))
@@ -101,6 +199,186 @@ namespace CarRentalSystem.Controllers
                 return View();
             }
 
+            if (RequiresPrivilegedMfa(user))
+            {
+                await BeginPrivilegedMfaChallengeAsync(user, returnUrl);
+                return RedirectToAction("VerifyMfa");
+            }
+
+            await SignInUserAsync(user);
+            return RedirectAfterLogin(user, returnUrl);
+        }
+
+        private bool IsSafeLocalReturnUrl(string? returnUrl)
+        {
+            return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl);
+        }
+
+        private bool ShouldVerifyRecaptcha()
+        {
+            return _env.IsProduction() || _configuration.GetValue("Security:RequireRecaptcha", false);
+        }
+
+        private async Task<bool> ValidateRecaptchaForViewAsync(string? recaptchaToken, string action, string errorMessage)
+        {
+            if (!ShouldVerifyRecaptcha())
+                return true;
+
+            var result = await _recaptchaService.VerifyAsync(recaptchaToken ?? string.Empty, action);
+            if (result.Success)
+                return true;
+
+            ViewBag.RecaptchaError = "Xac thuc bao mat that bai. Vui long thu lai.";
+            ViewBag.Error = errorMessage;
+            return false;
+        }
+
+        private async Task<bool> ValidateRecaptchaForRedirectAsync(string? recaptchaToken, string action)
+        {
+            if (!ShouldVerifyRecaptcha())
+                return true;
+
+            var result = await _recaptchaService.VerifyAsync(recaptchaToken ?? string.Empty, action);
+            if (result.Success)
+                return true;
+
+            TempData["ErrorMessage"] = "Xac thuc bao mat that bai. Vui long thu lai.";
+            return false;
+        }
+
+        [HttpGet]
+        public IActionResult VerifyMfa()
+        {
+            if (!HttpContext.Session.GetInt32(PendingMfaUserIdSessionKey).HasValue)
+                return RedirectToAction("Login");
+
+            ViewBag.Email = HttpContext.Session.GetString(PendingMfaEmailSessionKey);
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VerifyMfa(string otp)
+        {
+            var pendingUserId = HttpContext.Session.GetInt32(PendingMfaUserIdSessionKey);
+            var expectedHash = HttpContext.Session.GetString(PendingMfaOtpHashSessionKey);
+            var expiresAtText = HttpContext.Session.GetString(PendingMfaExpiresAtSessionKey);
+
+            if (!pendingUserId.HasValue || string.IsNullOrWhiteSpace(expectedHash) || string.IsNullOrWhiteSpace(expiresAtText))
+                return RedirectToAction("Login");
+
+            if (!DateTime.TryParse(expiresAtText, null, System.Globalization.DateTimeStyles.RoundtripKind, out var expiresAt) ||
+                expiresAt < DateTime.UtcNow)
+            {
+                ClearPrivilegedMfaSession();
+                TempData["ErrorMessage"] = "Ma MFA da het han. Vui long dang nhap lai.";
+                return RedirectToAction("Login");
+            }
+
+            var attempts = HttpContext.Session.GetInt32(PendingMfaAttemptCountSessionKey) ?? 0;
+            if (attempts >= 5)
+            {
+                ClearPrivilegedMfaSession();
+                TempData["ErrorMessage"] = "Qua nhieu lan nhap sai ma MFA. Vui long dang nhap lai.";
+                return RedirectToAction("Login");
+            }
+
+            var normalizedOtp = otp?.Trim() ?? string.Empty;
+            if (!System.Text.RegularExpressions.Regex.IsMatch(normalizedOtp, "^\\d{6}$") ||
+                !string.Equals(ComputeHash(normalizedOtp), expectedHash, StringComparison.Ordinal))
+            {
+                HttpContext.Session.SetInt32(PendingMfaAttemptCountSessionKey, attempts + 1);
+                ViewBag.Email = HttpContext.Session.GetString(PendingMfaEmailSessionKey);
+                ViewBag.Error = "Ma MFA khong dung. Vui long kiem tra email va thu lai.";
+                return View();
+            }
+
+            var user = await _authService.GetUserByIdAsync(pendingUserId.Value);
+            if (user == null || !RequiresPrivilegedMfa(user) || !user.IsEmailVerified || user.IsLocked || user.IsBlacklisted)
+            {
+                ClearPrivilegedMfaSession();
+                TempData["ErrorMessage"] = "Phien MFA khong hop le. Vui long dang nhap lai.";
+                return RedirectToAction("Login");
+            }
+
+            var returnUrl = HttpContext.Session.GetString(PendingMfaReturnUrlSessionKey);
+            ClearPrivilegedMfaSession();
+
+            await SignInUserAsync(user);
+            return RedirectAfterLogin(user, returnUrl);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendMfa()
+        {
+            var pendingUserId = HttpContext.Session.GetInt32(PendingMfaUserIdSessionKey);
+            if (!pendingUserId.HasValue)
+                return RedirectToAction("Login");
+
+            var user = await _authService.GetUserByIdAsync(pendingUserId.Value);
+            if (user == null || !RequiresPrivilegedMfa(user))
+            {
+                ClearPrivilegedMfaSession();
+                return RedirectToAction("Login");
+            }
+
+            await BeginPrivilegedMfaChallengeAsync(user, HttpContext.Session.GetString(PendingMfaReturnUrlSessionKey));
+            TempData["SuccessMessage"] = "Ma MFA moi da duoc gui den email cua ban.";
+            return RedirectToAction("VerifyMfa");
+        }
+
+        private Task BeginPrivilegedMfaChallengeAsync(User user, string? returnUrl)
+        {
+            var otp = GenerateOtp();
+            HttpContext.Session.SetInt32(PendingMfaUserIdSessionKey, user.UserID);
+            HttpContext.Session.SetString(PendingMfaOtpHashSessionKey, ComputeHash(otp));
+            HttpContext.Session.SetString(PendingMfaExpiresAtSessionKey, DateTime.UtcNow.Add(PrivilegedMfaTtl).ToString("O"));
+            HttpContext.Session.SetString(PendingMfaEmailSessionKey, user.Email);
+            HttpContext.Session.SetInt32(PendingMfaAttemptCountSessionKey, 0);
+
+            if (IsSafeLocalReturnUrl(returnUrl))
+                HttpContext.Session.SetString(PendingMfaReturnUrlSessionKey, returnUrl!);
+            else
+                HttpContext.Session.Remove(PendingMfaReturnUrlSessionKey);
+
+            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                job => job.SendOtpEmail(user.Email, otp));
+
+            return Task.CompletedTask;
+        }
+
+        private void ClearPrivilegedMfaSession()
+        {
+            HttpContext.Session.Remove(PendingMfaUserIdSessionKey);
+            HttpContext.Session.Remove(PendingMfaOtpHashSessionKey);
+            HttpContext.Session.Remove(PendingMfaExpiresAtSessionKey);
+            HttpContext.Session.Remove(PendingMfaReturnUrlSessionKey);
+            HttpContext.Session.Remove(PendingMfaAttemptCountSessionKey);
+            HttpContext.Session.Remove(PendingMfaEmailSessionKey);
+        }
+
+        private bool RequiresPrivilegedMfa(User user)
+        {
+            if (!IsPrivilegedRole(user.Role))
+                return false;
+
+            var configRequiresMfa = HttpContext.RequestServices.GetService(typeof(IConfiguration)) is IConfiguration configuration &&
+                configuration.GetValue("Security:RequirePrivilegedMfa", false);
+
+            return IsProductionEnvironment() || configRequiresMfa;
+        }
+
+        private bool IsProductionEnvironment() =>
+            string.Equals(_env.EnvironmentName, "Production", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsPrivilegedRole(string? role) =>
+            string.Equals(role, UserRoleConstants.Admin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, UserRoleConstants.Manager, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, UserRoleConstants.Staff, StringComparison.OrdinalIgnoreCase);
+
+        private async Task SignInUserAsync(User user)
+        {
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
@@ -113,7 +391,10 @@ namespace CarRentalSystem.Controllers
             var principal = new ClaimsPrincipal(identity);
 
             await HttpContext.SignInAsync("Cookies", principal);
+        }
 
+        private IActionResult RedirectAfterLogin(User user, string? returnUrl)
+        {
             if (IsSafeLocalReturnUrl(returnUrl))
                 return LocalRedirect(returnUrl!);
 
@@ -124,11 +405,6 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Index", "AreaDashboard", new { area = "Admin" });
 
             return RedirectToAction("Index", "Home");
-        }
-
-        private bool IsSafeLocalReturnUrl(string? returnUrl)
-        {
-            return !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl);
         }
 
         [HttpGet]
@@ -143,6 +419,9 @@ namespace CarRentalSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model, string? recaptchaToken)
         {
+            if (!await ValidateRecaptchaForViewAsync(recaptchaToken, "register", "Dang ky khong thanh cong do xac thuc bao mat that bai."))
+                return View(model);
+
             // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
             // if (string.IsNullOrEmpty(recaptchaToken))
             // {
@@ -346,6 +625,9 @@ namespace CarRentalSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CheckEmail(string email, string? recaptchaToken)
         {
+            if (!await ValidateRecaptchaForRedirectAsync(recaptchaToken, "verify_email"))
+                return RedirectToAction("VerifyEmailStep1");
+
             // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
             // if (string.IsNullOrEmpty(recaptchaToken))
             // {

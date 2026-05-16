@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Add New Car";
     Layout = "_AdminLayout";
+    var serviceTypes = ViewBag.ServiceTypes as IEnumerable<CarRentalSystem.Models.ServiceType>;
 }
 
 <h2 class="mb-4">Add New Car</h2>
@@ -12,6 +13,19 @@
             <div class="card-body">
                 <form asp-action="Create" method="post" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label">Loại dịch vụ</label>
+                        <select asp-for="ServiceTypeID" class="form-select" required>
+                            @if (serviceTypes != null)
+                            {
+                                @foreach (var serviceType in serviceTypes)
+                                {
+                                    <option value="@serviceType.ServiceTypeID" data-code="@serviceType.Code">@serviceType.Name</option>
+                                }
+                            }
+                        </select>
+                        <small class="text-muted">Thuê xe tự lái không được cấu hình tài xế. Xe có tài xế sẽ chờ duyệt riêng.</small>
+                    </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Brand</label>

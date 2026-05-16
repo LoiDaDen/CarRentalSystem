@@ -93,6 +93,10 @@ namespace CarRentalSystem.Tests.UnitTests
             var carRepo = MockRepositoryHelper.Create(_cars);
             var carStatusRepo = MockRepositoryHelper.Create(_carStatuses);
             var transitionService = new Mock<IBookingTransitionService>();
+            var businessRules = new Mock<IBookingBusinessRuleService>();
+            businessRules
+                .Setup(r => r.ValidateSelfDriveAsync(It.IsAny<Booking>(), It.IsAny<decimal>()))
+                .Returns(Task.CompletedTask);
             transitionService
                 .Setup(t => t.TransitionAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<string?>()))
                 .Callback<int, string, int?, string, string?>((bookingId, statusName, _, _, reason) =>
@@ -134,7 +138,8 @@ namespace CarRentalSystem.Tests.UnitTests
                 statusRepo.Object,
                 carRepo.Object,
                 carStatusRepo.Object,
-                transitionService.Object
+                transitionService.Object,
+                businessRules.Object
             );
         }
 
