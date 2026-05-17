@@ -3,8 +3,8 @@
     ViewData["Title"] = "Quản lý cho thuê";
 }
 
-<div class="owner-shell">
-    <aside class="owner-sidebar">
+<div class="owner-shell split-layout">
+    <aside class="owner-sidebar sidebar-panel">
         <h2>Xin chào bạn!</h2>
         <a asp-controller="Auth" asp-action="Profile"><i class="bi bi-person"></i>Tài khoản của tôi</a>
         <a class="active" asp-controller="OwnerCars" asp-action="Index"><i class="bi bi-car-front"></i>Quản lý cho thuê</a>
@@ -12,7 +12,7 @@
         <a asp-controller="PhysicalContracts" asp-action="Index"><i class="bi bi-file-earmark-text"></i>Hợp đồng vật lý</a>
         <a asp-controller="Auth" asp-action="Logout" class="danger"><i class="bi bi-box-arrow-left"></i>Đăng xuất</a>
     </aside>
-    <main class="owner-main">
+    <main class="owner-main main-panel">
         <div class="owner-head">
             <div>
                 <h1>Quản lý cho thuê</h1>
@@ -54,24 +54,244 @@
 </div>
 
 <style>
-    .owner-shell{display:grid;grid-template-columns:280px 1fr;gap:32px;align-items:start}
-    .owner-sidebar{background:#fff;border-right:1px solid #e5e7eb;padding:28px 22px;min-height:70vh}
-    .owner-sidebar h2{font-size:28px;font-weight:800;margin-bottom:24px}
-    .owner-sidebar a{display:flex;align-items:center;gap:12px;padding:13px 8px;color:#111827;text-decoration:none;border-left:3px solid transparent}
-    .owner-sidebar a.active{border-left-color:#5bd486;color:#111827;font-weight:700}
-    .owner-sidebar a.danger{color:#ef4444;margin-top:12px;border-top:1px solid #e5e7eb}
-    .owner-main{padding:16px 0}
-    .owner-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
-    .owner-head h1{font-size:32px;font-weight:800;margin:0}
-    .owner-head p{color:#6b7280;margin:6px 0 0}
-    .btn-register{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:10px 18px;background:#5bd486;color:#062b16;text-decoration:none;font-weight:700}
-    .empty-state{height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#6b7280;background:#f8fafc}
-    .empty-state i{font-size:64px;color:#5bd486;margin-bottom:16px}
-    .car-grid{display:grid;gap:16px}
-    .owner-car-card{display:grid;grid-template-columns:140px 1fr auto;gap:18px;align-items:center;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px}
-    .owner-car-card img{width:140px;height:92px;object-fit:cover;border-radius:6px}
-    .owner-car-card h3{font-size:18px;font-weight:800;margin:0 0 6px}
-    .owner-car-card p{margin:0;color:#6b7280}
-    .badge-soft{display:inline-block;margin-top:8px;background:#eefdf4;color:#168447;border:1px solid #b9f4d0;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700}
-    @@media(max-width:900px){.owner-shell{grid-template-columns:1fr}.owner-sidebar{min-height:auto}.owner-head{align-items:flex-start;gap:16px;flex-direction:column}.owner-car-card{grid-template-columns:1fr}.owner-car-card img{width:100%;height:180px}}
+    .owner-shell {
+        width: min(100%, 1180px);
+        margin-inline: auto;
+        display: grid;
+        grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
+        gap: clamp(20px, 3vw, 36px);
+        align-items: start;
+    }
+
+    .owner-sidebar {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 0;
+        padding: 28px 22px;
+        min-height: 66vh;
+        min-width: 0;
+    }
+
+    .owner-sidebar h2 {
+        font-size: clamp(22px, 2vw, 28px);
+        font-weight: 800;
+        margin-bottom: 24px;
+        overflow-wrap: anywhere;
+    }
+
+    .owner-sidebar a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        padding: 13px 8px;
+        color: #111827;
+        text-decoration: none;
+        border-left: 3px solid transparent;
+        line-height: 1.35;
+    }
+
+    .owner-sidebar a i {
+        flex: 0 0 auto;
+    }
+
+    .owner-sidebar a.active {
+        border-left-color: #5bd486;
+        color: #111827;
+        font-weight: 700;
+    }
+
+    .owner-sidebar a.danger {
+        color: #ef4444;
+        margin-top: 12px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .owner-main {
+        min-width: 0;
+        padding: 16px 0;
+    }
+
+    .owner-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 24px;
+    }
+
+    .owner-head h1 {
+        font-size: clamp(28px, 3vw, 36px);
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .owner-head p {
+        color: #6b7280;
+        margin: 6px 0 0;
+    }
+
+    .btn-register {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        padding: 10px 18px;
+        background: #5bd486;
+        color: #062b16;
+        text-decoration: none;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .empty-state {
+        min-height: clamp(280px, 46vh, 420px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        background: #f8fafc;
+        border-radius: 8px;
+        text-align: center;
+        padding: 32px 16px;
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        color: #5bd486;
+        margin-bottom: 16px;
+    }
+
+    .car-grid {
+        display: grid;
+        gap: 16px;
+        min-width: 0;
+    }
+
+    .owner-car-card {
+        display: grid;
+        grid-template-columns: 140px minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: center;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 14px;
+        min-width: 0;
+    }
+
+    .owner-car-card img {
+        width: 140px;
+        height: 92px;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .owner-car-card h3 {
+        font-size: 18px;
+        font-weight: 800;
+        margin: 0 0 6px;
+        overflow-wrap: anywhere;
+    }
+
+    .owner-car-card p {
+        margin: 0;
+        color: #6b7280;
+        overflow-wrap: anywhere;
+    }
+
+    .owner-car-card strong {
+        white-space: nowrap;
+    }
+
+    .badge-soft {
+        display: inline-block;
+        margin-top: 8px;
+        background: #eefdf4;
+        color: #168447;
+        border: 1px solid #b9f4d0;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    @@media (max-width: 991.98px) {
+        .owner-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .owner-sidebar {
+            min-height: auto;
+            padding: 20px;
+        }
+
+        .owner-sidebar h2 {
+            margin-bottom: 14px;
+        }
+
+        .owner-sidebar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .owner-sidebar h2 {
+            flex: 0 0 100%;
+        }
+
+        .owner-sidebar a {
+            border-left: 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+
+        .owner-sidebar a.active {
+            border-color: #5bd486;
+            background: #f0fdf4;
+        }
+
+        .owner-sidebar a.danger {
+            margin-top: 0;
+            border-color: #fecaca;
+        }
+
+        .owner-head {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .owner-sidebar {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .owner-sidebar a {
+            border-radius: 8px;
+        }
+
+        .btn-register {
+            width: 100%;
+        }
+
+        .owner-car-card {
+            grid-template-columns: 1fr;
+        }
+
+        .owner-car-card img {
+            width: 100%;
+            height: 180px;
+        }
+
+        .owner-car-card strong {
+            white-space: normal;
+        }
+    }
 </style>

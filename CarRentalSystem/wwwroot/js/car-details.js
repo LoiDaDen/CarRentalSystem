@@ -18,13 +18,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // Delivery info display element
     let deliveryInfoEl = null;
 
+    function useFallbackDeliveryQuote(lat, lng, message) {
+        deliveryInScope = true;
+        deliveryScopeMessage = message || '';
+        deliveryDistanceKm = calculateDistance(carData.lat, carData.lng, lat, lng);
+        deliveryDurationMinutes = deliveryDistanceKm > 0 ? (deliveryDistanceKm / 35) * 60 : 0;
+        estimatedDeliveryTime = new Date(Date.now() + (60 + deliveryDurationMinutes) * 60000);
+    }
+
     async function refreshDeliveryQuote(lat, lng) {
         try {
             const response = await fetch(`/Car/CalculateDelivery?carId=${encodeURIComponent(carData.id)}&customerLat=${encodeURIComponent(lat)}&customerLng=${encodeURIComponent(lng)}`);
             const data = await response.json();
             if (!data.success || data.isWithinDeliveryScope === false) {
                 deliveryInScope = false;
-                deliveryScopeMessage = data.message || 'Da lo pham vi co the ship.';
+                deliveryScopeMessage = data.message || 'Địa điểm giao xe nằm ngoài phạm vi hỗ trợ.';
                 deliveryDistanceKm = 0;
                 deliveryDurationMinutes = 0;
             } else {
@@ -35,8 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (err) {
             console.error('Delivery quote error', err);
-            deliveryInScope = false;
-            deliveryScopeMessage = 'Không thể kiểm tra phạm vi giao xe. Vui lòng thử lại.';
+            useFallbackDeliveryQuote(lat, lng, 'Đang dùng ước tính tạm thời do chưa kết nối được dịch vụ kiểm tra phạm vi.');
         }
 
         updatePrices();
@@ -215,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!distanceEl || !timeEl) return;
         
         if (locOwnerEl && locOwnerEl.checked && !deliveryInScope) {
-            distanceEl.textContent = deliveryScopeMessage || 'Da lo pham vi co the ship.';
+            distanceEl.textContent = deliveryScopeMessage || 'Địa điểm giao xe nằm ngoài phạm vi hỗ trợ.';
             timeEl.textContent = '-';
         } else if (locOwnerEl && locOwnerEl.checked && deliveryDistanceKm > 0) {
             distanceEl.textContent = deliveryDistanceKm.toFixed(1) + ' km';
@@ -314,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 deliveryFeeRow.classList.remove('d-none');
                 deliveryFeeRow.classList.add('d-flex');
                 const feeSpan = deliveryFeeRow.querySelector('span:last-child');
-                if (feeSpan) feeSpan.textContent = deliveryScopeMessage || 'Da lo pham vi co the ship.';
+                if (feeSpan) feeSpan.textContent = deliveryScopeMessage || 'Địa điểm giao xe nằm ngoài phạm vi hỗ trợ.';
             }
         } else if (isOwnerDelivery) {
             deliveryFee = calculateShippingFee(deliveryDistanceKm);
@@ -445,9 +452,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (locOwner && locOwner.checked && !deliveryInScope) {
                 e.preventDefault();
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire('Thông báo', deliveryScopeMessage || 'Đã lỡ phạm vi có thể giao xe.', 'warning');
+                    Swal.fire('Thông báo', deliveryScopeMessage || 'Địa điểm giao xe nằm ngoài phạm vi hỗ trợ.', 'warning');
                 } else {
-                    alert(deliveryScopeMessage || 'Da lo pham vi co the ship.');
+                    alert(deliveryScopeMessage || 'Địa điểm giao xe nằm ngoài phạm vi hỗ trợ.');
                 }
                 return;
             }

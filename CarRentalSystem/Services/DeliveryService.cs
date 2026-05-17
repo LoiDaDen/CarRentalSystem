@@ -29,9 +29,9 @@ namespace CarRentalSystem.Services
         private const double PrepTimeHours = 1.0;
         private const double AverageSpeedKmh = 30.0;
 
-        public DeliveryService(IHttpClientFactory httpClientFactory)
+        public DeliveryService(HttpClient httpClient)
         {
-            _httpClient = httpClientFactory.CreateClient();
+            _httpClient = httpClient;
             _httpClient.Timeout = TimeSpan.FromSeconds(10);
         }
 
@@ -70,6 +70,12 @@ namespace CarRentalSystem.Services
             }
 
             // Tính thời gian giao xe tối thiểu (thời gian chạy + 1h chuẩn bị)
+            if (result.DistanceKm <= 0)
+            {
+                result.DistanceKm = CalculateHaversineDistance(carLat, carLng, customerLat, customerLng);
+                result.DurationMinutes = result.DistanceKm / AverageSpeedKmh * 60.0;
+            }
+
             var totalHoursNeeded = PrepTimeHours + (result.DurationMinutes / 60.0);
             result.EarliestPickupTime = DateTime.UtcNow.AddHours(totalHoursNeeded);
 

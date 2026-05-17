@@ -21,7 +21,7 @@ namespace CarRentalSystem.Services
 
     public class DeliveryScopeService : IDeliveryScopeService
     {
-        private const string OutOfScopeVi = "Da lo pham vi co the ship.";
+        private const string OutOfScopeVi = "Địa điểm giao xe nằm ngoài phạm vi hỗ trợ. Vui lòng chọn địa điểm khác hoặc nhận xe tại vị trí xe.";
         private const string OutOfScopeEn = "This address is outside our delivery range.";
 
         private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
@@ -36,6 +36,10 @@ namespace CarRentalSystem.Services
             ["can tho"] = "can tho",
             ["binh duong"] = "binh duong",
             ["dong nai"] = "dong nai",
+            ["bien hoa"] = "dong nai",
+            ["tran bien"] = "dong nai",
+            ["an binh"] = "dong nai",
+            ["tam hiep"] = "dong nai",
             ["nha trang"] = "khanh hoa",
             ["khanh hoa"] = "khanh hoa",
             ["hai phong"] = "hai phong",
@@ -50,12 +54,12 @@ namespace CarRentalSystem.Services
 
         private static readonly Dictionary<string, (double Lat, double Lng, string Display)> Centers = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["ho chi minh"] = (10.7769, 106.7009, "TP. Ho Chi Minh"),
-            ["ha noi"] = (21.0285, 105.8542, "Ha Noi"),
-            ["da nang"] = (16.0544, 108.2022, "Da Nang"),
-            ["can tho"] = (10.0452, 105.7469, "Can Tho"),
-            ["binh duong"] = (10.9804, 106.6519, "Binh Duong"),
-            ["dong nai"] = (10.9574, 106.8427, "Dong Nai"),
+            ["ho chi minh"] = (10.7769, 106.7009, "TP. Hồ Chí Minh"),
+            ["ha noi"] = (21.0285, 105.8542, "Hà Nội"),
+            ["da nang"] = (16.0544, 108.2022, "Đà Nẵng"),
+            ["can tho"] = (10.0452, 105.7469, "Cần Thơ"),
+            ["binh duong"] = (10.9804, 106.6519, "Bình Dương"),
+            ["dong nai"] = (10.9574, 106.8427, "Đồng Nai"),
             ["khanh hoa"] = (12.2388, 109.1967, "Khanh Hoa"),
             ["hai phong"] = (20.8449, 106.6881, "Hai Phong"),
             ["ba ria vung tau"] = (10.5417, 107.2429, "Ba Ria - Vung Tau"),
@@ -131,7 +135,7 @@ namespace CarRentalSystem.Services
                 IsWithinScope = allowed,
                 OriginProvince = Display(origin),
                 DestinationProvince = Display(destination),
-                MessageVi = allowed ? "" : OutOfScopeVi,
+                MessageVi = allowed ? "" : BuildOutOfScopeMessage(origin, destination),
                 MessageEn = allowed ? "" : OutOfScopeEn
             };
         }
@@ -182,10 +186,21 @@ namespace CarRentalSystem.Services
             return sb.ToString()
                 .Normalize(NormalizationForm.FormC)
                 .Replace("đ", "d")
+                .Replace("Đ", "d")
+                .Replace("đ", "d")
                 .Replace("-", " ")
                 .Replace(".", " ")
                 .Replace(",", " ")
-                .Replace("  ", " ");
+                .Replace("  ", " ")
+                .Trim();
+        }
+
+        private static string BuildOutOfScopeMessage(string? origin, string? destination)
+        {
+            if (origin == null || destination == null)
+                return "Không thể xác định phạm vi giao xe từ địa chỉ hiện tại. Vui lòng chọn lại vị trí hoặc nhận xe tại vị trí xe.";
+
+            return $"{OutOfScopeVi} Tuyến {Display(origin)} - {Display(destination)} chưa được hỗ trợ.";
         }
 
         private static double Haversine(double lat1, double lon1, double lat2, double lon2)

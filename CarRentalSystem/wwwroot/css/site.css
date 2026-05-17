@@ -136,6 +136,38 @@ html {
     scroll-behavior: smooth;
 }
 
+html,
+body {
+    width: 100%;
+    max-width: 100%;
+}
+
+body.theme-carrental {
+    overflow-x: clip;
+}
+
+.theme-carrental img,
+.theme-carrental video,
+.theme-carrental canvas,
+.theme-carrental iframe {
+    max-width: 100%;
+}
+
+.theme-carrental .page-shell,
+.theme-carrental .content-shell,
+.theme-carrental .split-layout,
+.theme-carrental .sidebar-panel,
+.theme-carrental .main-panel,
+.theme-carrental .app-main-shell {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.theme-carrental .split-layout {
+    display: grid;
+    align-items: start;
+}
+
 /* Selection styling */
 ::selection {
     background-color: var(--cr-primary-100);

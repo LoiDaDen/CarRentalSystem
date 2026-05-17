@@ -11,9 +11,17 @@ namespace CarRentalSystem.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_AuditLogs_UserId",
-                table: "AuditLogs");
+            migrationBuilder.Sql("""
+                IF EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE name = N'IX_AuditLogs_UserId'
+                      AND object_id = OBJECT_ID(N'[AuditLogs]')
+                )
+                BEGIN
+                    DROP INDEX [IX_AuditLogs_UserId] ON [AuditLogs];
+                END
+                """);
 
             migrationBuilder.AddColumn<int>(
                 name: "ContractVersion",
