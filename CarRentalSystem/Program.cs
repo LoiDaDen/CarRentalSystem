@@ -69,6 +69,12 @@ builder.Services.AddScoped<IBookingBusinessRuleService, BookingBusinessRuleServi
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<IEligibilityService, EligibilityService>();
 builder.Services.AddScoped<IPaymentLedgerService, PaymentLedgerService>();
+builder.Services.AddScoped<IPaymentTransitionService, PaymentTransitionService>();
+builder.Services.AddScoped<IPrivacyRequestService, PrivacyRequestService>();
+builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
+builder.Services.AddScoped<IWebhookSigningService, WebhookSigningService>();
+builder.Services.AddScoped<ICustomerSelfServiceService, CustomerSelfServiceService>();
 builder.Services.AddScoped<IRefundService, RefundService>();
 builder.Services.AddScoped<IBookingTransitionService, BookingTransitionService>();
 builder.Services.AddScoped<IFileUploadValidationService, FileUploadValidationService>();

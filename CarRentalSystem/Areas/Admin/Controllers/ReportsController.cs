@@ -28,27 +28,30 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         {
             var now = DateTime.UtcNow;
             var startOfMonth = new DateTime(now.Year, now.Month, 1);
+            var completedNames = new[] { "Completed", "Confirmed" };
+            var bookingsQuery = _context.Bookings
+                .AsNoTracking()
+                .Where(b => b.BookingStatus != null && b.BookingStatus.Name != "Draft");
+            var completedBookingsQuery = bookingsQuery
+                .Where(b => b.BookingStatus != null && completedNames.Contains(b.BookingStatus.Name));
 
-            var bookings = await _context.Bookings
-                .Include(b => b.Car).ThenInclude(c => c.CarBrand)
-                .Include(b => b.User)
-                .Include(b => b.BookingStatus)
-                .Where(b => b.BookingStatus != null && b.BookingStatus.Name != "Draft")
-                .OrderByDescending(b => b.CreatedAt)
-                .Take(5000)
-                .ToListAsync();
-
-            var completedBookings = bookings.Where(b => b.BookingStatus?.Name == "Completed" || b.BookingStatus?.Name == "Confirmed").ToList();
-
-            // KPI stats
-            var monthRevenue = completedBookings
+            var monthRevenue = await completedBookingsQuery
                 .Where(b => b.CreatedAt >= startOfMonth)
-                .Sum(b => b.TotalPrice);
+                .SumAsync(b => b.TotalPrice);
 
-            var newBookingsThisMonth = bookings.Count(b => b.CreatedAt >= startOfMonth);
+            var newBookingsThisMonth = await bookingsQuery.CountAsync(b => b.CreatedAt >= startOfMonth);
 
-            var cars = await _context.Cars.Include(c => c.CarStatus).Include(c => c.CarBrand).Take(1000).ToListAsync();
-            var maintenanceLogs = await _context.MaintenanceLogs.Include(m => m.Car).OrderByDescending(m => m.ServiceDate).Take(5000).ToListAsync();
+            var cars = await _context.Cars.AsNoTracking()
+                .Include(c => c.CarStatus)
+                .Include(c => c.CarBrand)
+                .OrderBy(c => c.CarID)
+                .Take(1000)
+                .ToListAsync();
+            var maintenanceLogs = await _context.MaintenanceLogs.AsNoTracking()
+                .Include(m => m.Car)
+                .OrderByDescending(m => m.ServiceDate)
+                .Take(500)
+                .ToListAsync();
 
             // Revenue last 12 months
             var last12 = Enumerable.Range(0, 12)
@@ -56,64 +59,87 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .ToList();
 
             var revenueLabels = last12.Select(d => d.ToString("MM/yyyy")).ToList();
-            var revenueData = last12.Select(d =>
-                completedBookings
-                    .Where(b => b.CreatedAt.Month == d.Month && b.CreatedAt.Year == d.Year)
-                    .Sum(b => b.TotalPrice) / 1000000m
-            ).ToList();
+            var revenueStart = new DateTime(last12.First().Year, last12.First().Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var monthlyRevenueRows = await completedBookingsQuery
+                .Where(b => b.CreatedAt >= revenueStart)
+                .GroupBy(b => new { b.CreatedAt.Year, b.CreatedAt.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Revenue = g.Sum(b => b.TotalPrice) })
+                .ToListAsync();
+            var revenueData = last12
+                .Select(d => (monthlyRevenueRows.FirstOrDefault(r => r.Year == d.Year && r.Month == d.Month)?.Revenue ?? 0m) / 1000000m)
+                .ToList();
 
             // Booking status breakdown
             var statusGroups = new Dictionary<string, int>
             {
-                { "Pending", bookings.Count(b => b.BookingStatus?.Name == "Pending") },
-                { "Confirmed", bookings.Count(b => b.BookingStatus?.Name == "Confirmed") },
-                { "Completed", bookings.Count(b => b.BookingStatus?.Name == "Completed") },
-                { "Cancelled", bookings.Count(b => b.BookingStatus?.Name == "Cancelled") }
+                { "Pending", await bookingsQuery.CountAsync(b => b.BookingStatus != null && b.BookingStatus.Name == "Pending") },
+                { "Confirmed", await bookingsQuery.CountAsync(b => b.BookingStatus != null && b.BookingStatus.Name == "Confirmed") },
+                { "Completed", await bookingsQuery.CountAsync(b => b.BookingStatus != null && b.BookingStatus.Name == "Completed") },
+                { "Cancelled", await bookingsQuery.CountAsync(b => b.BookingStatus != null && b.BookingStatus.Name == "Cancelled") }
             };
 
-            // Top 5 cars (most rented)
-            var topCars = bookings
+            var topCarRows = await bookingsQuery
                 .GroupBy(b => b.CarID)
-                .Select(g => new TopCarViewModel
+                .Select(g => new
                 {
-                    Car = g.First().Car,
+                    CarID = g.Key,
                     RentalCount = g.Count(),
-                    TotalRevenue = g.Where(b => b.BookingStatus?.Name == "Completed" || b.BookingStatus?.Name == "Confirmed").Sum(b => b.TotalPrice)
+                    TotalRevenue = g.Where(b => b.BookingStatus != null && completedNames.Contains(b.BookingStatus.Name)).Sum(b => b.TotalPrice)
                 })
                 .OrderByDescending(x => x.RentalCount)
                 .Take(5)
-                .ToList();
+                .ToListAsync();
 
-            // Bottom 5 cars (slow-moving fleet)
-            var bottomCars = bookings
+            var bottomCarRows = await bookingsQuery
                 .GroupBy(b => b.CarID)
-                .Select(g => new TopCarViewModel
+                .Select(g => new
                 {
-                    Car = g.First().Car,
+                    CarID = g.Key,
                     RentalCount = g.Count(),
-                    TotalRevenue = g.Where(b => b.BookingStatus?.Name == "Completed" || b.BookingStatus?.Name == "Confirmed").Sum(b => b.TotalPrice)
+                    TotalRevenue = g.Where(b => b.BookingStatus != null && completedNames.Contains(b.BookingStatus.Name)).Sum(b => b.TotalPrice)
                 })
                 .OrderBy(x => x.RentalCount)
                 .Take(5)
+                .ToListAsync();
+            var carIds = topCarRows.Select(c => c.CarID).Concat(bottomCarRows.Select(c => c.CarID)).Distinct().ToList();
+            var carLookup = await _context.Cars.AsNoTracking()
+                .Include(c => c.CarBrand)
+                .Where(c => carIds.Contains(c.CarID))
+                .ToDictionaryAsync(c => c.CarID);
+            var topCars = topCarRows
+                .Where(x => carLookup.ContainsKey(x.CarID))
+                .Select(x => new TopCarViewModel { Car = carLookup[x.CarID], RentalCount = x.RentalCount, TotalRevenue = x.TotalRevenue })
+                .ToList();
+            var bottomCars = bottomCarRows
+                .Where(x => carLookup.ContainsKey(x.CarID))
+                .Select(x => new TopCarViewModel { Car = carLookup[x.CarID], RentalCount = x.RentalCount, TotalRevenue = x.TotalRevenue })
                 .ToList();
 
-            // Top 5 customers
-            var topCustomers = bookings
+            var topCustomerRows = await bookingsQuery
                 .GroupBy(b => b.UserID)
-                .Select(g => new TopCustomerViewModel
+                .Select(g => new
                 {
-                    User = g.First().User,
+                    UserID = g.Key,
                     BookingCount = g.Count(),
-                    TotalSpent = g.Where(b => b.BookingStatus?.Name == "Completed" || b.BookingStatus?.Name == "Confirmed").Sum(b => b.TotalPrice)
+                    TotalSpent = g.Where(b => b.BookingStatus != null && completedNames.Contains(b.BookingStatus.Name)).Sum(b => b.TotalPrice)
                 })
                 .OrderByDescending(x => x.TotalSpent)
                 .Take(5)
+                .ToListAsync();
+            var userIds = topCustomerRows.Select(c => c.UserID).Distinct().ToList();
+            var userLookup = await _context.Users.AsNoTracking()
+                .Where(u => userIds.Contains(u.UserID))
+                .ToDictionaryAsync(u => u.UserID);
+            var topCustomers = topCustomerRows
+                .Where(x => userLookup.ContainsKey(x.UserID))
+                .Select(x => new TopCustomerViewModel { User = userLookup[x.UserID], BookingCount = x.BookingCount, TotalSpent = x.TotalSpent })
                 .ToList();
 
             // Maintenance cost this year
-            var maintenanceCost = maintenanceLogs
-                .Where(m => m.ServiceDate.Year == now.Year)
-                .Sum(m => m.Cost);
+            var yearStart = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var maintenanceCost = await _context.MaintenanceLogs.AsNoTracking()
+                .Where(m => m.ServiceDate >= yearStart)
+                .SumAsync(m => m.Cost);
 
             // ═══════════════════════════════════════════════════
             // 📊 FLEET UTILIZATION RATE
@@ -123,8 +149,11 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             int daysInMonth = DateTime.DaysInMonth(now.Year, now.Month);
             int totalAvailableDays = totalCarsCount * daysInMonth;
 
-            var thisMonthRentalDays = completedBookings
-                .Where(b => b.StartDate.Month == now.Month && b.StartDate.Year == now.Year)
+            var completedThisMonth = await completedBookingsQuery
+                .Where(b => b.StartDate >= startOfMonth)
+                .Select(b => new { b.CarID, b.StartDate, b.EndDate, b.TotalPrice })
+                .ToListAsync();
+            var thisMonthRentalDays = completedThisMonth
                 .Sum(b => (int)Math.Ceiling((b.EndDate - b.StartDate).TotalDays));
 
             decimal utilizationRate = totalAvailableDays > 0
@@ -132,12 +161,17 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 : 0;
 
             // Per-vehicle utilization (for fleet table)
+            var maintenanceByCar = await _context.MaintenanceLogs.AsNoTracking()
+                .Where(m => m.ServiceDate >= yearStart)
+                .GroupBy(m => m.CarID)
+                .Select(g => new { CarID = g.Key, Cost = g.Sum(m => m.Cost) })
+                .ToDictionaryAsync(x => x.CarID, x => x.Cost);
             var fleetUtilization = cars.Select(c =>
             {
-                var carBookings = completedBookings.Where(b => b.CarID == c.CarID).ToList();
+                var carBookings = completedThisMonth.Where(b => b.CarID == c.CarID).ToList();
                 int rentalDays = carBookings.Sum(b => (int)Math.Ceiling((b.EndDate - b.StartDate).TotalDays));
                 decimal carRevenue = carBookings.Sum(b => b.TotalPrice);
-                decimal carMaintenanceCost = maintenanceLogs.Where(m => m.CarID == c.CarID).Sum(m => m.Cost);
+                decimal carMaintenanceCost = maintenanceByCar.TryGetValue(c.CarID, out var cost) ? cost : 0m;
 
                 return new FleetUtilizationViewModel
                 {
@@ -160,8 +194,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.NewBookingsThisMonth = newBookingsThisMonth;
             ViewBag.RentedCars = cars.Count(c => c.CarStatus?.Name == "Rented");
             ViewBag.MaintenanceCars = cars.Count(c => c.CarStatus?.Name == "Maintenance");
-            ViewBag.TotalRevenue = completedBookings.Sum(b => b.TotalPrice);
-            ViewBag.TotalBookings = bookings.Count;
+            ViewBag.TotalRevenue = await completedBookingsQuery.SumAsync(b => b.TotalPrice);
+            ViewBag.TotalBookings = await bookingsQuery.CountAsync();
             ViewBag.MaintenanceCostYear = maintenanceCost;
 
             ViewBag.RevenueLabels = revenueLabels;
@@ -175,7 +209,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             // Fleet KPI
             ViewBag.UtilizationRate = utilizationRate;
             ViewBag.FleetUtilization = fleetUtilization;
-            ViewBag.AvgRevenuePerCar = totalCarsCount > 0 ? completedBookings.Sum(b => b.TotalPrice) / totalCarsCount : 0;
+            ViewBag.AvgRevenuePerCar = totalCarsCount > 0 ? await completedBookingsQuery.SumAsync(b => b.TotalPrice) / totalCarsCount : 0;
 
             return View();
         }

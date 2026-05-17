@@ -23,6 +23,8 @@ namespace CarRentalSystem.Controllers
         private readonly IEligibilityService _eligibilityService;
         private readonly IBookingBusinessRuleService _businessRules;
         private readonly IBookingTransitionService _bookingTransitionService;
+        private readonly IPaymentTransitionService _paymentTransitionService;
+        private readonly ISettlementReviewService _settlementReviewService;
         private readonly ILogger<BookingController> _logger;
         private readonly Data.ApplicationDbContext _context;
 
@@ -37,6 +39,8 @@ namespace CarRentalSystem.Controllers
             IEligibilityService eligibilityService,
             IBookingBusinessRuleService businessRules,
             IBookingTransitionService bookingTransitionService,
+            IPaymentTransitionService paymentTransitionService,
+            ISettlementReviewService settlementReviewService,
             ILogger<BookingController> logger,
             Data.ApplicationDbContext context)
         {
@@ -50,6 +54,8 @@ namespace CarRentalSystem.Controllers
             _eligibilityService = eligibilityService;
             _businessRules = businessRules;
             _bookingTransitionService = bookingTransitionService;
+            _paymentTransitionService = paymentTransitionService;
+            _settlementReviewService = settlementReviewService;
             _logger = logger;
             _context = context;
         }
@@ -751,8 +757,13 @@ namespace CarRentalSystem.Controllers
             // 1. Record Return Date
             booking.ActualReturnDate = DateTime.UtcNow;
 
-            // 2. Update status
-            await _bookingService.UpdateBookingStatusAsync(id, "Completed");
+            // 2. Update status through the transition service so booking/car/deposit changes are audited.
+            var completeResult = await _bookingTransitionService.TransitionAsync(id, BookingStatusConstants.Completed, userId, "Customer", "Customer confirmed vehicle return.");
+            if (!completeResult.IsSuccess)
+            {
+                TempData["Error"] = completeResult.ErrorMessage;
+                return RedirectToAction(nameof(MyBookings));
+            }
 
             // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             // ðŸ’° TÃNH PHÃ TRá»„ Háº N â€” OverTimeFee * sá»‘ giá» trá»…
@@ -798,15 +809,7 @@ namespace CarRentalSystem.Controllers
             }
 
             // 4. Reset car status â†’ Available
-            if (booking.Car != null)
-            {
-                var availableStatus = await _context.CarStatuses.FirstOrDefaultAsync(s => s.Name == "Available");
-                if (availableStatus != null)
-                {
-                    booking.Car.CarStatusID = availableStatus.CarStatusID;
-                }
-                _context.Cars.Update(booking.Car);
-            }
+            // Car status is reset to Available inside IBookingTransitionService.Completed.
 
             // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             // ðŸ’° DEPOSIT REFUND LOGIC â€” Giá»¯ 15 ngÃ y rá»“i hoÃ n tráº£
@@ -814,13 +817,20 @@ namespace CarRentalSystem.Controllers
             if (!hasViolation && booking.LateFeeAmount == 0)
             {
                 // KhÃ´ng vi pháº¡m â†’ lÃªn lá»‹ch hoÃ n cá»c sau 15 ngÃ y (chá» kiá»ƒm tra pháº¡t nguá»“i)
-                booking.DepositStatus = "PendingRefund";
+                await _paymentTransitionService.SetBookingDepositStatusAsync(id, DepositStatusConstants.PendingRefund, userId, "Customer", "Clean return pending deposit refund.");
                 msg += " Tiá»n cá»c sáº½ Ä‘Æ°á»£c hoÃ n tráº£ sau 15 ngÃ y kiá»ƒm tra pháº¡t nguá»™i.";
             }
             else
             {
                 // CÃ³ vi pháº¡m â†’ Admin sáº½ xá»­ lÃ½ cá»c thá»§ cÃ´ng
-                booking.DepositStatus = "UnderReview";
+                await _paymentTransitionService.SetBookingDepositStatusAsync(id, DepositStatusConstants.UnderReview, userId, "Customer", "Return requires settlement review.");
+                await _settlementReviewService.CreateAsync(
+                    id,
+                    booking.LateFeeAmount > 0 ? SettlementReviewTypeConstants.Late : SettlementReviewTypeConstants.Other,
+                    booking.LateFeeAmount,
+                    "Return generated settlement review.",
+                    userId,
+                    checkOutRecord.HandoverID);
                 msg += " Tiá»n cá»c Ä‘ang Ä‘Æ°á»£c xem xÃ©t do phÃ¡t sinh phÃ­.";
             }
 

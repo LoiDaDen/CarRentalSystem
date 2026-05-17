@@ -1,5 +1,6 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
+using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -19,11 +20,13 @@ namespace CarRentalSystem.Controllers
 
         private readonly IWebHostEnvironment _env;
         private readonly ApplicationDbContext _context;
+        private readonly IAuditTrailService _auditTrail;
 
-        public SecureFileController(IWebHostEnvironment env, ApplicationDbContext context)
+        public SecureFileController(IWebHostEnvironment env, ApplicationDbContext context, IAuditTrailService auditTrail)
         {
             _env = env;
             _context = context;
+            _auditTrail = auditTrail;
         }
 
         [HttpGet]
@@ -124,7 +127,7 @@ namespace CarRentalSystem.Controllers
         private async Task WriteAuditLogAsync(string action, string? folder, int fileOwnerId, string fileName)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            _context.AuditLogs.Add(new AuditLog
+            await _auditTrail.RecordAsync(new AuditLog
             {
                 Action = action,
                 EntityType = "SecureFile",
@@ -137,7 +140,6 @@ namespace CarRentalSystem.Controllers
                 RequestUrl = $"{Request.Method} {Request.Path}{Request.QueryString}",
                 Timestamp = DateTime.UtcNow
             });
-            await _context.SaveChangesAsync();
         }
 
         private sealed record SecureFileValidation(bool IsValid, IActionResult? Result, string? ResolvedPath, int FileOwnerId)

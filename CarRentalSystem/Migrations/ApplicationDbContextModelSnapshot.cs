@@ -89,6 +89,66 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("Alerts");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.ApiKey", b =>
+                {
+                    b.Property<int>("ApiKeyID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ApiKeyID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("KeyPrefix")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int>("OwnerUserID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RevokedByUserID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Scopes")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("ApiKeyID");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.HasIndex("RevokedByUserID");
+
+                    b.HasIndex("OwnerUserID", "Status");
+
+                    b.ToTable("ApiKeys");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.Area", b =>
                 {
                     b.Property<int>("AreaID")
@@ -2964,6 +3024,59 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("PhysicalContractTypes");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.PrivacyRequest", b =>
+                {
+                    b.Property<int>("PrivacyRequestID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PrivacyRequestID"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExportManifestJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RequestType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ReviewedByUserID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
+                    b.HasKey("PrivacyRequestID");
+
+                    b.HasIndex("ReviewedByUserID");
+
+                    b.HasIndex("UserID", "Status", "CreatedAt");
+
+                    b.ToTable("PrivacyRequests");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.Promotion", b =>
                 {
                     b.Property<int>("PromotionID")
@@ -3485,6 +3598,92 @@ namespace CarRentalSystem.Migrations
                     b.HasIndex("BookingID", "Status", "CreatedAt");
 
                     b.ToTable("SettlementReviews");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.SupportTicket", b =>
+                {
+                    b.Property<int>("SupportTicketID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SupportTicketID"));
+
+                    b.Property<int?>("AssignedToUserID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BookingID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime?>("FirstResponseDueAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("PrivacyRequestID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RefundRequestID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("SettlementReviewID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TicketType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
+                    b.HasKey("SupportTicketID");
+
+                    b.HasIndex("AssignedToUserID");
+
+                    b.HasIndex("BookingID");
+
+                    b.HasIndex("PrivacyRequestID");
+
+                    b.HasIndex("RefundRequestID");
+
+                    b.HasIndex("SettlementReviewID");
+
+                    b.HasIndex("Priority", "Status", "FirstResponseDueAt");
+
+                    b.HasIndex("UserID", "Status", "CreatedAt");
+
+                    b.ToTable("SupportTickets");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Surcharge", b =>
@@ -4067,6 +4266,23 @@ namespace CarRentalSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("Car");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.ApiKey", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.User", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.User", "RevokedByUser")
+                        .WithMany()
+                        .HasForeignKey("RevokedByUserID");
+
+                    b.Navigation("OwnerUser");
+
+                    b.Navigation("RevokedByUser");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Area", b =>
@@ -4770,6 +4986,24 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("PhysicalContractType");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.PrivacyRequest", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.User", "ReviewedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CarRentalSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("ReviewedByUser");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.RefundPayout", b =>
                 {
                     b.HasOne("CarRentalSystem.Models.RefundRequest", "RefundRequest")
@@ -4904,6 +5138,48 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("RequestedByUser");
 
                     b.Navigation("ReviewedByUser");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.SupportTicket", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.User", "AssignedToUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserID")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("CarRentalSystem.Models.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingID");
+
+                    b.HasOne("CarRentalSystem.Models.PrivacyRequest", "PrivacyRequest")
+                        .WithMany()
+                        .HasForeignKey("PrivacyRequestID");
+
+                    b.HasOne("CarRentalSystem.Models.RefundRequest", "RefundRequest")
+                        .WithMany()
+                        .HasForeignKey("RefundRequestID");
+
+                    b.HasOne("CarRentalSystem.Models.SettlementReview", "SettlementReview")
+                        .WithMany()
+                        .HasForeignKey("SettlementReviewID");
+
+                    b.HasOne("CarRentalSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("AssignedToUser");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("PrivacyRequest");
+
+                    b.Navigation("RefundRequest");
+
+                    b.Navigation("SettlementReview");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Surcharge", b =>

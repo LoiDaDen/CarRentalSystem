@@ -34,6 +34,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IEligibilityService> _mockEligibilityService;
         private readonly Mock<IBookingBusinessRuleService> _mockBusinessRules;
         private readonly Mock<IBookingTransitionService> _mockBookingTransitionService;
+        private readonly Mock<IPaymentTransitionService> _mockPaymentTransitionService;
+        private readonly Mock<ISettlementReviewService> _mockSettlementReviewService;
         private readonly Mock<ILogger<BookingController>> _mockLogger;
 
         public BookingControllerTests()
@@ -49,6 +51,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockEligibilityService = new Mock<IEligibilityService>();
             _mockBusinessRules = new Mock<IBookingBusinessRuleService>();
             _mockBookingTransitionService = new Mock<IBookingTransitionService>();
+            _mockPaymentTransitionService = new Mock<IPaymentTransitionService>();
+            _mockSettlementReviewService = new Mock<ISettlementReviewService>();
             _mockLogger = new Mock<ILogger<BookingController>>();
             _mockEligibilityService
                 .Setup(s => s.CheckRentalEligibilityAsync(It.IsAny<int>()))
@@ -73,6 +77,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 _mockEligibilityService.Object,
                 _mockBusinessRules.Object,
                 _mockBookingTransitionService.Object,
+                _mockPaymentTransitionService.Object,
+                _mockSettlementReviewService.Object,
                 _mockLogger.Object,
                 _context);
 

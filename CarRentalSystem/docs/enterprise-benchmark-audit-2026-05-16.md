@@ -2,6 +2,10 @@
 
 Updated: 2026-05-16
 
+Latest benchmark audit after Wave 1-5 repo gates: [`docs/enterprise-benchmark-audit-2026-05-17.md`](enterprise-benchmark-audit-2026-05-17.md).
+
+Completion roadmap to close the remaining 30% enterprise gap: [`docs/enterprise-completion-roadmap.md`](enterprise-completion-roadmap.md).
+
 ## 1. Executive Summary
 
 CarRentalSystem hien tai da vuot muc MVP co ban va dang o muc **production-MVP / near production-grade foundation**. Repo da co nhieu thanh phan enterprise quan trong: auth/RBAC, privileged MFA gate, reCAPTCHA production guard, eKYC, PayOS webhook idempotency, booking hold, ledger, settlement review, dispute export, audit hash chain, `/live` `/ready`, OpenTelemetry config, SLO dashboard, CI security gates va runbook.

@@ -22,9 +22,11 @@ namespace CarRentalSystem.Services
         private readonly ApplicationDbContext _context;
         private readonly IEmailService _emailService;
         private readonly IPaymentLedgerService _ledger;
+        private readonly IPaymentTransitionService _paymentTransition;
         private readonly IReservationService _reservationService;
         private readonly IReferralService _referralService;
         private readonly ILongTermRentalService _longTermRentalService;
+        private readonly IAuditTrailService _auditTrail;
         private readonly PayOSClient? _payOS;
         private readonly ILogger<PayOSPaymentService> _logger;
 
@@ -35,17 +37,21 @@ namespace CarRentalSystem.Services
             IEmailService emailService,
             IConfiguration configuration,
             IPaymentLedgerService ledger,
+            IPaymentTransitionService paymentTransition,
             IReservationService reservationService,
             IReferralService referralService,
             ILongTermRentalService longTermRentalService,
+            IAuditTrailService auditTrail,
             ILogger<PayOSPaymentService> logger)
         {
             _context = context;
             _emailService = emailService;
             _ledger = ledger;
+            _paymentTransition = paymentTransition;
             _reservationService = reservationService;
             _referralService = referralService;
             _longTermRentalService = longTermRentalService;
+            _auditTrail = auditTrail;
             _logger = logger;
 
             var clientId = configuration["PayOS:ClientId"] ?? string.Empty;
@@ -744,7 +750,7 @@ namespace CarRentalSystem.Services
                     Description = $"PayOS holding fee paid and booking #{booking.BookingID} created."
                 });
 
-                _context.AuditLogs.Add(new AuditLog
+                await _auditTrail.RecordAsync(new AuditLog
                 {
                     Action = "Tạo đơn sau thanh toán",
                     EntityType = "Thanh toan",
@@ -797,73 +803,16 @@ namespace CarRentalSystem.Services
                 return new PayOSWebhookResult(false, true, "Booking not found", null, transaction.Amount);
             }
 
-            var bookingId = transaction.BookingID ?? transaction.Booking.BookingID;
-            var payment = transaction.Payment ?? await _context.Payments.FirstOrDefaultAsync(p => p.BookingID == bookingId);
-            if (payment == null)
-            {
-                payment = new Payment
-                {
-                    BookingID = bookingId,
-                    Amount = transaction.Amount,
-                    PaymentMethod = DepositPaymentMethod,
-                    PaymentStatus = PaymentStatusConstants.Pending,
-                    PaymentDate = DateTime.UtcNow
-                };
-                _context.Payments.Add(payment);
-                await _context.SaveChangesAsync();
-                transaction.PaymentID = payment.PaymentID;
-            }
+            var result = await _paymentTransition.MarkPayOSExistingBookingPaidAsync(transaction, webhookEvent);
+            if (!result.IsSuccess)
+                return new PayOSWebhookResult(false, true, result.Message, null, transaction.Amount);
 
-            payment.Amount = transaction.Amount;
-            payment.PaymentStatus = PaymentStatusConstants.Paid;
-            payment.PaymentDate = DateTime.UtcNow;
-            transaction.Status = PaymentStatusConstants.Paid;
-            transaction.PaidAt = DateTime.UtcNow;
-            transaction.Booking.ReservationFee = transaction.Amount;
-            transaction.Booking.DepositStatus = DepositStatusConstants.Holding;
-
-            var pendingStatus = await _context.BookingStatuses
-                .FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending);
-            if (pendingStatus != null)
-                transaction.Booking.BookingStatusID = pendingStatus.BookingStatusID;
-
-            await _ledger.RecordAsync(new PaymentLedgerEntry
-            {
-                BookingID = transaction.BookingID,
-                PaymentID = payment.PaymentID,
-                Provider = "PayOS",
-                OrderCode = transaction.OrderCode,
-                EntryType = PaymentLedgerEntryTypeConstants.DepositCharge,
-                Amount = transaction.Amount,
-                Status = PaymentStatusConstants.Paid,
-                PostedAt = DateTime.UtcNow,
-                IdempotencyKey = $"payos-paid:{transaction.OrderCode}",
-                Description = "PayOS reservation fee paid."
-            });
-
-            webhookEvent.Status = "Processed";
-            webhookEvent.ProcessedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
             return new PayOSWebhookResult(true, true, "Payment confirmed", transaction.BookingID, transaction.Amount);
         }
 
         private async Task MarkTransactionFailedAsync(PayOSTransaction transaction, PaymentWebhookEvent webhookEvent)
         {
-            transaction.Status = PaymentStatusConstants.Failed;
-            transaction.FailedAt = DateTime.UtcNow;
-
-            if (transaction.Payment != null && transaction.Payment.PaymentStatus != PaymentStatusConstants.Paid)
-                transaction.Payment.PaymentStatus = PaymentStatusConstants.Failed;
-
-            if (transaction.Booking != null)
-                transaction.Booking.DepositStatus = DepositStatusConstants.Failed;
-
-            if (transaction.BookingHoldID.HasValue)
-                await _reservationService.ReleaseHoldAsync(transaction.BookingHoldID.Value, "PayOS payment failed.");
-
-            webhookEvent.Status = "Processed";
-            webhookEvent.ProcessedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await _paymentTransition.MarkPayOSFailedAsync(transaction, webhookEvent);
         }
 
         private async Task<PayOSWebhookResult> ConvertPaidCartToBookingsAsync(PayOSTransaction transaction, PaymentWebhookEvent webhookEvent)
@@ -903,25 +852,11 @@ namespace CarRentalSystem.Services
             if (holds.Count != snapshot.Quotes.Count ||
                 holds.Any(h => h.Status != BookingHoldStatusConstants.Active || h.ExpiresAt <= DateTime.UtcNow))
             {
-                transaction.Status = DepositStatusConstants.UnderReview;
-                transaction.PaidAt = DateTime.UtcNow;
-                bookingTransaction.Status = DepositStatusConstants.UnderReview;
-                webhookEvent.Status = "Processed";
-                webhookEvent.Error = "Cart payment received after one or more holds were unavailable.";
-                webhookEvent.ProcessedAt = DateTime.UtcNow;
-                await _ledger.RecordAsync(new PaymentLedgerEntry
-                {
-                    TransactionID = bookingTransaction.TransactionID,
-                    Provider = "PayOS",
-                    OrderCode = transaction.OrderCode,
-                    EntryType = PaymentLedgerEntryTypeConstants.DepositCharge,
-                    Amount = transaction.Amount,
-                    Status = DepositStatusConstants.UnderReview,
-                    PostedAt = DateTime.UtcNow,
-                    IdempotencyKey = $"payos-cart-under-review:{transaction.OrderCode}",
-                    Description = $"Payment received for cart transaction #{bookingTransaction.TransactionID}, but holds require manual review."
-                });
-                await _context.SaveChangesAsync();
+                await _paymentTransition.MarkCartPaymentUnderReviewAsync(
+                    transaction,
+                    bookingTransaction,
+                    webhookEvent,
+                    "Cart payment received after one or more holds were unavailable.");
                 return new PayOSWebhookResult(true, true, "Cart payment requires manual review", null, transaction.Amount);
             }
 
@@ -1044,7 +979,7 @@ namespace CarRentalSystem.Services
                     .ToList();
                 _context.CartItems.RemoveRange(cartItemsToRemove);
 
-                _context.AuditLogs.Add(new AuditLog
+                await _auditTrail.RecordAsync(new AuditLog
                 {
                     Action = "Tạo đơn giỏ hàng sau thanh toán",
                     EntityType = "Thanh toan",

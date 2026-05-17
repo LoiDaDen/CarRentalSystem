@@ -16,11 +16,13 @@ namespace CarRentalSystem.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IPaymentLedgerService _ledger;
+        private readonly IAuditTrailService _auditTrail;
 
-        public BookingTransitionService(ApplicationDbContext context, IPaymentLedgerService ledger)
+        public BookingTransitionService(ApplicationDbContext context, IPaymentLedgerService ledger, IAuditTrailService auditTrail)
         {
             _context = context;
             _ledger = ledger;
+            _auditTrail = auditTrail;
         }
 
         public async Task<BookingTransitionResult> TransitionAsync(int bookingId, string targetStatus, int? actorUserId, string actorRole, string? reason = null)
@@ -65,7 +67,7 @@ namespace CarRentalSystem.Services
                 booking.DepositStatus = DepositStatusConstants.Holding;
             }
 
-            _context.AuditLogs.Add(new AuditLog
+            await _auditTrail.RecordAsync(new AuditLog
             {
                 Action = "BookingTransition",
                 EntityType = "Booking",
@@ -75,7 +77,6 @@ namespace CarRentalSystem.Services
                 Description = $"{current} -> {targetStatus}. {reason}".Trim()
             });
 
-            await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return new BookingTransitionResult(true, null);
@@ -125,7 +126,7 @@ namespace CarRentalSystem.Services
 
             await SetCarStatusAsync(booking.Car, CarStatusConstants.Available);
 
-            _context.AuditLogs.Add(new AuditLog
+            await _auditTrail.RecordAsync(new AuditLog
             {
                 Action = "BookingCancel",
                 EntityType = "Booking",
@@ -135,7 +136,6 @@ namespace CarRentalSystem.Services
                 Description = $"{current} -> Cancelled. {reason}".Trim()
             });
 
-            await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return new BookingTransitionResult(true, null);

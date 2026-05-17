@@ -2,6 +2,10 @@
 
 Updated: 2026-05-16
 
+Latest benchmark audit after Wave 1-5 repo gates: [`docs/enterprise-benchmark-audit-2026-05-17.md`](enterprise-benchmark-audit-2026-05-17.md).
+
+Completion roadmap after the 2026-05-16 enterprise benchmark audit: [`docs/enterprise-completion-roadmap.md`](enterprise-completion-roadmap.md).
+
 ## 1. Executive Summary
 
 Muc tieu cua roadmap nay la dua CarRentalSystem tu muc production-MVP foundation len production-grade enterprise co the van hanh that tren cloud managed infrastructure.
@@ -33,6 +37,10 @@ Implementation status:
 - Phase 1 repository gates: in progress. Current scope covers production reCAPTCHA guard, production config fail-fast, CSP `unsafe-eval` removal in production, CI vulnerability gates, Phase 1 safety script, and runbooks. Cloud resources, secret rotation, WAF/CDN, uptime monitor, and centralized log platform still require real environment provisioning.
 - Phase 2 operating model: implemented in repo for SSO config guard, audit hash chain, contract/handover evidence hashes, dispute export, settlement review, DB indexes, catalog cache, Phase 2 safety script, ADRs, data classification, security review playbook, and developer onboarding. Real provider app registration, third-party pentest, and real load test execution remain environment work.
 - Phase 3 enterprise excellence: implemented repo-first for `/live`, `/ready`, SLO dashboard, OpenTelemetry configuration, PII-safe telemetry wrapper, localization foundation, analytics no-op provider, API docs production guard, Phase 3 runbooks, and Phase 3 safety script. Real OpenTelemetry backend, blue/green platform, multi-AZ cloud failover, analytics vendor, and WCAG external audit remain environment/vendor work.
+- Completion Wave 2 operations: implemented repo-first for production-like staging config shape, operations runbook, evidence templates, and `scripts\Test-Wave2OperationsSafety.ps1`. Real cloud staging, secret rotation, restore drill, alert drill and rollback drill still require signed evidence before public traffic.
+- Completion Wave 3 performance/quality/compliance: implemented repo-first for DB-side admin aggregates, load-test evidence templates, critical-path coverage gate, runtime privacy request workflow, retention preview, sensitive audit hash-chain conversion and Wave 3 safety scripts. Real load-test evidence still requires staging execution.
+- Completion Wave 4 UX/trust/business platform: implemented repo-first for support/dispute ticket workflow, customer self-service, fleet readiness dashboard, API key lifecycle, outbound webhook signing, public API production guard, Wave 4 evidence templates and safety scripts. Real WCAG audit, support SLA proof, fleet ops review and API readiness sign-off still require staging evidence.
+- Completion Wave 5 enterprise certification evidence: implemented repo-first for multi-AZ failover evidence, SOC2-ready control matrix, pentest remediation tracker, final readiness review template and `scripts\Test-Wave5EnterpriseEvidence.ps1`. Real failover drill, SOC2 evidence completion, external pentest/security review and executive sign-off remain required before 98-100% enterprise readiness.
 
 Main production blockers:
 

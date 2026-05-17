@@ -38,6 +38,7 @@ public class SnapshotService : ISnapshotService
     private readonly ILogger<SnapshotService> _logger;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
+    private readonly IAuditTrailService _auditTrail;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -49,12 +50,14 @@ public class SnapshotService : ISnapshotService
         ApplicationDbContext context,
         ILogger<SnapshotService> logger,
         IConfiguration configuration,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IAuditTrailService auditTrail)
     {
         _context = context;
         _logger = logger;
         _configuration = configuration;
         _environment = environment;
+        _auditTrail = auditTrail;
     }
 
     public async Task<SnapshotResult> CreateSnapshotAsync(string name, string? description, string type = "Full", bool isAuto = false)
@@ -237,7 +240,7 @@ public class SnapshotService : ISnapshotService
     {
         if (_environment.IsProduction() && !_configuration.GetValue("Snapshot:AllowUnsafeRestore", false))
         {
-            _context.AuditLogs.Add(new AuditLog
+            await _auditTrail.RecordAsync(new AuditLog
             {
                 Action = "SnapshotRestoreBlocked",
                 EntityType = "DbSnapshot",
@@ -246,7 +249,6 @@ public class SnapshotService : ISnapshotService
                 Description = "Unsafe JSON snapshot restore is disabled in Production.",
                 Timestamp = DateTime.UtcNow
             });
-            await _context.SaveChangesAsync();
             return new SnapshotResult
             {
                 Success = false,

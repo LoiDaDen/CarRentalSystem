@@ -1,11 +1,9 @@
 // CarRentalSystem/Areas/Admin/Controllers/SnapshotController.cs
-using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
 namespace CarRentalSystem.Areas.Admin.Controllers
@@ -15,20 +13,20 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     public class SnapshotController : Controller
     {
         private readonly ISnapshotService _snapshotService;
-        private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _environment;
+        private readonly IAuditTrailService _auditTrail;
 
         public SnapshotController(
             ISnapshotService snapshotService,
-            ApplicationDbContext context,
             IConfiguration configuration,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IAuditTrailService auditTrail)
         {
             _snapshotService = snapshotService;
-            _context = context;
             _configuration = configuration;
             _environment = environment;
+            _auditTrail = auditTrail;
         }
 
         private int GetCurrentUserId()
@@ -134,7 +132,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
         private async Task WriteSnapshotAuditAsync(string action, int snapshotId, int userId)
         {
-            _context.AuditLogs.Add(new AuditLog
+            await _auditTrail.RecordAsync(new AuditLog
             {
                 Action = action,
                 EntityType = "DbSnapshot",
@@ -147,7 +145,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 RequestUrl = $"{Request.Method} {Request.Path}{Request.QueryString}",
                 Timestamp = DateTime.UtcNow
             });
-            await _context.SaveChangesAsync();
         }
 
         // ═══════════════════════════════════════════════
@@ -156,10 +153,22 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> Details(int id)
         {
+            var userId = GetCurrentUserId();
+            await WriteSnapshotAuditAsync("SnapshotDetailsAttempt", id, userId);
+
             var snapshot = await _snapshotService.GetSnapshotByIdAsync(id);
             if (snapshot == null)
                 return NotFound();
 
+            if (_environment.IsProduction() && !_configuration.GetValue("Snapshot:AllowUnsafeDetails", false))
+            {
+                await WriteSnapshotAuditAsync("SnapshotDetailsMetadataOnly", id, userId);
+                snapshot.DataJson = "{}";
+                ViewBag.SnapshotDetailsRedacted = true;
+                return View(snapshot);
+            }
+
+            await WriteSnapshotAuditAsync("SnapshotDetails", id, userId);
             return View(snapshot);
         }
     }

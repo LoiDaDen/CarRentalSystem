@@ -104,6 +104,9 @@ namespace CarRentalSystem.Data
 
         // Snapshot / Backup
         public DbSet<DbSnapshot> DbSnapshots { get; set; }
+        public DbSet<PrivacyRequest> PrivacyRequests { get; set; }
+        public DbSet<SupportTicket> SupportTickets { get; set; }
+        public DbSet<ApiKey> ApiKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -277,6 +280,52 @@ namespace CarRentalSystem.Data
                 .WithMany()
                 .HasForeignKey(s => s.HandoverID)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PrivacyRequest>()
+                .HasIndex(p => new { p.UserID, p.Status, p.CreatedAt });
+
+            modelBuilder.Entity<PrivacyRequest>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PrivacyRequest>()
+                .HasOne(p => p.ReviewedByUser)
+                .WithMany()
+                .HasForeignKey(p => p.ReviewedByUserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<SupportTicket>()
+                .HasIndex(t => new { t.UserID, t.Status, t.CreatedAt });
+
+            modelBuilder.Entity<SupportTicket>()
+                .HasIndex(t => new { t.Priority, t.Status, t.FirstResponseDueAt });
+
+            modelBuilder.Entity<SupportTicket>()
+                .HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<SupportTicket>()
+                .HasOne(t => t.AssignedToUser)
+                .WithMany()
+                .HasForeignKey(t => t.AssignedToUserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ApiKey>()
+                .HasIndex(k => k.KeyHash)
+                .IsUnique();
+
+            modelBuilder.Entity<ApiKey>()
+                .HasIndex(k => new { k.OwnerUserID, k.Status });
+
+            modelBuilder.Entity<ApiKey>()
+                .HasOne(k => k.OwnerUser)
+                .WithMany()
+                .HasForeignKey(k => k.OwnerUserID)
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<PaymentLedgerEntry>()
                 .HasIndex(l => l.IdempotencyKey)

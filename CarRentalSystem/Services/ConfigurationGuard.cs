@@ -42,6 +42,9 @@ namespace CarRentalSystem.Services
             if (configuration.GetValue("Snapshot:AllowUnsafeRestore", false))
                 unsafeSettings.Add("Snapshot:AllowUnsafeRestore must be false in Production.");
 
+            if (configuration.GetValue("Snapshot:AllowUnsafeDetails", false))
+                unsafeSettings.Add("Snapshot:AllowUnsafeDetails must be false in Production.");
+
             if (!configuration.GetValue("Security:RequirePrivilegedMfa", false))
                 unsafeSettings.Add("Security:RequirePrivilegedMfa must be true in Production.");
 
@@ -79,6 +82,18 @@ namespace CarRentalSystem.Services
                 !configuration.GetValue("ApiDocs:RequireAuth", false))
             {
                 unsafeSettings.Add("ApiDocs:RequireAuth must be true when ApiDocs:Enabled is true in Production.");
+            }
+
+            if (configuration.GetValue("PublicApi:Enabled", false))
+            {
+                if (!configuration.GetValue("PublicApi:RequireApiKey", true))
+                    unsafeSettings.Add("PublicApi:RequireApiKey must be true when PublicApi:Enabled is true in Production.");
+                if (!configuration.GetValue("PublicApi:RequireRateLimit", true))
+                    unsafeSettings.Add("PublicApi:RequireRateLimit must be true when PublicApi:Enabled is true in Production.");
+                if (!configuration.GetValue("PublicApi:RequireAudit", true))
+                    unsafeSettings.Add("PublicApi:RequireAudit must be true when PublicApi:Enabled is true in Production.");
+                if (!configuration.GetValue("PublicApi:RequireWebhookSigning", true))
+                    unsafeSettings.Add("PublicApi:RequireWebhookSigning must be true when PublicApi:Enabled is true in Production.");
             }
 
             if (missing.Count > 0 || unsafeSettings.Count > 0)

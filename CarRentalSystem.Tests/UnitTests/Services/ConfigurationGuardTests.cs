@@ -43,6 +43,7 @@ namespace CarRentalSystem.Tests.UnitTests.Services
         [Theory]
         [InlineData("Snapshot:AllowUnsafeDownload")]
         [InlineData("Snapshot:AllowUnsafeRestore")]
+        [InlineData("Snapshot:AllowUnsafeDetails")]
         [Trait("Module", "Configuration")]
         [Trait("Type", "Unit")]
         public void ValidateProductionConfiguration_RejectsUnsafeSnapshotFlags(string key)
@@ -100,6 +101,25 @@ namespace CarRentalSystem.Tests.UnitTests.Services
                 .WithMessage("*ApiDocs:RequireAuth*true*");
         }
 
+        [Theory]
+        [InlineData("PublicApi:RequireApiKey")]
+        [InlineData("PublicApi:RequireRateLimit")]
+        [InlineData("PublicApi:RequireAudit")]
+        [InlineData("PublicApi:RequireWebhookSigning")]
+        [Trait("Module", "Configuration")]
+        [Trait("Type", "Unit")]
+        public void ValidateProductionConfiguration_RejectsPublicApiWithoutRequiredControls(string key)
+        {
+            var values = ValidProductionSettings();
+            values["PublicApi:Enabled"] = "true";
+            values[key] = "false";
+
+            var act = () => ConfigurationGuard.ValidateProductionConfiguration(BuildConfiguration(values), ProductionEnvironment());
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage($"*{key}*true*");
+        }
+
         [Fact]
         [Trait("Module", "Configuration")]
         [Trait("Type", "Unit")]
@@ -149,6 +169,7 @@ namespace CarRentalSystem.Tests.UnitTests.Services
                 ["Audit:HashChainEnabled"] = "true",
                 ["Snapshot:AllowUnsafeDownload"] = "false",
                 ["Snapshot:AllowUnsafeRestore"] = "false",
+                ["Snapshot:AllowUnsafeDetails"] = "false",
                 ["Sre:SloAvailabilityTarget"] = "99.9",
                 ["Sre:RtoHours"] = "4",
                 ["Sre:RpoHours"] = "1",
@@ -157,6 +178,11 @@ namespace CarRentalSystem.Tests.UnitTests.Services
                 ["Observability:OpenTelemetry:OtlpEndpoint"] = "",
                 ["ApiDocs:Enabled"] = "false",
                 ["ApiDocs:RequireAuth"] = "true",
+                ["PublicApi:Enabled"] = "false",
+                ["PublicApi:RequireApiKey"] = "true",
+                ["PublicApi:RequireRateLimit"] = "true",
+                ["PublicApi:RequireAudit"] = "true",
+                ["PublicApi:RequireWebhookSigning"] = "true",
                 ["Localization:DefaultCulture"] = "vi-VN",
                 ["Localization:SupportedCultures:0"] = "vi-VN",
                 ["Localization:SupportedCultures:1"] = "en-US",

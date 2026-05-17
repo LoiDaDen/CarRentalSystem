@@ -160,7 +160,7 @@ namespace CarRentalSystem.Tests.UnitTests
 
         private BookingTransitionService CreateTransitionService()
         {
-            return new BookingTransitionService(_context, new PaymentLedgerService(_context));
+            return new BookingTransitionService(_context, new PaymentLedgerService(_context), CreateAuditTrailService());
         }
 
         private Booking SeedBooking(string statusName, string? paymentStatus)
@@ -219,9 +219,17 @@ namespace CarRentalSystem.Tests.UnitTests
         {
             var env = new Mock<IWebHostEnvironment>();
             env.Setup(e => e.ContentRootPath).Returns(Path.GetTempPath());
-            var controller = new SecureFileController(env.Object, _context);
+            var controller = new SecureFileController(env.Object, _context, CreateAuditTrailService());
             AttachHttpContext(controller, 2);
             return controller;
+        }
+
+        private IAuditTrailService CreateAuditTrailService()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?> { ["Audit:HashChainEnabled"] = "true" })
+                .Build();
+            return new AuditTrailService(_context, new HttpContextAccessor(), configuration);
         }
 
         private TrackingController CreateTrackingController(string secret)

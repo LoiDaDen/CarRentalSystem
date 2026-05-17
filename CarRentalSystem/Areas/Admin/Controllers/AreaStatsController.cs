@@ -52,8 +52,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> Stats(int areaId)
         {
             var area = await _context.Areas
-                .Include(a => a.AreaLocations!).ThenInclude(al => al.Location)
-                    .ThenInclude(l => l!.Cars)
+                .Include(a => a.AreaLocations!)
                 .Include(a => a.AreaStaffs!)
                 .FirstOrDefaultAsync(a => a.AreaID == areaId && !a.IsDeleted);
 
@@ -84,20 +83,20 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .ToListAsync();
 
             // Booking counts & revenue: tháng hiện tại
-            var monthlyBookings = locationIds.Any()
-                ? await _context.Bookings
-                    .Where(b =>
-                        b.Car != null &&
-                        locationIds.Contains(b.Car.LocationID) &&
-                        !b.IsDeleted &&
-                        b.CreatedAt >= startOfMonth)
-                    .ToListAsync()
-                : new List<Booking>();
+            var monthlyBookingsQuery = _context.Bookings
+                .AsNoTracking()
+                .Where(b =>
+                    b.Car != null &&
+                    locationIds.Contains(b.Car.LocationID) &&
+                    !b.IsDeleted &&
+                    b.CreatedAt >= startOfMonth);
 
-            var monthlyOrders = monthlyBookings.Count;
-            var monthlyRevenue = monthlyBookings
-                .Where(b => completedStatusIds.Contains(b.BookingStatusID))
-                .Sum(b => b.TotalPrice);
+            var monthlyOrders = locationIds.Any() ? await monthlyBookingsQuery.CountAsync() : 0;
+            var monthlyRevenue = locationIds.Any()
+                ? await monthlyBookingsQuery
+                    .Where(b => completedStatusIds.Contains(b.BookingStatusID))
+                    .SumAsync(b => b.TotalPrice)
+                : 0m;
 
             // Chart: 30 ngày gần nhất
             var chartStart = now.Date.AddDays(-29);
@@ -108,39 +107,42 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 var day = chartStart.AddDays(i);
                 var dayEnd = day.AddDays(1);
 
-                var dayBookings = monthlyBookings
-                    .Where(b => b.CreatedAt >= day && b.CreatedAt < dayEnd)
-                    .ToList();
+                var dayBookingsQuery = monthlyBookingsQuery
+                    .Where(b => b.CreatedAt >= day && b.CreatedAt < dayEnd);
 
                 chartData.Add(new AreaStatsChartPoint
                 {
                     Date = day.ToString("dd/MM"),
-                    Count = dayBookings.Count,
-                    Revenue = dayBookings
+                    Count = locationIds.Any() ? await dayBookingsQuery.CountAsync() : 0,
+                    Revenue = locationIds.Any()
+                        ? await dayBookingsQuery
                         .Where(b => completedStatusIds.Contains(b.BookingStatusID))
-                        .Sum(b => b.TotalPrice)
+                        .SumAsync(b => b.TotalPrice)
+                        : 0m
                 });
             }
 
-            var allCars = area.AreaLocations!
-                .SelectMany(al => al.Location?.Cars ?? Enumerable.Empty<Car>())
-                .Where(c => !c.IsDeleted)
-                .ToList();
+            var totalCars = locationIds.Any()
+                ? await _context.Cars.AsNoTracking().CountAsync(c => locationIds.Contains(c.LocationID) && !c.IsDeleted)
+                : 0;
+            var availableCars = locationIds.Any()
+                ? await _context.Cars.AsNoTracking().CountAsync(c => locationIds.Contains(c.LocationID) && !c.IsDeleted && c.CarStatusID == 1)
+                : 0;
 
             var result = new
             {
                 areaId,
                 areaName = area.Name,
-                totalCars = allCars.Count,
-                availableCars = allCars.Count(c => c.CarStatusID == 1),
-                rentedCars = allCars.Count(c => c.CarStatusID != 1),
+                totalCars,
+                availableCars,
+                rentedCars = totalCars - availableCars,
                 totalStaffs = area.AreaStaffs!.Count(asx => !asx.IsDeleted),
                 totalLocations = locationIds.Count,
                 monthlyOrders,
                 monthlyRevenue,
                 monthlyRevenueFormatted = monthlyRevenue.ToString("N0") + " ₫",
-                utilizationRate = allCars.Count > 0
-                    ? Math.Round((decimal)(allCars.Count - allCars.Count(c => c.CarStatusID == 1)) / allCars.Count * 100, 1)
+                utilizationRate = totalCars > 0
+                    ? Math.Round((decimal)(totalCars - availableCars) / totalCars * 100, 1)
                     : 0,
                 chart = chartData
             };

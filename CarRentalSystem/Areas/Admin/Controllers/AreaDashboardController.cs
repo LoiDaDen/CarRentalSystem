@@ -64,8 +64,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .Include(a => a.AreaStaffs!)
                     .ThenInclude(asx => asx.User)
                 .Include(a => a.AreaLocations!)
-                    .ThenInclude(al => al.Location)
-                        .ThenInclude(l => l!.Cars)
                 .Where(a => myAreaIds.Contains(a.AreaID) && !a.IsDeleted)
                 .OrderBy(a => a.Name)
                 .ToListAsync();
@@ -87,25 +85,27 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     .Select(al => al.LocationID)
                     .ToList();
 
-                var allCars = area.AreaLocations!
-                    .SelectMany(al => al.Location?.Cars ?? Enumerable.Empty<Car>())
-                    .Where(c => !c.IsDeleted)
-                    .ToList();
+                var totalCars = locIds.Any()
+                    ? await _context.Cars.AsNoTracking().CountAsync(c => locIds.Contains(c.LocationID) && !c.IsDeleted)
+                    : 0;
+                var availableCars = locIds.Any()
+                    ? await _context.Cars.AsNoTracking().CountAsync(c => locIds.Contains(c.LocationID) && !c.IsDeleted && c.CarStatusID == 1)
+                    : 0;
 
-                var monthlyBookings = locIds.Any()
-                    ? await _context.Bookings
-                        .Where(b =>
-                            b.Car != null &&
-                            locIds.Contains(b.Car.LocationID) &&
-                            !b.IsDeleted &&
-                            b.CreatedAt >= startOfMonth)
-                        .ToListAsync()
-                    : new List<Booking>();
+                var monthlyBookingsQuery = _context.Bookings
+                    .AsNoTracking()
+                    .Where(b =>
+                        b.Car != null &&
+                        locIds.Contains(b.Car.LocationID) &&
+                        !b.IsDeleted &&
+                        b.CreatedAt >= startOfMonth);
 
-                var monthlyOrders = monthlyBookings.Count;
-                var monthlyRevenue = monthlyBookings
-                    .Where(b => completedStatusIds.Contains(b.BookingStatusID))
-                    .Sum(b => b.TotalPrice);
+                var monthlyOrders = locIds.Any() ? await monthlyBookingsQuery.CountAsync() : 0;
+                var monthlyRevenue = locIds.Any()
+                    ? await monthlyBookingsQuery
+                        .Where(b => completedStatusIds.Contains(b.BookingStatusID))
+                        .SumAsync(b => b.TotalPrice)
+                    : 0m;
 
                 var isAreaManager = area.AreaStaffs!
                     .Any(asx => asx.UserID == userId && asx.RoleInArea == "manager" && !asx.IsDeleted);
@@ -113,8 +113,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 areaStats.Add(new AreaDashboardStats
                 {
                     Area = area,
-                    TotalCars = allCars.Count,
-                    AvailableCars = allCars.Count(c => c.CarStatusID == 1),
+                    TotalCars = totalCars,
+                    AvailableCars = availableCars,
                     MonthlyOrders = monthlyOrders,
                     MonthlyRevenue = monthlyRevenue,
                     TotalLocations = locIds.Count,

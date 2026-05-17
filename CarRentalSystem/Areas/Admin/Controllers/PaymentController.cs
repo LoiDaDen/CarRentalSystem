@@ -1,12 +1,8 @@
 using CarRentalSystem.Data;
-using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
@@ -17,12 +13,18 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IEmailService _emailService;
         private readonly IRefundService _refundService;
+        private readonly IPaymentTransitionService _paymentTransition;
 
-        public PaymentController(ApplicationDbContext context, IEmailService emailService, IRefundService refundService)
+        public PaymentController(
+            ApplicationDbContext context,
+            IEmailService emailService,
+            IRefundService refundService,
+            IPaymentTransitionService paymentTransition)
         {
             _context = context;
             _emailService = emailService;
             _refundService = refundService;
+            _paymentTransition = paymentTransition;
         }
 
         public async Task<IActionResult> Index()
@@ -42,42 +44,27 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmPayment(int id)
         {
-            var payment = await _context.Payments
-                .Include(p => p.Booking)
-                    .ThenInclude(b => b.User)
-                .Include(p => p.Booking)
-                    .ThenInclude(b => b.Car)
-                .FirstOrDefaultAsync(p => p.PaymentID == id);
+            var userIdText = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            _ = int.TryParse(userIdText, out var actorUserId);
+            var result = await _paymentTransition.ConfirmManualPaymentAsync(
+                id,
+                actorUserId == 0 ? null : actorUserId,
+                User.Identity?.Name ?? "Admin",
+                "Admin manual payment confirmation.");
 
-            if (payment == null)
+            if (!result.IsSuccess && result.Message == "Payment not found.")
                 return NotFound();
 
-            var isPayOSPayment = string.Equals(payment.PaymentMethod, "PayOS", StringComparison.OrdinalIgnoreCase)
-                || await _context.PayOSTransactions.AnyAsync(t => t.PaymentID == payment.PaymentID || t.BookingID == payment.BookingID);
-
-            if (isPayOSPayment)
+            if (!result.IsSuccess)
             {
-                TempData["Error"] = "PayOS payment chi duoc xac nhan boi webhook sau khi tien da vao.";
+                TempData["Error"] = result.Message;
                 return RedirectToAction(nameof(Index));
             }
 
-            var booking = payment.Booking;
-            if (booking != null && booking.DepositAmount > 0)
-            {
-                booking.DepositStatus = "Holding";
-            }
+            if (result.Booking != null)
+                _ = _emailService.SendBookingConfirmationEmailAsync(result.Booking, result.Payment?.Amount ?? 0m);
 
-            payment.PaymentStatus = "Paid";
-            payment.PaymentDate = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            // Gui email xac nhan cho khach hang
-            if (booking != null)
-            {
-                _ = _emailService.SendBookingConfirmationEmailAsync(booking, payment.Amount);
-            }
-
-            TempData["Success"] = $"Đã xác nhận thanh toán cho đơn #{payment.BookingID}";
+            TempData["Success"] = $"Da xac nhan thanh toan cho don #{result.Payment?.BookingID}";
             return RedirectToAction(nameof(Index));
         }
 
