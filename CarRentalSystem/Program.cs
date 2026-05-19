@@ -117,6 +117,7 @@ builder.Services.AddScoped<IDisputeExportService, DisputeExportService>();
 builder.Services.AddScoped<ISettlementReviewService, SettlementReviewService>();
 builder.Services.AddScoped<ISloMetricsService, SloMetricsService>();
 builder.Services.AddSingleton<IEnterpriseTelemetryService, EnterpriseTelemetryService>();
+builder.Services.AddScoped<IEnterpriseOperationsService, EnterpriseOperationsService>();
 builder.Services.AddScoped<IProductAnalyticsService, NoopProductAnalyticsService>();
 builder.Services.AddScoped<ILocaleFormatService, LocaleFormatService>();
 builder.Services.AddHttpContextAccessor();

@@ -247,6 +247,9 @@
                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
                         <i class="bi bi-grid-1x2-fill"></i> Tổng quan
                     </a>
+                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Enterprise" ? "active" : "")" asp-area="Admin" asp-controller="Enterprise" asp-action="Index">
+                        <i class="bi bi-command"></i> Enterprise Center
+                    </a>
 
                     @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                     {
