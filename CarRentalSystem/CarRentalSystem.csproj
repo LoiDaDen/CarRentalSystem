@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,6 +7,7 @@
     <UseAppHost>false</UseAppHost>
     <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8620;CS8625;CS0219</NoWarn>
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**</DefaultItemExcludes>
+    <UserSecretsId>a492e000-6103-4a29-a0cf-80326a73c520</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

@@ -8,6 +8,8 @@ namespace CarRentalSystem.Controllers;
 [IgnoreAntiforgeryToken]
 public class ChatController : ControllerBase
 {
+    private const int MaxMessageLength = 2000;
+    private const int MaxSessionIdLength = 100;
     private readonly GroqChatService _groqChatService;
     private readonly IChatSessionService _chatSessionService;
     private readonly ILogger<ChatController> _logger;
@@ -38,6 +40,11 @@ public class ChatController : ControllerBase
             return Ok(new { reply = "Bạn cần nhập nội dung để tôi có thể hỗ trợ." });
         }
 
+        if (request.Message.Length > MaxMessageLength)
+        {
+            return BadRequest(new { error = $"Message is too long. Maximum length is {MaxMessageLength} characters." });
+        }
+
         var sessionId = GetSessionId(request.SessionId);
 
         if (request.ClearHistory)
@@ -59,7 +66,9 @@ public class ChatController : ControllerBase
     private string GetSessionId(string? clientSessionId)
     {
         if (!string.IsNullOrWhiteSpace(clientSessionId))
-            return clientSessionId;
+            return clientSessionId.Length <= MaxSessionIdLength
+                ? clientSessionId
+                : clientSessionId[..MaxSessionIdLength];
 
         if (User.Identity?.IsAuthenticated == true)
             return $"user_{User.Identity.Name}";

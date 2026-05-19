@@ -581,10 +581,6 @@
     <button onclick="var w=document.getElementById('chatbot-widget');w.style.display=w.style.display==='none'?'flex':'none';w.style.flexDirection='column';" style="position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:1.5rem;cursor:pointer;z-index:9998;box-shadow:0 6px 20px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;transition:transform .3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
         <i class="bi bi-chat-dots-fill"></i>
     </button>
-    <script>
-        function sendChat(){var i=document.getElementById('chat-input'),m=i.value.trim();if(!m)return;var c=document.getElementById('chat-messages');c.innerHTML+='<div style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:16px 16px 4px 16px;max-width:85%;margin-left:auto;font-size:.85rem;">'+m.replace(/</g,'&lt;')+'</div>';i.value='';c.scrollTop=c.scrollHeight;fetch('/api/Chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:m})}).then(r=>r.json()).then(d=>{c.innerHTML+='<div style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;white-space:pre-line;">'+d.reply+'</div>';c.scrollTop=c.scrollHeight;}).catch(()=>{c.innerHTML+='<div style="background:#fee2e2;padding:10px 16px;border-radius:16px;max-width:85%;font-size:.85rem;color:#dc2626;">Lỗi kết nối. Vui lòng thử lại.</div>';c.scrollTop=c.scrollHeight;});}
-    </script>
-
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {

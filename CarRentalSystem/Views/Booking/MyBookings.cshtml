@@ -216,12 +216,8 @@ else
                                                 <i class="bi bi-x-circle me-1"></i>Huy
                                             </button>
                                         }
-                                        @if (statusName == "Active" || statusName == "Completed")
-                                        {
-                                            <a asp-controller="PhysicalContracts" asp-action="Index" asp-route-bookingId="@booking.BookingID" class="btn btn-outline-info btn-sm rounded-pill px-3">
-                                                <i class="bi bi-file-earmark-text me-1"></i>Hop dong vat ly
-                                            </a>
-                                        }                                        @* Nút tạo biên bản nhận xe (sau khi ký hợp đồng, trước khi nhận xe) *@
+                                        @* Hop dong vat ly do nhan su noi bo quan ly trong Admin Panel. *@
+                                        @* Nút tạo biên bản nhận xe (sau khi ký hợp đồng, trước khi nhận xe) *@
                                         @if (statusName == "Confirmed" && cardCheckInRecord == null)
                                         {
                                             <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckIn" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-bold">

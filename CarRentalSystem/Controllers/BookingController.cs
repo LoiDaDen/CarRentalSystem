@@ -850,22 +850,28 @@ namespace CarRentalSystem.Controllers
 
         public IActionResult Contract(int id)
         {
+            if (!IsInternalUser()) return Forbid();
+
             TempData["Info"] = "He thong da bo hop dong dien tu. Vui long upload hop dong giay da ky vao muc Hop dong vat ly.";
-            return RedirectToAction("Index", "PhysicalContracts", new { bookingId = id });
+            return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin", bookingId = id });
         }
 
         public IActionResult TransactionContract(int id)
         {
+            if (!IsInternalUser()) return Forbid();
+
             TempData["Info"] = "He thong da bo hop dong dien tu. Vui long upload hop dong giay da ky vao muc Hop dong vat ly.";
-            return RedirectToAction("Index", "PhysicalContracts");
+            return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin" });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult SignContract(int id, string customerName, string customerIdentityCard, string customerPhone, string customerAddress, string customerCompanyName, string customerDepartmentCode, string paymentMethod, string customerBankAccount)
         {
+            if (!IsInternalUser()) return Forbid();
+
             TempData["Info"] = "He thong da bo ky hop dong dien tu. Vui long upload anh/PDF hop dong giay da ky.";
-            return RedirectToAction("Index", "PhysicalContracts");
+            return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin" });
         }
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Manage()
@@ -1125,6 +1131,13 @@ Há»£p Ä‘á»“ng Ä‘iá»‡n tá»­ nÃ y cÃ³ giÃ¡ trá»‹ ph�
 
             if (booking == null) return NotFound();
             return View(booking);
+        }
+
+        private bool IsInternalUser()
+        {
+            return User.IsInRole(UserRoleConstants.Admin) ||
+                   User.IsInRole(UserRoleConstants.Manager) ||
+                   User.IsInRole(UserRoleConstants.Staff);
         }
     }
 }

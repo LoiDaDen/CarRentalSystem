@@ -27,6 +27,9 @@ namespace CarRentalSystem.Middleware
         private const int ApiMaxAttempts = 60;
         private static readonly TimeSpan ApiWindow = TimeSpan.FromMinutes(1);
 
+        private const int ChatMaxAttempts = 20;
+        private static readonly TimeSpan ChatWindow = TimeSpan.FromMinutes(1);
+
         private const int TrackingMaxAttempts = 30;
         private static readonly TimeSpan TrackingWindow = TimeSpan.FromMinutes(1);
 
@@ -70,6 +73,20 @@ namespace CarRentalSystem.Middleware
 
                 // Đánh dấu để theo dõi sau khi xử lý
                 context.Items[LoginFailedKey] = true; // Mặc định là failed cho đến khi chứng minh ngược lại
+            }
+
+            if (path.Equals("/api/chat", StringComparison.OrdinalIgnoreCase) && method == "POST")
+            {
+                var key = $"chat:{clientIp}";
+                if (IsRateLimited(key, ChatMaxAttempts, ChatWindow))
+                {
+                    _logger.LogWarning("Chat rate limit exceeded from IP: {IP}", clientIp);
+                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    context.Response.Headers["Retry-After"] = ChatWindow.TotalSeconds.ToString();
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync("{\"error\":\"Too many chat requests. Please wait a moment.\"}");
+                    return;
+                }
             }
 
             // Rate limit API endpoints

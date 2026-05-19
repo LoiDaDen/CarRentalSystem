@@ -9,6 +9,7 @@ public class GeminiChatService
     private readonly string _apiKey;
     private readonly ILogger<GeminiChatService> _logger;
     private const string ModelId = "gemini-2.0-flash";
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey) && _geminiClient != null;
 
     private const string SystemPrompt = @"Bạn là trợ lý AI cho ứng dụng thuê xe CAR RENTAL SYSTEM.
 Hãy trả lời ngắn gọn, thân thiện bằng tiếng Việt.

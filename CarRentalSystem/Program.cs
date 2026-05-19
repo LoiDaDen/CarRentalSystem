@@ -3,6 +3,7 @@ using CarRentalSystem.Authorization.Requirements;
 using CarRentalSystem.Data;
 using CarRentalSystem.Repositories;
 using CarRentalSystem.Services;
+using CarRentalSystem.Services.Ai;
 using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Middleware;
 using CarRentalSystem.Models;
@@ -51,6 +52,32 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddMemoryCache();
+builder.Services.Configure<AiProviderOptions>(options =>
+{
+    options.Enabled = builder.Configuration.GetValue("Ai:Enabled", false);
+    options.Provider = builder.Configuration["Ai:Provider"] ?? "OpenAI";
+    options.ApiKey = builder.Configuration["Ai:ApiKey"]
+        ?? (string.Equals(options.Provider, "Groq", StringComparison.OrdinalIgnoreCase)
+            ? builder.Configuration["Groq:ApiKey"]
+            : null)
+        ?? Environment.GetEnvironmentVariable("AI_API_KEY")
+        ?? (string.Equals(options.Provider, "Groq", StringComparison.OrdinalIgnoreCase)
+            ? Environment.GetEnvironmentVariable("GROQ_API_KEY")
+            : null)
+        ?? "";
+    options.BaseUrl = builder.Configuration["Ai:BaseUrl"]
+        ?? (string.Equals(options.Provider, "Groq", StringComparison.OrdinalIgnoreCase)
+            ? "https://api.groq.com/openai/v1/"
+            : "https://api.openai.com/v1/");
+    options.Model = builder.Configuration["Ai:Model"]
+        ?? (string.Equals(options.Provider, "Groq", StringComparison.OrdinalIgnoreCase)
+            ? "llama-3.3-70b-versatile"
+            : "gpt-4.1-mini");
+});
+builder.Services.AddHttpClient("AiProvider");
+builder.Services.AddScoped<IAiToolExecutor, AiToolExecutor>();
+builder.Services.AddScoped<IAiService, AiService>();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -149,6 +176,7 @@ builder.Services.AddHttpClient("GroqChatService", client =>
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", groqApiKey);
 });
 builder.Services.AddSingleton<IChatSessionService, ChatSessionService>();
+builder.Services.AddScoped<CarRentalSystem.Services.GeminiChatService>();
 builder.Services.AddScoped<CarRentalSystem.Services.GroqChatService>();
 
 // ═══════════════════════════════════════════════════

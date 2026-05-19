@@ -1,0 +1,226 @@
+@model IEnumerable<CarRentalSystem.Models.PhysicalContract>
+@{
+    ViewData["Title"] = "Hop dong vat ly";
+    var types = ViewBag.Types as IEnumerable<CarRentalSystem.Models.PhysicalContractType> ?? Enumerable.Empty<CarRentalSystem.Models.PhysicalContractType>();
+    var statuses = ViewBag.Statuses as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var areas = ViewBag.Areas as IEnumerable<CarRentalSystem.Models.Area> ?? Enumerable.Empty<CarRentalSystem.Models.Area>();
+    var currentRole = ViewBag.CurrentRole as string ?? "";
+    int? selectedAreaId = ViewBag.SelectedAreaId as int?;
+    string selectedType = ViewBag.TypeCode as string ?? "";
+    string selectedStatus = ViewBag.Status as string ?? "";
+    string selectedFileKind = ViewBag.FileKind as string ?? "";
+}
+
+<div class="container-fluid px-0">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1" style="color: var(--admin-text);">Hop dong vat ly</h1>
+            <p class="mb-0" style="color: var(--admin-text-secondary);">Quan ly anh/PDF hop dong giay, bien ban ban giao va ho so xe theo khu vuc.</p>
+        </div>
+        <span class="badge bg-info-subtle text-info border border-info align-self-start align-self-lg-center">
+            @Model.Count() tai lieu
+        </span>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4" style="background-color: var(--admin-surface);">
+        <div class="card-header border-0" style="background-color: var(--admin-surface-2);">
+            <h2 class="h6 fw-bold mb-0" style="color: var(--admin-text);"><i class="bi bi-funnel me-2"></i>Bo loc tai lieu</h2>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                @if (currentRole == CarRentalSystem.Models.UserRoleConstants.Admin)
+                {
+                    <div class="col-md-4 col-xl-3">
+                        <label class="form-label small fw-bold">Khu vuc</label>
+                        <select name="areaId" class="form-select">
+                            <option value="">Tat ca khu vuc</option>
+                            @foreach (var area in areas)
+                            {
+                                <option value="@area.AreaID" selected="@(selectedAreaId == area.AreaID)">@area.Name - @area.Province</option>
+                            }
+                        </select>
+                    </div>
+                }
+                <div class="col-md-4 col-xl-3">
+                    <label class="form-label small fw-bold">Tu khoa</label>
+                    <input name="q" value="@ViewBag.Query" class="form-control" placeholder="Ma, tieu de, bien so, booking..." />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Loai hop dong</label>
+                    <select name="typeCode" class="form-select">
+                        <option value="">Tat ca loai</option>
+                        @foreach (var type in types)
+                        {
+                            <option value="@type.Code" selected="@(selectedType == type.Code)">@type.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Trang thai</label>
+                    <select name="status" class="form-select">
+                        <option value="">Tat ca</option>
+                        @foreach (var item in statuses)
+                        {
+                            <option value="@item" selected="@(selectedStatus == item)">@item</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Dinh dang</label>
+                    <select name="fileKind" class="form-select">
+                        <option value="">Tat ca</option>
+                        <option value="Pdf" selected="@(selectedFileKind == "Pdf")">PDF</option>
+                        <option value="Image" selected="@(selectedFileKind == "Image")">Image</option>
+                    </select>
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Car ID</label>
+                    <input name="carId" type="number" value="@ViewBag.CarId" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Booking ID</label>
+                    <input name="bookingId" type="number" value="@ViewBag.BookingId" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Tu ngay</label>
+                    <input name="uploadedFrom" type="date" value="@ViewBag.UploadedFrom" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Den ngay</label>
+                    <input name="uploadedTo" type="date" value="@ViewBag.UploadedTo" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2 d-grid">
+                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-search me-1"></i>Loc</button>
+                </div>
+                <div class="col-md-4 col-xl-2 d-grid">
+                    <a asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Index" class="btn btn-outline-secondary fw-bold">Xoa loc</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4" style="background-color: var(--admin-surface);">
+        <div class="card-header border-0" style="background-color: var(--admin-surface-2);">
+            <h2 class="h6 fw-bold mb-0" style="color: var(--admin-text);"><i class="bi bi-cloud-upload me-2"></i>Upload tai lieu moi</h2>
+        </div>
+        <div class="card-body">
+            <form asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Upload" method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+                @Html.AntiForgeryToken()
+                @if (selectedAreaId.HasValue)
+                {
+                    <input type="hidden" name="areaId" value="@selectedAreaId.Value" />
+                }
+                <div class="col-md-6 col-xl-3">
+                    <label class="form-label small fw-bold">Ten tai lieu</label>
+                    <input name="title" class="form-control" placeholder="VD: Hop dong thue xe da ky" />
+                </div>
+                <div class="col-md-3 col-xl-2">
+                    <label class="form-label small fw-bold">Car ID</label>
+                    <input name="carId" type="number" value="@ViewBag.CarId" class="form-control" />
+                </div>
+                <div class="col-md-3 col-xl-2">
+                    <label class="form-label small fw-bold">Booking ID</label>
+                    <input name="bookingId" type="number" value="@ViewBag.BookingId" class="form-control" />
+                </div>
+                <div class="col-md-6 col-xl-3">
+                    <label class="form-label small fw-bold">File anh/PDF</label>
+                    <input name="file" type="file" accept="image/*,.pdf" class="form-control" required />
+                </div>
+                <div class="col-md-6 col-xl-2 d-grid">
+                    <button type="submit" class="btn btn-success fw-bold"><i class="bi bi-upload me-1"></i>Upload</button>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small fw-bold">Ghi chu</label>
+                    <textarea name="note" rows="2" class="form-control" placeholder="Ghi chu de AI goi y chinh xac hon"></textarea>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm" style="background-color: var(--admin-surface);">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background-color: var(--admin-surface-2);">
+                    <tr>
+                        <th>Tai lieu</th>
+                        <th>Gan voi</th>
+                        <th>AI goi y</th>
+                        <th>Loai xac nhan</th>
+                        <th>Trang thai</th>
+                        <th class="text-end">Thao tac</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">Khong co tai lieu phu hop bo loc.</td>
+                        </tr>
+                    }
+                    @foreach (var item in Model)
+                    {
+                        var suggestedType = types.FirstOrDefault(t => t.Code == item.SuggestedContractTypeCode);
+                        <tr>
+                            <td>
+                                <div class="fw-bold">@(item.Title ?? $"Tai lieu #{item.PhysicalContractID}")</div>
+                                <div class="small text-muted">#@item.PhysicalContractID · @item.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @item.FileKind</div>
+                                @if (!string.IsNullOrWhiteSpace(item.Note))
+                                {
+                                    <div class="small text-muted text-truncate" style="max-width: 320px;">@item.Note</div>
+                                }
+                                <a href="@item.FileUrl" target="_blank" class="small text-decoration-none"><i class="bi bi-box-arrow-up-right me-1"></i>Xem file</a>
+                            </td>
+                            <td>
+                                @if (item.Car != null)
+                                {
+                                    <div class="small"><i class="bi bi-car-front me-1"></i>@item.Car.LicensePlate - @item.Car.CarName</div>
+                                }
+                                @if (item.BookingID.HasValue)
+                                {
+                                    <div class="small"><i class="bi bi-calendar2-check me-1"></i>Booking #@item.BookingID</div>
+                                }
+                            </td>
+                            <td style="min-width: 220px;">
+                                <div class="fw-semibold">@(suggestedType?.Name ?? item.SuggestedContractTypeCode ?? "Chua co")</div>
+                                <div class="small text-success">@(item.AiConfidence?.ToString("0") ?? "0")%</div>
+                                <div class="small text-muted text-truncate" style="max-width: 260px;">@item.AiReason</div>
+                            </td>
+                            <td style="min-width: 230px;">
+                                <form asp-area="Admin" asp-controller="PhysicalContracts" asp-action="ConfirmType" method="post" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@item.PhysicalContractID" />
+                                    @if (selectedAreaId.HasValue)
+                                    {
+                                        <input type="hidden" name="areaId" value="@selectedAreaId.Value" />
+                                    }
+                                    <select name="contractTypeId" class="form-select form-select-sm">
+                                        @foreach (var type in types)
+                                        {
+                                            var selected = item.PhysicalContractTypeID == type.PhysicalContractTypeID || (!item.PhysicalContractTypeID.HasValue && type.Code == item.SuggestedContractTypeCode);
+                                            <option value="@type.PhysicalContractTypeID" selected="@selected">@type.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary">Luu</button>
+                                </form>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary">@item.Status</span>
+                            </td>
+                            <td class="text-end">
+                                <form asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Classify" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@item.PhysicalContractID" />
+                                    @if (selectedAreaId.HasValue)
+                                    {
+                                        <input type="hidden" name="areaId" value="@selectedAreaId.Value" />
+                                    }
+                                    <button type="submit" class="btn btn-outline-info btn-sm"><i class="bi bi-stars me-1"></i>AI lai</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
