@@ -37,7 +37,7 @@ namespace CarRentalSystem.Services
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
 
             if (booking == null)
-                return new BookingTransitionResult(false, "Booking not found.");
+                return new BookingTransitionResult(false, "Không tìm thấy đơn đặt xe.");
 
             var current = booking.BookingStatus?.Name ?? BookingStatusConstants.Draft;
             var validation = ValidateTransition(booking, current, targetStatus);
@@ -93,13 +93,13 @@ namespace CarRentalSystem.Services
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
 
             if (booking == null)
-                return new BookingTransitionResult(false, "Booking not found.");
+                return new BookingTransitionResult(false, "Không tìm thấy đơn đặt xe.");
 
             var current = booking.BookingStatus?.Name ?? BookingStatusConstants.Draft;
             if (current == BookingStatusConstants.Completed)
             {
                 await transaction.RollbackAsync();
-                return new BookingTransitionResult(false, "Completed bookings cannot be cancelled.");
+                return new BookingTransitionResult(false, "Đơn đã hoàn tất, không thể hủy.");
             }
 
             var cancelled = await GetOrCreateStatusAsync(BookingStatusConstants.Cancelled);
@@ -149,22 +149,22 @@ namespace CarRentalSystem.Services
             var paymentPaid = booking.Payment?.PaymentStatus == PaymentStatusConstants.Paid;
 
             if (target == BookingStatusConstants.Confirmed && !paymentPaid)
-                return new BookingTransitionResult(false, "Deposit payment must be paid before confirmation.");
+                return new BookingTransitionResult(false, "Cần thanh toán đặt cọc trước khi xác nhận đơn.");
 
             if (target == BookingStatusConstants.Active)
             {
                 if (current != BookingStatusConstants.Confirmed)
-                    return new BookingTransitionResult(false, "Only confirmed bookings can become active.");
+                    return new BookingTransitionResult(false, "Chỉ đơn đã xác nhận mới có thể chuyển sang trạng thái đang thuê.");
                 if (booking.HandoverRecords == null || !booking.HandoverRecords.Any(h => h.Type == "CheckIn"))
-                    return new BookingTransitionResult(false, "Check-in handover record is required before pickup.");
+                    return new BookingTransitionResult(false, "Cần có biên bản nhận xe (CheckIn) trước khi xác nhận khách lấy xe.");
             }
 
             if (target == BookingStatusConstants.Completed)
             {
                 if (current != BookingStatusConstants.Active)
-                    return new BookingTransitionResult(false, "Only active bookings can be completed.");
+                    return new BookingTransitionResult(false, "Chỉ đơn đang thuê mới có thể chuyển sang hoàn tất.");
                 if (booking.HandoverRecords == null || !booking.HandoverRecords.Any(h => h.Type == "CheckOut"))
-                    return new BookingTransitionResult(false, "Check-out handover record is required before completion.");
+                    return new BookingTransitionResult(false, "Cần có biên bản trả xe (CheckOut) trước khi hoàn tất đơn.");
             }
 
             return target switch
@@ -174,7 +174,7 @@ namespace CarRentalSystem.Services
                 BookingStatusConstants.Active => new BookingTransitionResult(true, null),
                 BookingStatusConstants.Completed => new BookingTransitionResult(true, null),
                 BookingStatusConstants.Expired when current is BookingStatusConstants.Unpaid or BookingStatusConstants.Pending => new BookingTransitionResult(true, null),
-                _ => new BookingTransitionResult(false, $"Invalid transition {current} -> {target}.")
+                _ => new BookingTransitionResult(false, $"Trạng thái không hợp lệ: {current} → {target}.")
             };
         }
 

@@ -233,7 +233,7 @@
             @if (TempData["Success"] != null) {
                 <text>
                 Toastify({
-                    text: "@Html.Raw(TempData["Success"])",
+                    text: @Json.Serialize(TempData["Success"]?.ToString() ?? ""),
                     duration: 4000,
                     gravity: "top",
                     position: "right",
@@ -244,7 +244,7 @@
             @if (TempData["Error"] != null) {
                 <text>
                 Toastify({
-                    text: "@Html.Raw(TempData["Error"])",
+                    text: @Json.Serialize(TempData["Error"]?.ToString() ?? ""),
                     duration: 5000,
                     gravity: "top",
                     position: "right",
@@ -255,7 +255,7 @@
             @if (TempData["Info"] != null) {
                 <text>
                 Toastify({
-                    text: "@Html.Raw(TempData["Info"])",
+                    text: @Json.Serialize(TempData["Info"]?.ToString() ?? ""),
                     duration: 5000,
                     gravity: "top",
                     position: "right",

@@ -327,17 +327,7 @@ namespace CarRentalSystem.Data
                 .HasForeignKey(k => k.OwnerUserID)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            modelBuilder.Entity<PaymentLedgerEntry>()
-                .HasIndex(l => l.IdempotencyKey)
-                .IsUnique()
-                .HasFilter("[IdempotencyKey] IS NOT NULL");
-
-            modelBuilder.Entity<PaymentLedgerEntry>()
-                .HasIndex(l => new { l.BookingID, l.EntryType, l.Status });
-
-            modelBuilder.Entity<PaymentWebhookEvent>()
-                .HasIndex(e => new { e.Provider, e.EventKey })
-                .IsUnique();
+            // (Duplicate PaymentLedgerEntry/PaymentWebhookEvent index khai báo đã được gộp ở phía trên — TASK-D01)
 
             modelBuilder.Entity<BlogCategory>()
                 .HasIndex(c => c.Slug)

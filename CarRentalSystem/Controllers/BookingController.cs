@@ -1,4 +1,4 @@
-using CarRentalSystem.Models;
+﻿using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using CarRentalSystem.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -72,7 +72,7 @@ namespace CarRentalSystem.Controllers
                     ViewBag.UserPhone = user.Phone;
                     if (user.IsBlacklisted)
                     {
-                        TempData["BookingError"] = "TÃ i khoáº£n cá»§a báº¡n Ä‘Ã£ bá»‹ khÃ³a: " + user.BlacklistReason;
+                        TempData["BookingError"] = "Tài khoản của bạn đã bị khóa: " + user.BlacklistReason;
                         return RedirectToAction("Details", "Car", new { id = CarID });
                     }
                     var eligibility = await _eligibilityService.CheckRentalEligibilityAsync(userId);
@@ -83,11 +83,11 @@ namespace CarRentalSystem.Controllers
                         {
                             TempData["ShowEkycModal"] = "true";
                             TempData["EkycReturnUrl"] = $"{Request.Path}{Request.QueryString}";
-                            TempData["WarningMessage"] = eligibility.Reason ?? "Cáº§n xÃ¡c thá»±c eKYC trÆ°á»›c khi thuÃª xe.";
+                            TempData["WarningMessage"] = eligibility.Reason ?? "Cần xác thực eKYC trước khi thuê xe.";
                         }
                         else
                         {
-                            TempData["BookingError"] = eligibility.Reason ?? "TÃ i khoáº£n chÆ°a Ä‘á»§ Ä‘iá»u kiá»‡n Ä‘áº·t xe.";
+                            TempData["BookingError"] = eligibility.Reason ?? "Tài khoản chưa đủ điều kiện đặt xe.";
                         }
                         return RedirectToAction("Details", "Car", new { id = CarID });
                     }
@@ -112,17 +112,17 @@ namespace CarRentalSystem.Controllers
             // Phase 3: Maintenance blocking
             if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value < DateTime.UtcNow)
             {
-                TempData["BookingError"] = "Xe nÃ y Ä‘ang táº¡m ngÆ°ng cho thuÃª do quÃ¡ háº¡n ÄÄƒng Kiá»ƒm. Vui lÃ²ng chá»n xe khÃ¡c.";
+                TempData["BookingError"] = "Xe này đang tạm ngưng cho thuê do quá hạn Đăng Kiểm. Vui lòng chọn xe khác.";
                 return RedirectToAction("Details", "Car", new { id = CarID });
             }
 
             if (EndDate <= StartDate)
             {
-                TempData["BookingError"] = "NgÃ y káº¿t thÃºc pháº£i sau ngÃ y báº¯t Ä‘áº§u.";
+                TempData["BookingError"] = "Ngày kết thúc phải sau ngày bắt đầu.";
                 return RedirectToAction("Details", "Car", new { id = CarID });
             }
 
-            // ðŸ”’ DB-level overlap check (khÃ´ng load toÃ n bá»™ bookings vÃ o RAM)
+            // 🔒 DB-level overlap check (không load toàn bộ bookings vào RAM)
             var availability = await _reservationService.CheckCarAvailabilityAsync(CarID, StartDate, EndDate);
             bool isOverlapped = !availability.IsAvailable;
             /*
@@ -138,7 +138,7 @@ namespace CarRentalSystem.Controllers
 
             if (isOverlapped)
             {
-                TempData["BookingError"] = "Ráº¥t tiáº¿c, xe nÃ y Ä‘Ã£ Ä‘Æ°á»£c Ä‘áº·t trong khoáº£ng thá»i gian báº¡n chá»n. Vui lÃ²ng chá»n ngÃ y khÃ¡c.";
+                TempData["BookingError"] = "Rất tiếc, xe này đã được đặt trong khoảng thời gian bạn chọn. Vui lòng chọn ngày khác.";
                 return RedirectToAction("Details", "Car", new { id = CarID });
             }
 
@@ -295,26 +295,26 @@ namespace CarRentalSystem.Controllers
         {
             if (!SelfDriveAgreement)
             {
-                TempData["BookingError"] = "Báº¡n pháº£i xÃ¡c nháº­n lÃ  ngÆ°á»i trá»±c tiáº¿p Ä‘iá»u khiá»ƒn xe vÃ  cÃ³ giáº¥y phÃ©p lÃ¡i xe há»£p lá»‡.";
+                TempData["BookingError"] = "Bạn phải xác nhận là người trực tiếp điều khiển xe và có giấy phép lái xe hợp lệ.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
             if (SelectedDriverID.HasValue || DriverFee > 0 || booking.DriverID.HasValue || booking.DriverBookingID.HasValue)
             {
-                TempData["BookingError"] = "ÄÆ¡n thuÃª xe tá»± lÃ¡i khÃ´ng Ä‘Æ°á»£c gÃ¡n tÃ i xáº¿ hoáº·c phÃ­ tÃ i xáº¿.";
+                TempData["BookingError"] = "Đơn thuê xe tự lái không được gán tài xế hoặc phí tài xế.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
-            // Validate input trÆ°á»›c khi xá»­ lÃ½
+            // Validate input trước khi xử lý
             if (booking.EndDate <= booking.StartDate)
             {
-                TempData["BookingError"] = "NgÃ y káº¿t thÃºc pháº£i sau ngÃ y báº¯t Ä‘áº§u.";
+                TempData["BookingError"] = "Ngày kết thúc phải sau ngày bắt đầu.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
             if (booking.StartDate.Date < DateTime.UtcNow.Date)
             {
-                TempData["BookingError"] = "KhÃ´ng thá»ƒ Ä‘áº·t xe cho ngÃ y trong quÃ¡ khá»©.";
+                TempData["BookingError"] = "Không thể đặt xe cho ngày trong quá khứ.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
@@ -332,11 +332,11 @@ namespace CarRentalSystem.Controllers
                         {
                             TempData["ShowEkycModal"] = "true";
                             TempData["EkycReturnUrl"] = Url.Action("Details", "Car", new { id = booking.CarID }) ?? "/";
-                            TempData["WarningMessage"] = eligibility.Reason ?? "Cáº§n xÃ¡c thá»±c eKYC trÆ°á»›c khi thuÃª xe.";
+                            TempData["WarningMessage"] = eligibility.Reason ?? "Cần xác thực eKYC trước khi thuê xe.";
                         }
                         else
                         {
-                            TempData["BookingError"] = eligibility.Reason ?? "Lá»—i xÃ¡c thá»±c. Vui lÃ²ng kiá»ƒm tra láº¡i tráº¡ng thÃ¡i tÃ i khoáº£n.";
+                            TempData["BookingError"] = eligibility.Reason ?? "Lỗi xác thực. Vui lòng kiểm tra lại trạng thái tài khoản.";
                         }
                         return RedirectToAction("Details", "Car", new { id = booking.CarID });
                     }
@@ -349,7 +349,7 @@ namespace CarRentalSystem.Controllers
 
             if (!car.IsSelfDriveAllowed || car.IsWithDriverAllowed)
             {
-                TempData["BookingError"] = "Xe nÃ y khÃ´ng thuá»™c luá»“ng thuÃª xe tá»± lÃ¡i.";
+                TempData["BookingError"] = "Xe này không thuộc luồng thuê xe tự lái.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
@@ -358,7 +358,7 @@ namespace CarRentalSystem.Controllers
             {
                 TempData["ShowEkycModal"] = "true";
                 TempData["EkycReturnUrl"] = Url.Action("Details", "Car", new { id = booking.CarID }) ?? "/";
-                TempData["WarningMessage"] = "Vui lÃ²ng xÃ¡c thá»±c giáº¥y phÃ©p lÃ¡i xe há»£p lá»‡ trÆ°á»›c khi thuÃª xe tá»± lÃ¡i.";
+                TempData["WarningMessage"] = "Vui lòng xác thực giấy phép lái xe hợp lệ trước khi thuê xe tự lái.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
@@ -369,7 +369,7 @@ namespace CarRentalSystem.Controllers
 
             if (booking.DeliveryFee > 0 && string.IsNullOrWhiteSpace(booking.DeliveryAddress))
             {
-                TempData["BookingError"] = "Vui lÃ²ng nháº­p Ä‘á»‹a chá»‰ giao xe khi chá»n dá»‹ch vá»¥ giao táº­n nÆ¡i.";
+                TempData["BookingError"] = "Vui lòng nhập địa chỉ giao xe khi chọn dịch vụ giao tận nơi.";
                 return RedirectToAction("Checkout", new { CarID = booking.CarID, StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"), EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"), PickupLocation = car.Location?.Name, pickupLocationType = "owner" });
             }
 
@@ -406,14 +406,14 @@ namespace CarRentalSystem.Controllers
                 var availability = await _reservationService.CheckCarAvailabilityAsync(booking.CarID, booking.StartDate, booking.EndDate);
                 if (!availability.IsAvailable)
                 {
-                    TempData["BookingError"] = availability.Reason ?? "Xe nÃ y Ä‘Ã£ Ä‘Æ°á»£c giá»¯ hoáº·c Ä‘áº·t trong thá»i gian báº¡n chá»n.";
+                    TempData["BookingError"] = availability.Reason ?? "Xe này đã được giữ hoặc đặt trong thời gian bạn chọn.";
                     return RedirectToAction("Details", "Car", new { id = booking.CarID });
                 }
 
                 holdResult = await _reservationService.CreateHoldAsync(booking.UserID, booking.CarID, booking.StartDate, booking.EndDate, quote);
                 if (!holdResult.IsSuccess || holdResult.Hold == null)
                 {
-                    TempData["BookingError"] = holdResult.ErrorMessage ?? "KhÃ´ng thá»ƒ giá»¯ xe. Vui lÃ²ng thá»­ láº¡i.";
+                    TempData["BookingError"] = holdResult.ErrorMessage ?? "Không thể giữ xe. Vui lòng thử lại.";
                     return RedirectToAction("Details", "Car", new { id = booking.CarID });
                 }
 
@@ -422,7 +422,7 @@ namespace CarRentalSystem.Controllers
                 if (!payOSResult.IsSuccess || payOSResult.Transaction == null || string.IsNullOrWhiteSpace(payOSResult.CheckoutUrl))
                 {
                     await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "PayOS create payment failed.");
-                    TempData["BookingError"] = payOSResult.ErrorMessage ?? "KhÃ´ng thá»ƒ táº¡o thanh toÃ¡n PayOS.";
+                    TempData["BookingError"] = payOSResult.ErrorMessage ?? "Không thể tạo thanh toán PayOS.";
                     return RedirectToAction("Details", "Car", new { id = booking.CarID });
                 }
                 paymentCreated = true;
@@ -431,12 +431,12 @@ namespace CarRentalSystem.Controllers
                 {
                     _context.AuditLogs.Add(new AuditLog
                     {
-                        Action = "Táº¡o QR PayOS",
-                        EntityType = "Thanh toÃ¡n",
+                        Action = "Tạo QR PayOS",
+                        EntityType = "Thanh toán",
                         EntityId = holdResult.Hold.BookingHoldID,
                         UserId = booking.UserID,
                         UserName = User.Identity?.Name,
-                        Description = $"KhÃ¡ch táº¡o phiáº¿u giá»¯ chá»— #{holdResult.Hold.BookingHoldID}, sá»‘ tiá»n PayOS {quote.HoldingFee:N0} VND. ChÆ°a táº¡o Ä‘Æ¡n thuÃª.",
+                        Description = $"Khách tạo phiếu giữ chỗ #{holdResult.Hold.BookingHoldID}, số tiền PayOS {quote.HoldingFee:N0} VND. Chưa tạo đơn thuê.",
                         IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
                         UserAgent = Request.Headers["User-Agent"].ToString(),
                         RequestUrl = "POST /Booking/Book",
@@ -457,142 +457,17 @@ namespace CarRentalSystem.Controllers
                     await _reservationService.ReleaseHoldAsync(holdResult.Hold.BookingHoldID, "Exception while creating hold payment.");
 
                 _logger.LogError(ex, "Error while creating hold payment for car {CarId}.", booking.CarID);
-                TempData["BookingError"] = "ÄÃ£ xáº£y ra lá»—i khi táº¡o thanh toÃ¡n giá»¯ chá»—. Há»‡ thá»‘ng Ä‘Ã£ giáº£i phÃ³ng giá»¯ chá»— náº¿u chÆ°a táº¡o Ä‘Æ°á»£c PayOS. Vui lÃ²ng thá»­ láº¡i.";
+                TempData["BookingError"] = "Đã xảy ra lỗi khi tạo thanh toán giữ chỗ. Hệ thống đã giải phóng giữ chỗ nếu chưa tạo được PayOS. Vui lòng thử lại.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
         }
 
-        /*
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            // ðŸ”’ DB TRANSACTION â€” Atomic booking creation
-            // Chá»‘ng race condition (double booking) + data consistency
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-            try
-            {
-                // ðŸ”’ OVERLAP CHECK INSIDE TRANSACTION (DB-level lock)
-                bool isOverlapped = await _context.Bookings
-                    .Include(b => b.BookingStatus)
-                    .AnyAsync(b => b.CarID == booking.CarID &&
-                        b.BookingStatus != null &&
-                        b.BookingStatus.Name != "Cancelled" && b.BookingStatus.Name != "Completed" &&
-                        ((booking.StartDate >= b.StartDate && booking.StartDate < b.EndDate) ||
-                         (booking.EndDate > b.StartDate && booking.EndDate <= b.EndDate) ||
-                         (booking.StartDate <= b.StartDate && booking.EndDate >= b.EndDate)));
-
-                if (isOverlapped)
-                {
-                    await transaction.RollbackAsync();
-                    TempData["BookingError"] = "Ráº¥t tiáº¿c, xe nÃ y Ä‘Ã£ Ä‘Æ°á»£c Ä‘áº·t trong khoáº£ng thá»i gian báº¡n chá»n. Vui lÃ²ng chá»n xe khÃ¡c hoáº·c Ä‘á»•i ngÃ y.";
-                    return RedirectToAction("Details", "Car", new { id = booking.CarID });
-                }
-
-                var diffTime = booking.EndDate - booking.StartDate;
-                int totalHours = (int)Math.Ceiling(diffTime.TotalHours);
-                if (totalHours <= 0) totalHours = 1;
-
-                Func<int, decimal> calcPrice = (int hrs) =>
-                {
-                    decimal p4 = car.PricePerDay * 0.4m > 0 ? car.PricePerDay * 0.4m : 4 * car.PricePerHour;
-                    decimal p8 = car.PricePerDay * 0.7m > 0 ? car.PricePerDay * 0.7m : 8 * car.PricePerHour;
-                    decimal p12 = car.PricePerDay * 0.85m > 0 ? car.PricePerDay * 0.85m : 12 * car.PricePerHour;
-                    decimal p24 = car.PricePerDay > 0 ? car.PricePerDay : 24 * car.PricePerHour;
-
-                    if (hrs <= 0) return 0;
-                    if (hrs <= 4) return Math.Min(hrs * car.PricePerHour, p4);
-                    if (hrs <= 8) return Math.Min(p4 + (hrs - 4) * car.PricePerHour, p8);
-                    if (hrs <= 12) return Math.Min(p8 + (hrs - 8) * car.PricePerHour, p12);
-                    if (hrs <= 24) return Math.Min(p12 + (hrs - 12) * car.PricePerHour, p24);
-
-                    int fullDays = hrs / 24;
-                    int rem = hrs % 24;
-                    decimal remP = 0;
-                    if (rem > 0)
-                    {
-                        if (rem <= 4) remP = Math.Min(rem * car.PricePerHour, p4);
-                        else if (rem <= 8) remP = Math.Min(p4 + (rem - 4) * car.PricePerHour, p8);
-                        else if (rem <= 12) remP = Math.Min(p8 + (rem - 8) * car.PricePerHour, p12);
-                        else remP = Math.Min(p12 + (rem - 12) * car.PricePerHour, p24);
-                    }
-                    return (fullDays * p24) + remP;
-                };
-
-                decimal basePrice = calcPrice(totalHours);
-
-                int days = totalHours / 24;
-
-                decimal dailyInsurance = 0;
-                switch (booking.InsuranceTier)
-                {
-                    case "Premium": dailyInsurance = 150000; break;
-                    case "Full Cover": dailyInsurance = 300000; break;
-                    default: dailyInsurance = 0; break;
-                }
-                int insuranceDays = days > 0 ? days : 1;
-
-                // Phá»¥ phÃ­ VAT & Service (Cá»‘ Ä‘á»‹nh 150k cho demo)
-                decimal serviceFee = 150000;
-
-                booking.TotalPrice = basePrice + (insuranceDays * dailyInsurance) + serviceFee + booking.DeliveryFee + booking.AddOnFee;
-
-                var mUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == booking.UserID);
-                if (mUser?.MembershipTier != null && mUser.MembershipTier.DiscountPercent > 0)
-                {
-                    decimal memDiscount = booking.TotalPrice * (mUser.MembershipTier.DiscountPercent / 100m);
-                    booking.DiscountAmount += memDiscount;
-                    booking.TotalPrice -= memDiscount;
-                }
-
-                // Voucher / Promotion logic
-                if (booking.PromotionID.HasValue)
-                {
-                    var promo = await _context.Promotions.FindAsync(booking.PromotionID.Value);
-                    if (promo != null && promo.IsActive && promo.ValidFrom <= DateTime.UtcNow && promo.ValidUntil >= DateTime.UtcNow && promo.UsedCount < promo.UsageLimit)
-                    {
-                        decimal discount = booking.TotalPrice * promo.DiscountPercent / 100m;
-                        if (promo.MaxDiscountAmount.HasValue && discount > promo.MaxDiscountAmount.Value)
-                            discount = promo.MaxDiscountAmount.Value;
-
-                        booking.DiscountAmount += discount;
-                        booking.TotalPrice -= discount;
-
-                        // Sá»­ dá»¥ng atomic update Ä‘á»ƒ trÃ¡nh race condition khi nhiá»u user cÃ¹ng dÃ¹ng promo
-                        var promoToUpdate = await _context.Promotions
-                            .FirstOrDefaultAsync(p => p.PromotionID == promo.PromotionID && p.UsedCount < p.UsageLimit);
-                        if (promoToUpdate != null)
-                        {
-                            promoToUpdate.UsedCount += 1;
-                            _context.Promotions.Update(promoToUpdate);
-                        }
-                    }
-                }
-
-                if (booking.TotalPrice < 0) booking.TotalPrice = 0;
-
-                booking.TotalHours = (int)Math.Ceiling(diffTime.TotalHours);
-                if (booking.TotalHours == 0) booking.TotalHours = 1;
-
-                booking.DepositAmount = car.DefaultDeposit;
-                booking.DepositStatus = DepositStatusConstants.Unpaid;
-
-                booking.PickupLocationID = car.LocationID;
-                booking.ReturnLocationID = car.LocationID;
-
-                await _bookingService.CreateBookingAsync(booking);
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return RedirectToAction("CreatePayment", "Payment", new { bookingId = booking.BookingID });
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                TempData["BookingError"] = "ÄÃ£ xáº£y ra lá»—i khi xá»­ lÃ½ Ä‘áº·t xe. Vui lÃ²ng thá»­ láº¡i.";
-                return RedirectToAction("Details", "Car", new { id = booking.CarID });
-            }
-        }
-        */
+        // NOTE: Đoạn "atomic booking creation" cũ (BeginTransactionAsync Serializable + price calc inline + promo update inline)
+        // đã được thay bằng luồng hold + PayOS confirmation. Xem:
+        //   - ReservationService.CreateHoldAsync
+        //   - PayOSPaymentService.ConvertPaidHoldToBookingAsync
+        //   - BookingQuoteService (single-source pricing)
+        // Lịch sử đầy đủ ở git history. (TASK-B06: dead-code đã loại bỏ trong Pass 1 audit.)
 
         public async Task<IActionResult> MyBookings()
         {
@@ -738,11 +613,11 @@ namespace CarRentalSystem.Controllers
 
             if (booking == null || booking.BookingStatus?.Name != "Active")
             {
-                TempData["Error"] = "ÄÆ¡n Ä‘áº·t xe khÃ´ng há»£p lá»‡ Ä‘á»ƒ tráº£ xe.";
+                TempData["Error"] = "Đơn đặt xe không hợp lệ để trả xe.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
-            // Báº®T BUá»˜C: Kiá»ƒm tra biÃªn báº£n tráº£ xe (CheckOut) Ä‘Ã£ Ä‘Æ°á»£c táº¡o chÆ°a
+            // BẮT BUỘC: Kiểm tra biên bản trả xe (CheckOut) đã được tạo chưa
             var checkOutRecord = await _context.HandoverRecords
                 .Where(h => h.BookingID == id && h.Type == "CheckOut" && !h.IsDeleted)
                 .OrderByDescending(h => h.RecordDate)
@@ -750,7 +625,7 @@ namespace CarRentalSystem.Controllers
 
             if (checkOutRecord == null)
             {
-                TempData["Error"] = "Báº¡n pháº£i táº¡o biÃªn báº£n tráº£ xe trÆ°á»›c khi xÃ¡c nháº­n tráº£ xe. Vui lÃ²ng chá»¥p áº£nh xe vÃ  Ä‘iá»n thÃ´ng tin biÃªn báº£n.";
+                TempData["Error"] = "Bạn phải tạo biên bản trả xe trước khi xác nhận trả xe. Vui lòng chụp ảnh xe và điền thông tin biên bản.";
                 return RedirectToAction("Capture", "Handover", new { bookingId = id, type = "CheckOut" });
             }
 
@@ -765,10 +640,10 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction(nameof(MyBookings));
             }
 
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            // ðŸ’° TÃNH PHÃ TRá»„ Háº N â€” OverTimeFee * sá»‘ giá» trá»…
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            string msg = "Báº¡n Ä‘Ã£ tráº£ xe thÃ nh cÃ´ng!";
+            // ═══════════════════════════════════════════════════
+            // 💰 TÍNH PHÍ TRỄ HẠN — OverTimeFee * số giờ trễ
+            // ═══════════════════════════════════════════════════
+            string msg = "Bạn đã trả xe thành công!";
             bool hasViolation = false;
 
             if (booking.ActualReturnDate > booking.EndDate)
@@ -776,24 +651,24 @@ namespace CarRentalSystem.Controllers
                 var lateSpan = booking.ActualReturnDate.Value - booking.EndDate;
                 int lateHours = (int)Math.Ceiling(lateSpan.TotalHours);
 
-                // Grace period: miá»…n phÃ­ 30 phÃºt Ä‘áº§u
+                // Grace period: miễn phí 30 phút đầu
                 if (lateSpan.TotalMinutes > 30 && booking.Car != null)
                 {
                     booking.LateFeeAmount = lateHours * booking.Car.OverTimeFee;
                     booking.TotalPrice += booking.LateFeeAmount;
-                    msg += $" âš ï¸ Tráº£ xe trá»… {lateHours} giá». Phá»¥ phÃ­: {booking.LateFeeAmount:N0}Ä‘ ({booking.Car.OverTimeFee:N0}Ä‘/giá»).";
+                    msg += $" ⚠️ Trả xe trễ {lateHours} giờ. Phụ phí: {booking.LateFeeAmount:N0}đ ({booking.Car.OverTimeFee:N0}đ/giờ).";
                     hasViolation = true;
                 }
                 else
                 {
-                    msg += $" (Trá»… {(int)lateSpan.TotalMinutes} phÃºt â€” trong thá»i gian miá»…n phÃ­ 30 phÃºt)";
+                    msg += $" (Trễ {(int)lateSpan.TotalMinutes} phút — trong thời gian miễn phí 30 phút)";
                 }
             }
 
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            // ðŸ“Š Cáº¬P NHáº¬T ODOMETER Tá»ª HANDOVER RECORD
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            // Sá»­ dá»¥ng Odo tá»« biÃªn báº£n CheckOut (Ä‘Ã£ báº¯t buá»™c á»Ÿ trÃªn)
+            // ═══════════════════════════════════════════════════
+            // 📊 CẬP NHẬT ODOMETER TỪ HANDOVER RECORD
+            // ═══════════════════════════════════════════════════
+            // Sử dụng Odo từ biên bản CheckOut (đã bắt buộc ở trên)
             if (booking.Car != null)
             {
                 booking.Car.CurrentOdometer = checkOutRecord.Odo;
@@ -808,21 +683,21 @@ namespace CarRentalSystem.Controllers
                 booking.RentalContract.FinalPrice = booking.TotalPrice;
             }
 
-            // 4. Reset car status â†’ Available
+            // 4. Reset car status → Available
             // Car status is reset to Available inside IBookingTransitionService.Completed.
 
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-            // ðŸ’° DEPOSIT REFUND LOGIC â€” Giá»¯ 15 ngÃ y rá»“i hoÃ n tráº£
-            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+            // ═══════════════════════════════════════════════════
+            // 💰 DEPOSIT REFUND LOGIC — Giữ 15 ngày rồi hoàn trả
+            // ═══════════════════════════════════════════════════
             if (!hasViolation && booking.LateFeeAmount == 0)
             {
-                // KhÃ´ng vi pháº¡m â†’ lÃªn lá»‹ch hoÃ n cá»c sau 15 ngÃ y (chá» kiá»ƒm tra pháº¡t nguá»“i)
+                // Không vi phạm → lên lịch hoàn cọc sau 15 ngày (chờ kiểm tra phạt nguồi)
                 await _paymentTransitionService.SetBookingDepositStatusAsync(id, DepositStatusConstants.PendingRefund, userId, "Customer", "Clean return pending deposit refund.");
-                msg += " Tiá»n cá»c sáº½ Ä‘Æ°á»£c hoÃ n tráº£ sau 15 ngÃ y kiá»ƒm tra pháº¡t nguá»™i.";
+                msg += " Tiền cọc sẽ được hoàn trả sau 15 ngày kiểm tra phạt nguội.";
             }
             else
             {
-                // CÃ³ vi pháº¡m â†’ Admin sáº½ xá»­ lÃ½ cá»c thá»§ cÃ´ng
+                // Có vi phạm → Admin sẽ xử lý cọc thủ công
                 await _paymentTransitionService.SetBookingDepositStatusAsync(id, DepositStatusConstants.UnderReview, userId, "Customer", "Return requires settlement review.");
                 await _settlementReviewService.CreateAsync(
                     id,
@@ -831,7 +706,7 @@ namespace CarRentalSystem.Controllers
                     "Return generated settlement review.",
                     userId,
                     checkOutRecord.HandoverID);
-                msg += " Tiá»n cá»c Ä‘ang Ä‘Æ°á»£c xem xÃ©t do phÃ¡t sinh phÃ­.";
+                msg += " Tiền cọc đang được xem xét do phát sinh phí.";
             }
 
             await _context.SaveChangesAsync();
@@ -900,7 +775,7 @@ namespace CarRentalSystem.Controllers
             // Change from Draft to Pending (Awaiting Approval)
             await _bookingService.UpdateBookingStatusAsync(id, "Pending");
 
-            // Kiá»ƒm tra Ä‘Ã£ cÃ³ Payment chÆ°a, náº¿u chÆ°a thÃ¬ táº¡o má»›i
+            // Kiểm tra đã có Payment chưa, nếu chưa thì tạo mới
             var existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.BookingID == id);
             if (existingPayment == null)
             {
@@ -916,7 +791,7 @@ namespace CarRentalSystem.Controllers
                 await _bookingService.ProcessPaymentAsync(payment);
             }
 
-            TempData["Success"] = "Há»‡ thá»‘ng Ä‘Ã£ ghi nháº­n thÃ´ng tin chuyá»ƒn khoáº£n cá»§a báº¡n. Vui lÃ²ng chá» Admin xÃ¡c nháº­n Ä‘Æ¡n hÃ ng trong giÃ¢y lÃ¡t.";
+            TempData["Success"] = "Hệ thống đã ghi nhận thông tin chuyển khoản của bạn. Vui lòng chờ Admin xác nhận đơn hàng trong giây lát.";
             return RedirectToAction("Success", "Payment", new { bookingId = id });
         }
 
@@ -988,7 +863,7 @@ namespace CarRentalSystem.Controllers
                     var selfDriveServiceTypeId = await _businessRules.GetServiceTypeIdAsync(ServiceTypeConstants.SelfDrive);
                     var validLicense = await _businessRules.GetValidCustomerDrivingLicenseAsync(userId);
                     if (validLicense == null)
-                        throw new Exception("KhÃ¡ch thuÃª xe tá»± lÃ¡i pháº£i cung cáº¥p giáº¥y phÃ©p lÃ¡i xe há»£p lá»‡.");
+                        throw new Exception("Khách thuê xe tự lái phải cung cấp giấy phép lái xe hợp lệ.");
 
                     foreach (var item in items.EnumerateArray())
                     {
@@ -1004,7 +879,7 @@ namespace CarRentalSystem.Controllers
                     int idx = 1;
                     foreach (var item in items.EnumerateArray())
                     {
-                        termsCarsStr += $"- Xe {idx++}: {item.GetProperty("carBrand").GetString()} {item.GetProperty("carName").GetString()}, BKS: {item.GetProperty("licensePlate").GetString()}, Gia: {item.GetProperty("totalPrice").GetDecimal():N0} VNÄ\n";
+                        termsCarsStr += $"- Xe {idx++}: {item.GetProperty("carBrand").GetString()} {item.GetProperty("carName").GetString()}, BKS: {item.GetProperty("licensePlate").GetString()}, Gia: {item.GetProperty("totalPrice").GetDecimal():N0} VNĐ\n";
                     }
 
                     var newContract = new DigitalContract
@@ -1022,26 +897,26 @@ namespace CarRentalSystem.Controllers
                         RentalPricePerDay = 0,
                         TotalContractValue = transaction.TotalAmount,
                         DepositAmount = totalDeposit,
-                        TermsAndConditions = $@"Sau khi ban báº¡c, thá»a thuáº­n, hai bÃªn thá»‘ng nháº¥t kÃ½ káº¿t Há»£p Ä‘á»“ng thuÃª XE tá»± lÃ¡i vá»›i cÃ¡c Ä‘iá»u khoáº£n nhÆ° sau:
+                        TermsAndConditions = $@"Sau khi ban bạc, thỏa thuận, hai bên thống nhất ký kết Hợp đồng thuê XE tự lái với các điều khoản như sau:
 
-ÄIá»€U 1: Ná»˜I DUNG Há»¢P Äá»’NG
-- Danh sÃ¡ch xe:
+ĐIỀU 1: NỘI DUNG HỢP ĐỒNG
+- Danh sách xe:
 {termsCarsStr}
 
-ÄIá»€U 2: GIÃ TRá»Š Há»¢P Äá»’NG, PHÆ¯Æ NG THá»¨C THANH TOÃN
-- Tá»•ng tiá»n thuÃª: {baseTotal:N0} VNÄ.
-- Tá»•ng cá»™ng: {transaction.TotalAmount:N0} VNÄ.
-- Tiá»n cá»c: {totalDeposit:N0} VNÄ.
+ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG, PHƯƠNG THỨC THANH TOÁN
+- Tổng tiền thuê: {baseTotal:N0} VNĐ.
+- Tổng cộng: {transaction.TotalAmount:N0} VNĐ.
+- Tiền cọc: {totalDeposit:N0} VNĐ.
 
-ÄIá»€U 3: TRÃCH NHIá»†M CHUNG
-- KhÃ´ng sá»­ dá»¥ng xe thuÃª vÃ o má»¥c Ä‘Ã­ch vi pháº¡m phÃ¡p luáº­t.
-- Chá»‹u toÃ n bá»™ chi phÃ­ nhiÃªn liá»‡u, cáº§u Ä‘Æ°á»ng, Ä‘á»— xe.
-- Tráº£ xe Ä‘Ãºng thá»i gian vÃ  Ä‘á»‹a Ä‘iá»ƒm.
+ĐIỀU 3: TRÁCH NHIỆM CHUNG
+- Không sử dụng xe thuê vào mục đích vi phạm pháp luật.
+- Chịu toàn bộ chi phí nhiên liệu, cầu đường, đỗ xe.
+- Trả xe đúng thời gian và địa điểm.
 
-ÄIá»€U 4: HIá»†U Lá»°C Há»¢P Äá»’NG
-- Há»£p Ä‘á»“ng cÃ³ giÃ¡ trá»‹ tá»« {minStart:HH:mm dd/MM/yyyy} Ä‘áº¿n háº¿t {maxEnd:HH:mm dd/MM/yyyy}.
+ĐIỀU 4: HIỆU LỰC HỢP ĐỒNG
+- Hợp đồng có giá trị từ {minStart:HH:mm dd/MM/yyyy} đến hết {maxEnd:HH:mm dd/MM/yyyy}.
 
-Há»£p Ä‘á»“ng Ä‘iá»‡n tá»­ nÃ y cÃ³ giÃ¡ trá»‹ phÃ¡p lÃ½ tÆ°Æ¡ng Ä‘Æ°Æ¡ng báº£n giáº¥y.",
+Hợp đồng điện tử này có giá trị pháp lý tương đương bản giấy.",
                         IsSignedByCustomer = false,
                         IsSignedByOwner = false
                     };
@@ -1097,7 +972,7 @@ Há»£p Ä‘á»“ng Ä‘iá»‡n tá»­ nÃ y cÃ³ giÃ¡ trá»‹ ph�
                 }
                 catch (Exception ex)
                 {
-                    TempData["Error"] = "Lá»—i khi táº¡o Ä‘Æ¡n: " + ex.Message;
+                    TempData["Error"] = "Lỗi khi tạo đơn: " + ex.Message;
                     return RedirectToAction("Index", "Cart");
                 }
             }
@@ -1107,7 +982,7 @@ Há»£p Ä‘á»“ng Ä‘iá»‡n tá»­ nÃ y cÃ³ giÃ¡ trá»‹ ph�
             _context.BookingTransactions.Update(transaction);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"Thanh toÃ¡n thÃ nh cÃ´ng! ÄÆ¡n thuÃª Ä‘Ã£ Ä‘Æ°á»£c xÃ¡c nháº­n.";
+            TempData["Success"] = $"Thanh toán thành công! Đơn thuê đã được xác nhận.";
             return RedirectToAction("SuccessTransaction", "Payment", new { transactionId = id });
         }
 

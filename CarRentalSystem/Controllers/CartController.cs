@@ -1,4 +1,4 @@
-using CarRentalSystem.Data;
+﻿using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -61,17 +61,17 @@ namespace CarRentalSystem.Controllers
             if (HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
             {
 
-            // Ensure standard 'Theo tuáº§n' (Weekly) package exists if not already present
-            if (!await _context.ContractTypes.AnyAsync(c => c.Name == "Theo tuáº§n"))
+            // Ensure standard 'Theo tuần' (Weekly) package exists if not already present
+            if (!await _context.ContractTypes.AnyAsync(c => c.Name == "Theo tuần"))
             {
                 _context.ContractTypes.Add(new ContractType
                 {
-                    Name = "Theo tuáº§n",
+                    Name = "Theo tuần",
                     DiscountPercent = 5,
                     MinDurationDays = 7,
                     MaxDurationDays = 30,
                     IsActive = true,
-                    Description = "ThuÃª xe theo tuáº§n, giáº£m 5%"
+                    Description = "Thuê xe theo tuần, giảm 5%"
                 });
                 await _context.SaveChangesAsync();
             }
@@ -83,10 +83,10 @@ namespace CarRentalSystem.Controllers
 
             ViewBag.ContractTypes = await _context.ContractTypes
                 .Where(c => c.IsActive
-                    && c.Name.ToLower() != "ngÃ y cháºµn"
-                    && c.Name.ToLower() != "ngÃ y láº»"
-                    && c.Name.ToLower() != "cuá»‘i tuáº§n"
-                    && c.Name.ToLower() != "ngÃ y tÃ¹y chá»‰nh")
+                    && c.Name.ToLower() != "ngày chẵn"
+                    && c.Name.ToLower() != "ngày lẻ"
+                    && c.Name.ToLower() != "cuối tuần"
+                    && c.Name.ToLower() != "ngày tùy chỉnh")
                 .OrderBy(c => c.MinDurationDays)
                 .ToListAsync();
 
@@ -104,17 +104,17 @@ namespace CarRentalSystem.Controllers
             // Validate input
             if (carId <= 0)
             {
-                return Json(new { success = false, message = "ID xe khÃ´ng há»£p lá»‡." });
+                return Json(new { success = false, message = "ID xe không hợp lệ." });
             }
 
             if (startDate >= endDate)
             {
-                return Json(new { success = false, message = "NgÃ y báº¯t Ä‘áº§u pháº£i trÆ°á»›c ngÃ y káº¿t thÃºc." });
+                return Json(new { success = false, message = "Ngày bắt đầu phải trước ngày kết thúc." });
             }
 
             if (startDate < DateTime.UtcNow.AddHours(-1))
             {
-                return Json(new { success = false, message = "KhÃ´ng thá»ƒ Ä‘áº·t xe trong quÃ¡ khá»©." });
+                return Json(new { success = false, message = "Không thể đặt xe trong quá khứ." });
             }
 
             var userId = GetUserId();
@@ -131,7 +131,7 @@ namespace CarRentalSystem.Controllers
             var existing = cart.CartItems.FirstOrDefault(ci => ci.CarID == carId && ci.StartDate == startDate && ci.EndDate == endDate);
             if (existing != null)
             {
-                return Json(new { success = false, message = "Xe nÃ y Ä‘Ã£ cÃ³ trong giá» hÃ ng vá»›i cÃ¹ng khoáº£ng thá»i gian." });
+                return Json(new { success = false, message = "Xe này đã có trong giỏ hàng với cùng khoảng thời gian." });
             }
 
             // Kiem tra car co ton tai va available khong
@@ -141,23 +141,23 @@ namespace CarRentalSystem.Controllers
 
             if (car == null)
             {
-                return Json(new { success = false, message = "Xe khÃ´ng tá»“n táº¡i." });
+                return Json(new { success = false, message = "Xe không tồn tại." });
             }
 
             if (car.CarStatus?.Name != "Available")
             {
-                return Json(new { success = false, message = "Xe nÃ y hiá»‡n khÃ´ng cÃ³ sáºµn Ä‘á»ƒ thuÃª." });
+                return Json(new { success = false, message = "Xe này hiện không có sẵn để thuê." });
             }
 
             if (!car.IsSelfDriveAllowed || car.IsWithDriverAllowed)
             {
-                return Json(new { success = false, message = "Xe nÃ y khÃ´ng thuá»™c luá»“ng thuÃª xe tá»± lÃ¡i." });
+                return Json(new { success = false, message = "Xe này không thuộc luồng thuê xe tự lái." });
             }
 
             var availability = await _reservationService.CheckCarAvailabilityAsync(carId, startDate, endDate);
             if (!availability.IsAvailable)
             {
-                return Json(new { success = false, message = availability.Reason ?? "Xe nÃ y Ä‘Ã£ cÃ³ ngÆ°á»i Ä‘áº·t trong khoáº£ng thá»i gian báº¡n chá»n." });
+                return Json(new { success = false, message = availability.Reason ?? "Xe này đã có người đặt trong khoảng thời gian bạn chọn." });
             }
 
             // =========================================
@@ -202,13 +202,13 @@ namespace CarRentalSystem.Controllers
                 return Json(new { success = true, count = count });
             }
 
-            return Json(new { success = false, message = "KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m hoáº·c báº¡n khÃ´ng cÃ³ quyá»n xÃ³a." });
+            return Json(new { success = false, message = "Không tìm thấy sản phẩm hoặc bạn không có quyền xóa." });
         }
 
         [HttpGet]
         public async Task<IActionResult> GetCartCount()
         {
-            if (!User.Identity.IsAuthenticated) return Json(new { count = 0 });
+            if (User.Identity?.IsAuthenticated != true) return Json(new { count = 0 });
 
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userIdString, out int userId)) return Json(new { count = 0 });
@@ -249,7 +249,7 @@ namespace CarRentalSystem.Controllers
                 return Json(new { success = true, cartTotal = cartTotal });
             }
 
-            return Json(new { success = false, message = "KhÃ´ng tÃ¬m tháº¥y xe trong giá» hÃ ng." });
+            return Json(new { success = false, message = "Không tìm thấy xe trong giỏ hàng." });
         }
         [HttpPost]
         public async Task<IActionResult> UpdateCartItemDriver(int cartItemId, int? driverId)
@@ -281,11 +281,11 @@ namespace CarRentalSystem.Controllers
                 .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
 
             if (item == null)
-                return Json(new { success = false, message = "KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m" });
+                return Json(new { success = false, message = "Không tìm thấy sản phẩm" });
 
             var package = await _context.ContractTypes.FindAsync(packageId);
             if (package == null)
-                return Json(new { success = false, message = "KhÃ´ng tÃ¬m tháº¥y gÃ³i thuÃª" });
+                return Json(new { success = false, message = "Không tìm thấy gói thuê" });
 
             item.ContractTypeID = packageId;
 
@@ -355,7 +355,7 @@ namespace CarRentalSystem.Controllers
                 .FirstOrDefaultAsync(ci => ci.CartItemID == cartItemId && ci.Cart.UserID == userId);
 
             if (item == null)
-                return Json(new { success = false, message = "KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m" });
+                return Json(new { success = false, message = "Không tìm thấy sản phẩm" });
 
             var currentAddOns = item.AddOnIDs;
 
@@ -422,7 +422,7 @@ namespace CarRentalSystem.Controllers
 
             if (cart == null || !cart.CartItems.Any())
             {
-                TempData["Error"] = "Giá» hÃ ng cá»§a báº¡n Ä‘ang trá»‘ng.";
+                TempData["Error"] = "Giỏ hàng của bạn đang trống.";
                 return RedirectToAction("Index");
             }
 
@@ -430,7 +430,7 @@ namespace CarRentalSystem.Controllers
             if (user == null) return RedirectToAction("Login", "Auth");
 
             // =========================================
-            // SECURITY: Kiá»ƒm tra blacklist vÃ  eKYC trÆ°á»›c khi checkout
+            // SECURITY: Kiểm tra blacklist và eKYC trước khi checkout
             // =========================================
             var eligibility = await _eligibilityService.CheckRentalEligibilityAsync(userId);
             if (!eligibility.IsEligible)
@@ -440,11 +440,11 @@ namespace CarRentalSystem.Controllers
                 {
                     TempData["ShowEkycModal"] = "true";
                     TempData["EkycReturnUrl"] = Url.Action("Index", "Cart") ?? "/Cart";
-                    TempData["WarningMessage"] = eligibility.Reason ?? "Cáº§n xÃ¡c thá»±c eKYC trÆ°á»›c khi thuÃª xe.";
+                    TempData["WarningMessage"] = eligibility.Reason ?? "Cần xác thực eKYC trước khi thuê xe.";
                 }
                 else
                 {
-                    TempData["Error"] = eligibility.Reason ?? "TÃ i khoáº£n chÆ°a Ä‘á»§ Ä‘iá»u kiá»‡n Ä‘áº·t xe.";
+                    TempData["Error"] = eligibility.Reason ?? "Tài khoản chưa đủ điều kiện đặt xe.";
                 }
 
                 return RedirectToAction("Index");
@@ -489,7 +489,7 @@ namespace CarRentalSystem.Controllers
                 var availability = await _reservationService.CheckCarAvailabilityAsync(item.CarID, item.StartDate, item.EndDate);
                 if (!availability.IsAvailable)
                 {
-                    overlapErrors.Add($"'{item.Car?.CarName}': {availability.Reason ?? "KhÃ´ng cÃ²n kháº£ dá»¥ng."}");
+                    overlapErrors.Add($"'{item.Car?.CarName}': {availability.Reason ?? "Không còn khả dụng."}");
                 }
             }
 
@@ -598,7 +598,7 @@ namespace CarRentalSystem.Controllers
                 {
                     transaction.Status = BookingStatusConstants.Cancelled;
                     await _context.SaveChangesAsync();
-                    TempData["Error"] = holdResult.ErrorMessage ?? "KhÃ´ng thá»ƒ giá»¯ táº¥t cáº£ xe trong giá» hÃ ng.";
+                    TempData["Error"] = holdResult.ErrorMessage ?? "Không thể giữ tất cả xe trong giỏ hàng.";
                     return RedirectToAction("Index");
                 }
 
@@ -611,11 +611,11 @@ namespace CarRentalSystem.Controllers
 
                     transaction.Status = PaymentStatusConstants.Failed;
                     await _context.SaveChangesAsync();
-                    TempData["Error"] = payOSResult.ErrorMessage ?? "KhÃ´ng thá»ƒ táº¡o thanh toÃ¡n PayOS cho giá» hÃ ng.";
+                    TempData["Error"] = payOSResult.ErrorMessage ?? "Không thể tạo thanh toán PayOS cho giỏ hàng.";
                     return RedirectToAction("Index");
                 }
 
-                TempData["Success"] = $"ÄÆ¡n hÃ ng #{transaction.TransactionID} Ä‘Ã£ Ä‘Æ°á»£c giá»¯. Vui lÃ²ng thanh toÃ¡n {holdingFee:N0}Ä‘ Ä‘á»ƒ xÃ¡c nháº­n.";
+                TempData["Success"] = $"Đơn hàng #{transaction.TransactionID} đã được giữ. Vui lòng thanh toán {holdingFee:N0}đ để xác nhận.";
                 return Redirect(payOSResult.CheckoutUrl);
             }
             catch
@@ -632,7 +632,7 @@ namespace CarRentalSystem.Controllers
                     await _context.SaveChangesAsync();
                 }
 
-                TempData["Error"] = "ÄÃ£ xáº£y ra lá»—i khi táº¡o thanh toÃ¡n giá»¯ chá»— giá» hÃ ng. Há»‡ thá»‘ng Ä‘Ã£ giáº£i phÃ³ng giá»¯ chá»—, vui lÃ²ng thá»­ láº¡i.";
+                TempData["Error"] = "Đã xảy ra lỗi khi tạo thanh toán giữ chỗ giỏ hàng. Hệ thống đã giải phóng giữ chỗ, vui lòng thử lại.";
                 return RedirectToAction("Index");
             }
         }

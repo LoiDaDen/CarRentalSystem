@@ -56,7 +56,7 @@ namespace CarRentalSystem.Controllers
         [HttpGet]
         public IActionResult Login(string? returnUrl = null)
         {
-            if (User.Identity.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated == true)
             {
                 if (IsSafeLocalReturnUrl(returnUrl))
                     return LocalRedirect(returnUrl!);
@@ -410,7 +410,7 @@ namespace CarRentalSystem.Controllers
         [HttpGet]
         public IActionResult Register()
         {
-            if (User.Identity.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated == true)
                 return RedirectToAction("Index", "Home");
             return View(new RegisterViewModel());
         }

@@ -33,33 +33,22 @@ namespace CarRentalSystem.Services
 
         public async Task<IEnumerable<Car>> GetAllCarsAsync()
         {
-            // 1. Thử lấy từ Cache trước
-            List<Car>? cached = null;
-            if (cached != null) return cached;
-
-            // 2. Cache miss → query DB
-            var cars = await _carRepository.Query()
+            // TODO (TASK-P03): wire ICatalogCacheService cho catalog list khi schema cache ổn định.
+            // Tránh cache trực tiếp full entity graph — serialize navigation properties dễ phình to.
+            return await _carRepository.Query()
                 .AsNoTracking()
                 .Include(c => c.Location)
                 .Include(c => c.CarType)
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarImages)
-                .Include(c => c.CarBrand) // Added CarBrand
+                .Include(c => c.CarBrand)
                 .ToListAsync();
-
-            // 3. Lưu vào Cache (TTL 5 phút)
-            // Do not cache EF entity graphs here; it can serialize a very large object graph.
-            return cars;
         }
 
         public async Task<IEnumerable<Car>> GetAvailableCarsAsync()
         {
-            // 1. Thử lấy từ Cache trước
-            List<Car>? cached = null;
-            if (cached != null) return cached;
-
-            // 2. Cache miss → query DB
-            var cars = await _context.Cars
+            // TODO (TASK-P03): wire ICatalogCacheService cho available cars khi schema cache ổn định.
+            return await _context.Cars
                 .AsNoTracking()
                 .Include(c => c.CarImages)
                 .Include(c => c.CarStatus)
@@ -68,10 +57,6 @@ namespace CarRentalSystem.Services
                 .Include(c => c.CarBrand)
                 .Where(c => c.CarStatus!.Name == "Available")
                 .ToListAsync();
-
-            // 3. Lưu vào Cache (TTL 5 phút)
-            // Do not cache EF entity graphs here; it can serialize a very large object graph.
-            return cars;
         }
 
         public async Task<Car> GetCarByIdAsync(int id)
