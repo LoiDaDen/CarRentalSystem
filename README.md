@@ -892,6 +892,22 @@ Test tích hợp với database thực (SQL Server hoặc InMemory):
 - Payment processing
 - GPS tracking
 
+### Cypress A-Z
+
+Local Cypress runs default to mock vendor mode, so PayOS/FPT sandbox keys are not required:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\CarRentalSystem\scripts\Run-CypressA2Z.ps1 -VendorMode Mock
+```
+
+Run real PayOS/FPT sandbox checks only when keys and an HTTPS public tunnel are configured:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\CarRentalSystem\scripts\Run-CypressA2Z.ps1 -VendorMode Real -PublicBaseUrl https://your-public-cypress-tunnel.example.com
+```
+
+The npm Cypress scripts clear `ELECTRON_RUN_AS_NODE` before launching Cypress. If you call Cypress directly, clear that variable first in the same shell.
+
 ---
 
 ## SonarCloud Quality Gate

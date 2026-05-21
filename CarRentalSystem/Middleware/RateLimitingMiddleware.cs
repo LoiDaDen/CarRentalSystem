@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Hosting;
 
 namespace CarRentalSystem.Middleware
 {
@@ -23,11 +24,16 @@ namespace CarRentalSystem.Middleware
 
         private readonly RequestDelegate _next;
         private readonly ILogger<RateLimitingMiddleware> _logger;
+        private readonly bool _isCypressEnvironment;
 
-        public RateLimitingMiddleware(RequestDelegate next, ILogger<RateLimitingMiddleware> logger)
+        public RateLimitingMiddleware(
+            RequestDelegate next,
+            ILogger<RateLimitingMiddleware> logger,
+            IHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
+            _isCypressEnvironment = environment.IsEnvironment("Cypress");
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -212,7 +218,10 @@ namespace CarRentalSystem.Middleware
                     return existing;
                 });
 
-            _logger.LogWarning("Failed login attempt #{Count} from IP: {IP}", GetFailedAttemptCount(key), clientIp);
+            if (_isCypressEnvironment)
+                _logger.LogDebug("Failed login attempt #{Count} from IP: {IP}", GetFailedAttemptCount(key), clientIp);
+            else
+                _logger.LogWarning("Failed login attempt #{Count} from IP: {IP}", GetFailedAttemptCount(key), clientIp);
 
             if (FailedLoginAttempts.Count > 5000)
                 CleanupStaleEntries(now);

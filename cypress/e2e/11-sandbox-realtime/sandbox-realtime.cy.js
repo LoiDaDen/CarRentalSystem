@@ -13,16 +13,40 @@ const carImageFiles = (count = 4) => Array.from({ length: count }, (_, index) =>
   mimeType: 'image/png',
 }));
 
+function skipUnlessPayOS() {
+  if (Cypress.env('usePayOSSandbox') !== true) {
+    this.skip();
+  }
+}
+
+function skipUnlessFpt() {
+  if (Cypress.env('useFptSandbox') !== true) {
+    this.skip();
+  }
+}
+
+function skipUnlessAnyVendor() {
+  if (Cypress.env('usePayOSSandbox') !== true && Cypress.env('useFptSandbox') !== true) {
+    this.skip();
+  }
+}
+
 describe('[MD26] Sandbox realtime delivery and vendor integrations', () => {
   before(() => {
     cy.resetTestData();
   });
 
-  it('[TC526][MD26][P0] Sandbox vendor configuration preflight', () => {
-    cy.assertSandboxConfigured({ payos: true, fpt: true, ready: true });
+  it('[TC526][MD26][P0] Sandbox vendor configuration preflight', function () {
+    skipUnlessAnyVendor.call(this);
+    cy.assertSandboxConfigured({
+      payos: Cypress.env('usePayOSSandbox') === true,
+      fpt: Cypress.env('useFptSandbox') === true,
+      ready: true,
+    });
   });
 
-  it('[TC527][MD26][P0] PayOS sandbox payment link creation', () => {
+  it('[TC527][MD26][P0] PayOS sandbox payment link creation', function () {
+    skipUnlessPayOS.call(this);
     cy.assertSandboxConfigured({ payos: true, ready: true });
     cy.seedScenario('payos-vendor-checkout').then((scenario) => {
       expect(scenario.orderCode).to.be.greaterThan(0);
@@ -32,7 +56,8 @@ describe('[MD26] Sandbox realtime delivery and vendor integrations', () => {
     });
   });
 
-  it('[TC528][MD26][P0] PayOS full vendor webhook converts paid hold', () => {
+  it('[TC528][MD26][P0] PayOS full vendor webhook converts paid hold', function () {
+    skipUnlessPayOS.call(this);
     cy.assertSandboxConfigured({ payos: true, ready: true });
     cy.seedScenario('payos-vendor-checkout').then((scenario) => {
       expect(scenario.orderCode).to.be.greaterThan(0);
@@ -45,7 +70,8 @@ describe('[MD26] Sandbox realtime delivery and vendor integrations', () => {
     });
   });
 
-  it('[TC529][MD26][P1] FPT eKYC sandbox OCR and face compare', () => {
+  it('[TC529][MD26][P1] FPT eKYC sandbox OCR and face compare', function () {
+    skipUnlessFpt.call(this);
     cy.assertSandboxConfigured({ payos: false, fpt: true, ready: true });
     cy.loginAs('customerUnverified');
     cy.safeVisit('/Ekyc');

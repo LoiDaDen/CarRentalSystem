@@ -281,10 +281,14 @@ namespace CarRentalSystem.Services
                         t.Status == PaymentStatusConstants.Paid),
                     cancellationToken);
 
-            var pendingRefunds = await _context.RefundRequests.AsNoTracking()
+            var pendingRefunds = await _context.RefundRequests
+                .IgnoreQueryFilters()
+                .AsNoTracking()
                 .CountAsync(r => PendingRefundStatuses.Contains(r.Status), cancellationToken);
 
-            var pendingManualPayouts = await _context.RefundPayouts.AsNoTracking()
+            var pendingManualPayouts = await _context.RefundPayouts
+                .IgnoreQueryFilters()
+                .AsNoTracking()
                 .CountAsync(p =>
                     p.ApprovalState == PaymentStatusConstants.PendingManual ||
                     p.TransactionState == PaymentStatusConstants.PendingManual ||

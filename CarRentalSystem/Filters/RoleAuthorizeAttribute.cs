@@ -1,6 +1,7 @@
 // CarRentalSystem/Filters/RoleAuthorizeAttribute.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace CarRentalSystem.Filters;
@@ -52,13 +53,27 @@ public class RoleAuthorizeAttribute : ActionFilterAttribute
         if (!_allowedRoles.Contains(userRole, StringComparer.OrdinalIgnoreCase))
         {
             var logger = context.HttpContext.RequestServices.GetService<ILogger<RoleAuthorizeAttribute>>();
-            logger?.LogWarning(
-                "Access denied to {Controller}.{Action} for user {User} with role {Role}. Required: [{RequiredRoles}]",
-                context.RouteData.Values["controller"],
-                context.RouteData.Values["action"],
-                user.Identity?.Name,
-                userRole,
-                string.Join(", ", _allowedRoles));
+            var environment = context.HttpContext.RequestServices.GetService<IHostEnvironment>();
+            if (environment?.IsEnvironment("Cypress") == true)
+            {
+                logger?.LogDebug(
+                    "Access denied to {Controller}.{Action} for user {User} with role {Role}. Required: [{RequiredRoles}]",
+                    context.RouteData.Values["controller"],
+                    context.RouteData.Values["action"],
+                    user.Identity?.Name,
+                    userRole,
+                    string.Join(", ", _allowedRoles));
+            }
+            else
+            {
+                logger?.LogWarning(
+                    "Access denied to {Controller}.{Action} for user {User} with role {Role}. Required: [{RequiredRoles}]",
+                    context.RouteData.Values["controller"],
+                    context.RouteData.Values["action"],
+                    user.Identity?.Name,
+                    userRole,
+                    string.Join(", ", _allowedRoles));
+            }
 
             context.Result = new ObjectResult(new
             {

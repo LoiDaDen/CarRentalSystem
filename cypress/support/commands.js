@@ -46,18 +46,27 @@ Cypress.on('window:before:load', (win) => {
   });
 });
 
-Cypress.Commands.add('resetTestData', () => {
-  return cy.request({
-    method: 'POST',
-    url: '/__test/reset',
-    timeout: 120000,
-    failOnStatusCode: false,
-    headers: cypressSecretHeaders(),
-  }).then((response) => {
-    expect(response.status, JSON.stringify(response.body)).to.eq(200);
-    const seed = camelizeKeys(response.body);
-    Cypress.env('seed', seed);
-    return seed;
+Cypress.Commands.add('resetTestData', (options = {}) => {
+  const force = options.force === true || Cypress.env('resetEverySpec') === true;
+
+  return cy.task('getCypressSeed', null, { log: false }).then((existingSeed) => {
+    if (existingSeed && !force) {
+      Cypress.env('seed', existingSeed);
+      return existingSeed;
+    }
+
+    return cy.request({
+      method: 'POST',
+      url: '/__test/reset',
+      timeout: 120000,
+      failOnStatusCode: false,
+      headers: cypressSecretHeaders(),
+    }).then((response) => {
+      expect(response.status, JSON.stringify(response.body)).to.eq(200);
+      const seed = camelizeKeys(response.body);
+      Cypress.env('seed', seed);
+      return cy.task('setCypressSeed', seed, { log: false }).then(() => seed);
+    });
   });
 });
 

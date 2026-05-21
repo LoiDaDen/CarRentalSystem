@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace CarRentalSystem.Services
@@ -22,12 +23,17 @@ namespace CarRentalSystem.Services
     {
         private readonly IDataProtector _protector;
         private readonly ILogger<PiiEncryptionService> _logger;
+        private readonly bool _isCypressEnvironment;
 
-        public PiiEncryptionService(IDataProtectionProvider provider, ILogger<PiiEncryptionService> logger)
+        public PiiEncryptionService(
+            IDataProtectionProvider provider,
+            ILogger<PiiEncryptionService> logger,
+            IHostEnvironment environment)
         {
             // Purpose string = unique key per app/feature
             _protector = provider.CreateProtector("CarRentalSystem.PII.v1");
             _logger = logger;
+            _isCypressEnvironment = environment.IsEnvironment("Cypress");
         }
 
         public string Encrypt(string plainText)
@@ -46,7 +52,10 @@ namespace CarRentalSystem.Services
             catch (System.Security.Cryptography.CryptographicException)
             {
                 // Nếu data chưa được encrypt (legacy) → trả về nguyên bản
-                _logger.LogWarning("PII decrypt failed; returning legacy plaintext fallback. Length={Length}", cipherText.Length);
+                if (_isCypressEnvironment)
+                    _logger.LogDebug("PII decrypt failed; returning legacy plaintext fallback. Length={Length}", cipherText.Length);
+                else
+                    _logger.LogWarning("PII decrypt failed; returning legacy plaintext fallback. Length={Length}", cipherText.Length);
                 return cipherText;
             }
         }

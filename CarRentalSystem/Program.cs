@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Data.SqlClient;
 using Hangfire;
 using Hangfire.SqlServer;
 using DotNetEnv;
@@ -98,6 +99,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.ConfigureWarnings(warnings =>
     {
         warnings.Ignore(CoreEventId.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning);
+        warnings.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning);
     });
 });
 
@@ -522,6 +524,24 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseCors();
 
+var cypressResetCoordinator = new CypressResetCoordinator();
+if (app.Environment.IsEnvironment("Cypress"))
+{
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path;
+        if (cypressResetCoordinator.IsActive &&
+            !path.StartsWithSegments("/__test/reset") &&
+            !path.StartsWithSegments("/live"))
+        {
+            while (cypressResetCoordinator.IsActive && !context.RequestAborted.IsCancellationRequested)
+                await Task.Delay(TimeSpan.FromMilliseconds(100), context.RequestAborted);
+        }
+
+        await next();
+    });
+}
+
 // ═══════════════════════════════════════════════
 // 🚦 RATE LIMITING — Chống brute force & API abuse
 // ═══════════════════════════════════════════════
@@ -765,28 +785,138 @@ if (app.Environment.IsEnvironment("Cypress"))
         return scenario;
     }
 
+    async Task ClearCypressDataAsync(ApplicationDbContext db, CancellationToken cancellationToken)
+    {
+        const string sql = """
+DECLARE @sql nvarchar(max);
+
+SET @sql = N'';
+SELECT @sql = @sql +
+    N'ALTER TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(name) + N' NOCHECK CONSTRAINT ALL;' + CHAR(10)
+FROM sys.tables
+WHERE is_ms_shipped = 0
+  AND name <> N'__EFMigrationsHistory';
+IF LEN(@sql) > 0 EXEC sp_executesql @sql;
+
+SET @sql = N'';
+SELECT @sql = @sql +
+    N'DELETE FROM ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(name) + N';' + CHAR(10)
+FROM sys.tables
+WHERE is_ms_shipped = 0
+  AND name <> N'__EFMigrationsHistory';
+IF LEN(@sql) > 0 EXEC sp_executesql @sql;
+
+SET @sql = N'';
+SELECT @sql = @sql +
+    N'ALTER TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(name) + N' WITH CHECK CHECK CONSTRAINT ALL;' + CHAR(10)
+FROM sys.tables
+WHERE is_ms_shipped = 0
+  AND name <> N'__EFMigrationsHistory';
+IF LEN(@sql) > 0 EXEC sp_executesql @sql;
+""";
+
+        await db.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+    }
+
+    async Task<CypressSeedSummary> ResetCypressDatabaseAsync(
+        ApplicationDbContext db,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        db.Database.SetCommandTimeout(180);
+        var recreate = false;
+
+        try
+        {
+            recreate = !await db.Database.CanConnectAsync(cancellationToken) ||
+                       (await db.Database.GetPendingMigrationsAsync(cancellationToken)).Any();
+        }
+        catch
+        {
+            recreate = true;
+        }
+
+        if (recreate)
+        {
+            SqlConnection.ClearAllPools();
+            await db.Database.EnsureDeletedAsync(cancellationToken);
+            await db.Database.MigrateAsync(cancellationToken);
+        }
+        else
+        {
+            try
+            {
+                await ClearCypressDataAsync(db, cancellationToken);
+            }
+            catch (Exception clearEx)
+            {
+                logger.LogWarning(clearEx, "Fast Cypress data clear failed; retrying once before recreating the database.");
+                SqlConnection.ClearAllPools();
+                await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+
+                try
+                {
+                    await ClearCypressDataAsync(db, cancellationToken);
+                }
+                catch (Exception retryEx)
+                {
+                    logger.LogWarning(retryEx, "Fast Cypress data clear retry failed; recreating the database.");
+                    SqlConnection.ClearAllPools();
+                    await db.Database.EnsureDeletedAsync(cancellationToken);
+                    await db.Database.MigrateAsync(cancellationToken);
+                }
+            }
+        }
+
+        return await CypressTestDataSeeder.SeedAsync(db);
+    }
+
     app.MapPost("/__test/reset", async Task<IResult> (
         HttpContext httpContext,
         IServiceProvider services,
-        IConfiguration configuration) =>
+        IConfiguration configuration,
+        ILoggerFactory loggerFactory) =>
     {
         if (!HasCypressSecret(httpContext, configuration))
             return Results.Unauthorized();
 
-        await using var scope = services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var connectionString = db.Database.GetDbConnection().ConnectionString;
-        if (!connectionString.Contains("CarRentalSystem_Cypress", StringComparison.OrdinalIgnoreCase))
+        var logger = loggerFactory.CreateLogger("CypressReset");
+        cypressResetCoordinator.MarkActive();
+        await cypressResetCoordinator.Lock.WaitAsync(httpContext.RequestAborted);
+        try
         {
-            return Results.Problem(
-                "Refusing to reset a non-Cypress database. The connection string must target CarRentalSystem_Cypress.",
-                statusCode: StatusCodes.Status409Conflict);
-        }
+            await using var scope = services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var connectionString = db.Database.GetDbConnection().ConnectionString;
+            if (!connectionString.Contains("CarRentalSystem_Cypress", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.Problem(
+                    "Refusing to reset a non-Cypress database. The connection string must target CarRentalSystem_Cypress.",
+                    statusCode: StatusCodes.Status409Conflict);
+            }
 
-        await db.Database.EnsureDeletedAsync();
-        await db.Database.MigrateAsync();
-        var summary = await CypressTestDataSeeder.SeedAsync(db);
-        return Results.Json(summary);
+            SqlConnection.ClearAllPools();
+            var summary = await ResetCypressDatabaseAsync(db, logger, httpContext.RequestAborted);
+            SqlConnection.ClearAllPools();
+            return Results.Json(summary);
+        }
+        catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Cypress database reset failed.");
+            return Results.Problem(
+                $"Cypress database reset failed: {ex.Message}",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+        finally
+        {
+            SqlConnection.ClearAllPools();
+            cypressResetCoordinator.Lock.Release();
+            cypressResetCoordinator.MarkInactive();
+        }
     }).AllowAnonymous();
 
     app.MapGet("/__test/sandbox/status", async Task<IResult> (
@@ -1190,6 +1320,19 @@ public static class AppHost
 public sealed class CypressScenarioRequest
 {
     public string Name { get; set; } = string.Empty;
+}
+
+public sealed class CypressResetCoordinator
+{
+    private int _active;
+
+    public SemaphoreSlim Lock { get; } = new(1, 1);
+
+    public bool IsActive => Volatile.Read(ref _active) > 0;
+
+    public void MarkActive() => Interlocked.Increment(ref _active);
+
+    public void MarkInactive() => Interlocked.Decrement(ref _active);
 }
 
 public class HangfireAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter

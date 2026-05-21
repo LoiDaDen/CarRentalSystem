@@ -1,7 +1,9 @@
 param(
     [string]$BaseUrl = "http://localhost:5168",
     [string]$ResetSecret = "local-cypress-reset",
-    [string]$PublicBaseUrl = ""
+    [string]$PublicBaseUrl = "",
+    [ValidateSet("Mock", "Real")]
+    [string]$VendorMode = "Mock"
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,21 +14,35 @@ $testsPath = Join-Path $repoRoot "CarRentalSystem.Tests\CarRentalSystem.Tests.cs
 $outLog = Join-Path $repoRoot "carrental-cypress.out.log"
 $errLog = Join-Path $repoRoot "carrental-cypress.err.log"
 
+function Stop-ProcessTree {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+
+    Get-CimInstance Win32_Process -Filter "ParentProcessId=$ProcessId" -ErrorAction SilentlyContinue |
+        ForEach-Object { Stop-ProcessTree -ProcessId $_.ProcessId }
+
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+}
+
 Push-Location $repoRoot
 try {
     $env:ASPNETCORE_ENVIRONMENT = "Cypress"
     $env:DOTNET_ENVIRONMENT = "Cypress"
     $env:ASPNETCORE_URLS = $BaseUrl
     $env:Cypress__ResetSecret = $ResetSecret
-    $env:Cypress__UsePayOSSandbox = "true"
-    $env:Cypress__UseFptSandbox = "true"
-    $env:CYPRESS_USE_PAYOS_SANDBOX = "true"
-    $env:CYPRESS_USE_FPT_SANDBOX = "true"
+    $useRealVendors = $VendorMode -eq "Real"
+    $vendorFlag = if ($useRealVendors) { "true" } else { "false" }
+    $env:Cypress__UsePayOSSandbox = $vendorFlag
+    $env:Cypress__UseFptSandbox = $vendorFlag
+    $env:CYPRESS_USE_PAYOS_SANDBOX = $vendorFlag
+    $env:CYPRESS_USE_FPT_SANDBOX = $vendorFlag
+    $env:CYPRESS_VENDOR_MODE = $VendorMode
     $env:CYPRESS_RESET_SECRET = $ResetSecret
     if (-not [string]::IsNullOrWhiteSpace($PublicBaseUrl)) {
         $env:App__PublicBaseUrl = $PublicBaseUrl
     }
-    $env:ELECTRON_RUN_AS_NODE = $null
+    Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+
+    Write-Host "Cypress vendor mode: $VendorMode"
 
     dotnet build $projectPath
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -66,9 +82,12 @@ try {
             -TimeoutSec 10 `
             -Headers @{ "X-Cypress-Reset-Secret" = $ResetSecret }
         $sandboxStatus = $statusResponse.Content | ConvertFrom-Json
-        if (-not $sandboxStatus.ready) {
+        if (-not $sandboxStatus.isCypressDatabase) {
+            throw "Cypress safety check failed: DefaultConnection must target CarRentalSystem_Cypress."
+        }
+        if ($useRealVendors -and -not $sandboxStatus.ready) {
             $missing = ($sandboxStatus.missing -join ", ")
-            throw "Cypress vendor sandbox is not ready. Missing: $missing"
+            throw "Cypress real vendor sandbox is not ready. Missing: $missing"
         }
 
         npm.cmd run test:e2e:full
@@ -78,8 +97,8 @@ try {
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
     finally {
-        if ($app -and -not $app.HasExited) {
-            Stop-Process -Id $app.Id -Force
+        if ($app) {
+            Stop-ProcessTree -ProcessId $app.Id
         }
     }
 }

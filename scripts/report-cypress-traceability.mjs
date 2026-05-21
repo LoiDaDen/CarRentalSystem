@@ -40,12 +40,13 @@ const existingReport = fs.existsSync(reportJsonPath)
 const byId = new Map((existingReport.results || []).map((item) => [item.id, item]));
 const rows = matrix.cases.map((testCase) => {
   const result = byId.get(testCase.id);
+  const status = result?.status === 'pending' ? 'skipped' : result?.status;
   return {
     id: testCase.id,
     moduleCode: testCase.moduleCode,
     priority: testCase.priority,
     title: testCase.title,
-    status: result?.status || 'not-run',
+    status: status || 'not-run',
     spec: result?.spec || '',
     durationMs: result?.durationMs ?? null,
   };
@@ -55,6 +56,10 @@ const summary = rows.reduce((acc, row) => {
   acc[row.status] = (acc[row.status] || 0) + 1;
   return acc;
 }, {});
+const unlinkedFailures = existingReport.unlinkedFailures || [];
+if (unlinkedFailures.length) {
+  summary.unlinkedFailed = unlinkedFailures.length;
+}
 
 const report = {
   generatedAtUtc: new Date().toISOString(),
@@ -62,6 +67,7 @@ const report = {
   totalCases: rows.length,
   summary,
   results: rows,
+  unlinkedFailures,
 };
 
 fs.mkdirSync(path.dirname(reportJsonPath), { recursive: true });
@@ -78,6 +84,16 @@ const markdown = [
   '| TC | Module | Priority | Status | Spec | Title |',
   '| --- | --- | --- | --- | --- | --- |',
   ...rows.map((row) => `| ${row.id} | ${row.moduleCode} | ${row.priority} | ${row.status} | ${row.spec} | ${row.title.replace(/\|/g, '\\|')} |`),
+  '',
+  ...(unlinkedFailures.length
+    ? [
+        '## Cypress Failures Without TC ID',
+        '',
+        '| Status | Spec | Title |',
+        '| --- | --- | --- |',
+        ...unlinkedFailures.map((item) => `| ${item.status} | ${item.spec} | ${String(item.fullTitle || '').replace(/\|/g, '\\|')} |`),
+      ]
+    : []),
   '',
 ].join('\n');
 

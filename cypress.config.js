@@ -8,6 +8,13 @@ const addendumPath = path.resolve("cypress", "fixtures", "testcase-addendum.json
 const reportJsonPath = path.join(reportsDir, "testcase-traceability.json");
 const reportMdPath = path.join(reportsDir, "testcase-traceability.md");
 const testcaseResults = new Map();
+const unlinkedFailures = [];
+let cypressSeed = null;
+
+const normalizeStatus = (status) => {
+  if (status === "pending") return "skipped";
+  return status || "unknown";
+};
 
 const loadMatrix = () => {
   if (!fs.existsSync(matrixPath)) return null;
@@ -54,6 +61,9 @@ const writeTraceabilityReport = () => {
     acc[item.status] = (acc[item.status] || 0) + 1;
     return acc;
   }, {});
+  if (unlinkedFailures.length) {
+    summary.unlinkedFailed = unlinkedFailures.length;
+  }
 
   const report = {
     generatedAtUtc: new Date().toISOString(),
@@ -61,6 +71,7 @@ const writeTraceabilityReport = () => {
     totalCases: matrix.totalCases,
     summary,
     results,
+    unlinkedFailures,
   };
 
   fs.mkdirSync(reportsDir, { recursive: true });
@@ -77,6 +88,17 @@ const writeTraceabilityReport = () => {
     "| TC | Module | Priority | Status | Spec | Title |",
     "| --- | --- | --- | --- | --- | --- |",
     ...results.map((item) => `| ${item.id} | ${item.moduleCode} | ${item.priority} | ${item.status} | ${item.spec} | ${item.title.replace(/\|/g, "\\|")} |`),
+    "",
+    ...(unlinkedFailures.length
+      ? [
+          "## Cypress Failures Without TC ID",
+          "",
+          "| Status | Spec | Title |",
+          "| --- | --- | --- |",
+          ...unlinkedFailures.map((item) => `| ${item.status} | ${item.spec} | ${item.fullTitle.replace(/\|/g, "\\|")} |`),
+          "",
+        ]
+      : []),
     "",
   ].join("\n");
 
@@ -95,21 +117,49 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       on("before:run", () => {
         testcaseResults.clear();
+        unlinkedFailures.length = 0;
+        cypressSeed = null;
         fs.mkdirSync(reportsDir, { recursive: true });
         for (const file of [reportJsonPath, reportMdPath]) {
           if (fs.existsSync(file)) fs.rmSync(file, { force: true });
         }
       });
 
+      on("task", {
+        getCypressSeed() {
+          return cypressSeed;
+        },
+        setCypressSeed(seed) {
+          cypressSeed = seed;
+          return null;
+        },
+        clearCypressSeed() {
+          cypressSeed = null;
+          return null;
+        },
+      });
+
       on("after:spec", (spec, results) => {
         for (const test of results.tests || []) {
           const fullTitle = Array.isArray(test.title) ? test.title.join(" ") : String(test.title || "");
           const ids = fullTitle.match(/TC\d{3}/g) || [];
-          if (!ids.length) continue;
 
           const lastAttempt = test.attempts?.[test.attempts.length - 1];
-          const status = test.state || lastAttempt?.state || "unknown";
+          const status = normalizeStatus(test.state || lastAttempt?.state);
           const durationMs = (test.attempts || []).reduce((sum, attempt) => sum + (attempt.duration || 0), 0);
+
+          if (!ids.length) {
+            if (status === "failed") {
+              unlinkedFailures.push({
+                status,
+                spec: spec.relative,
+                fullTitle,
+                durationMs,
+                attempts: test.attempts?.length || 0,
+              });
+            }
+            continue;
+          }
 
           for (const id of ids) {
             testcaseResults.set(id, {
