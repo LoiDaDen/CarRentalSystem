@@ -5,7 +5,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "cypress run"
+    "test": "cypress run",
+    "test:cypress": "cypress run",
+    "test:e2e:full": "cypress run --browser chrome --spec \"cypress/e2e/**/*.cy.{js,jsx,ts,tsx}\"",
+    "test:e2e:sandbox": "cypress run --browser chrome --spec \"cypress/e2e/11-sandbox-realtime/**/*.cy.{js,jsx,ts,tsx}\"",
+    "testcases:extract": "node scripts/extract-cypress-testcases.mjs",
+    "testcases:report": "node scripts/report-cypress-traceability.mjs"
   },
   "devDependencies": {
     "cypress": "^13.7.0"

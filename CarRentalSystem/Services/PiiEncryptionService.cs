@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Logging;
 
 namespace CarRentalSystem.Services
 {
@@ -20,11 +21,13 @@ namespace CarRentalSystem.Services
     public class PiiEncryptionService : IPiiEncryptionService
     {
         private readonly IDataProtector _protector;
+        private readonly ILogger<PiiEncryptionService> _logger;
 
-        public PiiEncryptionService(IDataProtectionProvider provider)
+        public PiiEncryptionService(IDataProtectionProvider provider, ILogger<PiiEncryptionService> logger)
         {
             // Purpose string = unique key per app/feature
             _protector = provider.CreateProtector("CarRentalSystem.PII.v1");
+            _logger = logger;
         }
 
         public string Encrypt(string plainText)
@@ -43,6 +46,7 @@ namespace CarRentalSystem.Services
             catch (System.Security.Cryptography.CryptographicException)
             {
                 // Nếu data chưa được encrypt (legacy) → trả về nguyên bản
+                _logger.LogWarning("PII decrypt failed; returning legacy plaintext fallback. Length={Length}", cipherText.Length);
                 return cipherText;
             }
         }

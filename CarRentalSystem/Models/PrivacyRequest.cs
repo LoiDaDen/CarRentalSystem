@@ -27,8 +27,20 @@ namespace CarRentalSystem.Models
         public User? ReviewedByUser { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime DueAt { get; set; } = DateTime.UtcNow.AddDays(3);
         public DateTime? ReviewedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
+        public int? CompletedByUserID { get; set; }
+        public User? CompletedByUser { get; set; }
+
+        [MaxLength(200)]
+        public string RequestScope { get; set; } = "Account";
+
+        [MaxLength(500)]
+        public string? SecureExportPath { get; set; }
+
+        [MaxLength(30)]
+        public string IdentityVerificationStatus { get; set; } = "AuthenticatedSession";
 
         [Column(TypeName = "nvarchar(max)")]
         public string? ExportManifestJson { get; set; }

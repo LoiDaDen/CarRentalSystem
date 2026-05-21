@@ -1,6 +1,6 @@
 @model IEnumerable<CarRentalSystem.Models.PhysicalContract>
 @{
-    ViewData["Title"] = "Hop dong vat ly";
+    ViewData["Title"] = "Hợp đồng vật lý";
     var types = ViewBag.Types as IEnumerable<CarRentalSystem.Models.PhysicalContractType> ?? Enumerable.Empty<CarRentalSystem.Models.PhysicalContractType>();
     var statuses = ViewBag.Statuses as IEnumerable<string> ?? Enumerable.Empty<string>();
     var areas = ViewBag.Areas as IEnumerable<CarRentalSystem.Models.Area> ?? Enumerable.Empty<CarRentalSystem.Models.Area>();
@@ -14,8 +14,8 @@
 <div class="container-fluid px-0">
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
         <div>
-            <h1 class="h3 fw-bold mb-1" style="color: var(--admin-text);">Hop dong vat ly</h1>
-            <p class="mb-0" style="color: var(--admin-text-secondary);">Quan ly anh/PDF hop dong giay, bien ban ban giao va ho so xe theo khu vuc.</p>
+            <h1 class="h3 fw-bold mb-1" style="color: var(--admin-text);">Hợp đồng vật lý</h1>
+            <p class="mb-0" style="color: var(--admin-text-secondary);">Quản lý ảnh/PDF hợp đồng giấy, biên bản bàn giao và hồ sơ xe theo khu vực.</p>
         </div>
         <span class="badge bg-info-subtle text-info border border-info align-self-start align-self-lg-center">
             @Model.Count() tai lieu
@@ -31,9 +31,9 @@
                 @if (currentRole == CarRentalSystem.Models.UserRoleConstants.Admin)
                 {
                     <div class="col-md-4 col-xl-3">
-                        <label class="form-label small fw-bold">Khu vuc</label>
+                        <label class="form-label small fw-bold">Khu vực</label>
                         <select name="areaId" class="form-select">
-                            <option value="">Tat ca khu vuc</option>
+                            <option value="">Tất cả khu vực</option>
                             @foreach (var area in areas)
                             {
                                 <option value="@area.AreaID" selected="@(selectedAreaId == area.AreaID)">@area.Name - @area.Province</option>
@@ -46,9 +46,9 @@
                     <input name="q" value="@ViewBag.Query" class="form-control" placeholder="Ma, tieu de, bien so, booking..." />
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Loai hop dong</label>
+                    <label class="form-label small fw-bold">Loại hợp đồng</label>
                     <select name="typeCode" class="form-select">
-                        <option value="">Tat ca loai</option>
+                        <option value="">Tất cả loại</option>
                         @foreach (var type in types)
                         {
                             <option value="@type.Code" selected="@(selectedType == type.Code)">@type.Name</option>
@@ -58,7 +58,7 @@
                 <div class="col-md-4 col-xl-2">
                     <label class="form-label small fw-bold">Trang thai</label>
                     <select name="status" class="form-select">
-                        <option value="">Tat ca</option>
+                        <option value="">Tất cả</option>
                         @foreach (var item in statuses)
                         {
                             <option value="@item" selected="@(selectedStatus == item)">@item</option>
@@ -68,7 +68,7 @@
                 <div class="col-md-4 col-xl-2">
                     <label class="form-label small fw-bold">Dinh dang</label>
                     <select name="fileKind" class="form-select">
-                        <option value="">Tat ca</option>
+                        <option value="">Tất cả</option>
                         <option value="Pdf" selected="@(selectedFileKind == "Pdf")">PDF</option>
                         <option value="Image" selected="@(selectedFileKind == "Image")">Image</option>
                     </select>
@@ -112,7 +112,7 @@
                 }
                 <div class="col-md-6 col-xl-3">
                     <label class="form-label small fw-bold">Ten tai lieu</label>
-                    <input name="title" class="form-control" placeholder="VD: Hop dong thue xe da ky" />
+                    <input name="title" class="form-control" placeholder="VD: Hợp đồng thuê xe đã ký" />
                 </div>
                 <div class="col-md-3 col-xl-2">
                     <label class="form-label small fw-bold">Car ID</label>
@@ -145,7 +145,7 @@
                         <th>Tai lieu</th>
                         <th>Gan voi</th>
                         <th>AI goi y</th>
-                        <th>Loai xac nhan</th>
+                        <th>Loại xác nhận</th>
                         <th>Trang thai</th>
                         <th class="text-end">Thao tac</th>
                     </tr>
@@ -154,7 +154,7 @@
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">Khong co tai lieu phu hop bo loc.</td>
+                            <td colspan="6" class="text-center py-5 text-muted">Không có tài liệu phù hợp bộ lọc.</td>
                         </tr>
                     }
                     @foreach (var item in Model)
@@ -181,7 +181,7 @@
                                 }
                             </td>
                             <td style="min-width: 220px;">
-                                <div class="fw-semibold">@(suggestedType?.Name ?? item.SuggestedContractTypeCode ?? "Chua co")</div>
+                                <div class="fw-semibold">@(suggestedType?.Name ?? item.SuggestedContractTypeCode ?? "Chưa có")</div>
                                 <div class="small text-success">@(item.AiConfidence?.ToString("0") ?? "0")%</div>
                                 <div class="small text-muted text-truncate" style="max-width: 260px;">@item.AiReason</div>
                             </td>
@@ -200,7 +200,7 @@
                                             <option value="@type.PhysicalContractTypeID" selected="@selected">@type.Name</option>
                                         }
                                     </select>
-                                    <button type="submit" class="btn btn-sm btn-primary">Luu</button>
+                                    <button type="submit" class="btn btn-sm btn-primary">Lưu</button>
                                 </form>
                             </td>
                             <td>

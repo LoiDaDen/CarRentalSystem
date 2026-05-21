@@ -54,3 +54,5 @@ powershell -ExecutionPolicy Bypass -File scripts\Test-Phase2ProductionSafety.ps1
 - If EF tool version warnings appear, run `dotnet tool restore` and use `dotnet tool run dotnet-ef`.
 - Do not put production secrets in tracked JSON files.
 - Production-like staging must use explicit CORS origins, reCAPTCHA, privileged MFA, and audit hash chain.
+- If `bin\Debug\net10.0\CarRentalSystem.dll` is locked by a running app, stop the local app or build to a temporary output path for compile verification, then re-run the normal build once the lock is gone.
+- For Pass 2 audit work, update both `CAR_RENTAL_SYSTEM_TASKS.md` and `CAR_RENTAL_SYSTEM_FULL_AUDIT_100_PERCENT.md` with task status, evidence, and any blocker reason before handing off.

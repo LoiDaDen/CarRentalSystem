@@ -65,7 +65,7 @@ public class AreaAuthorizationHandler : AuthorizationHandler<IAuthorizationRequi
 
         bool succeeded = requirement switch
         {
-            AreaViewRequirement => HandleView(role),
+            AreaViewRequirement => await HandleViewAsync(userId, role, area),
             AreaCreateRequirement => HandleCreate(role),
             AreaUpdateRequirement => await HandleUpdateAsync(userId, role, area),
             AreaDeleteRequirement => await HandleDeleteAsync(userId, role, area),
@@ -80,15 +80,28 @@ public class AreaAuthorizationHandler : AuthorizationHandler<IAuthorizationRequi
         }
     }
 
-    private bool HandleView(string role) =>
-        ViewableRoles.Contains(role, StringComparer.OrdinalIgnoreCase);
+    private async Task<bool> HandleViewAsync(int userId, string role, Area? area)
+    {
+        if (!ViewableRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        if (string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return area == null
+            ? await HasAnyAreaAssignmentAsync(userId)
+            : await BelongsToAreaAsync(userId, area.AreaID);
+    }
+
+    private static bool IsSystemManager(string role) =>
+        string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
 
     private bool HandleCreate(string role) =>
-        role == "Manager";
+        IsSystemManager(role);
 
     private async Task<bool> HandleUpdateAsync(int userId, string role, Area? area)
     {
-        if (role == "Manager")
+        if (IsSystemManager(role))
             return true;
 
         if (area == null)
@@ -99,7 +112,7 @@ public class AreaAuthorizationHandler : AuthorizationHandler<IAuthorizationRequi
 
     private async Task<bool> HandleDeleteAsync(int userId, string role, Area? area)
     {
-        if (role != "Manager")
+        if (!IsSystemManager(role))
             return false;
 
         if (area == null)
@@ -111,7 +124,7 @@ public class AreaAuthorizationHandler : AuthorizationHandler<IAuthorizationRequi
 
     private async Task<bool> HandleManageStaffAsync(int userId, string role, Area? area)
     {
-        if (role == "Manager")
+        if (IsSystemManager(role))
             return true;
 
         if (area == null)
@@ -122,7 +135,7 @@ public class AreaAuthorizationHandler : AuthorizationHandler<IAuthorizationRequi
 
     private async Task<bool> HandleViewStatsAsync(int userId, string role, Area? area)
     {
-        if (role == "Manager")
+        if (IsSystemManager(role))
             return true;
 
         if (area == null)
@@ -140,7 +153,7 @@ public class AreaAuthorizationHandler : AuthorizationHandler<IAuthorizationRequi
             .IgnoreQueryFilters()
             .AnyAsync(asx => asx.UserID == userId
                            && asx.AreaID == areaId
-                           && asx.RoleInArea == "manager");
+                           && asx.RoleInArea.ToLower() == AreaStaffRoleConstants.Manager);
     }
 
     private async Task<bool> BelongsToAreaAsync(int userId, int areaId)
@@ -151,6 +164,16 @@ public class AreaAuthorizationHandler : AuthorizationHandler<IAuthorizationRequi
         return await db.AreaStaffs
             .IgnoreQueryFilters()
             .AnyAsync(asx => asx.UserID == userId && asx.AreaID == areaId);
+    }
+
+    private async Task<bool> HasAnyAreaAssignmentAsync(int userId)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        return await db.AreaStaffs
+            .IgnoreQueryFilters()
+            .AnyAsync(asx => asx.UserID == userId && !asx.IsDeleted);
     }
 
     private async Task<bool> HasActiveBookingInAreaAsync(int areaId)

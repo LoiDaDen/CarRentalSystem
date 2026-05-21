@@ -61,6 +61,8 @@
         @Html.AntiForgeryToken()
         <input type="hidden" name="BookingID" value="@booking?.BookingID" />
         <input type="hidden" name="Type" value="@ViewBag.Type" />
+        <input type="hidden" name="GeoLatitude" id="geoLatitude" />
+        <input type="hidden" name="GeoLongitude" id="geoLongitude" />
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4">
@@ -221,6 +223,13 @@
         
         function updateBlob() { 
             document.getElementById('signatureBase64').value = canvas.toDataURL('image/png'); 
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                document.getElementById('geoLatitude').value = position.coords.latitude.toFixed(6);
+                document.getElementById('geoLongitude').value = position.coords.longitude.toFixed(6);
+            }, function() {}, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
         }
         
         document.querySelector('form').addEventListener('submit', function(e) {

@@ -268,6 +268,7 @@ namespace CarRentalSystem.Services
             blog.Title = blog.Title.Trim();
             blog.Slug = await EnsureUniqueSlugAsync(string.IsNullOrWhiteSpace(blog.Slug) ? blog.Title : blog.Slug!, existingBlogId);
             blog.Summary = blog.Summary.Trim();
+            blog.Content = SanitizeBlogHtml(blog.Content);
             blog.AuthorName = string.IsNullOrWhiteSpace(blog.AuthorName) ? "CarRental Team" : blog.AuthorName.Trim();
             blog.Status = blog.Status == BlogStatusConstants.Published ? BlogStatusConstants.Published : BlogStatusConstants.Draft;
             blog.ReadingTime = blog.ReadingTime <= 0 ? EstimateReadingTime(blog.Content) : blog.ReadingTime;
@@ -327,6 +328,19 @@ namespace CarRentalSystem.Services
             var plain = Regex.Replace(content ?? string.Empty, "<.*?>", " ");
             var words = Regex.Matches(plain, @"\S+").Count;
             return Math.Max(1, (int)Math.Ceiling(words / 220.0));
+        }
+
+        private static string SanitizeBlogHtml(string? html)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+                return string.Empty;
+
+            var sanitized = Regex.Replace(html, @"<\s*(script|iframe|object|embed|form|input|button|textarea|select|meta|link|style)\b[^>]*>.*?<\s*/\s*\1\s*>", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            sanitized = Regex.Replace(sanitized, @"<\s*(script|iframe|object|embed|form|input|button|textarea|select|meta|link|style)\b[^>]*/?\s*>", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            sanitized = Regex.Replace(sanitized, @"\s+on[a-z]+\s*=\s*(['""]).*?\1", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            sanitized = Regex.Replace(sanitized, @"\s+on[a-z]+\s*=\s*[^\s>]+", string.Empty, RegexOptions.IgnoreCase);
+            sanitized = Regex.Replace(sanitized, @"(href|src)\s*=\s*(['""])\s*javascript:.*?\2", "$1=\"#\"", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            return sanitized;
         }
     }
 }

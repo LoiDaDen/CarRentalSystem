@@ -59,7 +59,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 Mock.Of<IReservationService>(),
                 Mock.Of<IBookingQuoteService>(),
                 Mock.Of<IPayOSPaymentService>(),
-                eligibility.Object);
+                eligibility.Object,
+                Mock.Of<ILegalComplianceService>());
 
             var httpContext = new DefaultHttpContext
             {
@@ -75,7 +76,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             urlHelper.Setup(u => u.Action(It.IsAny<UrlActionContext>())).Returns("/Cart");
             controller.Url = urlHelper.Object;
 
-            var result = await controller.CheckoutAll();
+            var result = await controller.CheckoutAll(true, true);
 
             result.Should().BeOfType<RedirectToActionResult>()
                 .Which.ActionName.Should().Be("Index");

@@ -85,6 +85,33 @@
                 <span asp-validation-for="Email" class="text-danger small"></span>
             </div>
 
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label asp-for="DateOfBirth" class="form-label fw-semibold">Ngay sinh</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                        <input asp-for="DateOfBirth" type="date" class="form-control py-3" autocomplete="bday" />
+                    </div>
+                    <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="CitizenId" class="form-label fw-semibold">CCCD</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person-vcard"></i></span>
+                        <input asp-for="CitizenId" class="form-control py-3" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="12 chu so" />
+                    </div>
+                    <span asp-validation-for="CitizenId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="DrivingLicenseNumber" class="form-label fw-semibold">GPLX</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-card-checklist"></i></span>
+                        <input asp-for="DrivingLicenseNumber" class="form-control py-3" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="12 chu so" />
+                    </div>
+                    <span asp-validation-for="DrivingLicenseNumber" class="text-danger small"></span>
+                </div>
+            </div>
+
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="Password" class="form-label fw-semibold">Mật khẩu</label>
@@ -112,6 +139,32 @@
                 </div>
                 <div class="form-text">Mã hợp lệ giảm 100.000đ cho lần thuê xe đầu tiên sau khi thanh toán PayOS thành công.</div>
                 <span asp-validation-for="ReferralCode" class="text-danger small"></span>
+            </div>
+
+            <div class="mt-4 p-3 border rounded-3 bg-light">
+                <div class="form-check mb-2">
+                    <input asp-for="AcceptTerms" class="form-check-input" required />
+                    <label asp-for="AcceptTerms" class="form-check-label small">
+                        Tôi đồng ý với
+                        <a asp-controller="Home" asp-action="Terms" class="fw-semibold text-decoration-none">Điều khoản sử dụng</a>.
+                    </label>
+                    <span asp-validation-for="AcceptTerms" class="text-danger small d-block"></span>
+                </div>
+                <div class="form-check mb-2">
+                    <input asp-for="AcceptPrivacyNotice" class="form-check-input" required />
+                    <label asp-for="AcceptPrivacyNotice" class="form-check-label small">
+                        Tôi đã đọc
+                        <a asp-controller="Home" asp-action="Privacy" class="fw-semibold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                    </label>
+                    <span asp-validation-for="AcceptPrivacyNotice" class="text-danger small d-block"></span>
+                </div>
+                <div class="form-check">
+                    <input asp-for="AcceptSensitiveDataProcessing" class="form-check-input" required />
+                    <label asp-for="AcceptSensitiveDataProcessing" class="form-check-label small">
+                        Tôi đồng ý để CarRental xử lý CCCD, GPLX, ngày sinh và dữ liệu liên quan nhằm xác minh điều kiện thuê xe tự lái.
+                    </label>
+                    <span asp-validation-for="AcceptSensitiveDataProcessing" class="text-danger small d-block"></span>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill py-3 mt-4 fw-bold">

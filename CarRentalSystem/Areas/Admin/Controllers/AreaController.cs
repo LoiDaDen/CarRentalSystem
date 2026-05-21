@@ -41,8 +41,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var currentUserId = GetCurrentUserId();
             var currentRole = GetCurrentRole();
 
-            // Lay danh sach khu vuc cua user (dung chung cho nhieu noi)
-            // Manager va Staff chi thay khu vuc duoc gan vao (qua AreaStaff).
+            // Lấy danh sách khu vực của user (dùng chung cho nhiều nơi)
+            // Manager và Staff chỉ thấy khu vực được gán vào (qua AreaStaff).
             // Admin thay tat ca.
             List<int> myAreaIds = new();
             if (currentRole == "Staff" || currentRole == "Manager")
@@ -86,7 +86,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.CurrentProvince = province;
             ViewBag.CurrentStatus = status;
 
-            // Quyen tao khu vuc: chi Manager/Staff co khu vuc duoc gan moi thay duoc
+            // Quyền tạo khu vực: chỉ Manager/Staff có khu vực được gán mới thấy được
             ViewBag.UserAreaIds = myAreaIds;
             ViewBag.CanCreateArea = currentRole == "Admin" || (currentRole == "Manager" && myAreaIds.Any());
 
@@ -648,7 +648,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         }
 
         // ═══════════════════════════════════════════════
-        // SET CURRENT AREA — Luu khu vuc dang lam viec vao cookie
+        // SET CURRENT AREA — lưu khu vực đang làm việc vào cookie
         // ═══════════════════════════════════════════════
         [HttpGet]
         public async Task<IActionResult> SetCurrentArea(int areaId, string? returnUrl)

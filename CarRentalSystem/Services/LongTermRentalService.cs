@@ -378,7 +378,7 @@ namespace CarRentalSystem.Services
                 if (booking?.Car == null || booking.User == null || !booking.ContractTypeID.HasValue)
                 {
                     result.IsSuccess = false;
-                    result.ErrorMessage = "Thong tin booking dai han khong hop le.";
+                    result.ErrorMessage = "Thông tin booking dài hạn không hợp lệ.";
                     return result;
                 }
 
@@ -585,12 +585,12 @@ DIEU 5: QUYEN LOI
 {(contractType.FreeInsurance ? "- Miễn phí bảo hiểm" : "")}
 
 DIEU 6: NGHIA VU
-- Bao quan xe dung cach, Thanh toan dung han
+- Bảo quản xe đúng cách, thanh toán đúng hạn
 - Báo cáo sự cố trong 24h, không cho thuê lại
 
 DIEU 7: HIEU LUC
-- Hieu luc khi dat coc thanh cong
-- Luu tru dien tu, co gia tri phap ly";
+- Hiệu lực khi đặt cọc thành công
+- Lưu trữ điện tử, có giá trị pháp lý";
 
             if (terms.Length > MAX_LENGTH)
             {

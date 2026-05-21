@@ -116,7 +116,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         {
             if (file == null || !await _fileValidation.IsAllowedImageOrPdfAsync(file, 12 * 1024 * 1024))
             {
-                TempData["Error"] = "Chi chap nhan anh/PDF hop dong toi da 12MB.";
+                TempData["Error"] = "Chỉ chấp nhận ảnh/PDF hợp đồng tối đa 12MB.";
                 return RedirectToAction(nameof(Index), new { areaId, bookingId, carId });
             }
 
@@ -169,7 +169,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 NewValues = JsonSerializer.Serialize(new { contract.BookingID, contract.CarID, contract.FileKind, contract.FileContentHash })
             });
 
-            TempData["Success"] = "Da upload hop dong. AI da goi y loai hop dong, vui long xac nhan.";
+            TempData["Success"] = "Đã upload hợp đồng. AI đã gợi ý loại hợp đồng, vui lòng xác nhận.";
             return RedirectToAction(nameof(Index), new { areaId, bookingId, carId });
         }
 
@@ -187,7 +187,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             contract.Status = "PendingConfirmation";
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Da phan loai lai tai lieu.";
+            TempData["Success"] = "Đã phân loại lại tài liệu.";
             return RedirectToAction(nameof(Index), new { areaId });
         }
 
@@ -207,7 +207,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             contract.ConfirmedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Da xac nhan loai hop dong.";
+            TempData["Success"] = "Đã xác nhận loại hợp đồng.";
             return RedirectToAction(nameof(Index), new { areaId });
         }
 

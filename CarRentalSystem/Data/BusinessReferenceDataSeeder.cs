@@ -126,8 +126,8 @@ namespace CarRentalSystem.Data
                     LicenseNumberHash = user.DrivingLicenseHash,
                     FrontImageUrl = user.DrivingLicenseUrl,
                     BackImageUrl = user.DrivingLicenseBackUrl,
-                    VerificationStatus = user.VerificationStatus,
-                    IsApproved = user.IsVerified && string.Equals(user.VerificationStatus, "Verified", StringComparison.OrdinalIgnoreCase),
+                    VerificationStatus = "Pending",
+                    IsApproved = false,
                     IsActive = true
                 });
             }

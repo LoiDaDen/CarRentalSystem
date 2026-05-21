@@ -63,7 +63,11 @@ namespace CarRentalSystem.Tests.Helpers
                 new BookingStatus { BookingStatusID = 3, Name = "Confirmed" },
                 new BookingStatus { BookingStatusID = 4, Name = "Cancelled" },
                 new BookingStatus { BookingStatusID = 5, Name = "Active" },
-                new BookingStatus { BookingStatusID = 6, Name = "Completed" }
+                new BookingStatus { BookingStatusID = 6, Name = "Completed" },
+                new BookingStatus { BookingStatusID = 7, Name = "Unpaid" },
+                new BookingStatus { BookingStatusID = 8, Name = "Rejected" },
+                new BookingStatus { BookingStatusID = 9, Name = "Expired" },
+                new BookingStatus { BookingStatusID = 10, Name = "NEED_REVIEW" }
             );
 
             context.CarStatuses.AddRange(

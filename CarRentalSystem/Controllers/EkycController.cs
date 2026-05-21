@@ -1,4 +1,5 @@
 ﻿using CarRentalSystem.Data;
+using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ namespace CarRentalSystem.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly IReferralService _referralService;
         private readonly IFileUploadValidationService _fileUploadValidation;
+        private readonly ILegalComplianceService _legalCompliance;
 
         public EkycController(
             ApplicationDbContext context,
@@ -25,7 +27,8 @@ namespace CarRentalSystem.Controllers
             IPiiEncryptionService piiEncryption,
             IWebHostEnvironment env,
             IReferralService referralService,
-            IFileUploadValidationService fileUploadValidation)
+            IFileUploadValidationService fileUploadValidation,
+            ILegalComplianceService legalCompliance)
         {
             _context = context;
             _ekycService = ekycService;
@@ -33,6 +36,7 @@ namespace CarRentalSystem.Controllers
             _env = env;
             _referralService = referralService;
             _fileUploadValidation = fileUploadValidation;
+            _legalCompliance = legalCompliance;
         }
 
         [HttpGet]
@@ -53,9 +57,12 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ScanIdCard(IFormFile idFront, IFormFile idBack)
+        public async Task<IActionResult> ScanIdCard(IFormFile idFront, IFormFile idBack, bool EkycPrivacyConsent, bool EkycBiometricConsent)
         {
-            // Bat buoc phai co ca mat truoc va mat sau CCCD
+            if (!EkycPrivacyConsent || !EkycBiometricConsent)
+                return Json(new { success = false, message = "Vui lòng đồng ý thông báo xử lý dữ liệu cá nhân và xử lý sinh trắc học trước khi quét CCCD." });
+
+            // Bắt buộc phải có cả mặt trước và mặt sau CCCD
             if (idFront == null)
                 return Json(new { success = false, message = "Vui lòng tải lên ảnh CCCD mặt trước." });
             if (idBack == null)
@@ -87,7 +94,7 @@ namespace CarRentalSystem.Controllers
             }
             catch (Exception)
             {
-                return Json(new { success = false, message = "Khong the xu ly eKYC luc nay. Vui long thu lai sau." });
+                return Json(new { success = false, message = "Không thể xử lý eKYC lúc này. Vui lòng thử lại sau." });
             }
         }
 
@@ -96,8 +103,11 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ScanLicense(IFormFile license)
+        public async Task<IActionResult> ScanLicense(IFormFile license, bool EkycPrivacyConsent)
         {
+            if (!EkycPrivacyConsent)
+                return Json(new { success = false, message = "Vui lòng đồng ý thông báo xử lý dữ liệu cá nhân trước khi quét GPLX." });
+
             if (license == null)
                 return Json(new { success = false, message = "Vui lòng tải lên ảnh GPLX." });
 
@@ -123,7 +133,7 @@ namespace CarRentalSystem.Controllers
             }
             catch (Exception)
             {
-                return Json(new { success = false, message = "Khong the xu ly eKYC luc nay. Vui long thu lai sau." });
+                return Json(new { success = false, message = "Không thể xử lý eKYC lúc này. Vui lòng thử lại sau." });
             }
         }
 
@@ -132,8 +142,11 @@ namespace CarRentalSystem.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> VerifyFace(IFormFile face, IFormFile idCard)
+        public async Task<IActionResult> VerifyFace(IFormFile face, IFormFile idCard, bool EkycPrivacyConsent, bool EkycBiometricConsent)
         {
+            if (!EkycPrivacyConsent || !EkycBiometricConsent)
+                return Json(new { success = false, message = "Vui lòng đồng ý xử lý dữ liệu cá nhân và dữ liệu sinh trắc học trước khi xác minh khuôn mặt." });
+
             if (face == null)
                 return Json(new { success = false, message = "Vui lòng tải lên ảnh selfie." });
             if (idCard == null)
@@ -162,7 +175,7 @@ namespace CarRentalSystem.Controllers
             }
             catch (Exception)
             {
-                return Json(new { success = false, message = "Khong the xu ly eKYC luc nay. Vui long thu lai sau." });
+                return Json(new { success = false, message = "Không thể xử lý eKYC lúc này. Vui lòng thử lại sau." });
             }
         }
 
@@ -183,6 +196,8 @@ namespace CarRentalSystem.Controllers
             IFormFile? license,
             IFormFile? licenseBack,
             IFormFile? face,
+            bool EkycPrivacyConsent,
+            bool EkycBiometricConsent,
             string? returnUrl)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -194,7 +209,12 @@ namespace CarRentalSystem.Controllers
             // --- Thu thap loi validate ---
             var validationErrors = new List<string>();
 
-            // Bat buoc: CCCD mat truoc
+            if (!EkycPrivacyConsent)
+                validationErrors.Add("Bạn phải đồng ý thông báo xử lý dữ liệu cá nhân trước khi gửi eKYC.");
+            if (!EkycBiometricConsent)
+                validationErrors.Add("Bạn phải đồng ý xử lý ảnh khuôn mặt/sinh trắc học và gửi dữ liệu cho FPT.AI để xác minh eKYC.");
+
+            // Bắt buộc: CCCD mặt trước
             if (idFront == null || idFront.Length == 0)
                 validationErrors.Add("Anh CCCD mat truoc la bat buoc.");
             else
@@ -202,7 +222,7 @@ namespace CarRentalSystem.Controllers
                 var err = await ValidateUploadedImageAsync(idFront); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat truoc: " + err);
             }
 
-            // Bat buoc: CCCD mat sau
+            // Bắt buộc: CCCD mặt sau
             if (idBack == null || idBack.Length == 0)
                 validationErrors.Add("Anh CCCD mat sau la bat buoc.");
             else
@@ -210,7 +230,7 @@ namespace CarRentalSystem.Controllers
                 var err = await ValidateUploadedImageAsync(idBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("CCCD mat sau: " + err);
             }
 
-            // Bat buoc: GPLX mat truoc
+            // Bắt buộc: GPLX mặt trước
             if (license == null || license.Length == 0)
                 validationErrors.Add("Anh GPLX mat truoc la bat buoc.");
             else
@@ -218,7 +238,7 @@ namespace CarRentalSystem.Controllers
                 var err = await ValidateUploadedImageAsync(license); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat truoc: " + err);
             }
 
-            // Bat buoc: GPLX mat sau
+            // Bắt buộc: GPLX mặt sau
             if (licenseBack == null || licenseBack.Length == 0)
                 validationErrors.Add("Anh GPLX mat sau la bat buoc.");
             else
@@ -226,7 +246,7 @@ namespace CarRentalSystem.Controllers
                 var err = await ValidateUploadedImageAsync(licenseBack); if (!string.IsNullOrEmpty(err)) validationErrors.Add("GPLX mat sau: " + err);
             }
 
-            // Bat buoc: Selfie
+            // Bắt buộc: Selfie
             if (face == null || face.Length == 0)
                 validationErrors.Add("Anh selfie la bat buoc.");
             else
@@ -240,6 +260,16 @@ namespace CarRentalSystem.Controllers
                 TempData["EkycWarnings"] = string.Join("|", validationErrors);
                 return RedirectAfterEkyc(returnUrl);
             }
+
+            var consentEvidence = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Form = "Ekyc/Submit",
+                Vendor = "FPT.AI",
+                Files = new[] { "CCCDFront", "CCCDBack", "DrivingLicenseFront", "DrivingLicenseBack", "Selfie" },
+                Purposes = new[] { "IdentityVerification", "DrivingLicenseValidation", "FaceMatch" }
+            });
+            await _legalCompliance.RecordConsentAsync(userId, LegalDocumentCodes.PrivacyNotice, ConsentPurposeCodes.EkycIdentityVerification, EkycPrivacyConsent, "Ekyc", HttpContext, consentEvidence);
+            await _legalCompliance.RecordConsentAsync(userId, LegalDocumentCodes.EkycBiometricConsent, ConsentPurposeCodes.EkycBiometricProcessing, EkycBiometricConsent, "Ekyc", HttpContext, consentEvidence);
 
             try
             {
@@ -297,11 +327,11 @@ namespace CarRentalSystem.Controllers
                     }
                     else if (idResult.IsProviderError)
                     {
-                        providerWarnings.Add($"Dich vu OCR CCCD chua san sang: {idResult.Message}");
+                        providerWarnings.Add($"Dịch vụ OCR CCCD chưa sẵn sàng: {idResult.Message}");
                     }
                     else
                     {
-                        providerWarnings.Add($"Chua doc duoc CCCD tu anh da tai len: {idResult.Message}");
+                        providerWarnings.Add($"Chưa đọc được CCCD từ ảnh đã tải lên: {idResult.Message}");
                     }
                 }
 
@@ -319,11 +349,11 @@ namespace CarRentalSystem.Controllers
                     }
                     else if (licResult.IsProviderError)
                     {
-                        providerWarnings.Add($"Dich vu OCR GPLX chua san sang: {licResult.Message}");
+                        providerWarnings.Add($"Dịch vụ OCR GPLX chưa sẵn sàng: {licResult.Message}");
                     }
                     else
                     {
-                        providerWarnings.Add($"Chua doc duoc GPLX tu anh da tai len: {licResult.Message}");
+                        providerWarnings.Add($"Chưa đọc được GPLX từ ảnh đã tải lên: {licResult.Message}");
                     }
                 }
 
@@ -388,7 +418,7 @@ namespace CarRentalSystem.Controllers
                 if (faceResult?.IsProviderError == true && errors.Count > 0)
                 {
                     errors.RemoveAt(errors.Count - 1);
-                    warnings.Add($"Chua the so sanh khuon mat voi CCCD: {faceResult.Message}. Ho so se duoc giu de xac minh lai.");
+                    warnings.Add($"Chưa thể so sánh khuôn mặt với CCCD: {faceResult.Message}. Hồ sơ sẽ được giữ để xác minh lại.");
                 }
 
                 EkycFaceResult? faceLicResult = null;
@@ -415,7 +445,7 @@ namespace CarRentalSystem.Controllers
                 if (faceLicResult?.IsProviderError == true && errors.Count > 0)
                 {
                     errors.RemoveAt(errors.Count - 1);
-                    warnings.Add($"Chua the so sanh selfie voi GPLX: {faceLicResult.Message}. Ho so se duoc giu de xac minh lai.");
+                    warnings.Add($"Chưa thể so sánh selfie với GPLX: {faceLicResult.Message}. Hồ sơ sẽ được giữ để xác minh lại.");
                 }
 
                 if (cccdReadSuccess)
@@ -542,7 +572,7 @@ namespace CarRentalSystem.Controllers
             }
             catch (Exception)
             {
-                TempData["ErrorMessage"] = "Qua trinh tai len gap loi. Vui long thu lai sau.";
+                TempData["ErrorMessage"] = "Quá trình tải lên gặp lỗi. Vui lòng thử lại sau.";
                 return RedirectAfterEkyc(returnUrl);
             }
         }
@@ -572,9 +602,9 @@ namespace CarRentalSystem.Controllers
             if (file == null || file.Length == 0) return null;
             var ext = Path.GetExtension(file.FileName)?.ToLowerInvariant();
             if (string.IsNullOrEmpty(ext))
-                return "File khong co duoi. Chi chap nhan: JPG, JPEG, PNG, WEBP.";
+                return "File không có đuôi. Chỉ chấp nhận: JPG, JPEG, PNG, WEBP.";
             if (!AllowedExtensions.Contains(ext))
-                return $"Dinh dang '{ext}' khong duoc chap nhan. Chi chap nhan: JPG, JPEG, PNG, WEBP.";
+                return $"Định dạng '{ext}' không được chấp nhận. Chỉ chấp nhận: JPG, JPEG, PNG, WEBP.";
             return null;
         }
 
@@ -582,7 +612,7 @@ namespace CarRentalSystem.Controllers
         {
             if (file == null) return null;
             if (file.Length > MaxFileSizeBytes)
-                return $"File qua lon ({file.Length / 1024 / 1024:F1}MB). Toi da 5MB.";
+                return $"File quá lớn ({file.Length / 1024 / 1024:F1}MB). Tối đa 5MB.";
             return null;
         }
 
@@ -597,7 +627,7 @@ namespace CarRentalSystem.Controllers
                 return sizeError;
 
             if (!await _fileUploadValidation.IsAllowedImageAsync(file, MaxFileSizeBytes))
-                return "File khong dung dinh dang anh hop le hoac noi dung khong khop duoi file.";
+                return "File không đúng định dạng ảnh hợp lệ hoặc nội dung không khớp đuôi file.";
 
             return null;
         }

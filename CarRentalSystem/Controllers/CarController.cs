@@ -16,13 +16,15 @@ namespace CarRentalSystem.Controllers
     public class CarController : Controller
     {
         private readonly ICarService _carService;
+        private readonly ISelfDrivePricingService _selfDrivePricingService;
 
         private readonly ApplicationDbContext _context; // Assuming ApplicationDbContext is the DbContext
 
-        public CarController(ICarService carService, ApplicationDbContext context) // Added DbContext to constructor
+        public CarController(ICarService carService, ApplicationDbContext context, ISelfDrivePricingService selfDrivePricingService) // Added DbContext to constructor
         {
             _carService = carService;
             _context = context; // Initialize DbContext
+            _selfDrivePricingService = selfDrivePricingService;
         }
 
         // Customer view: List all available cars with advanced filtering
@@ -54,6 +56,7 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.Reviews)
                 .Include(c => c.Bookings)
                 .Where(c => c.CarStatus!.Name == "Available")
+                .AsSplitQuery()
                 .AsQueryable();
 
             var regionCookie = HttpContext.Request.Cookies["RegionID"];
@@ -103,9 +106,8 @@ namespace CarRentalSystem.Controllers
             if (startDate.HasValue && endDate.HasValue && startDate.Value < endDate.Value)
             {
                 // Lọc các booking chưa hoàn thành hoặc đã hủy
-                var nonActiveStatuses = new[] { "Cancelled", "Completed" };
                 carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b =>
-                    b.BookingStatus != null && !nonActiveStatuses.Contains(b.BookingStatus.Name) &&
+                    b.BookingStatus != null && BookingStatusConstants.AvailabilityBlocking.Contains(b.BookingStatus.Name) &&
                     (
                       (startDate.Value >= b.StartDate && startDate.Value < b.EndDate) ||
                       (endDate.Value > b.StartDate && endDate.Value <= b.EndDate) ||
@@ -180,6 +182,7 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
+            var quoteStart = DateTime.UtcNow;
             var viewModel = new CarDetailsViewModel
             {
                 Car = car,
@@ -197,13 +200,13 @@ namespace CarRentalSystem.Controllers
                     .ToList() ?? new List<AmenityItem>(),
                 Pricing = new PricingPackages
                 {
-                    Price4h = Math.Round(car.PricePerDay * 0.25m / 10000m) * 10000m,
-                    Price8h = Math.Round(car.PricePerDay * 0.40m / 10000m) * 10000m,
-                    Price12h = Math.Round(car.PricePerDay * 0.55m / 10000m) * 10000m,
-                    Price24h = car.PricePerDay,
-                    DiscountPercent = 17,
-                    DepositAmount = 500000,
-                    InsuranceFee = 3000000
+                    Price4h = _selfDrivePricingService.Calculate(car, quoteStart, quoteStart.AddHours(4)).BaseRentalAmount,
+                    Price8h = _selfDrivePricingService.Calculate(car, quoteStart, quoteStart.AddHours(8)).BaseRentalAmount,
+                    Price12h = _selfDrivePricingService.Calculate(car, quoteStart, quoteStart.AddHours(12)).BaseRentalAmount,
+                    Price24h = _selfDrivePricingService.Calculate(car, quoteStart, quoteStart.AddHours(24)).BaseRentalAmount,
+                    DiscountPercent = 0,
+                    DepositAmount = car.DefaultDeposit,
+                    InsuranceFee = 0
                 }
             };
 
@@ -455,6 +458,9 @@ namespace CarRentalSystem.Controllers
                 return Json(new { success = false, message = "Không tìm thấy xe" });
 
             // Lấy tọa độ xe (ưu tiên Latitude/Longitude của xe, fallback về Location)
+            if (!car.DeliveryEnabled)
+                return Json(new { success = false, isWithinDeliveryScope = false, message = "Xe này chưa bật dịch vụ giao tận nơi." });
+
             var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
             var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
 
@@ -475,6 +481,21 @@ namespace CarRentalSystem.Controllers
             // Tính delivery
             var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
             var deliveryInfo = await deliveryService!.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
+            if (car.MaxDeliveryDistanceKm > 0 && (decimal)deliveryInfo.DistanceKm > car.MaxDeliveryDistanceKm)
+            {
+                return Json(new
+                {
+                    success = false,
+                    isWithinDeliveryScope = false,
+                    message = $"Vị trí giao xe cách {deliveryInfo.DistanceKm:F1} km, vượt quá phạm vi {car.MaxDeliveryDistanceKm:N0} km của xe này.",
+                    originProvince = scope.OriginProvince,
+                    destinationProvince = scope.DestinationProvince
+                });
+            }
+
+            var roundedDistance = Math.Round((decimal)deliveryInfo.DistanceKm, 2, MidpointRounding.AwayFromZero);
+            var billableKm = Math.Max(0m, Math.Ceiling(roundedDistance - car.FreeDeliveryRadiusKm));
+            var deliveryFee = billableKm * car.DeliveryFeePerKm;
 
             return Json(new {
                 success = true,
@@ -484,11 +505,11 @@ namespace CarRentalSystem.Controllers
                 destinationProvince = scope.DestinationProvince,
                 distanceKm = deliveryInfo.DistanceKm,
                 durationMinutes = deliveryInfo.DurationMinutes,
-                shippingFee = deliveryInfo.ShippingFee,
+                shippingFee = deliveryFee,
                 earliestPickupTime = deliveryInfo.EarliestPickupTime.ToString("yyyy-MM-ddTHH:mm"),
                 formattedDistance = deliveryInfo.FormattedDistance,
                 formattedDuration = deliveryInfo.FormattedDuration,
-                formattedFee = deliveryInfo.FormattedFee
+                formattedFee = $"{deliveryFee:N0} đ"
             });
         }
 
@@ -510,6 +531,9 @@ namespace CarRentalSystem.Controllers
 
             foreach (var car in cars)
             {
+                if (!car.DeliveryEnabled)
+                    continue;
+
                 var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
                 var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
                 var scope = deliveryScope.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, customerLat, customerLng);
@@ -517,6 +541,12 @@ namespace CarRentalSystem.Controllers
                     continue;
 
                 var delivery = await deliveryService.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
+                if (car.MaxDeliveryDistanceKm > 0 && (decimal)delivery.DistanceKm > car.MaxDeliveryDistanceKm)
+                    continue;
+
+                var roundedDistance = Math.Round((decimal)delivery.DistanceKm, 2, MidpointRounding.AwayFromZero);
+                var billableKm = Math.Max(0m, Math.Ceiling(roundedDistance - car.FreeDeliveryRadiusKm));
+                var deliveryFee = billableKm * car.DeliveryFeePerKm;
                 result.Add(new
                 {
                     carId = car.CarID,
@@ -527,10 +557,10 @@ namespace CarRentalSystem.Controllers
                     location = car.CarAddress ?? car.Location?.Name ?? "",
                     distanceKm = delivery.DistanceKm,
                     durationMinutes = delivery.DurationMinutes,
-                    shippingFee = delivery.ShippingFee,
+                    shippingFee = deliveryFee,
                     formattedDistance = delivery.FormattedDistance,
                     formattedDuration = delivery.FormattedDuration,
-                    formattedShippingFee = delivery.FormattedFee,
+                    formattedShippingFee = $"{deliveryFee:N0} đ",
                     earliestPickupTime = delivery.EarliestPickupTime,
                     originProvince = scope.OriginProvince,
                     destinationProvince = scope.DestinationProvince
@@ -565,6 +595,7 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.Reviews)
                 .Include(c => c.Bookings)
                 .Where(c => c.CarStatus!.Name == "Available")
+                .AsSplitQuery()
                 .AsQueryable();
 
             var regionCookie = HttpContext.Request.Cookies["RegionID"];
@@ -584,9 +615,8 @@ namespace CarRentalSystem.Controllers
 
             if (startDate != null && endDate != null && DateTime.TryParse(startDate, out var sDate) && DateTime.TryParse(endDate, out var eDate) && sDate < eDate)
             {
-                var nonActiveStatuses = new[] { "Cancelled", "Completed" };
                 carsQuery = carsQuery.Where(c => !c.Bookings!.Any(b =>
-                    b.BookingStatus != null && !nonActiveStatuses.Contains(b.BookingStatus.Name) &&
+                    b.BookingStatus != null && BookingStatusConstants.AvailabilityBlocking.Contains(b.BookingStatus.Name) &&
                     ((sDate >= b.StartDate && sDate < b.EndDate) ||
                      (eDate > b.StartDate && eDate <= b.EndDate) ||
                      (sDate <= b.StartDate && eDate >= b.EndDate))

@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using CarRentalSystem.Data;
@@ -30,6 +33,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IRecaptchaService> _mockRecaptchaService;
         private readonly Mock<IReferralService> _mockReferralService;
         private readonly Mock<IAuditTrailService> _mockAuditTrail;
+        private readonly Mock<ILegalComplianceService> _mockLegalCompliance;
         private readonly ApplicationDbContext _context;
         private readonly AuthController _controller;
 
@@ -42,7 +46,12 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockRecaptchaService = new Mock<IRecaptchaService>();
             _mockReferralService = new Mock<IReferralService>();
             _mockAuditTrail = new Mock<IAuditTrailService>();
+            _mockLegalCompliance = new Mock<ILegalComplianceService>();
             _context = MockRepositoryHelper.CreateSeededDbContext();
+            _mockLegalCompliance
+                .Setup(s => s.RecordConsentAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<HttpContext>(), It.IsAny<string?>()))
+                .ReturnsAsync((int userId, string documentCode, string purposeCode, bool isGranted, string source, HttpContext context, string? evidence) =>
+                    new ConsentRecord { UserID = userId, PurposeCode = purposeCode, IsGranted = isGranted, Source = source });
 
             _controller = CreateController(requireRecaptcha: false);
         }
@@ -65,7 +74,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 _mockRecaptchaService.Object,
                 _mockReferralService.Object,
                 configuration,
-                _mockAuditTrail.Object);
+                _mockAuditTrail.Object,
+                _mockLegalCompliance.Object);
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
@@ -95,7 +105,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
 
             // Assert
             result.Should().NotBeNull();
-            result!.ViewData["Error"].Should().Be("Dang nhap khong thanh cong do xac thuc bao mat that bai.");
+            result!.ViewData["Error"].Should().Be("Đăng nhập không thành công do xác thực bảo mật thất bại.");
             _mockAuthService.Verify(s => s.AuthenticateAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
@@ -176,6 +186,61 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         [Fact]
         [Trait("Module", "Auth")]
         [Trait("Type", "Unit")]
+        public void RegisterViewModel_RejectsInvalidSensitiveIdentifiers()
+        {
+            var model = new RegisterViewModel
+            {
+                Name = "Test",
+                Email = "test@example.com",
+                Phone = "abc",
+                Password = "secret1",
+                ConfirmPassword = "secret1",
+                DateOfBirth = DateTime.Today.AddYears(-20),
+                CitizenId = "123",
+                DrivingLicenseNumber = "bad-license"
+            };
+            var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+            var isValid = Validator.TryValidateObject(
+                model,
+                new ValidationContext(model),
+                results,
+                validateAllProperties: true);
+
+            isValid.Should().BeFalse();
+            var memberNames = results.SelectMany(r => r.MemberNames).ToList();
+            memberNames.Should().Contain(nameof(RegisterViewModel.Phone));
+            memberNames.Should().Contain(nameof(RegisterViewModel.CitizenId));
+            memberNames.Should().Contain(nameof(RegisterViewModel.DrivingLicenseNumber));
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public async Task Register_Post_ReturnsViewWithError_WhenUnder18()
+        {
+            var model = new RegisterViewModel
+            {
+                Email = "young@test.com",
+                Name = "Young User",
+                Phone = "0900000000",
+                Password = "secret1",
+                ConfirmPassword = "secret1",
+                DateOfBirth = DateTime.Today.AddYears(-17),
+                CitizenId = "012345678901",
+                DrivingLicenseNumber = "123456789012"
+            };
+
+            var result = await _controller.Register(model, null) as ViewResult;
+
+            result.Should().NotBeNull();
+            result!.ViewData["Error"]!.ToString().Should().Contain("18");
+            _mockAuthService.Verify(s => s.RegisterAsync(It.IsAny<User>()), Times.Never);
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
         public async Task Register_Post_ReturnsViewWithError_WhenModelStateInvalid()
         {
             // Arrange
@@ -204,7 +269,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
 
             // Assert
             result.Should().NotBeNull();
-            result!.ViewData["Error"].Should().Be("Email nay da duoc dang ky.");
+            result!.ViewData["Error"].Should().Be("Email này đã được đăng ký.");
         }
 
         [Fact]
@@ -230,7 +295,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
 
             // Assert
             result.Should().NotBeNull();
-            result!.ViewData["Error"].Should().Be("Dang ky khong thanh cong do xac thuc bao mat that bai.");
+            result!.ViewData["Error"].Should().Be("Đăng ký không thành công do xác thực bảo mật thất bại.");
             _mockAuthService.Verify(s => s.GetUserByEmailAsync(It.IsAny<string>()), Times.Never);
         }
     }

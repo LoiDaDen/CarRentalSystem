@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let estimatedDeliveryTime = null;
     let deliveryInScope = true;
     let deliveryScopeMessage = '';
+    let deliveryFeeQuote = null;
 
     // Delivery info display element
     let deliveryInfoEl = null;
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
         deliveryScopeMessage = message || '';
         deliveryDistanceKm = calculateDistance(carData.lat, carData.lng, lat, lng);
         deliveryDurationMinutes = deliveryDistanceKm > 0 ? (deliveryDistanceKm / 35) * 60 : 0;
+        deliveryFeeQuote = null;
         estimatedDeliveryTime = new Date(Date.now() + (60 + deliveryDurationMinutes) * 60000);
     }
 
@@ -35,11 +37,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 deliveryScopeMessage = data.message || 'Địa điểm giao xe nằm ngoài phạm vi hỗ trợ.';
                 deliveryDistanceKm = 0;
                 deliveryDurationMinutes = 0;
+                deliveryFeeQuote = 0;
             } else {
                 deliveryInScope = true;
                 deliveryScopeMessage = '';
                 deliveryDistanceKm = Number(data.distanceKm) || 0;
                 deliveryDurationMinutes = Number(data.durationMinutes) || 0;
+                deliveryFeeQuote = Number(data.shippingFee) || 0;
             }
         } catch (err) {
             console.error('Delivery quote error', err);
@@ -67,6 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         const coordsStr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                         const pickupCoords = document.getElementById('pickupCoords');
                         const finalLoc = document.getElementById('finalPickupLocation');
+                        const deliveryLatInput = document.getElementById('deliveryLatitudeInput');
+                        const deliveryLngInput = document.getElementById('deliveryLongitudeInput');
+                        if (deliveryLatInput) deliveryLatInput.value = lat.toFixed(6);
+                        if (deliveryLngInput) deliveryLngInput.value = lng.toFixed(6);
                         if (pickupCoords) pickupCoords.value = "Đang lấy địa chỉ...";
                         refreshDeliveryQuote(lat, lng);
                         
@@ -180,8 +188,13 @@ document.addEventListener('DOMContentLoaded', function () {
             // CUSTOMER PICKUP - no delivery fee, reset everything
             if(ownerDeliverySection) ownerDeliverySection.style.display = 'none';
             document.getElementById('finalPickupLocation').value = carData.address;
+            const deliveryLatInput = document.getElementById('deliveryLatitudeInput');
+            const deliveryLngInput = document.getElementById('deliveryLongitudeInput');
+            if (deliveryLatInput) deliveryLatInput.value = '';
+            if (deliveryLngInput) deliveryLngInput.value = '';
             deliveryDistanceKm = 0;
             deliveryDurationMinutes = 0;
+            deliveryFeeQuote = null;
         }
         updatePrices();
         updateDeliveryInfoDisplay();
@@ -208,6 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Calculate shipping fee: 3000đ/km
     function calculateShippingFee(distanceKm) {
+        if (deliveryFeeQuote !== null) return deliveryFeeQuote;
         if (distanceKm <= 0) return 0;
         const kmFee = Math.ceil(distanceKm) * 3000;
         return kmFee;
@@ -449,6 +463,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {
         bookingForm.addEventListener('submit', function(e) {
+            const deliveryLatInput = document.getElementById('deliveryLatitudeInput');
+            const deliveryLngInput = document.getElementById('deliveryLongitudeInput');
+            if (locOwner && locOwner.checked && (!deliveryLatInput?.value || !deliveryLngInput?.value)) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('ThÃ´ng bÃ¡o', 'Vui lÃ²ng chá»n Ä‘iá»ƒm giao xe trÃªn báº£n Ä‘á»“.', 'warning');
+                } else {
+                    alert('Vui lÃ²ng chá»n Ä‘iá»ƒm giao xe trÃªn báº£n Ä‘á»“.');
+                }
+                return;
+            }
             if (locOwner && locOwner.checked && !deliveryInScope) {
                 e.preventDefault();
                 if (typeof Swal !== 'undefined') {

@@ -42,7 +42,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         {
             var userId = CurrentUserId();
             await _settlementReview.CreateAsync(bookingId, reviewType, amount, reason, userId, handoverId);
-            TempData["Success"] = "Da tao settlement review.";
+            TempData["Success"] = "Đã tạo settlement review.";
             return RedirectToAction(nameof(Index));
         }
 

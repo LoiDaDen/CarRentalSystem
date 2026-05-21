@@ -18,6 +18,9 @@
                     {
                         <div class="alert alert-light">
                             <strong>Request ID:</strong> <code>@Model.RequestId</code>
+                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="copyRequestId" data-request-id="@Model.RequestId">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
                         </div>
                     }
                     
@@ -25,9 +28,22 @@
                         <a href="/" class="btn btn-primary btn-lg px-5">
                             <i class="bi bi-house me-2"></i>Quay về trang chủ
                         </a>
+                        <a href="mailto:support@carrental.local?subject=Error%20Request%20ID%20@Model?.RequestId" class="btn btn-outline-secondary btn-lg px-4 ms-2">
+                            <i class="bi bi-envelope me-2"></i>Báo lỗi
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('copyRequestId')?.addEventListener('click', async (event) => {
+            const id = event.currentTarget.getAttribute('data-request-id') || '';
+            await navigator.clipboard?.writeText(id);
+            event.currentTarget.innerHTML = '<i class="bi bi-check2"></i>';
+        });
+    </script>
+}

@@ -5,7 +5,6 @@ using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.ViewModels;
 using Microsoft.EntityFrameworkCore;
-using PayOS;
 using PayOS.Models.V2.PaymentRequests;
 using PayOS.Models.Webhooks;
 
@@ -27,15 +26,15 @@ namespace CarRentalSystem.Services
         private readonly IReferralService _referralService;
         private readonly ILongTermRentalService _longTermRentalService;
         private readonly IAuditTrailService _auditTrail;
-        private readonly PayOSClient? _payOS;
+        private readonly IPayOSGateway _payOSGateway;
         private readonly ILogger<PayOSPaymentService> _logger;
 
-        public bool IsConfigured => _payOS != null;
+        public bool IsConfigured => _payOSGateway.IsConfigured;
 
         public PayOSPaymentService(
             ApplicationDbContext context,
             IEmailService emailService,
-            IConfiguration configuration,
+            IPayOSGateway payOSGateway,
             IPaymentLedgerService ledger,
             IPaymentTransitionService paymentTransition,
             IReservationService reservationService,
@@ -46,6 +45,7 @@ namespace CarRentalSystem.Services
         {
             _context = context;
             _emailService = emailService;
+            _payOSGateway = payOSGateway;
             _ledger = ledger;
             _paymentTransition = paymentTransition;
             _reservationService = reservationService;
@@ -53,27 +53,11 @@ namespace CarRentalSystem.Services
             _longTermRentalService = longTermRentalService;
             _auditTrail = auditTrail;
             _logger = logger;
-
-            var clientId = configuration["PayOS:ClientId"] ?? string.Empty;
-            var apiKey = configuration["PayOS:ApiKey"] ?? string.Empty;
-            var checksumKey = configuration["PayOS:ChecksumKey"] ?? string.Empty;
-
-            if (!string.IsNullOrWhiteSpace(clientId) &&
-                !string.IsNullOrWhiteSpace(apiKey) &&
-                !string.IsNullOrWhiteSpace(checksumKey))
-            {
-                _payOS = new PayOSClient(new PayOSOptions
-                {
-                    ClientId = clientId,
-                    ApiKey = apiKey,
-                    ChecksumKey = checksumKey
-                });
-            }
         }
 
         public async Task<PayOSCreatePaymentResult> CreateHoldPaymentAsync(BookingHold hold, CheckoutQuoteViewModel quote, string baseUrl)
         {
-            if (_payOS == null)
+            if (!IsConfigured)
                 return new PayOSCreatePaymentResult(false, null, "PayOS is not configured.", null);
 
             if (quote.HoldingFee <= 0)
@@ -119,7 +103,7 @@ namespace CarRentalSystem.Services
                 _context.PayOSTransactions.Add(transaction);
                 await _context.SaveChangesAsync();
 
-                var response = await _payOS.PaymentRequests.CreateAsync(request);
+                var response = await _payOSGateway.CreatePaymentLinkAsync(request);
                 ApplyPayOSResponse(transaction, response);
 
                 await _ledger.RecordAsync(new PaymentLedgerEntry
@@ -145,7 +129,7 @@ namespace CarRentalSystem.Services
 
         public async Task<PayOSCreatePaymentResult> CreateCartHoldPaymentAsync(BookingTransaction cartTransaction, decimal holdingFee, string baseUrl)
         {
-            if (_payOS == null)
+            if (!IsConfigured)
                 return new PayOSCreatePaymentResult(false, null, "PayOS is not configured.", null);
 
             if (holdingFee <= 0)
@@ -188,7 +172,7 @@ namespace CarRentalSystem.Services
                 _context.PayOSTransactions.Add(transaction);
                 await _context.SaveChangesAsync();
 
-                var response = await _payOS.PaymentRequests.CreateAsync(request);
+                var response = await _payOSGateway.CreatePaymentLinkAsync(request);
                 ApplyPayOSResponse(transaction, response);
 
                 await _ledger.RecordAsync(new PaymentLedgerEntry
@@ -215,7 +199,7 @@ namespace CarRentalSystem.Services
 
         public async Task<PayOSCreatePaymentResult> CreateDepositPaymentAsync(Booking booking, string returnUrl, string cancelUrl)
         {
-            if (_payOS == null)
+            if (!IsConfigured)
                 return new PayOSCreatePaymentResult(false, null, "PayOS is not configured.", null);
 
             var existingPaid = await _context.Payments
@@ -296,7 +280,7 @@ namespace CarRentalSystem.Services
 
             try
             {
-                var response = await _payOS.PaymentRequests.CreateAsync(request);
+                var response = await _payOSGateway.CreatePaymentLinkAsync(request);
                 ApplyPayOSResponse(transaction, response);
 
                 await _ledger.RecordAsync(new PaymentLedgerEntry
@@ -328,12 +312,12 @@ namespace CarRentalSystem.Services
 
         public async Task<PayOSWebhookResult> HandleWebhookAsync(Webhook webhookData)
         {
-            if (_payOS == null)
+            if (!IsConfigured)
                 return new PayOSWebhookResult(false, false, "PayOS not configured", null, null);
 
             var rawPayload = JsonSerializer.Serialize(webhookData);
             var payloadHash = ComputeSha256(rawPayload);
-            var data = await _payOS.Webhooks.VerifyAsync(webhookData);
+            var data = await _payOSGateway.VerifyWebhookAsync(webhookData);
             if (data == null)
                 return new PayOSWebhookResult(false, false, "Invalid webhook signature", null, null);
 
@@ -415,13 +399,13 @@ namespace CarRentalSystem.Services
 
         public async Task<PayOSWebhookResult> ReconcilePaymentAsync(long orderCode, string source)
         {
-            if (_payOS == null)
+            if (!IsConfigured)
                 return new PayOSWebhookResult(false, false, "PayOS not configured", null, null);
 
             PaymentLink paymentLink;
             try
             {
-                paymentLink = await _payOS.PaymentRequests.GetAsync(orderCode);
+                paymentLink = await _payOSGateway.GetPaymentLinkAsync(orderCode);
             }
             catch (Exception ex)
             {
@@ -688,8 +672,19 @@ namespace CarRentalSystem.Services
                     ContractTypeID = quote.ContractTypeID,
                     DiscountAmount = quote.DiscountAmount,
                     DeliveryAddress = quote.DeliveryAddress,
+                    DeliveryMode = quote.DeliveryMode,
+                    DeliveryLatitude = quote.DeliveryLatitude,
+                    DeliveryLongitude = quote.DeliveryLongitude,
+                    DeliveryDistanceKm = quote.DeliveryDistanceKm,
+                    DeliveryEtaMinutes = quote.DeliveryEtaMinutes,
+                    DeliveryQuotedAt = quote.DeliveryQuotedAt,
                     DeliveryFee = quote.DeliveryFee,
-                    AddOnFee = quote.AddOnFee
+                    AddOnFee = quote.AddOnFee,
+                    TermsDocumentVersionID = quote.TermsDocumentVersionID,
+                    PrivacyNoticeVersionID = quote.PrivacyNoticeVersionID,
+                    SelfDriveAgreementAcceptedAt = quote.SelfDriveAgreementAcceptedAt,
+                    SelfDriveAgreementIpAddress = quote.SelfDriveAgreementIpAddress,
+                    SelfDriveAgreementUserAgent = quote.SelfDriveAgreementUserAgent
                 };
                 _context.Bookings.Add(booking);
                 await _context.SaveChangesAsync();
@@ -753,7 +748,7 @@ namespace CarRentalSystem.Services
                 await _auditTrail.RecordAsync(new AuditLog
                 {
                     Action = "Tạo đơn sau thanh toán",
-                    EntityType = "Thanh toan",
+                    EntityType = "Thanh toán",
                     EntityId = booking.BookingID,
                     UserId = hold.UserID,
                     UserName = quote.CustomerName,
@@ -904,8 +899,19 @@ namespace CarRentalSystem.Services
                         ContractTypeID = quote.ContractTypeID,
                         DiscountAmount = quote.DiscountAmount,
                         DeliveryAddress = quote.DeliveryAddress,
+                        DeliveryMode = quote.DeliveryMode,
+                        DeliveryLatitude = quote.DeliveryLatitude,
+                        DeliveryLongitude = quote.DeliveryLongitude,
+                        DeliveryDistanceKm = quote.DeliveryDistanceKm,
+                        DeliveryEtaMinutes = quote.DeliveryEtaMinutes,
+                        DeliveryQuotedAt = quote.DeliveryQuotedAt,
                         DeliveryFee = quote.DeliveryFee,
-                        AddOnFee = quote.AddOnFee
+                        AddOnFee = quote.AddOnFee,
+                        TermsDocumentVersionID = quote.TermsDocumentVersionID,
+                        PrivacyNoticeVersionID = quote.PrivacyNoticeVersionID,
+                        SelfDriveAgreementAcceptedAt = quote.SelfDriveAgreementAcceptedAt,
+                        SelfDriveAgreementIpAddress = quote.SelfDriveAgreementIpAddress,
+                        SelfDriveAgreementUserAgent = quote.SelfDriveAgreementUserAgent
                     };
                     _context.Bookings.Add(booking);
                     await _context.SaveChangesAsync();
@@ -982,7 +988,7 @@ namespace CarRentalSystem.Services
                 await _auditTrail.RecordAsync(new AuditLog
                 {
                     Action = "Tạo đơn giỏ hàng sau thanh toán",
-                    EntityType = "Thanh toan",
+                    EntityType = "Thanh toán",
                     EntityId = bookingTransaction.TransactionID,
                     UserId = bookingTransaction.UserID,
                     Description = $"PayOS confirmed {transaction.Amount:N0} VND. Created {createdBookings.Count} bookings from cart transaction #{bookingTransaction.TransactionID}.",
@@ -1014,18 +1020,12 @@ namespace CarRentalSystem.Services
         {
             foreach (var line in quote.AddOns.Where(a => a.TotalPrice > 0))
             {
-                var addOn = await _context.AddOns.FirstOrDefaultAsync(a => a.Name == line.Name);
+                var addOn = line.AddOnID.HasValue
+                    ? await _context.AddOns.FirstOrDefaultAsync(a => a.AddOnID == line.AddOnID.Value && a.IsActive)
+                    : await _context.AddOns.FirstOrDefaultAsync(a => a.Name == line.Name && a.PricePerDay == line.UnitPrice && a.IsActive);
+
                 if (addOn == null)
-                {
-                    addOn = new AddOn
-                    {
-                        Name = line.Name,
-                        PricePerDay = line.UnitPrice,
-                        IsActive = true
-                    };
-                    _context.AddOns.Add(addOn);
-                    await _context.SaveChangesAsync();
-                }
+                    throw new InvalidOperationException($"Add-on '{line.Name}' không tồn tại hoặc không còn hoạt động.");
 
                 _context.BookingAddOns.Add(new BookingAddOn
                 {
@@ -1110,11 +1110,14 @@ namespace CarRentalSystem.Services
 
         private async Task<long> GenerateUniqueOrderCodeAsync(int seed)
         {
-            for (var i = 0; i < 10; i++)
+            for (var i = 0; i < 25; i++)
             {
-                var candidate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000 + (seed % 1000) + i;
+                var jitter = RandomNumberGenerator.GetInt32(0, 1000);
+                var candidate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000 + jitter;
                 if (!await _context.PayOSTransactions.AnyAsync(t => t.OrderCode == candidate))
                     return candidate;
+
+                await Task.Delay(RandomNumberGenerator.GetInt32(2, 15));
             }
 
             throw new InvalidOperationException("Could not generate a unique PayOS order code.");

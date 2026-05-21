@@ -36,7 +36,9 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IBookingTransitionService> _mockBookingTransitionService;
         private readonly Mock<IPaymentTransitionService> _mockPaymentTransitionService;
         private readonly Mock<ISettlementReviewService> _mockSettlementReviewService;
+        private readonly Mock<IPiiEncryptionService> _mockPiiEncryptionService;
         private readonly Mock<ILogger<BookingController>> _mockLogger;
+        private readonly Mock<ILegalComplianceService> _mockLegalCompliance;
 
         public BookingControllerTests()
         {
@@ -53,7 +55,19 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockBookingTransitionService = new Mock<IBookingTransitionService>();
             _mockPaymentTransitionService = new Mock<IPaymentTransitionService>();
             _mockSettlementReviewService = new Mock<ISettlementReviewService>();
+            _mockPiiEncryptionService = new Mock<IPiiEncryptionService>();
             _mockLogger = new Mock<ILogger<BookingController>>();
+            _mockLegalCompliance = new Mock<ILegalComplianceService>();
+            _mockLegalCompliance
+                .Setup(s => s.GetActiveDocumentAsync(It.IsAny<string>()))
+                .ReturnsAsync((string code) => new LegalDocumentVersion { LegalDocumentVersionID = 1, Code = code, Version = "test", Title = code, ContentHash = "hash" });
+            _mockLegalCompliance
+                .Setup(s => s.RecordConsentAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<HttpContext>(), It.IsAny<string?>()))
+                .ReturnsAsync((int userId, string documentCode, string purposeCode, bool isGranted, string source, HttpContext context, string? evidence) =>
+                    new ConsentRecord { UserID = userId, PurposeCode = purposeCode, IsGranted = isGranted, Source = source });
+            _mockPiiEncryptionService
+                .Setup(s => s.DecryptIfNotEmpty(It.IsAny<string?>()))
+                .Returns((string? value) => value);
             _mockEligibilityService
                 .Setup(s => s.CheckRentalEligibilityAsync(It.IsAny<int>()))
                 .ReturnsAsync(new EligibilityResult(true, null));
@@ -79,7 +93,9 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 _mockBookingTransitionService.Object,
                 _mockPaymentTransitionService.Object,
                 _mockSettlementReviewService.Object,
+                _mockPiiEncryptionService.Object,
                 _mockLogger.Object,
+                _mockLegalCompliance.Object,
                 _context);
 
             var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, loggedInUserId.ToString()) };
@@ -157,10 +173,82 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             };
 
             // Act
-            var result = await controller.Book(booking, true, null, 0, null) as RedirectToActionResult;
+            var result = await controller.Book(booking, true, true, null, 0, null) as RedirectToActionResult;
 
             // Assert — Có thể redirect hoặc NotFound tùy vào car có tồn tại không
             // Test xác minh không bị crash/exception
+        }
+
+        [Fact]
+        [Trait("Module", "Booking")]
+        [Trait("Type", "Regression")]
+        public async Task CustomerConfirmReturn_CapsLateFeeAtOneRentalDay()
+        {
+            var activeStatus = await _context.BookingStatuses.FindAsync(5);
+            var booking = new Booking
+            {
+                UserID = 2,
+                CarID = 1,
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                EndDate = DateTime.UtcNow.AddHours(-10),
+                BookingStatusID = activeStatus!.BookingStatusID,
+                DepositStatus = DepositStatusConstants.Holding,
+                DepositAmount = 5_000_000m,
+                TotalPrice = 1_000_000m,
+                TotalHours = 24,
+                PickupLocationID = 1,
+                ReturnLocationID = 1
+            };
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync();
+
+            var car = await _context.Cars.FindAsync(1);
+            car!.PricePerDay = 1_000_000m;
+            car.OverTimeFee = 500_000m;
+
+            _context.HandoverRecords.Add(new HandoverRecord
+            {
+                BookingID = booking.BookingID,
+                Type = "CheckOut",
+                Odo = 1200,
+                FuelLevel = "F"
+            });
+            await _context.SaveChangesAsync();
+
+            _mockBookingTransitionService
+                .Setup(s => s.TransitionAsync(
+                    booking.BookingID,
+                    BookingStatusConstants.Completed,
+                    2,
+                    "Customer",
+                    It.IsAny<string?>()))
+                .ReturnsAsync(new BookingTransitionResult(true, null));
+            _mockPaymentTransitionService
+                .Setup(s => s.SetBookingDepositStatusAsync(
+                    booking.BookingID,
+                    DepositStatusConstants.UnderReview,
+                    2,
+                    "Customer",
+                    It.IsAny<string>()))
+                .ReturnsAsync(new PaymentTransitionResult(true, "ok"));
+            _mockSettlementReviewService
+                .Setup(s => s.CreateAsync(
+                    booking.BookingID,
+                    SettlementReviewTypeConstants.Late,
+                    It.IsAny<decimal>(),
+                    It.IsAny<string>(),
+                    2,
+                    It.IsAny<int?>()))
+                .ReturnsAsync(new SettlementReview { BookingID = booking.BookingID, ReviewType = SettlementReviewTypeConstants.Late });
+
+            var controller = CreateController(loggedInUserId: 2);
+
+            var result = await controller.CustomerConfirmReturn(booking.BookingID);
+
+            result.Should().BeOfType<RedirectToActionResult>();
+            var updated = await _context.Bookings.FindAsync(booking.BookingID);
+            updated!.LateFeeAmount.Should().Be(1_000_000m);
+            updated.LateFeeAmount.Should().BeLessThanOrEqualTo(car.PricePerDay);
         }
 
         public void Dispose()

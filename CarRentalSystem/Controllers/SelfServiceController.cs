@@ -20,7 +20,8 @@ namespace CarRentalSystem.Controllers
         {
             var userId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : 0;
             if (userId == 0) return Unauthorized();
-            return Json(await _selfService.GetSummaryAsync(userId));
+            var summary = await _selfService.GetSummaryAsync(userId);
+            return Json(new { success = true, summary });
         }
     }
 }

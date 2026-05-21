@@ -24,7 +24,7 @@ namespace CarRentalSystem.Controllers
             if (userId == null) return Unauthorized();
 
             await _privacyRequests.CreateAsync(userId.Value, PrivacyRequestTypeConstants.Export, reason);
-            TempData["Success"] = "Yeu cau xuat du lieu da duoc ghi nhan va se duoc xem xet.";
+            TempData["Success"] = "Yêu cầu xuất dữ liệu đã được ghi nhận và sẽ được xem xét.";
             return RedirectToAction("Profile", "Auth");
         }
 
@@ -36,7 +36,7 @@ namespace CarRentalSystem.Controllers
             if (userId == null) return Unauthorized();
 
             await _privacyRequests.CreateAsync(userId.Value, PrivacyRequestTypeConstants.Delete, reason);
-            TempData["Success"] = "Yeu cau xoa/anonymize du lieu da duoc ghi nhan de Admin xem xet.";
+            TempData["Success"] = "Yêu cầu xóa/anonymize dữ liệu đã được ghi nhận để Admin xem xét.";
             return RedirectToAction("Profile", "Auth");
         }
 

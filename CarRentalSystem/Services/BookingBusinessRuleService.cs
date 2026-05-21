@@ -44,29 +44,7 @@ namespace CarRentalSystem.Services
             if (license != null)
                 return license;
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userId);
-            if (user == null ||
-                string.IsNullOrWhiteSpace(user.DrivingLicenseHash) ||
-                string.IsNullOrWhiteSpace(user.DrivingLicenseUrl) ||
-                !user.IsVerified ||
-                !string.Equals(user.VerificationStatus, "Verified", StringComparison.OrdinalIgnoreCase))
-                return null;
-
-            license = new CustomerDrivingLicense
-            {
-                UserID = user.UserID,
-                LicenseNumber = user.DrivingLicenseNumber,
-                LicenseNumberHash = user.DrivingLicenseHash,
-                FrontImageUrl = user.DrivingLicenseUrl,
-                BackImageUrl = user.DrivingLicenseBackUrl,
-                VerificationStatus = "Verified",
-                IsApproved = true,
-                IsActive = true
-            };
-
-            _context.CustomerDrivingLicenses.Add(license);
-            await _context.SaveChangesAsync();
-            return license;
+            return null;
         }
 
         public async Task ValidateSelfDriveAsync(Booking booking, decimal driverFee = 0m)
@@ -96,7 +74,7 @@ namespace CarRentalSystem.Services
                 return;
 
             if (booking.DriverID != null || booking.DriverBookingID != null)
-                throw new InvalidOperationException("Dich vu xe co tai xe khong con su dung module tai xe rieng.");
+                throw new InvalidOperationException("Dịch vụ xe có tài xế không còn sử dụng module tài xế riêng.");
 
             if (trip == null)
                 throw new InvalidOperationException("Dịch vụ xe có tài xế phải có thông tin chuyến.");

@@ -56,7 +56,10 @@ namespace CarRentalSystem.Tests.UnitTests
                 .Returns((string? value) => value);
             piiEncryption.Setup(p => p.DecryptIfNotEmpty(It.IsAny<string?>()))
                 .Returns((string? value) => value);
-            _authService = new AuthService(userRepo.Object, piiEncryption.Object);
+            _authService = new AuthService(
+                userRepo.Object,
+                piiEncryption.Object,
+                Mock.Of<Microsoft.Extensions.Logging.ILogger<AuthService>>());
         }
 
         // =============================================

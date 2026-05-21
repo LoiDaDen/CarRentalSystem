@@ -556,8 +556,7 @@
 <partial name="_LocationModal" model="Model" />
 
 @section Scripts {
-    <!-- jQuery + Chart.js + Select2 -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Chart.js + Select2 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -577,31 +576,33 @@
                     cars + '</div>');
             }
 
-            $('#locationSelect').select2({
-                language: 'vi',
-                dropdownParent: $('#locationModal'),
-                allowClear: true,
-                placeholder: '— Gõ tên hoặc địa chỉ để tìm —',
-                ajax: {
-                    url: '/admin/api/locations',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return { search: params.term || '', excludeArea: '@Model.AreaID' };
+            if ($.fn.select2) {
+                $('#locationSelect').select2({
+                    language: 'vi',
+                    dropdownParent: $('#locationModal'),
+                    allowClear: true,
+                    placeholder: '— Gõ tên hoặc địa chỉ để tìm —',
+                    ajax: {
+                        url: '/admin/api/locations',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return { search: params.term || '', excludeArea: '@Model.AreaID' };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: data.results.map(function (l) {
+                                    return { id: l.id, name: l.name, address: l.address, carCount: l.carCount, text: l.name };
+                                })
+                            };
+                        }
                     },
-                    processResults: function (data) {
-                        return {
-                            results: data.results.map(function (l) {
-                                return { id: l.id, name: l.name, address: l.address, carCount: l.carCount, text: l.name };
-                            })
-                        };
+                    templateResult: formatLocation,
+                    templateSelection: function (loc) {
+                        return loc.id ? loc.name : loc.text;
                     }
-                },
-                templateResult: formatLocation,
-                templateSelection: function (loc) {
-                    return loc.id ? loc.name : loc.text;
-                }
-            });
+                });
+            }
 
             $('#locationSelect').on('select2:select', function (e) {
                 var loc = e.params.data;
@@ -636,31 +637,33 @@
             });
 
             // --- Staff Select2 ---
-            $('.select2-staff').select2({
-                language: 'vi',
-                dropdownParent: $('#staffModal'),
-                ajax: {
-                    url: '/admin/api/users',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        return { search: params.term || '', roles: 'Manager,Staff,Viewer', excludeArea: '@Model.AreaID' };
-                    },
-                    processResults: function(data) {
-                        return {
-                            results: data.results.map(function(u) {
-                                return { id: u.id, text: u.name + ' (' + u.email + ') — ' + u.role };
-                            })
-                        };
+            if ($.fn.select2) {
+                $('.select2-staff').select2({
+                    language: 'vi',
+                    dropdownParent: $('#staffModal'),
+                    ajax: {
+                        url: '/admin/api/users',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            return { search: params.term || '', roles: 'Manager,Staff,Viewer', excludeArea: '@Model.AreaID' };
+                        },
+                        processResults: function(data) {
+                            return {
+                                results: data.results.map(function(u) {
+                                    return { id: u.id, text: u.name + ' (' + u.email + ') — ' + u.role };
+                                })
+                            };
+                        }
                     }
-                }
-            });
+                });
+            }
 
             // --- Orders Chart (30 ngày) ---
             var chartData = @Html.Raw(ViewBag.ChartData ?? "[]");
             var chartLabels = @Html.Raw(ViewBag.ChartLabels ?? "[]");
 
-            if (chartData && chartData.length > 0) {
+            if (chartData && chartData.length > 0 && window.Chart) {
                 var ctx = document.getElementById('ordersChart').getContext('2d');
                 new Chart(ctx, {
                     type: 'line',

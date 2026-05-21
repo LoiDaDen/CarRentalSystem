@@ -39,8 +39,9 @@ namespace CarRentalSystem.Controllers
         private readonly IReferralService _referralService;
         private readonly IConfiguration _configuration;
         private readonly IAuditTrailService _auditTrail;
+        private readonly ILegalComplianceService _legalCompliance;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService, IReferralService referralService, IConfiguration configuration, IAuditTrailService auditTrail)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService, IReferralService referralService, IConfiguration configuration, IAuditTrailService auditTrail, ILegalComplianceService legalCompliance)
         {
             _authService = authService;
             _env = env;
@@ -51,6 +52,7 @@ namespace CarRentalSystem.Controllers
             _referralService = referralService;
             _configuration = configuration;
             _auditTrail = auditTrail;
+            _legalCompliance = legalCompliance;
         }
 
         [HttpGet]
@@ -76,7 +78,7 @@ namespace CarRentalSystem.Controllers
             if (!string.Equals(provider, "Google", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(provider, "Microsoft", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["ErrorMessage"] = "Nha cung cap SSO khong hop le.";
+                TempData["ErrorMessage"] = "Nhà cung cấp SSO không hợp lệ.";
                 return RedirectToAction(nameof(Login));
             }
 
@@ -97,7 +99,7 @@ namespace CarRentalSystem.Controllers
                     EntityType = "Auth",
                     Reason = "External provider did not return an authenticated principal."
                 });
-                TempData["ErrorMessage"] = "Dang nhap SSO khong thanh cong.";
+                TempData["ErrorMessage"] = "Đăng nhập SSO không thành công.";
                 return RedirectToAction(nameof(Login));
             }
 
@@ -111,7 +113,7 @@ namespace CarRentalSystem.Controllers
                     EntityType = "Auth",
                     Reason = "External provider did not return email."
                 });
-                TempData["ErrorMessage"] = "Tai khoan SSO khong co email hop le.";
+                TempData["ErrorMessage"] = "Tài khoản SSO không có email hợp lệ.";
                 return RedirectToAction(nameof(Login));
             }
 
@@ -127,7 +129,7 @@ namespace CarRentalSystem.Controllers
                     Reason = "SSO is restricted to existing verified privileged users.",
                     NewValues = System.Text.Json.JsonSerializer.Serialize(new { Email = email, Role = user?.Role })
                 });
-                TempData["ErrorMessage"] = "SSO chi danh cho tai khoan quan tri/nhan su da duoc xac thuc.";
+                TempData["ErrorMessage"] = "SSO chỉ dành cho tài khoản quản trị/nhân sự đã được xác thực.";
                 return RedirectToAction(nameof(Login));
             }
 
@@ -156,7 +158,7 @@ namespace CarRentalSystem.Controllers
         {
             ViewData["ReturnUrl"] = IsSafeLocalReturnUrl(returnUrl) ? returnUrl : null;
 
-            if (!await ValidateRecaptchaForViewAsync(recaptchaToken, "login", "Dang nhap khong thanh cong do xac thuc bao mat that bai."))
+            if (!await ValidateRecaptchaForViewAsync(recaptchaToken, "login", "Đăng nhập không thành công do xác thực bảo mật thất bại."))
                 return View();
 
             // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
@@ -228,7 +230,7 @@ namespace CarRentalSystem.Controllers
             if (result.Success)
                 return true;
 
-            ViewBag.RecaptchaError = "Xac thuc bao mat that bai. Vui long thu lai.";
+            ViewBag.RecaptchaError = "Xác thực bảo mật thất bại. Vui lòng thử lại.";
             ViewBag.Error = errorMessage;
             return false;
         }
@@ -242,7 +244,7 @@ namespace CarRentalSystem.Controllers
             if (result.Success)
                 return true;
 
-            TempData["ErrorMessage"] = "Xac thuc bao mat that bai. Vui long thu lai.";
+            TempData["ErrorMessage"] = "Xác thực bảo mật thất bại. Vui lòng thử lại.";
             return false;
         }
 
@@ -271,7 +273,7 @@ namespace CarRentalSystem.Controllers
                 expiresAt < DateTime.UtcNow)
             {
                 ClearPrivilegedMfaSession();
-                TempData["ErrorMessage"] = "Ma MFA da het han. Vui long dang nhap lai.";
+                TempData["ErrorMessage"] = "Mã MFA đã hết hạn. Vui lòng đăng nhập lại.";
                 return RedirectToAction("Login");
             }
 
@@ -279,7 +281,7 @@ namespace CarRentalSystem.Controllers
             if (attempts >= 5)
             {
                 ClearPrivilegedMfaSession();
-                TempData["ErrorMessage"] = "Qua nhieu lan nhap sai ma MFA. Vui long dang nhap lai.";
+                TempData["ErrorMessage"] = "Quá nhiều lần nhập sai mã MFA. Vui lòng đăng nhập lại.";
                 return RedirectToAction("Login");
             }
 
@@ -289,7 +291,7 @@ namespace CarRentalSystem.Controllers
             {
                 HttpContext.Session.SetInt32(PendingMfaAttemptCountSessionKey, attempts + 1);
                 ViewBag.Email = HttpContext.Session.GetString(PendingMfaEmailSessionKey);
-                ViewBag.Error = "Ma MFA khong dung. Vui long kiem tra email va thu lai.";
+                ViewBag.Error = "Mã MFA không đúng. Vui lòng kiểm tra email và thử lại.";
                 return View();
             }
 
@@ -297,7 +299,7 @@ namespace CarRentalSystem.Controllers
             if (user == null || !RequiresPrivilegedMfa(user) || !user.IsEmailVerified || user.IsLocked || user.IsBlacklisted)
             {
                 ClearPrivilegedMfaSession();
-                TempData["ErrorMessage"] = "Phien MFA khong hop le. Vui long dang nhap lai.";
+                TempData["ErrorMessage"] = "Phiên MFA không hợp lệ. Vui lòng đăng nhập lại.";
                 return RedirectToAction("Login");
             }
 
@@ -324,7 +326,7 @@ namespace CarRentalSystem.Controllers
             }
 
             await BeginPrivilegedMfaChallengeAsync(user, HttpContext.Session.GetString(PendingMfaReturnUrlSessionKey));
-            TempData["SuccessMessage"] = "Ma MFA moi da duoc gui den email cua ban.";
+            TempData["SuccessMessage"] = "Mã MFA mới đã được gửi đến email của bạn.";
             return RedirectToAction("VerifyMfa");
         }
 
@@ -419,7 +421,7 @@ namespace CarRentalSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model, string? recaptchaToken)
         {
-            if (!await ValidateRecaptchaForViewAsync(recaptchaToken, "register", "Dang ky khong thanh cong do xac thuc bao mat that bai."))
+            if (!await ValidateRecaptchaForViewAsync(recaptchaToken, "register", "Đăng ký không thành công do xác thực bảo mật thất bại."))
                 return View(model);
 
             // ✅ TẠM THỜI COMMENT reCAPTCHA vì không hoạt động trên localhost
@@ -447,17 +449,46 @@ namespace CarRentalSystem.Controllers
             var newName = model.Name.Trim();
             var newEmail = model.Email.Trim();
             var newPhone = model.Phone.Trim();
+            var citizenId = model.CitizenId.Trim();
+            var drivingLicenseNumber = model.DrivingLicenseNumber.Trim();
 
             var registeredUser = await _authService.GetUserByEmailAsync(newEmail);
             if (registeredUser != null)
             {
-                ViewBag.Error = "Email nay da duoc dang ky.";
+                ViewBag.Error = "Email này đã được đăng ký.";
                 return View(model);
             }
 
             if (await _authService.IsPhoneTakenAsync(newPhone, 0))
             {
-                ViewBag.Error = "So dien thoai nay da duoc su dung.";
+                ViewBag.Error = "Số điện thoại này đã được sử dụng.";
+                return View(model);
+            }
+
+            if (!model.DateOfBirth.HasValue)
+            {
+                ViewBag.Error = "Vui lòng nhập ngày sinh.";
+                return View(model);
+            }
+
+            var today = DateTime.Today;
+            var age = today.Year - model.DateOfBirth.Value.Year;
+            if (model.DateOfBirth.Value.Date > today.AddYears(-age)) age--;
+            if (age < 18)
+            {
+                ViewBag.Error = "Bạn phải từ 18 tuổi trở lên để đăng ký thuê xe tự lái.";
+                return View(model);
+            }
+
+            if (await _authService.IsCitizenIdTakenAsync(citizenId, 0))
+            {
+                ViewBag.Error = "Số CCCD này đã được sử dụng bởi một tài khoản khác.";
+                return View(model);
+            }
+
+            if (await _authService.IsDrivingLicenseTakenAsync(drivingLicenseNumber, 0))
+            {
+                ViewBag.Error = "Số giấy phép lái xe này đã được sử dụng bởi một tài khoản khác.";
                 return View(model);
             }
 
@@ -482,6 +513,11 @@ namespace CarRentalSystem.Controllers
                 Role = "Customer",
                 IsEmailVerified = false,
                 VerificationStatus = "Pending",
+                DateOfBirth = model.DateOfBirth.Value.Date,
+                CitizenId = _piiEncryption.Encrypt(citizenId),
+                CitizenIdHash = ComputeHash(citizenId),
+                DrivingLicenseNumber = _piiEncryption.Encrypt(drivingLicenseNumber),
+                DrivingLicenseHash = ComputeHash(drivingLicenseNumber),
                 ReferredByUserID = referrer?.UserID
             };
 
@@ -489,6 +525,16 @@ namespace CarRentalSystem.Controllers
             user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
 
             await _authService.RegisterAsync(user);
+
+            var registrationEvidence = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Form = "Auth/Register",
+                Fields = new[] { "Name", "Phone", "Email", "DateOfBirth", "CitizenId", "DrivingLicenseNumber" },
+                SensitiveData = new[] { "CitizenId", "DrivingLicenseNumber", "DateOfBirth" }
+            });
+            await _legalCompliance.RecordConsentAsync(user.UserID, LegalDocumentCodes.TermsOfUse, ConsentPurposeCodes.AccountRegistration, model.AcceptTerms, "Register", HttpContext, registrationEvidence);
+            await _legalCompliance.RecordConsentAsync(user.UserID, LegalDocumentCodes.PrivacyNotice, ConsentPurposeCodes.PrivacyNoticeAcknowledgement, model.AcceptPrivacyNotice, "Register", HttpContext, registrationEvidence);
+            await _legalCompliance.RecordConsentAsync(user.UserID, LegalDocumentCodes.PrivacyNotice, ConsentPurposeCodes.SensitiveDataProcessing, model.AcceptSensitiveDataProcessing, "Register", HttpContext, registrationEvidence);
 
             Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
                 job => job.SendOtpEmail(user.Email, user.EmailVerificationToken));
@@ -573,7 +619,7 @@ namespace CarRentalSystem.Controllers
             user.CitizenId = _piiEncryption.EncryptIfNotEmpty(user.CitizenId);
             user.DrivingLicenseNumber = _piiEncryption.EncryptIfNotEmpty(user.DrivingLicenseNumber);
 
-            // 🔐 Compute SHA-256 hash từ PLAINTEXT (khong phai ciphertext)
+            // 🔐 Compute SHA-256 hash từ PLAINTEXT (không phải ciphertext)
             user.CitizenIdHash = ComputeHash(plaintextCitizenId);
             user.DrivingLicenseHash = ComputeHash(gplx);
             user.PhoneHash = ComputeHash(phone);
@@ -1067,12 +1113,12 @@ namespace CarRentalSystem.Controllers
                 {
                     // =========================================
                     // PII UPDATE: Chi update neu co gia tri moi THUC SU
-                    // Khong re-encrypt masked value (●●●●●●●●)
+                    // Không re-encrypt masked value (●●●●●●●●)
                     // =========================================
                     const string MaskedPlaceholder = "●●●●●●●●";
                     bool profileChanged = false;
 
-                    // Lay plaintext CCCD neu user nhap gia tri moi (khong phai mask)
+                    // Lấy plaintext CCCD nếu user nhập giá trị mới (không phải mask)
                     var newCitizenId = updatedUser.CitizenId?.Trim() ?? "";
                     if (!string.IsNullOrEmpty(newCitizenId) && newCitizenId != MaskedPlaceholder)
                     {
@@ -1212,7 +1258,7 @@ namespace CarRentalSystem.Controllers
                     // =========================================
                     if (identityDocChanged || profileChanged)
                     {
-                        user.IsVerified = false; // Bat buoc admin phai duyet lai eKYC
+                        user.IsVerified = false; // Bắt buộc admin phải duyệt lại eKYC
                     }
                     
                     await _authService.UpdateUserAsync(user);
@@ -1331,7 +1377,7 @@ namespace CarRentalSystem.Controllers
         /// <summary>
         /// BACKFILL: Chạy một lần để compute SHA-256 hashes cho dữ liệu cũ.
         /// Tài khoản cũ có CitizenIdHash = null sẽ được backfill.
-        /// Chi Admin mới được gọi.
+        /// Chỉ Admin mới được gọi.
         /// </summary>
         [Authorize(Roles = "Admin")]
         [HttpPost]
@@ -1395,7 +1441,7 @@ namespace CarRentalSystem.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return Json(new { success = true, message = $"Da backfill {count}/{users.Count} tai khoan." });
+            return Json(new { success = true, message = $"Đã backfill {count}/{users.Count} tài khoản." });
         }
     }
 

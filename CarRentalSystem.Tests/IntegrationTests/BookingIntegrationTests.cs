@@ -121,7 +121,8 @@ namespace CarRentalSystem.Tests.IntegrationTests
 
             // Act 1: Tạo booking → Draft
             await _bookingService.CreateBookingAsync(newBooking);
-            newBooking.BookingStatusID.Should().Be(2, "the seeded database fallback initial status is Pending when Unpaid is not seeded");
+            var initialStatus = await _context.BookingStatuses.FindAsync(newBooking.BookingStatusID);
+            initialStatus!.Name.Should().Be(BookingStatusConstants.Unpaid, "booking mới phải bắt đầu ở trạng thái chưa thanh toán khi lookup Unpaid tồn tại");
 
             // Act 2: Chuyển → Confirmed
             await _bookingService.UpdateBookingStatusAsync(newBooking.BookingID, "Confirmed");

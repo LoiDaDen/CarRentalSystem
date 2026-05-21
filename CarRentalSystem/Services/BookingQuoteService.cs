@@ -14,6 +14,12 @@ namespace CarRentalSystem.Services
         public string InsuranceTier { get; set; } = "Basic";
         public decimal DeliveryFee { get; set; }
         public string? DeliveryAddress { get; set; }
+        public string DeliveryMode { get; set; } = DeliveryModeConstants.CustomerPickup;
+        public double? DeliveryLatitude { get; set; }
+        public double? DeliveryLongitude { get; set; }
+        public decimal DeliveryDistanceKm { get; set; }
+        public int? DeliveryEtaMinutes { get; set; }
+        public DateTime? DeliveryQuotedAt { get; set; }
         public List<string>? SelectedAddons { get; set; }
         public int? SelectedDriverID { get; set; }
         public int? PromotionID { get; set; }
@@ -35,19 +41,22 @@ namespace CarRentalSystem.Services
         private readonly IReservationService _reservationService;
         private readonly ISelfDrivePricingService _selfDrivePricingService;
         private readonly IBookingBusinessRuleService _businessRules;
+        private readonly IHolidayPricingService _holidayPricingService;
 
         public BookingQuoteService(
             ApplicationDbContext context,
             IReferralService referralService,
             IReservationService reservationService,
             ISelfDrivePricingService selfDrivePricingService,
-            IBookingBusinessRuleService businessRules)
+            IBookingBusinessRuleService businessRules,
+            IHolidayPricingService holidayPricingService)
         {
             _context = context;
             _referralService = referralService;
             _reservationService = reservationService;
             _selfDrivePricingService = selfDrivePricingService;
             _businessRules = businessRules;
+            _holidayPricingService = holidayPricingService;
         }
 
         public async Task<CheckoutQuoteViewModel> BuildQuoteAsync(BookingQuoteRequest request)
@@ -86,7 +95,8 @@ namespace CarRentalSystem.Services
             var selfDrivePrice = _selfDrivePricingService.Calculate(car, request.StartDate, request.EndDate);
             var totalHours = selfDrivePrice.TotalHours;
             var rentalDays = selfDrivePrice.RentalDays;
-            var baseRental = selfDrivePrice.BaseRentalAmount;
+            var holidayMultiplier = _holidayPricingService.GetMultiplier(request.StartDate, request.EndDate);
+            var baseRental = Math.Round(selfDrivePrice.BaseRentalAmount * holidayMultiplier, 0, MidpointRounding.AwayFromZero);
             var insuranceTier = NormalizeInsuranceTier(request.InsuranceTier);
             var insuranceFee = GetDailyInsuranceFee(insuranceTier) * rentalDays;
 
@@ -122,6 +132,7 @@ namespace CarRentalSystem.Services
             }
 
             var promotionDiscount = 0m;
+            int? appliedPromotionId = null;
             if (request.PromotionID.HasValue)
             {
                 var promo = await _context.Promotions
@@ -131,13 +142,15 @@ namespace CarRentalSystem.Services
                     promo.IsActive &&
                     promo.ValidFrom <= DateTime.UtcNow &&
                     promo.ValidUntil >= DateTime.UtcNow &&
-                    promo.UsedCount < promo.UsageLimit)
+                    promo.UsedCount < promo.UsageLimit &&
+                    !await HasUserAlreadyUsedPromotionAsync(user.UserID, promo.PromotionID))
                 {
                     var afterMembership = Math.Max(0m, totalBeforeDiscount - discountTotal);
                     promotionDiscount = afterMembership * promo.DiscountPercent / 100m;
                     if (promo.MaxDiscountAmount.HasValue && promotionDiscount > promo.MaxDiscountAmount.Value)
                         promotionDiscount = promo.MaxDiscountAmount.Value;
                     discountTotal += promotionDiscount;
+                    appliedPromotionId = promo.PromotionID;
                 }
             }
 
@@ -175,6 +188,12 @@ namespace CarRentalSystem.Services
                 ServiceFee = ServiceFee,
                 DeliveryFee = request.DeliveryFee,
                 DeliveryAddress = request.DeliveryAddress,
+                DeliveryMode = request.DeliveryMode,
+                DeliveryLatitude = request.DeliveryLatitude,
+                DeliveryLongitude = request.DeliveryLongitude,
+                DeliveryDistanceKm = request.DeliveryDistanceKm,
+                DeliveryEtaMinutes = request.DeliveryEtaMinutes,
+                DeliveryQuotedAt = request.DeliveryQuotedAt,
                 InsuranceFee = insuranceFee,
                 InsuranceTier = insuranceTier,
                 ContractTypeID = request.ContractTypeID,
@@ -184,7 +203,7 @@ namespace CarRentalSystem.Services
                 DriverFee = driverFee,
                 DriverID = driverId,
                 DriverName = driverName,
-                PromotionID = request.PromotionID,
+                PromotionID = appliedPromotionId,
                 MembershipDiscountAmount = membershipDiscount,
                 PromotionDiscountAmount = promotionDiscount,
                 ReferralDiscountAmount = referralDiscount,
@@ -198,11 +217,11 @@ namespace CarRentalSystem.Services
             };
 
             quote.Items.Add(new CheckoutQuoteLineItem { Category = "Rental", Name = "Tiền thuê xe", Quantity = 1, UnitPrice = baseRental, TotalPrice = baseRental });
-            quote.Items.Add(new CheckoutQuoteLineItem { Category = "Service", Name = "Phi dich vu", Quantity = 1, UnitPrice = ServiceFee, TotalPrice = ServiceFee });
+            quote.Items.Add(new CheckoutQuoteLineItem { Category = "Service", Name = "Phí dịch vụ", Quantity = 1, UnitPrice = ServiceFee, TotalPrice = ServiceFee });
             if (request.DeliveryFee > 0)
-                quote.Items.Add(new CheckoutQuoteLineItem { Category = "Delivery", Name = "Giao xe tan noi", Quantity = 1, UnitPrice = request.DeliveryFee, TotalPrice = request.DeliveryFee });
+                quote.Items.Add(new CheckoutQuoteLineItem { Category = "Delivery", Name = "Giao xe tận nơi", Quantity = 1, UnitPrice = request.DeliveryFee, TotalPrice = request.DeliveryFee });
             if (insuranceFee > 0)
-                quote.Items.Add(new CheckoutQuoteLineItem { Category = "Insurance", Name = $"Goi bao ve {insuranceTier}", Quantity = rentalDays, UnitPrice = GetDailyInsuranceFee(insuranceTier), TotalPrice = insuranceFee });
+                quote.Items.Add(new CheckoutQuoteLineItem { Category = "Insurance", Name = $"Gói bảo vệ {insuranceTier}", Quantity = rentalDays, UnitPrice = GetDailyInsuranceFee(insuranceTier), TotalPrice = insuranceFee });
             quote.Items.AddRange(addOns);
             return quote;
         }
@@ -214,17 +233,34 @@ namespace CarRentalSystem.Services
 
             foreach (var raw in selectedAddons.Where(a => !string.IsNullOrWhiteSpace(a)).Distinct())
             {
-                var parts = raw.Split('|', 2);
-                if (parts.Length != 2 || !decimal.TryParse(parts[1], out var dailyPrice))
+                var parts = raw.Split('|', StringSplitOptions.TrimEntries);
+                if (parts.Length < 2)
                     continue;
 
-                var name = parts[0].Trim();
+                int? addOnId = null;
+                string name;
+                decimal dailyPrice;
+                if (parts.Length >= 3 && int.TryParse(parts[0], out var parsedId) && decimal.TryParse(parts[2], out dailyPrice))
+                {
+                    addOnId = parsedId;
+                    name = parts[1].Trim();
+                }
+                else if (decimal.TryParse(parts[1], out dailyPrice))
+                {
+                    name = parts[0].Trim();
+                }
+                else
+                {
+                    continue;
+                }
+
                 if (string.IsNullOrWhiteSpace(name) || dailyPrice < 0) continue;
 
                 lines.Add(new CheckoutQuoteLineItem
                 {
                     Category = "AddOn",
                     Name = name,
+                    AddOnID = addOnId,
                     Quantity = rentalDays,
                     UnitPrice = dailyPrice,
                     TotalPrice = dailyPrice * rentalDays
@@ -232,6 +268,26 @@ namespace CarRentalSystem.Services
             }
 
             return lines;
+        }
+
+        private async Task<bool> HasUserAlreadyUsedPromotionAsync(int userId, int promotionId)
+        {
+            var countedStatuses = new[]
+            {
+                BookingStatusConstants.Unpaid,
+                BookingStatusConstants.Pending,
+                BookingStatusConstants.Confirmed,
+                BookingStatusConstants.Active,
+                BookingStatusConstants.Completed
+            };
+
+            return await _context.Bookings
+                .AsNoTracking()
+                .AnyAsync(b =>
+                    b.UserID == userId &&
+                    b.PromotionID == promotionId &&
+                    b.BookingStatus != null &&
+                    countedStatuses.Contains(b.BookingStatus.Name));
         }
 
         private static string NormalizeInsuranceTier(string? tier)

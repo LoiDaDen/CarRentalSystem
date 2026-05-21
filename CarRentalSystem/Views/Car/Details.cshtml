@@ -459,6 +459,8 @@
                         <div class="mb-4">
                             <label class="small fw-bold mb-2">Vị trí nhận xe</label>
                             <input type="hidden" id="finalPickupLocation" name="PickupLocation" value="@(Model.Car.CarAddress ?? Model.LocationName)" />
+                            <input type="hidden" id="deliveryLatitudeInput" name="deliveryLatitude" value="" />
+                            <input type="hidden" id="deliveryLongitudeInput" name="deliveryLongitude" value="" />
                             <input type="hidden" name="ReturnLocation" value="@(Model.Car.CarAddress ?? Model.LocationName)" />
                             <div class="btn-group-vertical w-100 mb-3 rounded-3 overflow-hidden border bg-white" role="group">
                                 <label class="d-flex align-items-start p-3 location-option border-bottom m-0" for="locCustomer">
@@ -469,6 +471,8 @@
                                     </div>
                                 </label>
 
+                                @if (Model.Car.DeliveryEnabled)
+                                {
                                 <label class="d-flex align-items-start p-3 location-option m-0" for="locOwner">
                                     <input type="radio" name="pickupLocationType" id="locOwner" value="owner" class="form-check-input mt-1 me-3">
                                     <div class="w-100">
@@ -478,6 +482,17 @@
                                         <div class="text-muted small d-flex align-items-center"><i class="bi bi-geo-alt me-1"></i> Chọn địa điểm</div>
                                     </div>
                                 </label>
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-items-start p-3 location-option m-0 bg-light text-muted">
+                                        <i class="bi bi-truck mt-1 me-3"></i>
+                                        <div>
+                                            <div class="fw-bold mb-1">Xe nÃ y chÆ°a há»— trá»£ giao táº­n nÆ¡i</div>
+                                            <div class="small">Vui lÃ²ng nháº­n xe táº¡i vá»‹ trÃ­ xe Ä‘áº­u.</div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                             
                             <!-- Detailed address input shown only when locOwner is selected -->
@@ -628,7 +643,7 @@
                                 </div>
                                 <div class="text-center mt-3 text-muted small">
                                     Bằng việc bấm Thuê xe, bạn đồng ý với<br>
-                                    <a href="#" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a> và <a href="#" class="text-success fw-bold text-decoration-none">Chính sách bảo mật</a>
+                                <a asp-controller="Home" asp-action="Terms" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a> và <a asp-controller="Home" asp-action="Privacy" class="text-success fw-bold text-decoration-none">Chính sách bảo mật</a>
                                 </div>
                             </div>
 
@@ -697,22 +712,22 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
     <script>
-        const carData = {
-            id: @Model.Car.CarID,
-            price: @Model.Car.PricePerDay,
-            pricePerHour: @Model.Car.PricePerHour,
-            price4h: @Model.Pricing.Price4h,
-            price8h: @Model.Pricing.Price8h,
-            price12h: @Model.Pricing.Price12h,
-            price24h: @Model.Pricing.Price24h,
-            pricePerHour: @Model.Car.PricePerHour,
-            lat: @(Model.Car.Latitude ?? 10.7816),
-            lng: @(Model.Car.Longitude ?? 106.6994),
-            brand: '@Model.Car.CarBrand?.Name',
-            name: '@Model.Car.CarName',
-            address: '@Html.Encode(Model.Car.CarAddress ?? Model.LocationName)',
-            region: '@Html.Encode(Model.Car.Location?.Name ?? Model.LocationName)'
-        };
+        const carData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            id = Model.Car.CarID,
+            price = Model.Car.PricePerDay,
+            pricePerHour = Model.Car.PricePerHour,
+            price4h = Model.Pricing.Price4h,
+            price8h = Model.Pricing.Price8h,
+            price12h = Model.Pricing.Price12h,
+            price24h = Model.Pricing.Price24h,
+            lat = Model.Car.Latitude ?? 10.7816,
+            lng = Model.Car.Longitude ?? 106.6994,
+            brand = Model.Car.CarBrand?.Name,
+            name = Model.Car.CarName,
+            address = Model.Car.CarAddress ?? Model.LocationName,
+            region = Model.Car.Location?.Name ?? Model.LocationName
+        }));
 
         // === AVAILABILITY CALENDAR ===
         (async function initCalendar() {

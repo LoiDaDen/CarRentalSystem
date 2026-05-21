@@ -108,7 +108,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     : 0m;
 
                 var isAreaManager = area.AreaStaffs!
-                    .Any(asx => asx.UserID == userId && asx.RoleInArea == "manager" && !asx.IsDeleted);
+                    .Any(asx => asx.UserID == userId && AreaStaffRoleConstants.IsManager(asx.RoleInArea) && !asx.IsDeleted);
 
                 areaStats.Add(new AreaDashboardStats
                 {

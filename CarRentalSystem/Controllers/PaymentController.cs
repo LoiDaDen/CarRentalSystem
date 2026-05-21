@@ -85,7 +85,8 @@ namespace CarRentalSystem.Controllers
             return View("Pending", transaction);
         }
 
-        [HttpGet]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelHold(long orderCode)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -138,7 +139,8 @@ namespace CarRentalSystem.Controllers
 #endif
         }
 
-        [HttpGet]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelTransaction(long orderCode)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -158,7 +160,8 @@ namespace CarRentalSystem.Controllers
                 : RedirectToAction("Index", "Cart");
         }
 
-        [HttpGet]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreatePayment(int bookingId)
         {
             if (!_payOSPaymentService.IsConfigured)
@@ -281,7 +284,6 @@ namespace CarRentalSystem.Controllers
             if (!IsCurrentUserBookingOwner(booking.UserID))
                 return Forbid();
 
-            await _payOSPaymentService.MarkCancelledAsync(bookingId);
             return View(booking);
         }
 

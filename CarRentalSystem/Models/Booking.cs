@@ -81,7 +81,7 @@ namespace CarRentalSystem.Models
         public decimal ReservationFee { get; set; } = 0m;
 
         [StringLength(20)]
-        public string DepositStatus { get; set; } = "Pending"; // Pending, Holding, Refunded, Deducted
+        public string DepositStatus { get; set; } = DepositStatusConstants.Unpaid;
         public DateTime? ActualReturnDate { get; set; }
         public DateTime? ActualPickupDate { get; set; }
         public ICollection<HandoverRecord>? HandoverRecords { get; set; } = new List<HandoverRecord>();
@@ -97,6 +97,24 @@ namespace CarRentalSystem.Models
 
         [MaxLength(255)]
         public string? DeliveryAddress { get; set; }
+
+        [MaxLength(30)]
+        public string DeliveryMode { get; set; } = DeliveryModeConstants.CustomerPickup;
+
+        [Range(-90, 90)]
+        public double? DeliveryLatitude { get; set; }
+
+        [Range(-180, 180)]
+        public double? DeliveryLongitude { get; set; }
+
+        [Range(0, double.MaxValue)]
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal DeliveryDistanceKm { get; set; } = 0m;
+
+        [Range(0, int.MaxValue)]
+        public int? DeliveryEtaMinutes { get; set; }
+
+        public DateTime? DeliveryQuotedAt { get; set; }
 
         [Range(0, double.MaxValue)]
         [Column(TypeName = "decimal(18,2)")]
@@ -140,6 +158,22 @@ namespace CarRentalSystem.Models
         [ForeignKey("TransactionID")]
         public int? TransactionID { get; set; }
         public BookingTransaction? BookingTransaction { get; set; }
+
+        [ForeignKey("TermsDocumentVersion")]
+        public int? TermsDocumentVersionID { get; set; }
+        public LegalDocumentVersion? TermsDocumentVersion { get; set; }
+
+        [ForeignKey("PrivacyNoticeVersion")]
+        public int? PrivacyNoticeVersionID { get; set; }
+        public LegalDocumentVersion? PrivacyNoticeVersion { get; set; }
+
+        public DateTime? SelfDriveAgreementAcceptedAt { get; set; }
+
+        [MaxLength(45)]
+        public string? SelfDriveAgreementIpAddress { get; set; }
+
+        [MaxLength(500)]
+        public string? SelfDriveAgreementUserAgent { get; set; }
 
         // Shipping
         [Range(0, double.MaxValue)]

@@ -36,7 +36,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var userId = GetCurrentUserId();
             var role = GetCurrentRole();
 
-            // Neu chua chon area → lay area chinh cua user hien tai lam mac dinh
+            // Nếu chưa chọn area → lấy area chính của user hiện tại làm mặc định
             if (areaId <= 0)
             {
                 var areaIds = await _areaService.GetAreaIdsForUserAsync(userId);

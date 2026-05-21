@@ -132,36 +132,38 @@
                     badge + '</div>');
             }
 
-            $('#staffSelect').select2({
-                language: 'vi',
-                dropdownParent: $('#staffModal'),
-                allowClear: true,
-                placeholder: '— Gõ tên hoặc email để tìm —',
-                ajax: {
-                    url: '/admin/api/users',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return {
-                            search: params.term || '',
-                            roles: 'Manager,Staff,Viewer',
-                            excludeArea: '@Model.AreaID'
-                        };
+            if ($.fn.select2) {
+                $('#staffSelect').select2({
+                    language: 'vi',
+                    dropdownParent: $('#staffModal'),
+                    allowClear: true,
+                    placeholder: '— Gõ tên hoặc email để tìm —',
+                    ajax: {
+                        url: '/admin/api/users',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                search: params.term || '',
+                                roles: 'Manager,Staff,Viewer',
+                                excludeArea: '@Model.AreaID'
+                            };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: data.results.map(function (u) {
+                                    return { id: u.id, name: u.name, email: u.email, role: u.role, text: u.name };
+                                })
+                            };
+                        }
                     },
-                    processResults: function (data) {
-                        return {
-                            results: data.results.map(function (u) {
-                                return { id: u.id, name: u.name, email: u.email, role: u.role, text: u.name };
-                            })
-                        };
+                    templateResult: formatUser,
+                    templateSelection: function (user) {
+                        if (!user.id) return user.text;
+                        return user.name + ' — ' + user.email;
                     }
-                },
-                templateResult: formatUser,
-                templateSelection: function (user) {
-                    if (!user.id) return user.text;
-                    return user.name + ' — ' + user.email;
-                }
-            });
+                });
+            }
 
             $('#staffSelect').on('select2:select', function (e) {
                 $('#staffUserId').val(e.params.data.id);

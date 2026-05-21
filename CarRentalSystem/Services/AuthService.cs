@@ -1,6 +1,7 @@
 using CarRentalSystem.Models;
 using CarRentalSystem.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,11 +24,13 @@ namespace CarRentalSystem.Services
     {
         private readonly IRepository<User> _userRepository;
         private readonly IPiiEncryptionService _piiEncryption;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IRepository<User> userRepository, IPiiEncryptionService piiEncryption)
+        public AuthService(IRepository<User> userRepository, IPiiEncryptionService piiEncryption, ILogger<AuthService> logger)
         {
             _userRepository = userRepository;
             _piiEncryption = piiEncryption;
+            _logger = logger;
         }
 
         private static string ComputeHash(string? value)
@@ -58,7 +61,7 @@ namespace CarRentalSystem.Services
                 .ToListAsync();
 
             return legacyCitizenIds.Any(stored =>
-                string.Equals(_piiEncryption.DecryptIfNotEmpty(stored)?.Trim(), citizenId.Trim(), StringComparison.Ordinal));
+                string.Equals(TryDecryptLegacyPii(stored, "CitizenId")?.Trim(), citizenId.Trim(), StringComparison.Ordinal));
         }
 
         public async Task<bool> IsDrivingLicenseTakenAsync(string licenseNumber, int excludeUserId)
@@ -82,7 +85,23 @@ namespace CarRentalSystem.Services
                 .ToListAsync();
 
             return legacyLicenseNumbers.Any(stored =>
-                string.Equals(_piiEncryption.DecryptIfNotEmpty(stored)?.Trim(), licenseNumber.Trim(), StringComparison.Ordinal));
+                string.Equals(TryDecryptLegacyPii(stored, "DrivingLicenseNumber")?.Trim(), licenseNumber.Trim(), StringComparison.Ordinal));
+        }
+
+        private string? TryDecryptLegacyPii(string? value, string fieldName)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return value;
+
+            try
+            {
+                return _piiEncryption.DecryptIfNotEmpty(value);
+            }
+            catch (Exception ex) when (ex is CryptographicException || ex is FormatException || ex is ArgumentException)
+            {
+                _logger.LogWarning(ex, "Skipping corrupt legacy PII value while checking uniqueness for {FieldName}.", fieldName);
+                return null;
+            }
         }
 
         public async Task<bool> IsPhoneTakenAsync(string phone, int excludeUserId)

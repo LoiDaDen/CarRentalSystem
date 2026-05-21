@@ -9,8 +9,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace CarRentalSystem.Areas.Admin.Controllers
@@ -222,11 +225,22 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.CarTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarTypes, "CarTypeID", "Name");
             ViewBag.CarStatuses = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarStatuses, "CarStatusID", "Name");
             ViewBag.ServiceTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.ServiceTypes.Where(s => s.IsActive), "ServiceTypeID", "Name");
+            ViewBag.Amenities = await GetActiveAmenitiesAsync();
+            ViewBag.SelectedAmenityIds = new HashSet<int>();
+            ViewBag.PendingNewAmenityNames = new List<string>();
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(Car car, string? CarAddress, string? Latitude, string? Longitude, List<IFormFile> imageFiles, int? areaId)
+        public async Task<IActionResult> Create(
+            Car car,
+            string? CarAddress,
+            string? Latitude,
+            string? Longitude,
+            List<IFormFile> imageFiles,
+            List<int> AmenityIDs,
+            List<string> NewAmenityNames,
+            int? areaId)
         {
             var role = GetCurrentRole();
 
@@ -268,9 +282,15 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ModelState.Remove("CarBrand");
             ModelState.Remove("CarStatus");
             ModelState.Remove("CarType");
+            ModelState.Remove("CarModel");
             ModelState.Remove("Location");
             ModelState.Remove("ServiceType");
+            ModelState.Remove("Owner");
+            ModelState.Remove("CarAmenityMappings");
             ModelState.Remove("InsuranceTier");
+            ModelState.Remove("CreatedAt");
+            ModelState.Remove("UpdatedAt");
+            ModelState.Remove("DeletedAt");
             ModelState.Remove("PricePerHour");
 
             if (await _context.Cars.AnyAsync(c => c.LicensePlate == car.LicensePlate))
@@ -303,6 +323,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     }
                 }
 
+                await SyncCarAmenitiesAsync(car.CarID, AmenityIDs, NewAmenityNames);
+
                 TempData["Success"] = "Thêm xe thành công!";
                 return RedirectToAction(nameof(Manage), new { areaId });
             }
@@ -321,6 +343,10 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.Brands = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarBrands, "BrandID", "Name", car.BrandID);
             ViewBag.CarTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarTypes, "CarTypeID", "Name", car.CarTypeID);
             ViewBag.CarStatuses = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.CarStatuses, "CarStatusID", "Name", car.CarStatusID);
+            ViewBag.ServiceTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.ServiceTypes.Where(s => s.IsActive), "ServiceTypeID", "Name", car.ServiceTypeID);
+            ViewBag.Amenities = await GetActiveAmenitiesAsync();
+            ViewBag.SelectedAmenityIds = AmenityIDs?.ToHashSet() ?? new HashSet<int>();
+            ViewBag.PendingNewAmenityNames = NormalizeNewAmenityNames(NewAmenityNames).ToList();
             return View(car);
         }
 
@@ -344,6 +370,12 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.Brands = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.CarBrands.ToListAsync(), "BrandID", "Name", car.BrandID);
             ViewBag.CarTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.CarTypes.ToListAsync(), "CarTypeID", "Name", car.CarTypeID);
             ViewBag.CarStatuses = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.CarStatuses.ToListAsync(), "CarStatusID", "Name", car.CarStatusID);
+            ViewBag.Amenities = await GetActiveAmenitiesAsync();
+            ViewBag.SelectedAmenityIds = car.CarAmenityMappings
+                .Where(mapping => !mapping.IsDeleted)
+                .Select(mapping => mapping.CarAmenityID)
+                .ToHashSet();
+            ViewBag.PendingNewAmenityNames = new List<string>();
 
             if (role == "Manager")
             {
@@ -360,7 +392,15 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Edit(Car car, string? CarAddress, string? Latitude, string? Longitude, List<IFormFile> imageFiles, int? areaId)
+        public async Task<IActionResult> Edit(
+            Car car,
+            string? CarAddress,
+            string? Latitude,
+            string? Longitude,
+            List<IFormFile> imageFiles,
+            List<int> AmenityIDs,
+            List<string> NewAmenityNames,
+            int? areaId)
         {
             var role = GetCurrentRole();
             var userId = GetCurrentUserId();
@@ -389,7 +429,14 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ModelState.Remove("CarBrand");
             ModelState.Remove("CarStatus");
             ModelState.Remove("CarType");
+            ModelState.Remove("CarModel");
             ModelState.Remove("Location");
+            ModelState.Remove("ServiceType");
+            ModelState.Remove("Owner");
+            ModelState.Remove("CarAmenityMappings");
+            ModelState.Remove("CreatedAt");
+            ModelState.Remove("UpdatedAt");
+            ModelState.Remove("DeletedAt");
             ModelState.Remove("PricePerHour");
 
             if (await _context.Cars.AnyAsync(c => c.LicensePlate == car.LicensePlate && c.CarID != car.CarID))
@@ -421,6 +468,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 }
 
                 await _carService.UpdateCarAsync(car);
+                await SyncCarAmenitiesAsync(car.CarID, AmenityIDs, NewAmenityNames);
                 TempData["Success"] = "Cập nhật xe thành công!";
                 return RedirectToAction(nameof(Manage), new { areaId });
             }
@@ -428,7 +476,14 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.Brands = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.CarBrands.ToListAsync(), "BrandID", "Name", car.BrandID);
             ViewBag.CarTypes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.CarTypes.ToListAsync(), "CarTypeID", "Name", car.CarTypeID);
             ViewBag.CarStatuses = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.CarStatuses.ToListAsync(), "CarStatusID", "Name", car.CarStatusID);
+            if (car.CarID > 0 && ((AmenityIDs?.Any() ?? false) || NormalizeNewAmenityNames(NewAmenityNames).Any()))
+            {
+                await SyncCarAmenitiesAsync(car.CarID, AmenityIDs, NewAmenityNames);
+            }
             ViewBag.Locations = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Locations.ToListAsync(), "LocationID", "Name", car.LocationID);
+            ViewBag.Amenities = await GetActiveAmenitiesAsync();
+            ViewBag.SelectedAmenityIds = AmenityIDs?.ToHashSet() ?? new HashSet<int>();
+            ViewBag.PendingNewAmenityNames = NormalizeNewAmenityNames(NewAmenityNames).ToList();
             return View(car);
         }
 
@@ -600,6 +655,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .Include(c => c.CarType)
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarImages)
+                .Include(c => c.CarAmenityMappings)
+                    .ThenInclude(m => m.CarAmenity)
                 .Include(c => c.Reviews)
                 .Include(c => c.Bookings)
                 .FirstOrDefaultAsync(c => c.CarID == id);
@@ -620,6 +677,197 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             ViewBag.ActiveBookings = car.Bookings?.Count(b => b.BookingStatusID == 1) ?? 0;
 
             return View(car);
+        }
+
+        private async Task<List<CarAmenity>> GetActiveAmenitiesAsync()
+        {
+            return await _context.CarAmenities
+                .AsNoTracking()
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.DisplayOrder)
+                .ThenBy(a => a.Name)
+                .ToListAsync();
+        }
+
+        private async Task SyncCarAmenitiesAsync(int carId, IEnumerable<int>? selectedIds, IEnumerable<string>? newAmenityNames)
+        {
+            var resolvedIds = await ResolveAmenityIdsAsync(selectedIds, newAmenityNames);
+            var validIds = await _context.CarAmenities
+                .Where(a => resolvedIds.Contains(a.CarAmenityID))
+                .Select(a => a.CarAmenityID)
+                .ToListAsync();
+            var selected = validIds.ToHashSet();
+
+            var existingMappings = await _context.CarAmenityMappings
+                .IgnoreQueryFilters()
+                .Where(mapping => mapping.CarID == carId)
+                .ToListAsync();
+
+            foreach (var mapping in existingMappings)
+            {
+                mapping.IsDeleted = !selected.Contains(mapping.CarAmenityID);
+            }
+
+            var existingIds = existingMappings.Select(mapping => mapping.CarAmenityID).ToHashSet();
+            foreach (var amenityId in selected.Where(id => !existingIds.Contains(id)))
+            {
+                _context.CarAmenityMappings.Add(new CarAmenityMapping
+                {
+                    CarID = carId,
+                    CarAmenityID = amenityId
+                });
+            }
+
+            var featureNames = await _context.CarAmenities
+                .Where(a => selected.Contains(a.CarAmenityID))
+                .OrderBy(a => a.DisplayOrder)
+                .ThenBy(a => a.Name)
+                .Select(a => a.Name)
+                .ToListAsync();
+            var car = await _context.Cars.FindAsync(carId);
+            if (car != null)
+            {
+                car.Features = string.Join(", ", featureNames);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task<HashSet<int>> ResolveAmenityIdsAsync(IEnumerable<int>? selectedIds, IEnumerable<string>? newAmenityNames)
+        {
+            var selected = (selectedIds ?? Enumerable.Empty<int>())
+                .Where(id => id > 0)
+                .ToHashSet();
+            var names = NormalizeNewAmenityNames(newAmenityNames).ToList();
+            if (!names.Any())
+            {
+                return selected;
+            }
+
+            var amenities = await _context.CarAmenities.ToListAsync();
+            var existingCodes = amenities
+                .Select(a => a.Code)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var nextOrder = amenities.Any() ? amenities.Max(a => a.DisplayOrder) + 1 : 1;
+            var createdAmenities = new List<CarAmenity>();
+
+            foreach (var name in names)
+            {
+                var compareName = NormalizeAmenityNameForCompare(name);
+                var baseCode = BuildAmenityCode(name);
+                var existing = amenities.FirstOrDefault(a =>
+                    NormalizeAmenityNameForCompare(a.Name) == compareName ||
+                    string.Equals(a.Code, baseCode, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.IsActive = true;
+                    selected.Add(existing.CarAmenityID);
+                    continue;
+                }
+
+                var amenity = new CarAmenity
+                {
+                    Code = EnsureUniqueAmenityCode(baseCode, existingCodes),
+                    Name = name.Length > 120 ? name[..120] : name,
+                    Icon = "bi-check2-circle",
+                    DisplayOrder = nextOrder++,
+                    IsActive = true
+                };
+
+                existingCodes.Add(amenity.Code);
+                amenities.Add(amenity);
+                createdAmenities.Add(amenity);
+                _context.CarAmenities.Add(amenity);
+            }
+
+            if (createdAmenities.Any())
+            {
+                await _context.SaveChangesAsync();
+                foreach (var amenity in createdAmenities)
+                {
+                    selected.Add(amenity.CarAmenityID);
+                }
+            }
+
+            return selected;
+        }
+
+        private static IEnumerable<string> NormalizeNewAmenityNames(IEnumerable<string>? names)
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var rawName in names ?? Enumerable.Empty<string>())
+            {
+                var name = Regex.Replace(rawName ?? string.Empty, @"\s+", " ").Trim();
+                if (name.Length == 0)
+                {
+                    continue;
+                }
+
+                var key = NormalizeAmenityNameForCompare(name);
+                if (seen.Add(key))
+                {
+                    yield return name;
+                }
+            }
+        }
+
+        private static string NormalizeAmenityNameForCompare(string value)
+        {
+            return BuildAmenityCode(value);
+        }
+
+        private static string BuildAmenityCode(string name)
+        {
+            var normalized = name.Trim().Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+
+            foreach (var ch in normalized)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark)
+                {
+                    continue;
+                }
+
+                if (ch == 'đ' || ch == 'Đ')
+                {
+                    builder.Append('D');
+                }
+                else if (char.IsLetterOrDigit(ch))
+                {
+                    builder.Append(char.ToUpperInvariant(ch));
+                }
+                else
+                {
+                    builder.Append('_');
+                }
+            }
+
+            var code = Regex.Replace(builder.ToString(), "_+", "_").Trim('_');
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                code = "AMENITY";
+            }
+
+            return code.Length > 60 ? code[..60].Trim('_') : code;
+        }
+
+        private static string EnsureUniqueAmenityCode(string baseCode, HashSet<string> existingCodes)
+        {
+            var cleanBase = string.IsNullOrWhiteSpace(baseCode) ? "AMENITY" : baseCode;
+            cleanBase = cleanBase.Length > 60 ? cleanBase[..60].Trim('_') : cleanBase;
+            var code = cleanBase;
+            var suffix = 2;
+
+            while (existingCodes.Contains(code))
+            {
+                var suffixText = "_" + suffix++;
+                var maxBaseLength = Math.Max(1, 60 - suffixText.Length);
+                code = cleanBase.Length > maxBaseLength
+                    ? cleanBase[..maxBaseLength].Trim('_') + suffixText
+                    : cleanBase + suffixText;
+            }
+
+            return code;
         }
 
         private void DeletePhysicalFile(string imageUrl)

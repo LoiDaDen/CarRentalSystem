@@ -454,12 +454,31 @@ Hệ thống sẽ tự động chạy migration khi khởi động (trong `Progr
 
 ### Development
 
-```bash
-cd CarRentalSystem
-dotnet run
+From the repository root:
+
+```powershell
+dotnet run --project .\CarRentalSystem\CarRentalSystem.csproj
 ```
 
-Ứng dụng sẽ chạy tại `http://localhost:5000` (hoặc cổng được cấu hình trong `Properties/launchSettings.json`).
+Ứng dụng sẽ chạy tại `http://localhost:5168` (hoặc cổng được cấu hình trong `Properties/launchSettings.json`).
+
+Or use the helper script, which checks whether the dev port is already in use:
+
+```powershell
+.\scripts\Start-Dev.ps1
+```
+
+If port `5168` is already occupied, inspect and stop the old process:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5168 -State Listen
+Get-Process -Id <PID>
+Stop-Process -Id <PID> -Force
+```
+
+The app runs at `http://localhost:5168` by default, based on `CarRentalSystem\Properties\launchSettings.json`.
+
+Hangfire uses the same SQL Server connection in Development. If startup logs show Hangfire or SQL connection failures, verify `ConnectionStrings__DefaultConnection` in `.env`; `Security__EnableRecurringJobs=false` only skips recurring job registration and does not remove the database requirement for Hangfire storage.
 
 ### Chế Độ Development vs Production
 
@@ -471,7 +490,7 @@ dotnet run
 ### Health Check
 
 ```bash
-curl http://localhost:5000/health
+curl http://localhost:5168/health
 ```
 
 ### Hangfire Dashboard

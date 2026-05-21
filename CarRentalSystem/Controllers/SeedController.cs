@@ -30,11 +30,11 @@ namespace CarRentalSystem.Controllers
 
             var locationData = new[]
             {
-                new { Name = "TP. Ho Chi Minh", Address = "268 Ly Thuong Kiet, Q.10, TP.HCM", Lat = 10.7769, Lng = 106.6580 },
-                new { Name = "Ha Noi", Address = "1 Trang Tien, Hoan Kiem, Ha Noi", Lat = 21.0285, Lng = 105.8542 },
-                new { Name = "Da Nang", Address = "2 Bach Dang, Hai Chau, Da Nang", Lat = 16.0544, Lng = 108.2022 },
-                new { Name = "Nha Trang", Address = "46 Tran Phu, Loc Tho, Nha Trang", Lat = 12.2388, Lng = 109.1967 },
-                new { Name = "Da Lat", Address = "12 Tran Phu, P.3, Da Lat", Lat = 11.9404, Lng = 108.4583 },
+                new { Name = "TP. Hồ Chí Minh", Address = "268 Lý Thường Kiệt, Q.10, TP.HCM", Lat = 10.7769, Lng = 106.6580 },
+                new { Name = "Hà Nội", Address = "1 Tràng Tiền, Hoàn Kiếm, Hà Nội", Lat = 21.0285, Lng = 105.8542 },
+                new { Name = "Đà Nẵng", Address = "2 Bạch Đằng, Hải Châu, Đà Nẵng", Lat = 16.0544, Lng = 108.2022 },
+                new { Name = "Nha Trang", Address = "46 Trần Phú, Lộc Thọ, Nha Trang", Lat = 12.2388, Lng = 109.1967 },
+                new { Name = "Đà Lạt", Address = "12 Trần Phú, P.3, Đà Lạt", Lat = 11.9404, Lng = 108.4583 },
                 new { Name = "Can Tho", Address = "91B Nguyen Van Linh, Ninh Kieu, Can Tho", Lat = 10.0452, Lng = 105.7469 },
             };
 
@@ -125,21 +125,21 @@ namespace CarRentalSystem.Controllers
 
             var gpsData = new Dictionary<string, (double bLat, double bLng, double sp)>
             {
-                { "TP. Ho Chi Minh", (10.7769, 106.6580, 0.04) },
-                { "Ha Noi", (21.0285, 105.8342, 0.03) },
-                { "Da Nang", (16.0544, 108.2022, 0.025) },
+                { "TP. Hồ Chí Minh", (10.7769, 106.6580, 0.04) },
+                { "Hà Nội", (21.0285, 105.8342, 0.03) },
+                { "Đà Nẵng", (16.0544, 108.2022, 0.025) },
                 { "Nha Trang", (12.2388, 109.1967, 0.02) },
-                { "Da Lat", (11.9404, 108.4583, 0.015) },
+                { "Đà Lạt", (11.9404, 108.4583, 0.015) },
                 { "Can Tho", (10.0452, 105.7469, 0.02) },
             };
 
             var plateAreas = new Dictionary<string, string[]>
             {
-                { "TP. Ho Chi Minh", new[]{ "51A", "51B", "51C", "51D", "51F" } },
-                { "Ha Noi", new[]{ "29A", "29B", "30A", "30B" } },
-                { "Da Nang", new[]{ "43A", "43B", "43C" } },
+                { "TP. Hồ Chí Minh", new[]{ "51A", "51B", "51C", "51D", "51F" } },
+                { "Hà Nội", new[]{ "29A", "29B", "30A", "30B" } },
+                { "Đà Nẵng", new[]{ "43A", "43B", "43C" } },
                 { "Nha Trang", new[]{ "79A", "79B" } },
-                { "Da Lat", new[]{ "49A", "49B" } },
+                { "Đà Lạt", new[]{ "49A", "49B" } },
                 { "Can Tho", new[]{ "65A", "65B" } },
             };
 
@@ -149,7 +149,7 @@ namespace CarRentalSystem.Controllers
             {
                 var gps = gpsData[loc.Key];
                 var plates = plateAreas[loc.Key];
-                int count = (loc.Key == "TP. Ho Chi Minh" || loc.Key == "Ha Noi") ? 10 : 9;
+                int count = (loc.Key == "TP. Hồ Chí Minh" || loc.Key == "Hà Nội") ? 10 : 9;
 
                 for (int i = 0; i < count; i++)
                 {
@@ -176,7 +176,7 @@ namespace CarRentalSystem.Controllers
                         FuelConsumption = t.Cons,
                         Features = t.Features,
                         LocationID = loc.Value.LocationID,
-                        CarAddress = $"Khu vuc {loc.Key}",
+                        CarAddress = $"Khu vực {loc.Key}",
                         Latitude = lat,
                         Longitude = lng,
                         IsPremium = t.Premium,
@@ -185,7 +185,7 @@ namespace CarRentalSystem.Controllers
                         BatteryCapacity = isEV ? 42 + rng.Next(0, 40) : null,
                         RangePerCharge = isEV ? 250 + rng.Next(0, 150) : null,
                         CurrentOdometer = rng.Next(5000, 80000),
-                        Description = $"Xe {t.Brand} {t.Model} {t.Seats} cho, {t.Fuel}, {t.Trans}. Khu vuc {loc.Key}.",
+                        Description = $"Xe {t.Brand} {t.Model} {t.Seats} chỗ, {t.Fuel}, {t.Trans}. Khu vực {loc.Key}.",
                         CreatedAt = DateTime.UtcNow.AddDays(-rng.Next(30, 365)),
                     });
                     totalSeeded++;

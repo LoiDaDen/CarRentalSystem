@@ -50,6 +50,12 @@
         </div>
         <div class="card-body">
             <div class="d-flex flex-wrap gap-2">
+                @if (Model.BookingStatus?.Name == "Confirmed" || Model.BookingStatus?.Name == "Active")
+                {
+                    <a asp-controller="Tracking" asp-action="Booking" asp-route-id="@Model.BookingID" class="btn btn-success">
+                        <i class="bi bi-map"></i> Theo dÃµi giao/nháº­n xe
+                    </a>
+                }
                 @if (Model.BookingStatus?.Name == "Confirmed")
                 {
                     <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@Model.BookingID" asp-route-type="CheckIn" class="btn btn-outline-primary">

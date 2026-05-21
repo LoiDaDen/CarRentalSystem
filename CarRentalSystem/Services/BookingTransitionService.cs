@@ -47,7 +47,13 @@ namespace CarRentalSystem.Services
                 return validation;
             }
 
-            var status = await GetOrCreateStatusAsync(targetStatus);
+            var status = await GetRequiredStatusAsync(targetStatus);
+            if (status == null)
+            {
+                await transaction.RollbackAsync();
+                return new BookingTransitionResult(false, $"Thiếu lookup trạng thái đặt xe: {targetStatus}.");
+            }
+
             booking.BookingStatusID = status.BookingStatusID;
             booking.BookingStatus = status;
 
@@ -102,7 +108,13 @@ namespace CarRentalSystem.Services
                 return new BookingTransitionResult(false, "Đơn đã hoàn tất, không thể hủy.");
             }
 
-            var cancelled = await GetOrCreateStatusAsync(BookingStatusConstants.Cancelled);
+            var cancelled = await GetRequiredStatusAsync(BookingStatusConstants.Cancelled);
+            if (cancelled == null)
+            {
+                await transaction.RollbackAsync();
+                return new BookingTransitionResult(false, $"Thiếu lookup trạng thái đặt xe: {BookingStatusConstants.Cancelled}.");
+            }
+
             booking.BookingStatusID = cancelled.BookingStatusID;
             booking.BookingStatus = cancelled;
             booking.CancelReason = reason;
@@ -178,15 +190,9 @@ namespace CarRentalSystem.Services
             };
         }
 
-        private async Task<BookingStatus> GetOrCreateStatusAsync(string statusName)
+        private async Task<BookingStatus?> GetRequiredStatusAsync(string statusName)
         {
-            var status = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == statusName);
-            if (status != null) return status;
-
-            status = new BookingStatus { Name = statusName };
-            _context.BookingStatuses.Add(status);
-            await _context.SaveChangesAsync();
-            return status;
+            return await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == statusName);
         }
 
         private async Task SetCarStatusAsync(Car? car, string statusName)

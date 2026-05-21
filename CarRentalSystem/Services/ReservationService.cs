@@ -129,9 +129,9 @@ namespace CarRentalSystem.Services
 
                 _context.BookingHolds.Add(hold);
                 holds.Add(hold);
-                await _context.SaveChangesAsync();
             }
 
+            await _context.SaveChangesAsync();
             await transaction.CommitAsync();
             return new BookingHoldsResult(true, holds, null);
         }

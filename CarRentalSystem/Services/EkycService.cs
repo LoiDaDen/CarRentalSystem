@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
@@ -118,7 +119,7 @@ namespace CarRentalSystem.Services
             }
 
             var jsonString = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation("FPT.AI IDR Response: {Response}", jsonString);
+            LogProviderResponseMetadata("FPT.AI IDR", jsonString);
 
             var json = System.Text.Json.JsonDocument.Parse(jsonString);
             var root = json.RootElement;
@@ -225,7 +226,7 @@ namespace CarRentalSystem.Services
                 }
 
                 var jsonString = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation("FPT.AI DLR Response: {Response}", jsonString);
+                LogProviderResponseMetadata("FPT.AI DLR", jsonString);
 
                 var json = System.Text.Json.JsonDocument.Parse(jsonString);
                 var root = json.RootElement;
@@ -335,7 +336,7 @@ namespace CarRentalSystem.Services
                 }
 
                 var jsonString = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation("FPT.AI Face Compare Response: {Response}", jsonString);
+                LogProviderResponseMetadata("FPT.AI Face Compare", jsonString);
 
                 var json = System.Text.Json.JsonDocument.Parse(jsonString);
                 var root = json.RootElement;
@@ -441,6 +442,12 @@ namespace CarRentalSystem.Services
                 return dt.ToString("dd/MM/yyyy");
             }
             return date;
+        }
+
+        private void LogProviderResponseMetadata(string operation, string responseBody)
+        {
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(responseBody))).ToLowerInvariant();
+            _logger.LogInformation("{Operation} response received. Length={Length}; Sha256={Hash}", operation, responseBody.Length, hash);
         }
     }
 

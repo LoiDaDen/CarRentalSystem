@@ -303,6 +303,19 @@
         <!-- === PHAN 4: GUI HONG SO === -->
         <div class="ekyc-card">
             <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="EkycPrivacyConsent" value="true" id="EkycPrivacyConsent" required>
+                <label class="form-check-label" for="EkycPrivacyConsent">
+                    Tôi đồng ý để CarRental xử lý ảnh CCCD/GPLX, thông tin định danh và gửi dữ liệu cần thiết cho FPT.AI nhằm xác minh điều kiện thuê xe.
+                    Xem <a asp-controller="Home" asp-action="Privacy" class="fw-semibold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                </label>
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="EkycBiometricConsent" value="true" id="EkycBiometricConsent" required>
+                <label class="form-check-label" for="EkycBiometricConsent">
+                    Tôi đồng ý xử lý ảnh khuôn mặt/sinh trắc học để đối chiếu selfie với CCCD/GPLX trong quy trình eKYC.
+                </label>
+            </div>
+            <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" id="agreeTerms" required>
                 <label class="form-check-label" for="agreeTerms">
                     Tôi xác nhận các giấy tờ tải lên là chính xác. Hệ thống sẽ tự động xác minh.
@@ -415,7 +428,7 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 if (error) {
                     error.style.display = 'block';
-                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Trinh duyet khong ho tro camera.';
+                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Trình duyệt không hỗ trợ camera.';
                 }
                 return;
             }
@@ -503,6 +516,21 @@
         btn.disabled = !hasImages;
     }
 
+    function validateEkycConsents() {
+        const privacy = document.getElementById('EkycPrivacyConsent');
+        const biometric = document.getElementById('EkycBiometricConsent');
+        if (!privacy?.checked || !biometric?.checked) {
+            alert('Vui lòng đồng ý thông báo xử lý dữ liệu cá nhân và xử lý sinh trắc học trước khi dùng eKYC.');
+            return false;
+        }
+        return true;
+    }
+
+    function appendEkycConsentFields(formData) {
+        formData.append('EkycPrivacyConsent', document.getElementById('EkycPrivacyConsent')?.checked ? 'true' : 'false');
+        formData.append('EkycBiometricConsent', document.getElementById('EkycBiometricConsent')?.checked ? 'true' : 'false');
+    }
+
     // --- Form validation before submit ---
     function validateAllZones() {
         const required = [
@@ -554,7 +582,7 @@
         var form = document.getElementById('ekycForm');
         if (form) {
             form.addEventListener('submit', function(e) {
-                if (!validateAllZones()) {
+                if (!validateEkycConsents() || !validateAllZones()) {
                     e.preventDefault();
                     resetEkycSubmitLoading();
                     return;
@@ -591,6 +619,7 @@
     async function scanCccd() {
         const idFront = document.getElementById('idFront').files[0];
         const idBack = document.getElementById('idBack').files[0];
+        if (!validateEkycConsents()) return;
         if (!idFront && !idBack) {
             alert('Vui lòng tải lên ít nhất 1 ảnh CCCD.');
             return;
@@ -609,6 +638,7 @@
         const formData = new FormData();
         if (idFront) formData.append('idFront', idFront);
         if (idBack) formData.append('idBack', idBack);
+        appendEkycConsentFields(formData);
 
         try {
             const response = await fetch('/Ekyc/ScanIdCard', {
@@ -675,6 +705,7 @@
     // --- License OCR ---
     async function scanLicense() {
         const license = document.getElementById('license').files[0];
+        if (!validateEkycConsents()) return;
         if (!license) {
             alert('Vui lòng tải lên ảnh GPLX mặt trước.');
             return;
@@ -690,6 +721,7 @@
 
         const formData = new FormData();
         formData.append('license', license);
+        appendEkycConsentFields(formData);
 
         try {
             const response = await fetch('/Ekyc/ScanLicense', {
@@ -743,6 +775,7 @@
     async function verifyFace() {
         const face = document.getElementById('face').files[0];
         const idFront = document.getElementById('idFront').files[0];
+        if (!validateEkycConsents()) return;
         if (!face || !idFront) {
             alert('Vui lòng tải lên cả ảnh CCCD mặt trước và ảnh selfie.');
             return;
@@ -759,6 +792,7 @@
         const formData = new FormData();
         formData.append('face', face);
         formData.append('idCard', idFront);
+        appendEkycConsentFields(formData);
 
         try {
             const response = await fetch('/Ekyc/VerifyFace', {

@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -35,8 +36,10 @@ namespace CarRentalSystem.Tests.UnitTests
             var result = await service.CancelAsync(booking.BookingID, 2, "Customer", "test cancel");
 
             result.IsSuccess.Should().BeTrue();
-            var updated = await _context.Bookings.FindAsync(booking.BookingID);
-            updated!.BookingStatusID.Should().Be(4);
+            var updated = await _context.Bookings
+                .Include(b => b.BookingStatus)
+                .FirstAsync(b => b.BookingID == booking.BookingID);
+            updated.BookingStatus!.Name.Should().Be(BookingStatusConstants.Cancelled);
             updated.DepositStatus.Should().Be(DepositStatusConstants.Unpaid);
             (await _context.Cars.FindAsync(booking.CarID))!.CarStatusID.Should().Be(1);
         }
@@ -67,6 +70,128 @@ namespace CarRentalSystem.Tests.UnitTests
             var updated = await _context.Bookings.FindAsync(booking.BookingID);
             updated!.DepositStatus.Should().Be(DepositStatusConstants.UnderReview);
             updated.ActualReturnDate.Should().NotBeNull();
+            _context.RefundRequests.Should().Contain(r =>
+                r.BookingID == booking.BookingID &&
+                r.Amount == booking.DepositAmount &&
+                r.Status == RefundRequestStatusConstants.PendingReview);
+        }
+
+        [Fact]
+        public async Task CancelBooking_Completed_IsRejected()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Completed, PaymentStatusConstants.Paid);
+
+            var result = await service.CancelAsync(booking.BookingID, 2, "Customer", "too late");
+
+            result.IsSuccess.Should().BeFalse();
+            var updated = await _context.Bookings.Include(b => b.BookingStatus).FirstAsync(b => b.BookingID == booking.BookingID);
+            updated.BookingStatus!.Name.Should().Be(BookingStatusConstants.Completed);
+            _context.RefundRequests.Should().NotContain(r => r.BookingID == booking.BookingID);
+        }
+
+        [Fact]
+        public async Task Transition_UnpaidToPending_Succeeds()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Unpaid, paymentStatus: null);
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Pending, 1, "System");
+
+            result.IsSuccess.Should().BeTrue();
+            (await FindStatusNameAsync(booking.BookingID)).Should().Be(BookingStatusConstants.Pending);
+        }
+
+        [Fact]
+        public async Task Transition_PendingToConfirmed_RequiresPaidPayment()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Pending, paymentStatus: null);
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Confirmed, 1, "System");
+
+            result.IsSuccess.Should().BeFalse();
+            (await FindStatusNameAsync(booking.BookingID)).Should().Be(BookingStatusConstants.Pending);
+        }
+
+        [Fact]
+        public async Task Transition_PendingToConfirmed_WithPaidPayment_HoldsDeposit()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Pending, PaymentStatusConstants.Paid);
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Confirmed, 1, "System");
+
+            result.IsSuccess.Should().BeTrue();
+            var updated = await _context.Bookings.Include(b => b.BookingStatus).FirstAsync(b => b.BookingID == booking.BookingID);
+            updated.BookingStatus!.Name.Should().Be(BookingStatusConstants.Confirmed);
+            updated.DepositStatus.Should().Be(DepositStatusConstants.Holding);
+        }
+
+        [Fact]
+        public async Task Transition_ConfirmedToActive_RequiresCheckIn()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Confirmed, PaymentStatusConstants.Paid);
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Active, 1, "System");
+
+            result.IsSuccess.Should().BeFalse();
+            (await FindStatusNameAsync(booking.BookingID)).Should().Be(BookingStatusConstants.Confirmed);
+        }
+
+        [Fact]
+        public async Task Transition_ConfirmedToActive_WithCheckIn_RentsCar()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Confirmed, PaymentStatusConstants.Paid);
+            AddHandover(booking.BookingID, "CheckIn");
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Active, 1, "System");
+
+            result.IsSuccess.Should().BeTrue();
+            (await FindStatusNameAsync(booking.BookingID)).Should().Be(BookingStatusConstants.Active);
+            (await _context.Cars.FindAsync(booking.CarID))!.CarStatusID.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task Transition_ActiveToCompleted_RequiresCheckOut()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Active, PaymentStatusConstants.Paid);
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Completed, 1, "System");
+
+            result.IsSuccess.Should().BeFalse();
+            (await FindStatusNameAsync(booking.BookingID)).Should().Be(BookingStatusConstants.Active);
+        }
+
+        [Fact]
+        public async Task Transition_ActiveToCompleted_WithCheckOut_MarksPendingRefund()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Active, PaymentStatusConstants.Paid);
+            AddHandover(booking.BookingID, "CheckOut");
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Completed, 1, "System");
+
+            result.IsSuccess.Should().BeTrue();
+            var updated = await _context.Bookings.Include(b => b.BookingStatus).FirstAsync(b => b.BookingID == booking.BookingID);
+            updated.BookingStatus!.Name.Should().Be(BookingStatusConstants.Completed);
+            updated.DepositStatus.Should().Be(DepositStatusConstants.PendingRefund);
+            (await _context.Cars.FindAsync(booking.CarID))!.CarStatusID.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task Transition_PendingToExpired_Succeeds()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Pending, paymentStatus: null);
+
+            var result = await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Expired, 1, "System");
+
+            result.IsSuccess.Should().BeTrue();
+            (await FindStatusNameAsync(booking.BookingID)).Should().Be(BookingStatusConstants.Expired);
         }
 
         [Fact]
@@ -84,10 +209,10 @@ namespace CarRentalSystem.Tests.UnitTests
             await _context.SaveChangesAsync();
 
             var controller = CreateCartController(user.UserID);
-            var result = await controller.CheckoutAll();
+            var result = await controller.CheckoutAll(true, true);
 
             result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
-            controller.TempData["Error"]!.ToString().Should().Contain("cach nhau it nhat 1 tieng");
+            controller.TempData["Error"]!.ToString().Should().Contain("cách nhau ít nhất 1 tiếng");
         }
 
         [Fact]
@@ -198,6 +323,26 @@ namespace CarRentalSystem.Tests.UnitTests
             return booking;
         }
 
+        private void AddHandover(int bookingId, string type)
+        {
+            _context.HandoverRecords.Add(new HandoverRecord
+            {
+                BookingID = bookingId,
+                Type = type,
+                Odo = 1000,
+                FuelLevel = "F"
+            });
+            _context.SaveChanges();
+        }
+
+        private async Task<string?> FindStatusNameAsync(int bookingId)
+        {
+            return (await _context.Bookings
+                .Include(b => b.BookingStatus)
+                .FirstAsync(b => b.BookingID == bookingId))
+                .BookingStatus?.Name;
+        }
+
         private CartController CreateCartController(int userId)
         {
             var eligibility = new Mock<IEligibilityService>();
@@ -210,7 +355,8 @@ namespace CarRentalSystem.Tests.UnitTests
                 Mock.Of<IReservationService>(),
                 Mock.Of<IBookingQuoteService>(),
                 Mock.Of<IPayOSPaymentService>(),
-                eligibility.Object);
+                eligibility.Object,
+                Mock.Of<ILegalComplianceService>());
             AttachHttpContext(controller, userId);
             return controller;
         }

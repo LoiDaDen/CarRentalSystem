@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
 
 namespace CarRentalSystem.Controllers
@@ -25,7 +26,9 @@ namespace CarRentalSystem.Controllers
         private readonly IBookingTransitionService _bookingTransitionService;
         private readonly IPaymentTransitionService _paymentTransitionService;
         private readonly ISettlementReviewService _settlementReviewService;
+        private readonly IPiiEncryptionService _piiEncryption;
         private readonly ILogger<BookingController> _logger;
+        private readonly ILegalComplianceService _legalCompliance;
         private readonly Data.ApplicationDbContext _context;
 
         public BookingController(
@@ -41,7 +44,9 @@ namespace CarRentalSystem.Controllers
             IBookingTransitionService bookingTransitionService,
             IPaymentTransitionService paymentTransitionService,
             ISettlementReviewService settlementReviewService,
+            IPiiEncryptionService piiEncryption,
             ILogger<BookingController> logger,
+            ILegalComplianceService legalCompliance,
             Data.ApplicationDbContext context)
         {
             _bookingService = bookingService;
@@ -56,12 +61,14 @@ namespace CarRentalSystem.Controllers
             _bookingTransitionService = bookingTransitionService;
             _paymentTransitionService = paymentTransitionService;
             _settlementReviewService = settlementReviewService;
+            _piiEncryption = piiEncryption;
             _logger = logger;
+            _legalCompliance = legalCompliance;
             _context = context;
         }
 
         [HttpGet]
-        public async Task<IActionResult> Checkout(int CarID, DateTime StartDate, DateTime EndDate, string PickupLocation, string pickupLocationType = "customer", [FromQuery] List<string>? SelectedAddons = null)
+        public async Task<IActionResult> Checkout(int CarID, DateTime StartDate, DateTime EndDate, string PickupLocation, string pickupLocationType = "customer", double? deliveryLatitude = null, double? deliveryLongitude = null, [FromQuery] List<string>? SelectedAddons = null)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (int.TryParse(userIdString, out int userId))
@@ -97,20 +104,25 @@ namespace CarRentalSystem.Controllers
             var car = await _carService.GetCarByIdAsync(CarID);
             if (car == null) return NotFound();
 
-            if (pickupLocationType == "owner")
+            var deliveryMode = string.Equals(pickupLocationType, "owner", StringComparison.OrdinalIgnoreCase)
+                ? DeliveryModeConstants.OwnerDelivery
+                : DeliveryModeConstants.CustomerPickup;
+            DeliveryQuoteResult? deliveryQuote = null;
+
+            if (deliveryMode == DeliveryModeConstants.OwnerDelivery)
             {
-                var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
-                var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
-                var scope = _deliveryScopeService.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, PickupLocation);
-                if (!scope.IsWithinScope)
+                var deliveryValidation = await TryBuildDeliveryQuoteAsync(car, PickupLocation, deliveryLatitude, deliveryLongitude);
+                if (!deliveryValidation.IsSuccess || deliveryValidation.Quote == null)
                 {
-                    TempData["BookingError"] = scope.MessageVi;
+                    TempData["BookingError"] = deliveryValidation.ErrorMessage ?? "Vui lòng chọn vị trí giao xe hợp lệ trên bản đồ.";
                     return RedirectToAction("Details", "Car", new { id = CarID });
                 }
+
+                deliveryQuote = deliveryValidation.Quote;
             }
 
             // Phase 3: Maintenance blocking
-            if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value < DateTime.UtcNow)
+            if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value.Date < GetVietnamToday())
             {
                 TempData["BookingError"] = "Xe này đang tạm ngưng cho thuê do quá hạn Đăng Kiểm. Vui lòng chọn xe khác.";
                 return RedirectToAction("Details", "Car", new { id = CarID });
@@ -186,11 +198,24 @@ namespace CarRentalSystem.Controllers
                 TotalPrice = totalPrice,
                 TotalHours = totalHours,
                 DepositAmount = car.DefaultDeposit,
-                DepositStatus = "Holding"
+                DepositStatus = "Holding",
+                DeliveryMode = deliveryMode,
+                DeliveryAddress = deliveryMode == DeliveryModeConstants.OwnerDelivery ? PickupLocation : null,
+                DeliveryLatitude = deliveryQuote?.Latitude,
+                DeliveryLongitude = deliveryQuote?.Longitude,
+                DeliveryDistanceKm = deliveryQuote?.DistanceKm ?? 0m,
+                DeliveryEtaMinutes = deliveryQuote?.EtaMinutes,
+                DeliveryQuotedAt = deliveryQuote?.QuotedAtUtc,
+                DeliveryFee = deliveryQuote?.Fee ?? 0m
             };
 
             ViewBag.PickupLocation = PickupLocation;
             ViewBag.PickupLocationType = pickupLocationType;
+            ViewBag.DeliveryLatitude = deliveryQuote?.Latitude;
+            ViewBag.DeliveryLongitude = deliveryQuote?.Longitude;
+            ViewBag.DeliveryDistanceKm = deliveryQuote?.DistanceKm;
+            ViewBag.DeliveryEtaMinutes = deliveryQuote?.EtaMinutes;
+            ViewBag.DeliveryFee = deliveryQuote?.Fee ?? 0m;
             ViewBag.DiffDays = days > 0 ? days : 1;
             ViewBag.DiffHours = remHours;
 
@@ -228,7 +253,14 @@ namespace CarRentalSystem.Controllers
                     StartDate = StartDate,
                     EndDate = EndDate,
                     InsuranceTier = "Basic",
-                    DeliveryFee = 0m,
+                    DeliveryFee = deliveryQuote?.Fee ?? 0m,
+                    DeliveryAddress = deliveryMode == DeliveryModeConstants.OwnerDelivery ? PickupLocation : null,
+                    DeliveryMode = deliveryMode,
+                    DeliveryLatitude = deliveryQuote?.Latitude,
+                    DeliveryLongitude = deliveryQuote?.Longitude,
+                    DeliveryDistanceKm = deliveryQuote?.DistanceKm ?? 0m,
+                    DeliveryEtaMinutes = deliveryQuote?.EtaMinutes,
+                    DeliveryQuotedAt = deliveryQuote?.QuotedAtUtc,
                     SelectedAddons = SelectedAddons
                 });
 
@@ -275,7 +307,7 @@ namespace CarRentalSystem.Controllers
 
             if (transaction == null) return NotFound();
 
-            // Neu chua co bookings (dang o trang thai Unpaid), lay tu snapshot
+            // Nếu chưa có bookings (đang ở trạng thái Unpaid), lấy từ snapshot
             if (!transaction.Bookings.Any() && !string.IsNullOrEmpty(transaction.PendingCartSnapshot))
             {
                 try
@@ -291,8 +323,14 @@ namespace CarRentalSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Book(Booking booking, bool SelfDriveAgreement, int? SelectedDriverID, decimal DriverFee, List<string>? SelectedAddons)
+        public async Task<IActionResult> Book(Booking booking, bool SelfDriveAgreement, bool LegalAgreement, int? SelectedDriverID, decimal DriverFee, List<string>? SelectedAddons)
         {
+            if (!LegalAgreement)
+            {
+                TempData["BookingError"] = "Bạn phải đồng ý Điều khoản sử dụng và Thông báo xử lý dữ liệu cá nhân trước khi đặt xe.";
+                return RedirectToAction("Details", "Car", new { id = booking.CarID });
+            }
+
             if (!SelfDriveAgreement)
             {
                 TempData["BookingError"] = "Bạn phải xác nhận là người trực tiếp điều khiển xe và có giấy phép lái xe hợp lệ.";
@@ -312,7 +350,7 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
-            if (booking.StartDate.Date < DateTime.UtcNow.Date)
+            if (booking.StartDate.Date < GetVietnamToday())
             {
                 TempData["BookingError"] = "Không thể đặt xe cho ngày trong quá khứ.";
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
@@ -367,22 +405,48 @@ namespace CarRentalSystem.Controllers
             booking.ContractTypeCode = "SELF_DRIVE_CONTRACT";
             await _businessRules.ValidateSelfDriveAsync(booking, DriverFee);
 
-            if (booking.DeliveryFee > 0 && string.IsNullOrWhiteSpace(booking.DeliveryAddress))
-            {
-                TempData["BookingError"] = "Vui lòng nhập địa chỉ giao xe khi chọn dịch vụ giao tận nơi.";
-                return RedirectToAction("Checkout", new { CarID = booking.CarID, StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"), EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"), PickupLocation = car.Location?.Name, pickupLocationType = "owner" });
-            }
+            var deliveryRequested = string.Equals(booking.DeliveryMode, DeliveryModeConstants.OwnerDelivery, StringComparison.OrdinalIgnoreCase)
+                || booking.DeliveryFee > 0
+                || booking.DeliveryLatitude.HasValue
+                || booking.DeliveryLongitude.HasValue;
 
-            if (booking.DeliveryFee > 0)
+            if (deliveryRequested)
             {
-                var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
-                var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
-                var scope = _deliveryScopeService.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, booking.DeliveryAddress);
-                if (!scope.IsWithinScope)
+                var deliveryValidation = await TryBuildDeliveryQuoteAsync(car, booking.DeliveryAddress, booking.DeliveryLatitude, booking.DeliveryLongitude);
+                if (!deliveryValidation.IsSuccess || deliveryValidation.Quote == null)
                 {
-                    TempData["BookingError"] = scope.MessageVi;
-                    return RedirectToAction("Checkout", new { CarID = booking.CarID, StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"), EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"), PickupLocation = car.Location?.Name, pickupLocationType = "owner" });
+                    TempData["BookingError"] = deliveryValidation.ErrorMessage ?? "Vui lòng chọn vị trí giao xe hợp lệ trên bản đồ.";
+                    return RedirectToAction("Checkout", new
+                    {
+                        CarID = booking.CarID,
+                        StartDate = booking.StartDate.ToString("yyyy-MM-ddTHH:mm"),
+                        EndDate = booking.EndDate.ToString("yyyy-MM-ddTHH:mm"),
+                        PickupLocation = booking.DeliveryAddress ?? car.Location?.Name,
+                        pickupLocationType = "owner",
+                        deliveryLatitude = booking.DeliveryLatitude,
+                        deliveryLongitude = booking.DeliveryLongitude
+                    });
                 }
+
+                booking.DeliveryMode = DeliveryModeConstants.OwnerDelivery;
+                booking.DeliveryAddress = booking.DeliveryAddress?.Trim();
+                booking.DeliveryLatitude = deliveryValidation.Quote.Latitude;
+                booking.DeliveryLongitude = deliveryValidation.Quote.Longitude;
+                booking.DeliveryDistanceKm = deliveryValidation.Quote.DistanceKm;
+                booking.DeliveryEtaMinutes = deliveryValidation.Quote.EtaMinutes;
+                booking.DeliveryQuotedAt = deliveryValidation.Quote.QuotedAtUtc;
+                booking.DeliveryFee = deliveryValidation.Quote.Fee;
+            }
+            else
+            {
+                booking.DeliveryMode = DeliveryModeConstants.CustomerPickup;
+                booking.DeliveryAddress = null;
+                booking.DeliveryLatitude = null;
+                booking.DeliveryLongitude = null;
+                booking.DeliveryDistanceKm = 0m;
+                booking.DeliveryEtaMinutes = null;
+                booking.DeliveryQuotedAt = null;
+                booking.DeliveryFee = 0m;
             }
 
             BookingHoldResult? holdResult = null;
@@ -399,9 +463,45 @@ namespace CarRentalSystem.Controllers
                     InsuranceTier = booking.InsuranceTier,
                     DeliveryFee = booking.DeliveryFee,
                     DeliveryAddress = booking.DeliveryAddress,
+                    DeliveryMode = booking.DeliveryMode,
+                    DeliveryLatitude = booking.DeliveryLatitude,
+                    DeliveryLongitude = booking.DeliveryLongitude,
+                    DeliveryDistanceKm = booking.DeliveryDistanceKm,
+                    DeliveryEtaMinutes = booking.DeliveryEtaMinutes,
+                    DeliveryQuotedAt = booking.DeliveryQuotedAt,
                     SelectedAddons = SelectedAddons,
                     PromotionID = booking.PromotionID
                 });
+                var termsDocument = await _legalCompliance.GetActiveDocumentAsync(LegalDocumentCodes.TermsOfUse);
+                var privacyDocument = await _legalCompliance.GetActiveDocumentAsync(LegalDocumentCodes.PrivacyNotice);
+                var selfDriveDocument = await _legalCompliance.GetActiveDocumentAsync(LegalDocumentCodes.SelfDriveAgreement);
+                var agreementAt = DateTime.UtcNow;
+                var agreementIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var agreementUserAgent = Request.Headers.UserAgent.ToString();
+
+                quote.TermsDocumentVersionID = termsDocument.LegalDocumentVersionID;
+                quote.PrivacyNoticeVersionID = privacyDocument.LegalDocumentVersionID;
+                quote.SelfDriveAgreementAcceptedAt = agreementAt;
+                quote.SelfDriveAgreementIpAddress = agreementIp;
+                quote.SelfDriveAgreementUserAgent = agreementUserAgent;
+                booking.TermsDocumentVersionID = termsDocument.LegalDocumentVersionID;
+                booking.PrivacyNoticeVersionID = privacyDocument.LegalDocumentVersionID;
+                booking.SelfDriveAgreementAcceptedAt = agreementAt;
+                booking.SelfDriveAgreementIpAddress = agreementIp;
+                booking.SelfDriveAgreementUserAgent = agreementUserAgent;
+
+                var bookingConsentEvidence = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    Form = "Booking/Book",
+                    booking.CarID,
+                    booking.StartDate,
+                    booking.EndDate,
+                    SelfDriveAgreement,
+                    LegalAgreement
+                });
+                await _legalCompliance.RecordConsentAsync(booking.UserID, LegalDocumentCodes.TermsOfUse, ConsentPurposeCodes.BookingTerms, LegalAgreement, "Booking", HttpContext, bookingConsentEvidence);
+                await _legalCompliance.RecordConsentAsync(booking.UserID, LegalDocumentCodes.PrivacyNotice, ConsentPurposeCodes.PrivacyNoticeAcknowledgement, LegalAgreement, "Booking", HttpContext, bookingConsentEvidence);
+                await _legalCompliance.RecordConsentAsync(booking.UserID, LegalDocumentCodes.SelfDriveAgreement, ConsentPurposeCodes.SelfDriveAgreement, SelfDriveAgreement, "Booking", HttpContext, bookingConsentEvidence);
 
                 var availability = await _reservationService.CheckCarAvailabilityAsync(booking.CarID, booking.StartDate, booking.EndDate);
                 if (!availability.IsAvailable)
@@ -507,14 +607,14 @@ namespace CarRentalSystem.Controllers
 
             if (booking == null)
             {
-                TempData["Error"] = "Khong tim thay don dat xe.";
+                TempData["Error"] = "Không tìm thấy đơn đặt xe.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
             var cancellableStatuses = new[] { BookingStatusConstants.Pending, BookingStatusConstants.Confirmed, BookingStatusConstants.Active };
             if (!cancellableStatuses.Contains(booking.BookingStatus?.Name))
             {
-                TempData["Error"] = "Khong the huy don o trang thai hien tai.";
+                TempData["Error"] = "Không thể hủy đơn ở trạng thái hiện tại.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
@@ -526,11 +626,11 @@ namespace CarRentalSystem.Controllers
 
             if (!result.IsSuccess)
             {
-                TempData["Error"] = result.ErrorMessage ?? "Khong the huy don o trang thai hien tai.";
+                TempData["Error"] = result.ErrorMessage ?? "Không thể hủy đơn ở trạng thái hiện tại.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
-            TempData["Success"] = "Don dat xe da duoc huy thanh cong.";
+            TempData["Success"] = "Đơn đặt xe đã được hủy thành công.";
             return RedirectToAction(nameof(MyBookings));
         }
 
@@ -549,7 +649,7 @@ namespace CarRentalSystem.Controllers
 
             if (booking == null || booking.BookingStatus?.Name != BookingStatusConstants.Confirmed)
             {
-                TempData["Error"] = "Don dat xe khong hop le de nhan xe.";
+                TempData["Error"] = "Đơn đặt xe không hợp lệ để nhận xe.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
@@ -560,7 +660,7 @@ namespace CarRentalSystem.Controllers
 
             if (checkInRecord == null)
             {
-                TempData["Error"] = "Ban phai tao bien ban nhan xe truoc khi xac nhan nhan xe.";
+                TempData["Error"] = "Bạn phải tạo biên bản nhận xe trước khi xác nhận nhận xe.";
                 return RedirectToAction("Capture", "Handover", new { bookingId = id, type = "CheckIn" });
             }
 
@@ -573,7 +673,7 @@ namespace CarRentalSystem.Controllers
 
             if (!transition.IsSuccess)
             {
-                TempData["Error"] = transition.ErrorMessage ?? "Khong the xac nhan nhan xe.";
+                TempData["Error"] = transition.ErrorMessage ?? "Không thể xác nhận nhận xe.";
                 return RedirectToAction(nameof(MyBookings));
             }
 
@@ -595,7 +695,7 @@ namespace CarRentalSystem.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            TempData["Success"] = "Ban da xac nhan nhan xe thanh cong.";
+            TempData["Success"] = "Bạn đã xác nhận nhận xe thành công.";
             return RedirectToAction(nameof(MyBookings));
         }
         [HttpPost]
@@ -654,7 +754,9 @@ namespace CarRentalSystem.Controllers
                 // Grace period: miễn phí 30 phút đầu
                 if (lateSpan.TotalMinutes > 30 && booking.Car != null)
                 {
-                    booking.LateFeeAmount = lateHours * booking.Car.OverTimeFee;
+                    var rawLateFee = lateHours * booking.Car.OverTimeFee;
+                    var oneDayCap = booking.Car.PricePerDay > 0 ? booking.Car.PricePerDay : rawLateFee;
+                    booking.LateFeeAmount = Math.Min(rawLateFee, oneDayCap);
                     booking.TotalPrice += booking.LateFeeAmount;
                     msg += $" ⚠️ Trả xe trễ {lateHours} giờ. Phụ phí: {booking.LateFeeAmount:N0}đ ({booking.Car.OverTimeFee:N0}đ/giờ).";
                     hasViolation = true;
@@ -727,7 +829,7 @@ namespace CarRentalSystem.Controllers
         {
             if (!IsInternalUser()) return Forbid();
 
-            TempData["Info"] = "He thong da bo hop dong dien tu. Vui long upload hop dong giay da ky vao muc Hop dong vat ly.";
+            TempData["Info"] = "Hệ thống đã bỏ hợp đồng điện tử. Vui lòng upload hợp đồng giấy đã ký vào mục Hợp đồng vật lý.";
             return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin", bookingId = id });
         }
 
@@ -735,7 +837,7 @@ namespace CarRentalSystem.Controllers
         {
             if (!IsInternalUser()) return Forbid();
 
-            TempData["Info"] = "He thong da bo hop dong dien tu. Vui long upload hop dong giay da ky vao muc Hop dong vat ly.";
+            TempData["Info"] = "Hệ thống đã bỏ hợp đồng điện tử. Vui lòng upload hợp đồng giấy đã ký vào mục Hợp đồng vật lý.";
             return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin" });
         }
 
@@ -745,13 +847,13 @@ namespace CarRentalSystem.Controllers
         {
             if (!IsInternalUser()) return Forbid();
 
-            TempData["Info"] = "He thong da bo ky hop dong dien tu. Vui long upload anh/PDF hop dong giay da ky.";
+            TempData["Info"] = "Hệ thống đã bỏ ký hợp đồng điện tử. Vui lòng upload ảnh/PDF hợp đồng giấy đã ký.";
             return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin" });
         }
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Manage()
+        public async Task<IActionResult> Manage(int page = 1)
         {
-            var bookings = await _bookingService.GetAllBookingsAsync();
+            var bookings = await _bookingService.GetAllBookingsPageAsync(page, 50);
             return View(bookings);
         }
 
@@ -783,7 +885,9 @@ namespace CarRentalSystem.Controllers
                 var payment = new Payment
                 {
                     BookingID = id,
-                    Amount = booking.TotalPrice * 0.2m,
+                    Amount = booking.ReservationFee > 0
+                        ? booking.ReservationFee
+                        : Math.Round(booking.TotalPrice * 0.2m, 0, MidpointRounding.AwayFromZero),
                     PaymentMethod = "Manual Transfer",
                     PaymentStatus = "Pending",
                     PaymentDate = DateTime.UtcNow
@@ -808,7 +912,7 @@ namespace CarRentalSystem.Controllers
 
             if (transaction == null) return NotFound();
 
-            // Neu chua co Bookings (tu CheckoutAll moi), tao bookings tu PendingCartSnapshot
+            // Nếu chưa có Bookings (từ CheckoutAll mới), tạo bookings từ PendingCartSnapshot
             if (!transaction.Bookings.Any() && !string.IsNullOrEmpty(transaction.PendingCartSnapshot))
             {
                 var user = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
@@ -816,9 +920,8 @@ namespace CarRentalSystem.Controllers
                 var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending);
                 if (pendingStatus == null)
                 {
-                    pendingStatus = new BookingStatus { Name = BookingStatusConstants.Pending };
-                    _context.BookingStatuses.Add(pendingStatus);
-                    await _context.SaveChangesAsync();
+                    TempData["Error"] = "Thiếu lookup BookingStatus Pending. Vui lòng chạy seed dữ liệu tham chiếu.";
+                    return RedirectToAction("Index", "Cart");
                 }
 
                 try
@@ -841,9 +944,9 @@ namespace CarRentalSystem.Controllers
 
                         var car = await _context.Cars.Include(c => c.CarStatus).FirstOrDefaultAsync(c => c.CarID == carId);
                         if (car == null)
-                            throw new Exception($"Xe ID {carId} khong ton tai.");
+                            throw new Exception($"Xe ID {carId} không tồn tại.");
                         if (car.CarStatus?.Name != "Available")
-                            throw new Exception($"Xe '{car.CarName}' khong con san.");
+                            throw new Exception($"Xe '{car.CarName}' không còn sẵn.");
 
                         bool hasOverlap = await _context.Bookings.Include(b => b.BookingStatus)
                             .AnyAsync(b => b.CarID == carId && b.BookingStatus != null &&
@@ -887,7 +990,7 @@ namespace CarRentalSystem.Controllers
                         TransactionID = transaction.TransactionID,
                         ContractNo = contractNo,
                         CustomerName = snapshot.GetProperty("userName").GetString() ?? "",
-                        CustomerIdentityCard = "",
+                        CustomerIdentityCard = _piiEncryption.DecryptIfNotEmpty(user?.CitizenId) ?? "",
                         CustomerPhone = snapshot.GetProperty("userPhone").GetString() ?? "",
                         CustomerAddress = snapshot.GetProperty("userAddress").GetString() ?? "",
                         CarLicensePlate = string.Join(", ", carsList),
@@ -946,7 +1049,12 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                             TransactionID = transaction.TransactionID,
                             PickupLocationID = item.GetProperty("locationId").GetInt32(),
                             ReturnLocationID = item.GetProperty("locationId").GetInt32(),
-                            ContractTypeID = item.TryGetProperty("contractTypeId", out var ctid) && ctid.ValueKind != System.Text.Json.JsonValueKind.Null ? ctid.GetInt32() : null
+                            ContractTypeID = item.TryGetProperty("contractTypeId", out var ctid) && ctid.ValueKind != System.Text.Json.JsonValueKind.Null ? ctid.GetInt32() : null,
+                            TermsDocumentVersionID = item.TryGetProperty("termsDocumentVersionId", out var tdv) && tdv.ValueKind != System.Text.Json.JsonValueKind.Null ? tdv.GetInt32() : null,
+                            PrivacyNoticeVersionID = item.TryGetProperty("privacyNoticeVersionId", out var pdv) && pdv.ValueKind != System.Text.Json.JsonValueKind.Null ? pdv.GetInt32() : null,
+                            SelfDriveAgreementAcceptedAt = item.TryGetProperty("selfDriveAgreementAcceptedAt", out var sda) && sda.ValueKind != System.Text.Json.JsonValueKind.Null ? sda.GetDateTime() : null,
+                            SelfDriveAgreementIpAddress = item.TryGetProperty("selfDriveAgreementIpAddress", out var sdip) && sdip.ValueKind != System.Text.Json.JsonValueKind.Null ? sdip.GetString() : null,
+                            SelfDriveAgreementUserAgent = item.TryGetProperty("selfDriveAgreementUserAgent", out var sdua) && sdua.ValueKind != System.Text.Json.JsonValueKind.Null ? sdua.GetString() : null
                         };
                         _context.Bookings.Add(booking);
                         await _context.SaveChangesAsync();
@@ -977,7 +1085,7 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                 }
             }
 
-            // Cap nhat transaction
+            // Cập nhật transaction
             transaction.Status = BookingStatusConstants.Confirmed;
             _context.BookingTransactions.Update(transaction);
             await _context.SaveChangesAsync();
@@ -1002,9 +1110,10 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                 .Include(b => b.DigitalContract)
                 .Include(b => b.HandoverRecords)
                 .Include(b => b.BookingAddOns).ThenInclude(ba => ba.AddOn)
-                .FirstOrDefaultAsync(b => b.BookingID == id && b.UserID == userId);
+                .FirstOrDefaultAsync(b => b.BookingID == id);
 
             if (booking == null) return NotFound();
+            if (booking.UserID != userId && !IsInternalUser()) return Forbid();
             return View(booking);
         }
 
@@ -1013,6 +1122,80 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
             return User.IsInRole(UserRoleConstants.Admin) ||
                    User.IsInRole(UserRoleConstants.Manager) ||
                    User.IsInRole(UserRoleConstants.Staff);
+        }
+
+        private async Task<DeliveryQuoteBuildResult> TryBuildDeliveryQuoteAsync(Car car, string? deliveryAddress, double? deliveryLatitude, double? deliveryLongitude)
+        {
+            if (!car.DeliveryEnabled)
+                return DeliveryQuoteBuildResult.Fail("Xe này chưa bật dịch vụ giao tận nơi. Vui lòng chọn nhận xe tại vị trí xe.");
+
+            if (string.IsNullOrWhiteSpace(deliveryAddress))
+                return DeliveryQuoteBuildResult.Fail("Vui lòng nhập địa chỉ giao xe khi chọn dịch vụ giao tận nơi.");
+
+            if (!deliveryLatitude.HasValue || !deliveryLongitude.HasValue ||
+                deliveryLatitude < -90 || deliveryLatitude > 90 ||
+                deliveryLongitude < -180 || deliveryLongitude > 180)
+            {
+                return DeliveryQuoteBuildResult.Fail("Vui lòng chọn vị trí giao xe trên bản đồ.");
+            }
+
+            var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
+            var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
+            var scope = _deliveryScopeService.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, deliveryLatitude.Value, deliveryLongitude.Value);
+            if (!scope.IsWithinScope)
+                return DeliveryQuoteBuildResult.Fail(scope.MessageVi);
+
+            var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
+            if (deliveryService == null)
+                return DeliveryQuoteBuildResult.Fail("Chưa cấu hình dịch vụ tính phí giao xe.");
+
+            var info = await deliveryService.CalculateDeliveryAsync(carLat, carLng, deliveryLatitude.Value, deliveryLongitude.Value);
+            if (car.MaxDeliveryDistanceKm > 0 && (decimal)info.DistanceKm > car.MaxDeliveryDistanceKm)
+            {
+                return DeliveryQuoteBuildResult.Fail($"Vị trí giao xe cách {info.DistanceKm:F1} km, vượt quá phạm vi {car.MaxDeliveryDistanceKm:N0} km của xe này.");
+            }
+
+            var roundedDistance = Math.Round((decimal)info.DistanceKm, 2, MidpointRounding.AwayFromZero);
+            var billableKm = Math.Max(0m, Math.Ceiling(roundedDistance - car.FreeDeliveryRadiusKm));
+            var fee = billableKm * car.DeliveryFeePerKm;
+            var etaMinutes = (int)Math.Ceiling(info.DurationMinutes + 60);
+
+            return DeliveryQuoteBuildResult.Ok(new DeliveryQuoteResult(
+                deliveryLatitude.Value,
+                deliveryLongitude.Value,
+                roundedDistance,
+                etaMinutes,
+                fee,
+                DateTime.UtcNow));
+        }
+
+        private sealed record DeliveryQuoteResult(
+            double Latitude,
+            double Longitude,
+            decimal DistanceKm,
+            int EtaMinutes,
+            decimal Fee,
+            DateTime QuotedAtUtc);
+
+        private sealed record DeliveryQuoteBuildResult(bool IsSuccess, DeliveryQuoteResult? Quote, string? ErrorMessage)
+        {
+            public static DeliveryQuoteBuildResult Ok(DeliveryQuoteResult quote) => new(true, quote, null);
+            public static DeliveryQuoteBuildResult Fail(string message) => new(false, null, message);
+        }
+
+        private static DateTime GetVietnamToday()
+        {
+            TimeZoneInfo timeZone;
+            try
+            {
+                timeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                timeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
+            }
+
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).Date;
         }
     }
 }

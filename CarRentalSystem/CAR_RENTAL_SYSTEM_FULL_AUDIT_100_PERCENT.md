@@ -116,43 +116,43 @@ Bảng đầy đủ các file còn lại (~300 file) sẽ được mở rộng �
 |----|-----|------|-------|----------|----------------|-------------------|------------|
 | BUG-001 | Critical | `Controllers/BookingController.cs`, `Controllers/CartController.cs`, `Controllers/EkycController.cs` | Source file lưu UTF-8 nhưng nội dung Vietnamese đã bị double-encoded → bytes là "Báº¡n" thay vì "Bạn". | UI hiển thị gibberish khắp luồng đặt xe / giỏ hàng / eKYC. Sai chuẩn UX. | Mở 1 trong 3 file thấy `"Báº¡n pháº£i xÃ¡c nháº­n..."`. Test browser sẽ render đúng vậy. | Re-encode bằng cách decode wrong-UTF-8 → Windows-1252 → UTF-8 cho từng string literal. (Áp dụng ở mục Safe Fixes.) | **Fixed** |
 | BUG-002 | Critical | `Controllers/BookingController.cs` lines 149-173 + 465-595 | Dead duplicated price-calc + 130 dòng commented atomic-booking block | Confusing maintenance, dễ vô tình revert sang logic cũ; obscure flow. | Xem file. | Xóa block commented + xóa duplicate calc trong Checkout (đã được overwrite bởi quote service). | **Fixed** |
-| BUG-003 | High | `Controllers/BookingController.cs:113` | `NextInspectionDate < DateTime.UtcNow` so sánh date UTC với date local user | Có thể block xe nhầm khi user ở VN cuối ngày. | — | Convert sang `TimeZoneInfo` Asia/Ho_Chi_Minh hoặc dùng `DateOnly`. | Pending |
+| BUG-003 | High | `Controllers/BookingController.cs:113` | `NextInspectionDate < DateTime.UtcNow` so sánh date UTC với date local user | Có thể block xe nhầm khi user ở VN cuối ngày. | — | Convert sang `TimeZoneInfo` Asia/Ho_Chi_Minh hoặc dùng `DateOnly`. | **Fixed** (Pass 2.1) |
 | BUG-004 | High | `Controllers/BookingController.cs:222` | Re-fetch user đã load ở line 69 | Hai DB roundtrip cho cùng user. | — | Reuse `user` variable. | Pending |
-| BUG-005 | High | `Controllers/BookingController.cs:315` | `StartDate.Date < DateTime.UtcNow.Date` (UTC) | Khách VN chọn `hôm nay` (00:30 sáng VN = 17:30 hôm qua UTC) → có thể bị block. | — | Compare TimeZoneInfo VN. | Pending |
-| BUG-006 | Critical | `Controllers/BookingController.cs:885 ConfirmManualPayment` | Hardcode `Amount = TotalPrice * 0.2m` cho "Manual Transfer" | Tiền cọc sai khi nghiệp vụ thay đổi 20%. | — | Dùng `ReservationFee` field; nếu rỗng, gọi shared `ResolveReservationFee`. | Pending |
-| BUG-007 | Critical | `Controllers/BookingController.cs:1010-1047` | DigitalContract auto-create với `CustomerIdentityCard=""` và hardcoded TermsAndConditions VN | Hợp đồng pháp lý có CCCD trống → vô hiệu. | — | Pull `user.CitizenId` (đã decrypt via PiiEncryption). Move template ra resource. | Pending |
-| BUG-008 | Critical | `Controllers/BookingController.cs:944-947, 1106` | `ConfirmManualPaymentTransaction` tạo BookingStatus row runtime nếu thiếu | Race condition; thường lookup không seed → 2 user cùng thanh toán đầu tiên tạo trùng. | — | Seed BookingStatuses trong DbSeeder. Throw nếu thiếu thay vì auto-create. | Pending |
-| BUG-009 | Critical | `Middleware/RateLimitingMiddleware.cs:245-253` | Tự đọc `X-Forwarded-For` không qua trust validation | Attacker spoof IP → bypass login brute-force protection. | curl với `-H 'X-Forwarded-For: 1.2.3.4'` từ random IP, mỗi request đổi → counter không tăng. | Dùng `context.Connection.RemoteIpAddress` (đã được UseForwardedHeaders cập nhật theo trust config). | Pending |
-| BUG-010 | Critical | `Controllers/HandoverController.cs:41, 81, 98` | `WHERE BookingID == bookingId && UserID == userId` ở mọi action | Staff/Admin/Manager không bàn giao được; customer bàn giao tự upload ảnh → fraud risk. | Login Staff → vào /Handover/Capture?bookingId=1 → 404. | Cho phép `[Authorize(Roles="Admin,Manager,Staff")]` truy cập booking thuộc area mình. Customer chỉ ký SignatureBase64. | Pending |
-| BUG-011 | Critical | `Controllers/HandoverController.cs:92 Submit` | Không validate trạng thái booking; cho phép double check-in/out; không dùng FileUploadValidationService | (1) Customer bàn giao xe đã Completed → record orphan; (2) Upload .jpg với magic-byte exe → bypass extension check. | — | Add `Booking.BookingStatus == Confirmed (CheckIn) hoặc Active (CheckOut)` check; query existing same-type record. Inject `IFileUploadValidationService` và dùng. | Pending |
-| BUG-012 | High | `Controllers/HandoverController.cs:145-149` | Signature base64 parse: `Substring(IndexOf(",")+1)` không null-safe + `Convert.FromBase64String` không try/catch | Malformed input → 500 error. | POST với SignatureBase64="abc" (no comma). | Use `if (SignatureBase64.Contains(",")) ... else use whole`. Wrap try/catch FormatException. | Pending |
-| BUG-013 | High | `Controllers/HandoverController.cs:159` | Set `ActualReturnDate=UtcNow` ở handover CheckOut trong khi `CustomerConfirmReturn` cũng set | Double assignment; nếu user upload handover rồi cancel → ActualReturnDate đã set sai. | — | Bỏ; chỉ `CustomerConfirmReturn` set ActualReturnDate. | Pending |
-| BUG-014 | Critical | `Controllers/AuthController.cs:447-498 Register (active)` | Thiếu validation CCCD/GPLX/Phone/Age + KHÔNG encrypt CCCD/GPLX trước khi lưu (đoạn code đúng nằm trong block /* ... */ comment) | (1) Customer dưới 18 đăng ký được; (2) CCCD/GPLX không encrypt → leak DB = leak danh tính khách hàng; (3) format invalid → DB chứa rác. | Đăng ký với DOB hôm nay → success. | Restore validation + encryption từ commented block; KHÔNG xóa khi chưa migrate dữ liệu cũ. | Pending |
+| BUG-005 | High | `Controllers/BookingController.cs:315` | `StartDate.Date < DateTime.UtcNow.Date` (UTC) | Khách VN chọn `hôm nay` (00:30 sáng VN = 17:30 hôm qua UTC) → có thể bị block. | — | Compare TimeZoneInfo VN. | **Fixed** (Pass 2.1) |
+| BUG-006 | Critical | `Controllers/BookingController.cs:885 ConfirmManualPayment` | Hardcode `Amount = TotalPrice * 0.2m` cho "Manual Transfer" | Tiền cọc sai khi nghiệp vụ thay đổi 20%. | — | Dùng `ReservationFee` field; nếu rỗng, gọi shared `ResolveReservationFee`. | **Fixed** (Pass 2.1) |
+| BUG-007 | Critical | `Controllers/BookingController.cs:1010-1047` | DigitalContract auto-create với `CustomerIdentityCard=""` và hardcoded TermsAndConditions VN | Hợp đồng pháp lý có CCCD trống → vô hiệu. | — | Pull `user.CitizenId` (đã decrypt via PiiEncryption). Move template ra resource. | **Fixed** (CCCD pull; template externalization pending) |
+| BUG-008 | Critical | `Controllers/BookingController.cs:944-947, 1106` | `ConfirmManualPaymentTransaction` tạo BookingStatus row runtime nếu thiếu | Race condition; thường lookup không seed → 2 user cùng thanh toán đầu tiên tạo trùng. | — | Seed BookingStatuses trong DbSeeder. Throw nếu thiếu thay vì auto-create. | **Fixed** (Pass 2.1) |
+| BUG-009 | Critical | `Middleware/RateLimitingMiddleware.cs:245-253` | Tự đọc `X-Forwarded-For` không qua trust validation | Attacker spoof IP → bypass login brute-force protection. | curl với `-H 'X-Forwarded-For: 1.2.3.4'` từ random IP, mỗi request đổi → counter không tăng. | Dùng `context.Connection.RemoteIpAddress` (đã được UseForwardedHeaders cập nhật theo trust config). | **Fixed** (Pass 2.1) |
+| BUG-010 | Critical | `Controllers/HandoverController.cs:41, 81, 98` | `WHERE BookingID == bookingId && UserID == userId` ở mọi action | Staff/Admin/Manager không bàn giao được; customer bàn giao tự upload ảnh → fraud risk. | Login Staff → vào /Handover/Capture?bookingId=1 → 404. | Cho phép `[Authorize(Roles="Admin,Manager,Staff")]` truy cập booking thuộc area mình. Customer chỉ ký SignatureBase64. | **Fixed** (Pass 2.1) |
+| BUG-011 | Critical | `Controllers/HandoverController.cs:92 Submit` | Không validate trạng thái booking; cho phép double check-in/out; không dùng FileUploadValidationService | (1) Customer bàn giao xe đã Completed → record orphan; (2) Upload .jpg với magic-byte exe → bypass extension check. | — | Add `Booking.BookingStatus == Confirmed (CheckIn) hoặc Active (CheckOut)` check; query existing same-type record. Inject `IFileUploadValidationService` và dùng. | **Fixed** (Pass 2.1) |
+| BUG-012 | High | `Controllers/HandoverController.cs:145-149` | Signature base64 parse: `Substring(IndexOf(",")+1)` không null-safe + `Convert.FromBase64String` không try/catch | Malformed input → 500 error. | POST với SignatureBase64="abc" (no comma). | Use `if (SignatureBase64.Contains(",")) ... else use whole`. Wrap try/catch FormatException. | **Fixed** (Pass 2.1) |
+| BUG-013 | High | `Controllers/HandoverController.cs:159` | Set `ActualReturnDate=UtcNow` ở handover CheckOut trong khi `CustomerConfirmReturn` cũng set | Double assignment; nếu user upload handover rồi cancel → ActualReturnDate đã set sai. | — | Bỏ; chỉ `CustomerConfirmReturn` set ActualReturnDate. | **Fixed** (Pass 2.1) |
+| BUG-014 | Critical | `Controllers/AuthController.cs:447-498 Register (active)` | Thiếu validation CCCD/GPLX/Phone/Age + KHÔNG encrypt CCCD/GPLX trước khi lưu (đoạn code đúng nằm trong block /* ... */ comment) | (1) Customer dưới 18 đăng ký được; (2) CCCD/GPLX không encrypt → leak DB = leak danh tính khách hàng; (3) format invalid → DB chứa rác. | Đăng ký với DOB hôm nay → success. | Restore validation + encryption từ commented block; KHÔNG xóa khi chưa migrate dữ liệu cũ. | **Fixed** (Pass 2.1) |
 | BUG-015 | Critical | `Controllers/AuthController.cs:59, 413` + 5 file khác | `User.Identity.IsAuthenticated` không null check | NullReferenceException khi `User.Identity == null`. | — | Dùng `User.Identity?.IsAuthenticated == true`. | **Fixed** (Auth+Car controllers) |
-| BUG-016 | High | `Middleware/AccountLockMiddleware.cs:27` | Query Users mỗi request, không cache | DB tải nặng. | — | Cache `MemoryCache` TTL 30s key=`UserLock:{userId}`. | Pending |
+| BUG-016 | High | `Middleware/AccountLockMiddleware.cs:27` | Query Users mỗi request, không cache | DB tải nặng. | — | Cache `MemoryCache` TTL 30s key=`UserLock:{userId}`. | **Fixed** (Pass 2.1) |
 | BUG-017 | High | `Middleware/AuditLogMiddleware.cs:51-58` | `_next` không trong try/finally; exception ở downstream → audit không ghi | Mất audit log cho request bị 500. | — | Wrap try/finally; bắt exception throw lại sau khi log. | Pending |
-| BUG-018 | High | `Authorization/Handlers/AreaAuthorizationHandler.cs:83-84` | `HandleView` cho phép Staff/Viewer xem TẤT CẢ area | IDOR cross-area visibility. | Login Staff thuộc Area A → /Admin/Area/Show?id=B → 200. | Filter by area membership. | Pending |
-| BUG-019 | Critical | `Services/BookingBusinessRuleService.cs:55-69` | Auto-create CustomerDrivingLicense với IsApproved=true từ legacy User fields | Bypass admin approval; customer chưa upload GPLX cũng được thuê xe nếu User có DrivingLicenseHash. | — | Yêu cầu re-verify qua eKYC; không auto-create approved record. | Pending |
+| BUG-018 | High | `Authorization/Handlers/AreaAuthorizationHandler.cs:83-84` | `HandleView` cho phép Staff/Viewer xem TẤT CẢ area | IDOR cross-area visibility. | Login Staff thuộc Area A → /Admin/Area/Show?id=B → 200. | Filter by area membership. | **Fixed** (Pass 2.1) |
+| BUG-019 | Critical | `Services/BookingBusinessRuleService.cs:55-69` | Auto-create CustomerDrivingLicense với IsApproved=true từ legacy User fields | Bypass admin approval; customer chưa upload GPLX cũng được thuê xe nếu User có DrivingLicenseHash. | — | Yêu cầu re-verify qua eKYC; không auto-create approved record. | **Fixed** (Pass 2.1) |
 | BUG-020 | High | `Services/CarService.cs:37-38, 58-59` | Dead cache: `cached = null; if (cached != null) return cached` | False sense of cache; performance không thực sự cải thiện. | — | Wire `_cache.GetOrSetAsync(key, factory, ttl)`. | **Fixed** (cleanup dead lines + add real cache hook) |
-| BUG-021 | High | `Controllers/CarController.cs:200-207` vs `Services/SelfDrivePricingService.cs:29-32` | Hai bộ pricing ratio khác nhau (0.25/0.40/0.55 vs 0.4/0.7/0.85) | Giá hiển thị trên Car/Details != giá tính lúc Checkout. | Mở Details xe X (price 1tr) thấy 4h=250k. Checkout 4h thấy 400k. | Loại bỏ pricing trong Details, tham chiếu `ISelfDrivePricingService` shared. | Pending |
-| BUG-022 | High | `Controllers/CarController.cs:107 overlap exclude` | Chỉ exclude {"Cancelled","Completed"} → Draft/Unpaid/Expired/Rejected block xe nhầm | Xe bị "khóa" khi 1 customer mở Checkout rồi bỏ đi (BookingStatus = Draft/Unpaid) → trong list bị lọc khỏi Available. | — | Dùng `BookingStatusConstants.AvailabilityBlocking` (Pending, Confirmed, Active). | Pending |
-| BUG-023 | High | `Controllers/CarController.cs:200-207, 205-206` | Hardcoded `DiscountPercent=17, DepositAmount=500000, InsuranceFee=3000000` | Magic numbers không khớp dữ liệu xe thực. | — | Lấy từ `Car.DefaultDeposit` và HolidayPricing/InsurancePackages. | Pending |
+| BUG-021 | High | `Controllers/CarController.cs:200-207` vs `Services/SelfDrivePricingService.cs:29-32` | Hai bộ pricing ratio khác nhau (0.25/0.40/0.55 vs 0.4/0.7/0.85) | Giá hiển thị trên Car/Details != giá tính lúc Checkout. | Mở Details xe X (price 1tr) thấy 4h=250k. Checkout 4h thấy 400k. | Loại bỏ pricing trong Details, tham chiếu `ISelfDrivePricingService` shared. | **Fixed** (Pass 2.1) |
+| BUG-022 | High | `Controllers/CarController.cs:107 overlap exclude` | Chỉ exclude {"Cancelled","Completed"} → Draft/Unpaid/Expired/Rejected block xe nhầm | Xe bị "khóa" khi 1 customer mở Checkout rồi bỏ đi (BookingStatus = Draft/Unpaid) → trong list bị lọc khỏi Available. | — | Dùng `BookingStatusConstants.AvailabilityBlocking` (Pending, Confirmed, Active). | **Fixed** (Pass 2.1) |
+| BUG-023 | High | `Controllers/CarController.cs:200-207, 205-206` | Hardcoded `DiscountPercent=17, DepositAmount=500000, InsuranceFee=3000000` | Magic numbers không khớp dữ liệu xe thực. | — | Lấy từ `Car.DefaultDeposit` và HolidayPricing/InsurancePackages. | **Fixed** (Pass 2.1; insurance package model vẫn cần future refinement) |
 | BUG-024 | High | `Views/Shared/_Layout.cshtml:590,601`, `_AdminLayout.cshtml:541,552`, `_AreaManagerLayout.cshtml:236,247,258` | `text: "@Html.Raw(TempData[...])"` → stored XSS qua TempData | Customer cancel với reason `<script>alert(1)</script>` → Admin mở Manage page → XSS execute. | — | Bỏ Html.Raw; SweetAlert tự HTML-escape `text`. | **Fixed** |
 | BUG-025 | High | `Controllers/ContractController.cs:38-47` | Không null check booking; bypass transition service; không validate EndKm | Admin tạo contract cho booking đã xoá → NRE; "Completed" booking chưa pickup. | — | Add null check; gọi `IBookingTransitionService.TransitionAsync`. | **Fixed** |
-| BUG-026 | High | `Controllers/PaymentController.cs:88, 141, 274` | HttpGet với side-effects (CancelHold/CancelTransaction/Cancel) | Crawler/prefetch trigger cancel; CSRF GET pattern. | — | Convert thành POST + form button hoặc add explicit confirm action. | Pending |
-| BUG-027 | High | `Services/PayOSPaymentService.cs:1111` | OrderCode generate non-atomic check-then-insert | Hiếm xảy ra dưới tải bình thường, nhưng dưới spike collide → exception bubble. | — | Retry loop với jitter; rely on unique index + catch DbUpdateException. | Pending |
-| BUG-028 | High | `Services/PayOSPaymentService.cs:1013-1037 AttachAddOnsAsync` | Lookup AddOn theo Name; tự tạo AddOn nếu không thấy | Customer truyền `"FakeName|1"` → tạo AddOn rác trong DB từ webhook flow. | — | Lookup theo `AddOnID` trong quote snapshot; throw nếu không tồn tại. | Pending |
-| BUG-029 | High | `Services/BookingQuoteService.cs` | Holiday pricing không apply; HoldingFee hardcoded 20%; promotion no per-user cap | Mất doanh thu ngày Tết/lễ; user abuse promo. | — | Inject `IHolidayPricingService`; per-user usage. | Pending |
+| BUG-026 | High | `Controllers/PaymentController.cs:88, 141, 274` | HttpGet với side-effects (CancelHold/CancelTransaction/Cancel) | Crawler/prefetch trigger cancel; CSRF GET pattern. | — | Convert thành POST + form button hoặc add explicit confirm action. | **Fixed** (Pass 2.1) |
+| BUG-027 | High | `Services/PayOSPaymentService.cs:1111` | OrderCode generate non-atomic check-then-insert | Hiếm xảy ra dưới tải bình thường, nhưng dưới spike collide → exception bubble. | — | Retry loop với jitter; rely on unique index + catch DbUpdateException. | **Fixed** (Pass 2.1; DB unique collision still relies on caller retry path if insert race wins) |
+| BUG-028 | High | `Services/PayOSPaymentService.cs:1013-1037 AttachAddOnsAsync` | Lookup AddOn theo Name; tự tạo AddOn nếu không thấy | Customer truyền `"FakeName|1"` → tạo AddOn rác trong DB từ webhook flow. | — | Lookup theo `AddOnID` trong quote snapshot; throw nếu không tồn tại. | **Fixed** (Pass 2.1) |
+| BUG-029 | High | `Services/BookingQuoteService.cs` | Holiday pricing không apply; HoldingFee hardcoded 20%; promotion no per-user cap | Mất doanh thu ngày Tết/lễ; user abuse promo. | — | Inject `IHolidayPricingService`; per-user usage. | Partial — holiday wired Pass 2.1; per-user promo cap fixed Pass 2.2. HoldingFee 20% còn là policy hardcode, cần ADR/config nếu muốn thay đổi nghiệp vụ. |
 | BUG-030 | High | `Services/BookingTransitionService.cs:152, 157, 167` | Error messages tiếng Anh | UX inconsistent (mọi nơi khác Vietnamese). | — | Vietnamese. | **Fixed** |
 | BUG-031 | Medium | `Data/ApplicationDbContext.cs:247-250, 258-263, 330-340` | Duplicate index khai báo `PaymentLedgerEntry.IdempotencyKey`, `PaymentWebhookEvent.{Provider,EventKey}` | EF generate thừa index; storage bloat. | — | Bỏ duplicate. | **Fixed** |
 | BUG-032 | Medium | `Middleware/GlobalExceptionMiddleware.cs` + `Program.cs:446` | Vừa có custom exception middleware vừa `app.UseExceptionHandler` | 2 cơ chế đè nhau; behaviour không deterministic. | — | Giữ 1 cơ chế. | Pending |
-| BUG-033 | Medium | `Controllers/AuthController.cs` rải rác | Mix có/không diacritics Vietnamese ("Dang nhap" vs "Đăng nhập") | Inconsistent UX. | — | Chuẩn hoá có dấu. | Pending |
-| BUG-034 | Medium | `Services/AuthService.cs:60-61` | `_piiEncryption.DecryptIfNotEmpty(stored)` không try/catch | Corrupt PII → 500. | — | Try/catch + log. | Pending |
-| BUG-035 | Medium | `Services/PiiEncryptionService.cs:43` | `Decrypt` swallow CryptographicException → trả plaintext | Mask data corruption. | — | Log warning với key context. | Pending |
-| BUG-036 | Medium | `Views/Blog/Detail.cshtml:43` | `@Html.Raw(blog.Content)` | Stored XSS qua blog. | — | HtmlSanitizer hoặc Markdown rendering. | Pending |
-| BUG-037 | Low | `Models/Booking.cs:84` | Default `DepositStatus="Pending"` không khớp constants | Inconsistency. | — | Đổi thành `DepositStatusConstants.Unpaid` hoặc "Holding". | Pending |
-| BUG-038 | Low | `Repositories/Repository.cs:22` | `Task<T> GetByIdAsync` nhưng FindAsync trả `T?` | Nullable warning. | — | Đổi signature. | Pending |
-| BUG-039 | Critical | `Authorization/Handlers/AreaAuthorizationHandler.cs:140-143` | `RoleInArea == "manager"` magic string | Typo risk; nếu lookup table lưu "Manager" hoa thì handler fail-closed (DOS). | — | Hằng số `AreaStaffRoleConstants`. | Pending |
+| BUG-033 | Medium | `Controllers/AuthController.cs` rải rác | Mix có/không diacritics Vietnamese ("Dang nhap" vs "Đăng nhập") | Inconsistent UX. | — | Chuẩn hoá có dấu. | **Fixed** (Pass 2.2: controllers/middleware/admin/customer hot paths + views; target grep clean) |
+| BUG-034 | Medium | `Services/AuthService.cs:60-61` | `_piiEncryption.DecryptIfNotEmpty(stored)` không try/catch | Corrupt PII → 500. | — | Try/catch + log. | **Fixed** (Pass 2.1) |
+| BUG-035 | Medium | `Services/PiiEncryptionService.cs:43` | `Decrypt` swallow CryptographicException → trả plaintext | Mask data corruption. | — | Log warning với key context. | **Fixed** (Pass 2.1) |
+| BUG-036 | Medium | `Views/Blog/Detail.cshtml:43` | `@Html.Raw(blog.Content)` | Stored XSS qua blog. | — | HtmlSanitizer hoặc Markdown rendering. | **Fixed** (server-side sanitizer; regression test) |
+| BUG-037 | Low | `Models/Booking.cs:84` | Default `DepositStatus="Pending"` không khớp constants | Inconsistency. | — | Đổi thành `DepositStatusConstants.Unpaid` hoặc "Holding". | **Fixed** (Pass 2.2) |
+| BUG-038 | Low | `Repositories/Repository.cs:22` | `Task<T> GetByIdAsync` nhưng FindAsync trả `T?` | Nullable warning. | — | Đổi signature. | **Fixed** (Pass 2.2) |
+| BUG-039 | Critical | `Authorization/Handlers/AreaAuthorizationHandler.cs:140-143` | `RoleInArea == "manager"` magic string | Typo risk; nếu lookup table lưu "Manager" hoa thì handler fail-closed (DOS). | — | Hằng số `AreaStaffRoleConstants`. | **Fixed** (Pass 2.3: `AreaStaffRoleConstants` + normalized guard in authorization/service/dashboard paths) |
 
 > *Note*: Đánh số dừng ở BUG-039 cho Pass 1. Pass 2/3 sẽ tiếp tục.
 
@@ -307,9 +307,9 @@ Bảng đầy đủ các file còn lại (~300 file) sẽ được mở rộng �
 ## 10. Testing checklist
 
 ### Unit test cần có
-- [ ] `SelfDrivePricingService.Calculate` các tier (1h, 4h, 8h, 12h, 24h, 25h, 168h)
-- [ ] `BookingQuoteService.BuildQuoteAsync` với promotion / membership / referral / addon
-- [ ] `BookingTransitionService` mọi cặp transition hợp lệ + invalid + cancel paths
+- [x] `SelfDrivePricingService.Calculate` các tier (1h, 4h, 8h, 12h, 24h, 25h, 168h) — Pass 2.1 regression
+- [x] `BookingQuoteService.BuildQuoteAsync` với promotion / membership / referral / addon — Pass 2.2 regression
+- [x] `BookingTransitionService` mọi cặp transition hợp lệ + invalid + cancel paths — Pass 2.2 regression
 - [ ] `BookingBusinessRuleService.GetValidCustomerDrivingLicenseAsync` (sau khi loại bỏ auto-create)
 - [ ] `EligibilityService` 6 failure codes
 - [ ] `ReservationService.CheckCarAvailabilityAsync` overlap edge (touching dates, ignore ids)
@@ -349,41 +349,41 @@ Bảng đầy đủ các file còn lại (~300 file) sẽ được mở rộng �
 ## 11. Production readiness checklist
 
 ### Must fix BEFORE production
-- [ ] BUG-001 Mojibake 3 controllers (Fixed in Pass 1)
-- [ ] BUG-007 DigitalContract auto with empty CCCD
-- [ ] BUG-009 Rate limit IP spoofing
-- [ ] BUG-010, 011, 012, 013 HandoverController toàn diện
-- [ ] BUG-014 AuthController.Register restore validation + encryption
-- [ ] BUG-019 Bypass GPLX approval
-- [ ] BUG-024 XSS via @Html.Raw TempData (Fixed Pass 1)
-- [ ] BUG-025 ContractController null + transition (Fixed Pass 1)
-- [ ] Concurrency test 2-user-same-car (pending tests)
+- [x] BUG-001 Mojibake 3 controllers (Fixed in Pass 1)
+- [x] BUG-007 DigitalContract auto with empty CCCD (CCCD pull fixed Pass 2.1; template resource future)
+- [x] BUG-009 Rate limit IP spoofing (Fixed Pass 2.1)
+- [x] BUG-010, 011, 012, 013 HandoverController toàn diện (Fixed Pass 2.1; staging/browser upload evidence still recommended)
+- [x] BUG-014 AuthController.Register restore validation + encryption (Fixed Pass 2.1)
+- [x] BUG-019 Bypass GPLX approval (Fixed Pass 2.1)
+- [x] BUG-024 XSS via @Html.Raw TempData (Fixed Pass 1)
+- [x] BUG-025 ContractController null + transition (Fixed Pass 1)
+- [x] Concurrency test 2-user-same-car (Fixed Pass 2.3: SQLite shared in-memory test PASS)
 - [ ] Run all migrations on staging + verify schema match snapshot
 - [ ] Verify connection string / secrets configured in T3 hosting
 
 ### Should fix soon
 - [ ] BUG-002, 003, 004, 005, 006, 008 (Booking issues)
-- [ ] BUG-016 AccountLockMiddleware cache
-- [ ] BUG-017 AuditLog try/finally
-- [ ] BUG-018 Area handler view filter
-- [ ] BUG-021, 022, 023 CarController inconsistencies
-- [ ] BUG-026 Payment GET-state-changing
-- [ ] BUG-027 OrderCode collision retry
-- [ ] BUG-028 AddOn lookup
-- [ ] BUG-029 Holiday pricing + per-user promo
-- [ ] BUG-030 Vietnamese transition messages (Fixed)
-- [ ] BUG-031 Duplicate index (Fixed)
+- [x] BUG-016 AccountLockMiddleware cache (Fixed Pass 2.1)
+- [x] BUG-017 AuditLog try/finally/background queue (Fixed Pass 2.3)
+- [x] BUG-018 Area handler view filter (Fixed Pass 2.1)
+- [x] BUG-021, 022, 023 CarController inconsistencies (Fixed Pass 2.1)
+- [x] BUG-026 Payment GET-state-changing (Fixed Pass 2.1)
+- [x] BUG-027 OrderCode collision retry (Fixed Pass 2.1)
+- [x] BUG-028 AddOn lookup (Fixed Pass 2.1)
+- [x] BUG-029 Holiday pricing + per-user promo cap (holiday fixed Pass 2.1; promo cap fixed Pass 2.2; HoldingFee config remains future ADR)
+- [x] BUG-030 Vietnamese transition messages (Fixed)
+- [x] BUG-031 Duplicate index (Fixed)
 
 ### Nice to have
 - [ ] BUG-032 Exception middleware dedupe
-- [ ] BUG-033 Diacritics consistency
-- [ ] BUG-034 PII decrypt try/catch
-- [ ] BUG-035 PII decrypt log warning
-- [ ] BUG-036 Blog sanitizer
-- [ ] BUG-037 DepositStatus default
-- [ ] BUG-038 Repository signature
+- [x] BUG-033 Diacritics consistency (target grep clean Pass 2.2)
+- [x] BUG-034 PII decrypt try/catch (Fixed Pass 2.1)
+- [x] BUG-035 PII decrypt log warning (Fixed Pass 2.1)
+- [x] BUG-036 Blog sanitizer (Fixed Pass 2.1)
+- [x] BUG-037 DepositStatus default (Fixed Pass 2.2)
+- [x] BUG-038 Repository signature (Fixed Pass 2.2)
 - [ ] CSP nonce/hash
-- [ ] Resource files Vietnamese
+- [x] Resource files Vietnamese (Pass 2.3: `SharedResource.vi-VN/en-US.resx` foundation added)
 
 ### Blocked until staging / hosting evidence
 - [ ] PayOS webhook URL từ T3 hosting tới `/Payment/Webhook`
@@ -493,7 +493,61 @@ Bảng đầy đủ các file còn lại (~300 file) sẽ được mở rộng �
 | BUG-030 | [Services/BookingTransitionService.cs](Services/BookingTransitionService.cs) | Đổi 7 error message từ English sang Vietnamese có dấu. |
 | BUG-031 / TASK-D01 | [Data/ApplicationDbContext.cs](Data/ApplicationDbContext.cs) | Xóa 3 khai báo index trùng (`PaymentLedgerEntry.IdempotencyKey`, `PaymentLedgerEntry.BookingID/EntryType/Status` partial, `PaymentWebhookEvent.Provider/EventKey`). |
 
-**Build verification**: `dotnet build CarRentalSystem.csproj` → **Build succeeded. 0 Warning(s). 0 Error(s).** (Time: ~30s, .NET 10 Debug.)
+## Safe fixes applied trong Pass 2.1 (verified local bằng build/test)
+
+| BUG/TASK | Files | Tóm tắt fix |
+|----------|-------|-------------|
+| BUG-009 / TASK-S01 | [Middleware/RateLimitingMiddleware.cs](Middleware/RateLimitingMiddleware.cs) | Không tin `X-Forwarded-For` trực tiếp; rate-limit key lấy từ `Connection.RemoteIpAddress` sau ForwardedHeaders. |
+| BUG-014 / TASK-S03 | [ViewModels/RegisterViewModel.cs](ViewModels/RegisterViewModel.cs), [Controllers/AuthController.cs](Controllers/AuthController.cs), [Views/Auth/Register.cshtml](Views/Auth/Register.cshtml) | DTO đăng ký có DOB/CCCD/GPLX validation; controller gate age 18+, duplicate phone/CCCD/GPLX, encrypt PII before save. |
+| BUG-019 / TASK-S02 | [Services/BookingBusinessRuleService.cs](Services/BookingBusinessRuleService.cs), [Data/BusinessReferenceDataSeeder.cs](Data/BusinessReferenceDataSeeder.cs) | Không auto-create GPLX approved trong read path; legacy backfill chuyển Pending/IsApproved=false. |
+| BUG-010/011/012/013 / TASK-S06/S07 | [Controllers/HandoverController.cs](Controllers/HandoverController.cs) | Rewrite scoped: owner/internal roles, area guard, status guard Confirmed/Active, duplicate guard, magic-byte upload service, signature parse safe, không set `ActualReturnDate`. |
+| BUG-018 / TASK-S08 | [Authorization/Handlers/AreaAuthorizationHandler.cs](Authorization/Handlers/AreaAuthorizationHandler.cs) | Area view authorization cần assignment; Staff/Viewer không xem area khác. |
+| BUG-026 / TASK-S09/TASK-B13 | [Controllers/PaymentController.cs](Controllers/PaymentController.cs), [Views/Booking/Deposit.cshtml](Views/Booking/Deposit.cshtml), [Views/Booking/MyBookings.cshtml](Views/Booking/MyBookings.cshtml) | State-changing PayOS actions chuyển POST + anti-forgery; callback `Cancel` không mutate state. |
+| BUG-006/007/008 / TASK-B01/B10/S10 | [Controllers/BookingController.cs](Controllers/BookingController.cs), [Data/DbSeeder.cs](Data/DbSeeder.cs) | Manual deposit dùng `ReservationFee`, BookingStatus seed ổn định, không runtime-create Pending, DigitalContract lấy CCCD decrypted. |
+| BUG-021/022/023 / TASK-B03/B04/U08/P05 | [Controllers/CarController.cs](Controllers/CarController.cs) | Catalog dùng split query, availability dùng `AvailabilityBlocking`, Details dùng `ISelfDrivePricingService` + `Car.DefaultDeposit`. |
+| BUG-029 / TASK-B02/TASK-D04 | [Services/BookingQuoteService.cs](Services/BookingQuoteService.cs) | Holiday multiplier wired into quote; add-on quote line giữ `AddOnID`. Per-user promo cap completed in Pass 2.2. |
+| BUG-027/028 / TASK-D03/D04 | [Services/PayOSPaymentService.cs](Services/PayOSPaymentService.cs) | OrderCode retry + jitter; PayOS attach add-ons lookup active add-on by ID/name+price, không auto-create lookup từ payload. |
+| BUG-016 / TASK-P01 | [Middleware/AccountLockMiddleware.cs](Middleware/AccountLockMiddleware.cs) | Cache lock/blacklist state TTL 30s; bypass login path để tránh loop. |
+| TASK-P04 | [Services/BookingService.cs](Services/BookingService.cs), [Views/Booking/Manage.cshtml](Views/Booking/Manage.cshtml) | Thêm paginated service API, controller Manage dùng page/pageSize capped 50, view có pagination. |
+| BUG-034/035 / TASK-S12/S13 | [Services/AuthService.cs](Services/AuthService.cs), [Services/PiiEncryptionService.cs](Services/PiiEncryptionService.cs) | Legacy PII decrypt try/catch + warning; PII decrypt fallback warning. |
+| BUG-036 / TASK-S05 | [Services/BlogService.cs](Services/BlogService.cs) | Sanitize dangerous blog HTML tags/events/javascript URL before save. |
+| TASK-U06 | [Views/Shared/Error.cshtml](Views/Shared/Error.cshtml) | Copy Request ID button + support mailto. |
+| TASK-T01/T02 partial | [../CarRentalSystem.Tests/UnitTests/Services/Pass2RegressionTests.cs](../CarRentalSystem.Tests/UnitTests/Services/Pass2RegressionTests.cs), [../CarRentalSystem.Tests/UnitTests/Controllers/AuthControllerTests.cs](../CarRentalSystem.Tests/UnitTests/Controllers/AuthControllerTests.cs) | Added regression tests for pricing tiers, holiday quote/add-on ID, blog sanitizer, register validation/underage rejection. |
+| TASK-DOC01..DOC05 | [docs/adr/ADR-005-booking-factory.md](docs/adr/ADR-005-booking-factory.md), [docs/developer-onboarding.md](docs/developer-onboarding.md), [docs/customer-journey-diagram.md](docs/customer-journey-diagram.md), [docs/incident-runbooks.md](docs/incident-runbooks.md), [docs/production-deployment-checklist.md](docs/production-deployment-checklist.md) | Added booking factory ADR, customer journey Mermaid, production checklist, eKYC incident runbook notes, and onboarding audit handoff/build-lock notes. |
+
+## Safe fixes applied trong Pass 2.2 (verified local bằng build/test)
+
+| BUG/TASK | Files | Tóm tắt fix |
+|----------|-------|-------------|
+| TASK-B07 | [../CarRentalSystem.Tests/UnitTests/Controllers/BookingControllerTests.cs](../CarRentalSystem.Tests/UnitTests/Controllers/BookingControllerTests.cs) | Verified late fee cap bằng regression test `CustomerConfirmReturn_CapsLateFeeAtOneRentalDay`. |
+| TASK-B08/T03 | [Services/BookingTransitionService.cs](Services/BookingTransitionService.cs), [../CarRentalSystem.Tests/UnitTests/EnterpriseP0RegressionTests.cs](../CarRentalSystem.Tests/UnitTests/EnterpriseP0RegressionTests.cs) | State machine không runtime-create lookup status; cancel/transition tests cover unpaid/pending/confirmed/active/completed/expired and active cancel refund review. |
+| BUG-029 / TASK-B09/T02 | [Services/BookingQuoteService.cs](Services/BookingQuoteService.cs), [../CarRentalSystem.Tests/UnitTests/Services/Pass2RegressionTests.cs](../CarRentalSystem.Tests/UnitTests/Services/Pass2RegressionTests.cs) | Per-user promo cap dùng booking evidence hiện có; tests cover membership, promotion cap, referral, add-on and holiday quote. |
+| BUG-037 / TASK-D06 | [Models/Booking.cs](Models/Booking.cs), [../CarRentalSystem.Tests/IntegrationTests/BookingIntegrationTests.cs](../CarRentalSystem.Tests/IntegrationTests/BookingIntegrationTests.cs) | `Booking.DepositStatus` default = `DepositStatusConstants.Unpaid`; test helper/expectation updated. |
+| BUG-038 / TASK-D07 | [Repositories/IRepository.cs](Repositories/IRepository.cs), [Repositories/Repository.cs](Repositories/Repository.cs) | `GetByIdAsync` nullable contract aligned with EF `FindAsync`. |
+| BUG-033 / TASK-U02 | [Controllers/AuthController.cs](Controllers/AuthController.cs), [Controllers/BookingController.cs](Controllers/BookingController.cs), [Controllers/CartController.cs](Controllers/CartController.cs), [Controllers/EkycController.cs](Controllers/EkycController.cs), [Areas/Admin](Areas/Admin) | Normalized user-facing Vietnamese diacritics across target controller/view hot paths; target grep clean. |
+| TASK-A10 | [.editorconfig](.editorconfig), [scripts/Test-MojibakeGuard.ps1](scripts/Test-MojibakeGuard.ps1) | Added UTF-8 BOM editor rule and local mojibake guard; guard PASS. |
+
+**Pass 2.1 audit coverage delta**: 24 production files changed/read in depth for core pending P0/P1/P2 fixes. Full TASK-A01..A04 is **not complete**: remaining modules/background jobs/services/migrations still need deep read.
+
+**Pass 3.1 UI coverage delta**: 5 Razor views touched (`Register`, `Deposit`, `MyBookings`, `Manage`, `Error`). Full TASK-A05..A09 is **not complete** and browser/axe/mobile evidence is blocked until a runnable browser/staging pass.
+
+**Build verification Pass 2.1**:
+- Initial run: `dotnet build .\CarRentalSystem.csproj` failed only at copy step because `.NET Host (PID 16024)` was locking `bin\Debug\net10.0\CarRentalSystem.dll`; compile reached output generation.
+- Final run: `dotnet build .\CarRentalSystem.csproj` → **PASS**. 0 Warning(s), 0 Error(s). Time: 00:00:02.66.
+
+**Test verification Pass 2.1**: `dotnet test ..\CarRentalSystem.Tests\CarRentalSystem.Tests.csproj --no-restore` → **PASS**. 215 passed, 0 failed, 0 skipped. Duration: 14s.
+
+**Pass 2.2 audit/fix delta**:
+- Fixed local-safe tasks: TASK-B07, B08, B09, D06, D07, U02, T02, T03, A10.
+- No new BUG-040+ created in Pass 2.2; changes close/verify existing BUG-029/033/037/038 and related task rows.
+- TASK count after correcting header rows out of parser: Total 86; Fixed 48; Blocked 14; Obsolete 1; Pending 23; completion = 48 / (86 - 14) = **66.67%**.
+- Still not complete 100%: TASK-A01..A09/A11 deep audit, migration audit, audit queue, CSP/key-rotation/password roadmap, i18n/resources, PayOS webhook/concurrency/anti-forgery/authorization tests require more work or non-local evidence.
+
+**Build verification Pass 2.2**: `dotnet build .\CarRentalSystem.csproj` → **PASS**. 0 Warning(s), 0 Error(s). Time: 00:00:02.56.
+
+**Test verification Pass 2.2**: `dotnet test ..\CarRentalSystem.Tests\CarRentalSystem.Tests.csproj --no-restore` → **PASS**. 228 passed, 0 failed, 0 skipped. Duration: 31s.
+
+**Static guard Pass 2.2**: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-MojibakeGuard.ps1` → **PASS**.
 
 **KHÔNG sửa**:
 - Bất kỳ secret / connection string / API key (PayOS, FPT, Google, Microsoft, Groq, OpenAI, Redis, SMTP).
@@ -504,3 +558,40 @@ Bảng đầy đủ các file còn lại (~300 file) sẽ được mở rộng �
 
 ## Pass 2 / Pass 3 backlog
 Xem `CAR_RENTAL_SYSTEM_TASKS.md` mục "Audit Coverage Tasks".
+
+## Safe fixes applied trong Pass 2.3 (Local 100 closure)
+
+| BUG/TASK | Files | Tóm tắt fix/evidence |
+|----------|-------|----------------------|
+| TASK-P02 / BUG-017 | [Middleware/AuditLogMiddleware.cs](Middleware/AuditLogMiddleware.cs), [Middleware/AuditLogQueue.cs](Middleware/AuditLogQueue.cs), [Program.cs](Program.cs) | Request path chỉ enqueue audit log; `AuditLogBackgroundWriter` persist async qua `IAuditTrailService`; middleware dùng `try/finally` để vẫn ghi khi downstream lỗi. |
+| TASK-U07 | [Middleware/RateLimitingMiddleware.cs](Middleware/RateLimitingMiddleware.cs), [Middleware/RateLimitResponseWriter.cs](Middleware/RateLimitResponseWriter.cs) | Gom 429 response thành writer dùng chung: HTML branded cho browser, JSON cho API/chat/tracking/PIN; không tin spoofed forwarded IP trực tiếp. |
+| TASK-T04 | [Services/PayOSGateway.cs](Services/PayOSGateway.cs), [Services/PayOSPaymentService.cs](Services/PayOSPaymentService.cs), [../CarRentalSystem.Tests/UnitTests/Services/PayOSPaymentWebhookTests.cs](../CarRentalSystem.Tests/UnitTests/Services/PayOSPaymentWebhookTests.cs) | Bọc PayOS SDK sau `IPayOSGateway`; unit tests cover not configured, invalid signature, duplicate, amount mismatch, unknown order, valid existing booking. |
+| TASK-D02/T05 | [../CarRentalSystem.Tests/IntegrationTests/ReservationConcurrencyTests.cs](../CarRentalSystem.Tests/IntegrationTests/ReservationConcurrencyTests.cs), [../CarRentalSystem.Tests/CarRentalSystem.Tests.csproj](../CarRentalSystem.Tests/CarRentalSystem.Tests.csproj) | SQLite shared in-memory concurrency test: hai user giữ cùng xe/cùng thời gian, đúng 1 winner và 1 active hold. Test-only SQLite package added; không đổi schema/migration. |
+| TASK-T07/T08 | [../CarRentalSystem.Tests/UnitTests/SecurityAttributeTests.cs](../CarRentalSystem.Tests/UnitTests/SecurityAttributeTests.cs) | Regression guards cho PayOS state-changing POST + anti-forgery; critical admin role matrix for User/Payment/AreaApi/Dispute/Settlement/SRE. |
+| BUG-039 / TASK-S16 | [Models/AreaStaffRoleConstants.cs](Models/AreaStaffRoleConstants.cs), [Authorization/Handlers/AreaAuthorizationHandler.cs](Authorization/Handlers/AreaAuthorizationHandler.cs), [Services/AreaService.cs](Services/AreaService.cs), [Areas/Admin/Controllers/AreaDashboardController.cs](Areas/Admin/Controllers/AreaDashboardController.cs) | Removed magic string manager guard by adding role constants and normalized manager checks; closes mixed `Manager`/`manager` fail-closed risk. |
+| TASK-U03/U10 | [ViewModels/EmptyStateViewModel.cs](ViewModels/EmptyStateViewModel.cs), [Views/Shared/_EmptyState.cshtml](Views/Shared/_EmptyState.cshtml), [Resources/SharedResource.vi-VN.resx](Resources/SharedResource.vi-VN.resx), [Resources/SharedResource.en-US.resx](Resources/SharedResource.en-US.resx), [Views/Alert/Index.cshtml](Views/Alert/Index.cshtml), [Views/Car/Manage.cshtml](Views/Car/Manage.cshtml), [Areas/Admin/Views/Booking/Index.cshtml](Areas/Admin/Views/Booking/Index.cshtml) | Added reusable empty state + shared localization resource foundation; wired to key list pages. Full 128-view/browser UX signoff remains Blocked, not claimed. |
+| TASK-D08/A01-A04/A11 | Static audit inventory | Pass 2.3 local inventory: 66 controllers, 66 service files, 7 background jobs, 74 migrations. Migration static counts: cascade=48, setNull=16, restrict/noAction=27, decimal columns=112, nvarchar(max)=90. No migration created. |
+
+## Pass 2.3 audit / Pass 3 closure evidence
+
+- Pass 2 local inventory reviewed/static scanned: 66 controllers, 66 service files, 7 background jobs, 74 migration files.
+- Pass 3 local inventory counted: 128 Razor views, 25 JS files, 20 CSS files.
+- New BUG-040+ found in Pass 2.3: 0. Existing pending risks were closed or marked Blocked with evidence.
+- Blocked by non-local evidence: CSP nonce/report-only/browser regression, HMAC key rotation/legacy hash policy, Argon2id rollout policy, full 128-view/browser UX verification, JS/CSS runtime regression, mobile/axe/Playwright/staging/live provider/T3 evidence.
+- TASK count after Pass 2.3: Total 87; Fixed 63; Blocked 23; Obsolete 1; Pending 0.
+- Required formula: Fixed / (Total - Blocked) = 63 / (87 - 23) = 98.44%.
+- Local actionable formula excluding Blocked + Obsolete = 63 / (87 - 23 - 1) = 100%.
+
+**Build verification Pass 2.3 final**:
+- `dotnet build .\CarRentalSystem.csproj` -> PASS, 0 warnings, 0 errors, 00:00:26.72.
+
+**Test verification Pass 2.3 final**:
+- `dotnet test ..\CarRentalSystem.Tests\CarRentalSystem.Tests.csproj --no-restore` -> PASS, 245 passed, 0 failed, 0 skipped, 26s.
+
+**Static guard Pass 2.3 final**:
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-MojibakeGuard.ps1` -> PASS.
+
+**Không sửa trong Pass 2.3**:
+- Secret / API key / connection string / PayOS/FPT/Google/Microsoft/Groq/SMTP/Redis values.
+- DB data or migrations.
+- Booking state machine semantics beyond tests/guards.

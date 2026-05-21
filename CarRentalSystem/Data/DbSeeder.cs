@@ -67,6 +67,27 @@ namespace CarRentalSystem.Data
             }
 
             // ═══ 2. LOOKUPS + CARS ═══
+            var requiredBookingStatuses = new[]
+            {
+                BookingStatusConstants.Draft,
+                BookingStatusConstants.Unpaid,
+                BookingStatusConstants.Pending,
+                BookingStatusConstants.Confirmed,
+                BookingStatusConstants.Active,
+                BookingStatusConstants.Completed,
+                BookingStatusConstants.Cancelled,
+                BookingStatusConstants.Rejected,
+                BookingStatusConstants.Expired,
+                BookingStatusConstants.NeedReview
+            };
+
+            foreach (var statusName in requiredBookingStatuses)
+            {
+                if (!context.BookingStatuses.Any(s => s.Name == statusName))
+                    context.BookingStatuses.Add(new BookingStatus { Name = statusName });
+            }
+            context.SaveChanges();
+
             if (!context.Cars.Any() && !context.Locations.Any() && !context.CarBrands.Any())
             {
                 // 2a. Car Statuses
@@ -78,16 +99,6 @@ namespace CarRentalSystem.Data
                 };
                 context.CarStatuses.AddRange(statuses);
                 
-                var bookingStatuses = new List<BookingStatus> { 
-                    new BookingStatus { Name = "Draft" },
-                    new BookingStatus { Name = "Pending" }, 
-                    new BookingStatus { Name = "Confirmed" }, 
-                    new BookingStatus { Name = "Active" },
-                    new BookingStatus { Name = "Completed" }, 
-                    new BookingStatus { Name = "Cancelled" } 
-                };
-                context.BookingStatuses.AddRange(bookingStatuses);
-
                 var carTypes = new List<CarType>
                 {
                     new CarType { Name = "Sedan 5 chỗ", Description = "Xe sedan 5 chỗ ngồi" },

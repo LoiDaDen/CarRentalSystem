@@ -42,7 +42,7 @@
 }
 else if (Model.Areas.Count == 1)
 {
-    @* Chi co 1 khu vuc -> hien thi label thay vi dropdown *@
+    @* Chỉ có 1 khu vực -> hiển thị label thay vì dropdown *@
     <div class="px-2 mb-2">
         <a href="/admin/area/setcurrentarea?areaId=@Model.Areas[0].AreaID&returnUrl=@Uri.EscapeDataString(currentReturnUrl)"
            class="d-flex align-items-center gap-2 text-decoration-none py-2 px-2 rounded-3"
@@ -57,7 +57,7 @@ else if (Model.Areas.Count == 1)
 }
 else
 {
-    @* Nhieu hon 1 khu vuc -> hien thi dropdown chon *@
+    @* Nhiều hơn 1 khu vực -> hiển thị dropdown chọn *@
     <div class="px-2 mb-2">
         <div class="text-muted small text-uppercase fw-bold px-2 mb-1" style="font-size: 0.6rem; letter-spacing: 0.8px; opacity: 0.5;">
             Khu vực đang làm việc

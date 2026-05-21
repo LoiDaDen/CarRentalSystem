@@ -1,29 +1,24 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using CarRentalSystem.Models;
 
 namespace CarRentalSystem.Middleware
 {
     /// <summary>
-    /// Middleware ghi AuditLog cho MOI request HTTP.
+    /// Enqueues lightweight request audit logs. Persistence happens in AuditLogBackgroundWriter.
     /// </summary>
     public class AuditLogMiddleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<AuditLogMiddleware> _logger;
-        private readonly string _connectionString;
+        private readonly IAuditLogQueue _queue;
         private readonly bool _trustForwardedHeaders;
 
-        private static readonly Regex StaticFilePattern = new Regex(
+        private static readonly Regex StaticFilePattern = new(
             @"\.(css|js|map|ico|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|webp|avif)$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        private static readonly string[] ExcludedPaths = new[]
+        private static readonly string[] ExcludedPaths =
         {
             "/health", "/hangfire", "/docs/", "/images/", "/css/", "/js/",
             "/_content/", "/favicon", "/signalr", "/swagger", "/api/chat",
@@ -31,30 +26,28 @@ namespace CarRentalSystem.Middleware
             "/Admin/Booking/GetRecentNotifications"
         };
 
-        public AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMiddleware> logger, IConfiguration configuration)
+        public AuditLogMiddleware(
+            RequestDelegate next,
+            ILogger<AuditLogMiddleware> logger,
+            IConfiguration configuration,
+            IAuditLogQueue queue)
         {
             _next = next;
             _logger = logger;
-            _connectionString = configuration.GetConnectionString("DefaultConnection") ?? "";
+            _queue = queue;
             _trustForwardedHeaders = configuration.GetValue<bool>("Security:TrustForwardedHeaders");
-
-            // =========================================
-            // SECURITY: Mask connection string in logs
-            // =========================================
-            var maskedConn = Regex.Replace(_connectionString,
-                @"(Password|Pwd|User Id|Server)=([^;]*)",
-                "$1=*****",
-                RegexOptions.IgnoreCase);
-            _logger.LogInformation("[AUDIT-DBG] Connection: {Conn}", maskedConn);
         }
 
         public async Task InvokeAsync(HttpContext context)
         {
-            await _next(context);
-
-            if (ShouldLog(context))
+            try
             {
-                await WriteAuditLogAsync(context);
+                await _next(context);
+            }
+            finally
+            {
+                if (ShouldLog(context))
+                    EnqueueAuditLog(context);
             }
         }
 
@@ -68,78 +61,57 @@ namespace CarRentalSystem.Middleware
             if (ExcludedPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
                 return false;
 
-            if (path.Contains("__browserLink", StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            return true;
+            return !path.Contains("__browserLink", StringComparison.OrdinalIgnoreCase);
         }
 
-        private async Task WriteAuditLogAsync(HttpContext context)
+        private void EnqueueAuditLog(HttpContext context)
         {
             try
             {
                 var path = context.Request.Path.Value ?? "";
                 var method = context.Request.Method;
                 var userId = GetUserId(context);
-                var userName = context.User.FindFirst(ClaimTypes.Name)?.Value;
+                var userName = context.User.FindFirst(ClaimTypes.Name)?.Value
+                    ?? context.User.FindFirst(ClaimTypes.Email)?.Value;
                 var (action, entityType) = ParseActionFromPath(method, path);
-                var description = BuildDescription(method, path, context.Response.StatusCode);
-                var ip = GetClientIp(context);
-                var ua = context.Request.Headers["User-Agent"].ToString();
-                var timestamp = DateTime.UtcNow;
+                var userAgent = context.Request.Headers.UserAgent.ToString();
 
-                // 1. Ghi file (luôn chạy)
-                // 2. Ghi DB bằng raw SQL
-                const string sql = @"
-                    INSERT INTO AuditLogs (Action, EntityType, EntityId, UserId, UserName,
-                        Description, IpAddress, UserAgent, RequestUrl, Timestamp, OldValues, NewValues)
-                    VALUES (@Action, @EntityType, NULL, @UserId, @UserName,
-                        @Description, @IpAddress, @UserAgent, @RequestUrl, @Timestamp, NULL, NULL);
-                    SELECT SCOPE_IDENTITY();";
+                var log = new AuditLog
+                {
+                    Action = action,
+                    EntityType = entityType,
+                    UserId = userId,
+                    UserName = userName,
+                    Description = BuildDescription(method, path, context.Response.StatusCode),
+                    IpAddress = GetClientIp(context),
+                    UserAgent = userAgent.Length > 500 ? userAgent[..500] : userAgent,
+                    RequestUrl = $"{method} {path}{context.Request.QueryString}",
+                    Timestamp = DateTime.UtcNow,
+                    CorrelationId = context.TraceIdentifier
+                };
 
-                await using var conn = new SqlConnection(_connectionString);
-                await conn.OpenAsync();
-
-                await using var cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@Action", action);
-                cmd.Parameters.AddWithValue("@EntityType", entityType);
-                cmd.Parameters.AddWithValue("@UserId", userId.HasValue ? userId.Value : (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@UserName", userName ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@Description", description);
-                cmd.Parameters.AddWithValue("@IpAddress", ip);
-                cmd.Parameters.AddWithValue("@UserAgent", ua.Length > 500 ? ua[..500] : ua);
-                cmd.Parameters.AddWithValue("@RequestUrl", $"{method} {path}");
-                cmd.Parameters.AddWithValue("@Timestamp", timestamp);
-
-                var result = await cmd.ExecuteScalarAsync();
-                _logger.LogDebug("[AUDIT-DB] INSERT success. NewID={NewId} Action={Action} Path={Path}", result, action, path);
-
-                // 3. Verify: đọc lại xem có data không
+                if (!_queue.TryEnqueue(log))
+                {
+                    _logger.LogWarning("Audit log queue is full; dropped {Action} for {Path}.", action, path);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[AUDIT-DB] FAILED to insert: {Msg}", ex.Message);
+                _logger.LogError(ex, "Failed to enqueue audit log for {Path}.", context.Request.Path.Value);
             }
         }
 
         private static int? GetUserId(HttpContext context)
         {
             var claim = context.User.FindFirst("UserID") ?? context.User.FindFirst(ClaimTypes.NameIdentifier);
-            return claim != null && int.TryParse(claim.Value, out int id) ? id : null;
+            return claim != null && int.TryParse(claim.Value, out var id) ? id : null;
         }
 
         private string GetClientIp(HttpContext context)
         {
             if (_trustForwardedHeaders)
             {
-                var headerNames = new[]
-                {
-                    "CF-Connecting-IP",
-                    "X-Real-IP",
-                    "X-Forwarded-For"
-                };
-
-                foreach (var headerName in headerNames)
+                foreach (var headerName in new[] { "CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For" })
                 {
                     var value = context.Request.Headers[headerName].ToString();
                     if (string.IsNullOrWhiteSpace(value))
@@ -157,8 +129,8 @@ namespace CarRentalSystem.Middleware
         private static (string action, string entityType) ParseActionFromPath(string method, string path)
         {
             var segs = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-            string controller = "System";
-            string actionName = "";
+            var controller = "System";
+            var actionName = "";
 
             if (segs.Length >= 2)
             {
@@ -167,7 +139,7 @@ namespace CarRentalSystem.Middleware
                     segs[0].Equals("Driver", StringComparison.OrdinalIgnoreCase))
                 {
                     controller = segs[1];
-                    if (segs.Length >= 3) actionName = segs[2];
+                    actionName = segs.Length >= 3 ? segs[2] : "";
                 }
                 else
                 {
@@ -187,16 +159,14 @@ namespace CarRentalSystem.Middleware
         {
             var (action, module) = ParseActionFromPath(method, path);
             var target = TryGetTargetId(path);
-            var result = statusCode >= 400 ? "khong thanh cong" : "thanh cong";
+            var result = statusCode >= 400 ? "failed" : "succeeded";
             var targetText = target == null ? "" : $" #{target}";
-
-            return $"{action} trong module {module}{targetText}. Ket qua: {statusCode} ({result}).";
+            return $"{action} in {module}{targetText}. Result: {statusCode} ({result}).";
         }
 
         private static string? TryGetTargetId(string path)
         {
-            var segs = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-            var last = segs.LastOrDefault();
+            var last = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
             return int.TryParse(last, out _) ? last : null;
         }
 
@@ -206,31 +176,30 @@ namespace CarRentalSystem.Middleware
                 string.Equals(ip, "127.0.0.1", StringComparison.OrdinalIgnoreCase))
                 return $"Localhost ({ip})";
 
-            if (ip.StartsWith("::ffff:", StringComparison.OrdinalIgnoreCase))
-                return ip["::ffff:".Length..];
-
-            return ip;
+            return ip.StartsWith("::ffff:", StringComparison.OrdinalIgnoreCase)
+                ? ip["::ffff:".Length..]
+                : ip;
         }
 
         private static string ToFriendlyModule(string controller)
         {
             return controller.ToLowerInvariant() switch
             {
-                "auth" => "Tai khoan",
-                "booking" => "Don thue xe",
-                "payment" => "Thanh toan",
-                "car" => "Xe",
-                "cart" => "Gio xe",
+                "auth" => "Account",
+                "booking" => "Booking",
+                "payment" => "Payment",
+                "car" => "Car",
+                "cart" => "Cart",
                 "ekyc" => "eKYC",
-                "user" => "Nguoi dung",
-                "driver" => "Tai xe",
-                "handover" => "Ban giao xe",
-                "digitalcontract" => "Hop dong so",
-                "contract" => "Hop dong",
+                "user" => "User",
+                "driver" => "Driver",
+                "handover" => "Handover",
+                "digitalcontract" => "Digital contract",
+                "contract" => "Contract",
                 "auditlog" => "Audit log",
-                "area" or "areabooking" or "arealocation" => "Khu vuc",
-                "dashboard" or "admin" => "Quan tri",
-                _ => string.IsNullOrWhiteSpace(controller) ? "He thong" : controller
+                "area" or "areabooking" or "arealocation" => "Area",
+                "dashboard" or "admin" => "Admin",
+                _ => string.IsNullOrWhiteSpace(controller) ? "System" : controller
             };
         }
 
@@ -239,41 +208,35 @@ namespace CarRentalSystem.Middleware
             var action = actionName.ToLowerInvariant();
 
             if (controller.Equals("Payment", StringComparison.OrdinalIgnoreCase) && action == "createpayment")
-                return "Mo cong PayOS";
+                return "Open PayOS checkout";
             if (controller.Equals("Payment", StringComparison.OrdinalIgnoreCase) && action == "webhook")
-                return "PayOS xac nhan";
+                return "Confirm PayOS webhook";
             if (controller.Equals("Booking", StringComparison.OrdinalIgnoreCase) && action == "book")
-                return "Gui yeu cau dat xe";
+                return "Submit booking request";
             if (controller.Equals("Booking", StringComparison.OrdinalIgnoreCase) && action == "deposit")
-                return "Mo trang dat coc";
+                return "Open deposit page";
             if (controller.Equals("Booking", StringComparison.OrdinalIgnoreCase) && action == "confirmmanualpayment")
-                return "Bao da chuyen khoan";
-            if (action is "login")
-                return "Dang nhap";
-            if (action is "logout")
-                return "Dang xuat";
-            if (action is "edit" or "update" or "updatestatus")
-                return "Cap nhat";
-            if (action is "delete" or "remove")
-                return "Xoa";
-            if (action is "cancel")
-                return "Huy";
-            if (action is "confirm" or "confirmdeposit" or "confirmpickup")
-                return "Xac nhan";
-            if (action is "details" or "detail")
-                return "Xem chi tiet";
-            if (action is "checkout")
-                return "Xem xac nhan";
-            if (action is "create" or "add")
-                return "Tao moi";
+                return "Confirm bank transfer";
 
-            return method.ToUpperInvariant() switch
+            return action switch
             {
-                "GET" => "Xem",
-                "POST" => "Thao tac",
-                "PUT" or "PATCH" => "Cap nhat",
-                "DELETE" => "Xoa",
-                _ => method
+                "login" => "Login",
+                "logout" => "Logout",
+                "edit" or "update" or "updatestatus" => "Update",
+                "delete" or "remove" => "Delete",
+                "cancel" => "Cancel",
+                "confirm" or "confirmdeposit" or "confirmpickup" => "Confirm",
+                "details" or "detail" => "View details",
+                "checkout" => "View checkout",
+                "create" or "add" => "Create",
+                _ => method.ToUpperInvariant() switch
+                {
+                    "GET" => "View",
+                    "POST" => "Submit",
+                    "PUT" or "PATCH" => "Update",
+                    "DELETE" => "Delete",
+                    _ => method
+                }
             };
         }
     }

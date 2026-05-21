@@ -113,7 +113,7 @@ public class AreaService : IAreaService
             .AnyAsync(asx =>
                 asx.UserID == userId &&
                 asx.AreaID == areaId &&
-                asx.RoleInArea == "manager" &&
+                asx.RoleInArea.ToLower() == AreaStaffRoleConstants.Manager &&
                 !asx.IsDeleted);
     }
 

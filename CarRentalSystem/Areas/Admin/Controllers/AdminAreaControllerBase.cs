@@ -21,8 +21,8 @@ public abstract class AdminAreaControllerBase : Controller
 
     /// <summary>
     /// Tra ve AreaID hien tai tu cookie.
-    /// Neu cookie khong co hoac khong hop le -> tra ve area dau tien cua user.
-    /// Neu user khong co area nao -> tra ve null.
+    /// Nếu cookie không có hoặc không hợp lệ -> trả về area đầu tiên của user.
+    /// Nếu user không có area nào -> trả về null.
     /// </summary>
     protected async Task<int?> GetCurrentAreaIdAsync(int userId)
     {
@@ -39,7 +39,7 @@ public abstract class AdminAreaControllerBase : Controller
     }
 
     /// <summary>
-    /// Tra ve area ID tu request query string, neu khong co thi tu cookie/fallback.
+    /// Trả về area ID từ request query string, nếu không có thì từ cookie/fallback.
     /// Dung cho cac action co tham so areaId.
     /// </summary>
     protected async Task<int?> ResolveAreaIdAsync(int userId, int? queryAreaId)

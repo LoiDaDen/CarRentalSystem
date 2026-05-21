@@ -38,7 +38,10 @@ namespace CarRentalSystem.Services
                 UserID = userId,
                 RequestType = requestType,
                 Reason = reason,
-                Status = PrivacyRequestStatusConstants.PendingReview
+                Status = PrivacyRequestStatusConstants.PendingReview,
+                DueAt = ResolveDueAt(requestType),
+                RequestScope = "Account",
+                IdentityVerificationStatus = "AuthenticatedSession"
             };
 
             _context.PrivacyRequests.Add(request);
@@ -122,10 +125,13 @@ namespace CarRentalSystem.Services
             if (request.Status != PrivacyRequestStatusConstants.Approved)
                 return new PrivacyRequestServiceResult(false, "Privacy request must be approved before completion.", request);
 
-            var manifest = await BuildExportManifestAsync(request.UserID);
-            var oldValues = JsonSerializer.Serialize(new { request.Status, request.CompletedAt });
+            var manifest = request.RequestType.Equals(PrivacyRequestTypeConstants.Delete, StringComparison.OrdinalIgnoreCase)
+                ? await BuildDeletionManifestAsync(request.UserID)
+                : await BuildExportManifestAsync(request.UserID);
+            var oldValues = JsonSerializer.Serialize(new { request.Status, request.CompletedAt, request.CompletedByUserID });
             request.Status = PrivacyRequestStatusConstants.Completed;
             request.CompletedAt = DateTime.UtcNow;
+            request.CompletedByUserID = reviewedByUserId;
             request.ExportManifestJson = JsonSerializer.Serialize(manifest);
             await _context.SaveChangesAsync();
 
@@ -195,6 +201,40 @@ namespace CarRentalSystem.Services
                 },
                 Note = "Manifest only. Raw PII export requires secure delivery approved by Admin/Manager."
             };
+        }
+
+        private async Task<object> BuildDeletionManifestAsync(int userId)
+        {
+            var bookings = await _context.Bookings.AsNoTracking().CountAsync(b => b.UserID == userId);
+            var payments = await _context.Payments.AsNoTracking().CountAsync(p => p.Booking != null && p.Booking.UserID == userId);
+            var openBookings = await _context.Bookings.AsNoTracking().CountAsync(b =>
+                b.UserID == userId &&
+                b.BookingStatus != null &&
+                b.BookingStatus.Name != BookingStatusConstants.Cancelled &&
+                b.BookingStatus.Name != BookingStatusConstants.Completed &&
+                b.BookingStatus.Name != BookingStatusConstants.Rejected);
+
+            return new
+            {
+                UserID = userId,
+                GeneratedAtUtc = DateTime.UtcNow,
+                Request = "Delete",
+                RetentionBlocks = new[]
+                {
+                    new { Name = "Bookings", Count = bookings },
+                    new { Name = "Payments", Count = payments },
+                    new { Name = "OpenBookings", Count = openBookings }
+                },
+                Note = "Deletion requires legal-retention review before anonymization because bookings, payments, tax invoices, disputes, and safety logs may need retention."
+            };
+        }
+
+        private static DateTime ResolveDueAt(string requestType)
+        {
+            var now = DateTime.UtcNow;
+            return requestType.Equals(PrivacyRequestTypeConstants.RetentionReview, StringComparison.OrdinalIgnoreCase)
+                ? now.AddDays(7)
+                : now.AddDays(3);
         }
     }
 }

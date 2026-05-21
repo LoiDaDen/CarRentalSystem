@@ -105,6 +105,8 @@ namespace CarRentalSystem.Data
         // Snapshot / Backup
         public DbSet<DbSnapshot> DbSnapshots { get; set; }
         public DbSet<PrivacyRequest> PrivacyRequests { get; set; }
+        public DbSet<LegalDocumentVersion> LegalDocumentVersions { get; set; }
+        public DbSet<ConsentRecord> ConsentRecords { get; set; }
         public DbSet<SupportTicket> SupportTickets { get; set; }
         public DbSet<ApiKey> ApiKeys { get; set; }
 
@@ -285,6 +287,9 @@ namespace CarRentalSystem.Data
                 .HasIndex(p => new { p.UserID, p.Status, p.CreatedAt });
 
             modelBuilder.Entity<PrivacyRequest>()
+                .HasIndex(p => p.DueAt);
+
+            modelBuilder.Entity<PrivacyRequest>()
                 .HasOne(p => p.User)
                 .WithMany()
                 .HasForeignKey(p => p.UserID)
@@ -295,6 +300,37 @@ namespace CarRentalSystem.Data
                 .WithMany()
                 .HasForeignKey(p => p.ReviewedByUserID)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PrivacyRequest>()
+                .HasOne(p => p.CompletedByUser)
+                .WithMany()
+                .HasForeignKey(p => p.CompletedByUserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<LegalDocumentVersion>()
+                .HasIndex(d => new { d.Code, d.Version })
+                .IsUnique();
+
+            modelBuilder.Entity<LegalDocumentVersion>()
+                .HasIndex(d => new { d.Code, d.IsActive, d.EffectiveAt });
+
+            modelBuilder.Entity<ConsentRecord>()
+                .HasIndex(c => new { c.UserID, c.PurposeCode, c.GrantedAt });
+
+            modelBuilder.Entity<ConsentRecord>()
+                .HasIndex(c => new { c.UserID, c.LegalDocumentVersionID, c.PurposeCode, c.IsGranted });
+
+            modelBuilder.Entity<ConsentRecord>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ConsentRecord>()
+                .HasOne(c => c.LegalDocumentVersion)
+                .WithMany(d => d.ConsentRecords)
+                .HasForeignKey(c => c.LegalDocumentVersionID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<SupportTicket>()
                 .HasIndex(t => new { t.UserID, t.Status, t.CreatedAt });
@@ -672,6 +708,18 @@ namespace CarRentalSystem.Data
                 .WithMany(t => t.Bookings)
                 .HasForeignKey(b => b.TransactionID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.TermsDocumentVersion)
+                .WithMany()
+                .HasForeignKey(b => b.TermsDocumentVersionID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.PrivacyNoticeVersion)
+                .WithMany()
+                .HasForeignKey(b => b.PrivacyNoticeVersionID)
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<BookingTransaction>()
                 .HasOne(bt => bt.DigitalContract)

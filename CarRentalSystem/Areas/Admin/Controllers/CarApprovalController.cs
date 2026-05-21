@@ -36,7 +36,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .Where(c => c.CarStatus.Name == "Pending")
                 .AsQueryable();
 
-            // Manager/Staff: chi thay xe trong khu vuc cua minh
+            // Manager/Staff: chỉ thấy xe trong khu vực của mình
             if (role == "Manager" || role == "Staff")
             {
                 var areaLocationIds = await _areaService.GetLocationIdsForUserAsync(userId);
@@ -46,7 +46,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 }
                 else
                 {
-                    // Khong co khu vuc -> tra ve danh sach rong
+                    // Không có khu vực -> trả về danh sách rỗng
                     return View(new List<Car>());
                 }
             }
@@ -55,7 +55,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
 
-            // Staff chi co quyen xem, khong duoc duyet
+            // Staff chỉ có quyền xem, không được duyệt
             ViewBag.CanApprove = role == "Admin" || role == "Manager";
             ViewBag.CurrentRole = role;
 
@@ -68,7 +68,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var role = GetCurrentRole();
             var userId = GetCurrentUserId();
 
-            // Chi Admin va Manager moi co quyen duyet
+            // Chỉ Admin và Manager mới có quyền duyệt
             if (role != "Admin" && role != "Manager")
                 return Forbid();
 
@@ -78,7 +78,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             if (car == null) return NotFound();
 
-            // Manager: kiem tra xe co thuoc khu vuc cua minh khong
+            // Manager: kiểm tra xe có thuộc khu vực của mình không
             if (role == "Manager")
             {
                 var areaLocationIds = await _areaService.GetLocationIdsForUserAsync(userId);
@@ -103,7 +103,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var role = GetCurrentRole();
             var userId = GetCurrentUserId();
 
-            // Chi Admin va Manager moi co quyen tu choi
+            // Chỉ Admin và Manager mới có quyền từ chối
             if (role != "Admin" && role != "Manager")
                 return Forbid();
 
@@ -113,7 +113,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             if (car == null) return NotFound();
 
-            // Manager: kiem tra xe co thuoc khu vuc cua minh khong
+            // Manager: kiểm tra xe có thuộc khu vực của mình không
             if (role == "Manager")
             {
                 var areaLocationIds = await _areaService.GetLocationIdsForUserAsync(userId);

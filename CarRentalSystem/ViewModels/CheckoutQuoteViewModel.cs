@@ -34,6 +34,12 @@ namespace CarRentalSystem.ViewModels
         public decimal ServiceFee { get; set; }
         public decimal DeliveryFee { get; set; }
         public string? DeliveryAddress { get; set; }
+        public string DeliveryMode { get; set; } = "CustomerPickup";
+        public double? DeliveryLatitude { get; set; }
+        public double? DeliveryLongitude { get; set; }
+        public decimal DeliveryDistanceKm { get; set; }
+        public int? DeliveryEtaMinutes { get; set; }
+        public DateTime? DeliveryQuotedAt { get; set; }
         public decimal InsuranceFee { get; set; }
         public string InsuranceTier { get; set; } = "Basic";
         public int? ContractTypeID { get; set; }
@@ -53,6 +59,11 @@ namespace CarRentalSystem.ViewModels
         public decimal HoldingFee { get; set; }
         public decimal RemainingRentalAmount { get; set; }
         public decimal CollateralAmount { get; set; }
+        public int? TermsDocumentVersionID { get; set; }
+        public int? PrivacyNoticeVersionID { get; set; }
+        public DateTime? SelfDriveAgreementAcceptedAt { get; set; }
+        public string? SelfDriveAgreementIpAddress { get; set; }
+        public string? SelfDriveAgreementUserAgent { get; set; }
         public List<CheckoutQuoteLineItem> Items { get; set; } = new();
         public List<CheckoutQuoteLineItem> AddOns { get; set; } = new();
     }

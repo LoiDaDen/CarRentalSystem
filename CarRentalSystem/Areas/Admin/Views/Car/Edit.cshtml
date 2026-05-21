@@ -1,7 +1,13 @@
+@using System.Globalization
 @model CarRentalSystem.Models.Car
 @{
     ViewData["Title"] = "Chỉnh sửa xe";
     Layout = "_AdminLayout";
+    var amenities = ViewBag.Amenities as IEnumerable<CarRentalSystem.Models.CarAmenity> ?? Enumerable.Empty<CarRentalSystem.Models.CarAmenity>();
+    var selectedAmenityIds = ViewBag.SelectedAmenityIds as ISet<int> ?? new HashSet<int>();
+    var pendingNewAmenityNames = ViewBag.PendingNewAmenityNames as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var defaultLatitude = (Model.Latitude ?? 10.7769).ToString(CultureInfo.InvariantCulture);
+    var defaultLongitude = (Model.Longitude ?? 106.7009).ToString(CultureInfo.InvariantCulture);
 }
 
 <div class="theme-admin">
@@ -22,6 +28,14 @@
     .theme-admin .btn-delete-img { position: absolute; top: 5px; right: 5px; padding: 0.2rem 0.4rem; background: rgba(239, 68, 68, 0.9); border: none; border-radius: 6px; color: white; cursor: pointer; }
     .theme-admin .preview-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .theme-admin .preview-item { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 1px solid var(--admin-border-color); }
+    .theme-admin .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .theme-admin .feature-option { border: 1.5px solid var(--admin-border-color); border-radius: 14px; padding: 0.85rem; background: var(--admin-surface-100); cursor: pointer; display: flex; align-items: center; gap: 0.65rem; min-height: 54px; transition: all 0.2s ease; }
+    .theme-admin .feature-option:hover { border-color: var(--admin-primary); transform: translateY(-1px); }
+    .theme-admin .feature-option:has(input:checked) { border-color: var(--admin-primary); background: var(--admin-primary-50); box-shadow: 0 8px 18px rgba(59,130,246,0.12); }
+    .theme-admin .feature-option input { width: 18px; height: 18px; flex: 0 0 auto; }
+    .theme-admin .feature-option i { color: var(--admin-primary); font-size: 1.1rem; }
+    .theme-admin .new-feature-row { display: flex; gap: 8px; margin-top: 10px; }
+    .theme-admin .new-feature-row .btn { flex: 0 0 auto; }
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -124,6 +138,38 @@
                 <div class="section-title"><i class="bi bi-text-left me-2"></i>Mô tả xe</div>
                 <textarea asp-for="Description" class="form-control" rows="4"></textarea>
             </div>
+
+            <div class="section-card">
+                <div class="section-title"><i class="bi bi-stars me-2"></i>Tính năng xe</div>
+                <div class="feature-grid">
+                    @foreach (var amenity in amenities)
+                    {
+                        <label class="feature-option">
+                            <input type="checkbox" name="AmenityIDs" value="@amenity.CarAmenityID" checked="@selectedAmenityIds.Contains(amenity.CarAmenityID)" />
+                            <i class="bi @(string.IsNullOrWhiteSpace(amenity.Icon) ? "bi-check2-circle" : amenity.Icon)"></i>
+                            <span class="fw-semibold small">@amenity.Name</span>
+                        </label>
+                    }
+                </div>
+                <div class="mt-4">
+                    <label class="form-label">Thêm tính năng mới</label>
+                    <div id="newFeatureList">
+                        @foreach (var name in pendingNewAmenityNames)
+                        {
+                            <div class="new-feature-row">
+                                <input type="text" name="NewAmenityNames" class="form-control" value="@name" placeholder="Ví dụ: Cảm biến điểm mù" maxlength="120" />
+                                <button type="button" class="btn btn-outline-danger" onclick="removeFeatureRow(this)" title="Xóa dòng">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-outline-primary rounded-3 fw-bold mt-3" id="btnAddFeature">
+                        <i class="bi bi-plus-lg me-1"></i>Thêm từng tính năng
+                    </button>
+                    <small class="text-muted d-block mt-2">Tính năng mới sẽ được lưu vào danh sách dùng chung sau khi lưu xe.</small>
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-4">
@@ -137,12 +183,12 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Gia thue/gio tu dong (VND)</label>
+                    <label class="form-label">Giá thuê/giờ tự động (VND)</label>
                     <div class="input-group">
                         <input type="number" asp-for="PricePerHour" id="PricePerHourDisplay" class="form-control" readonly />
                         <span class="input-group-text bg-light border fw-bold">d</span>
                     </div>
-                    <small class="text-muted">He thong tinh bang gia ngay chia 8 gio.</small>
+                    <small class="text-muted">Hệ thống tính bằng giá ngày chia 8 giờ.</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Giá ưu đãi</label>
@@ -249,6 +295,23 @@
         }
     }
 
+    function removeFeatureRow(button) {
+        button.closest('.new-feature-row')?.remove();
+    }
+
+    document.getElementById('btnAddFeature')?.addEventListener('click', function () {
+        const list = document.getElementById('newFeatureList');
+        const row = document.createElement('div');
+        row.className = 'new-feature-row';
+        row.innerHTML = `
+            <input type="text" name="NewAmenityNames" class="form-control" placeholder="Ví dụ: Cảm biến điểm mù" maxlength="120" />
+            <button type="button" class="btn btn-outline-danger" onclick="removeFeatureRow(this)" title="Xóa dòng">
+                <i class="bi bi-x-lg"></i>
+            </button>`;
+        list.appendChild(row);
+        row.querySelector('input')?.focus();
+    });
+
     function deleteImage(imageId) {
         if (confirm('Xóa ảnh này?')) {
             fetch('/Admin/Car/DeleteImage?id=' + imageId, {
@@ -270,8 +333,8 @@
 
     // --- MAP PICKER LOGIC ---
     document.addEventListener("DOMContentLoaded", function () {
-        var defaultLat = @(Model.Latitude ?? 10.7769);
-        var defaultLng = @(Model.Longitude ?? 106.7009);
+        var defaultLat = @defaultLatitude;
+        var defaultLng = @defaultLongitude;
         var initialAddress = "@(Html.Raw(Model.CarAddress ?? ""))";
 
         if (typeof SmartMap !== 'undefined') {

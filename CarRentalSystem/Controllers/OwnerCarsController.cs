@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
@@ -46,12 +47,38 @@ namespace CarRentalSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(OwnerCarCreateViewModel model)
         {
+            var initialStep = 1;
+            if (string.IsNullOrWhiteSpace(model.CarAddress))
+            {
+                if (!ModelState.TryGetValue(nameof(model.CarAddress), out var addressState) || !addressState.Errors.Any())
+                {
+                    ModelState.AddModelError(nameof(model.CarAddress), "Vui lòng nhập địa chỉ giao nhận xe.");
+                }
+                initialStep = 2;
+            }
+
+            if (!model.Latitude.HasValue || !model.Longitude.HasValue)
+            {
+                if (!ModelState.TryGetValue(nameof(model.Latitude), out var latitudeState) || !latitudeState.Errors.Any())
+                {
+                    ModelState.AddModelError(nameof(model.Latitude), "Vui lòng chọn vị trí xe trên bản đồ.");
+                }
+                initialStep = 2;
+            }
+
             if (model.ImageFiles == null || model.ImageFiles.Count < 4)
+            {
                 ModelState.AddModelError(nameof(model.ImageFiles), "Vui lòng upload tối thiểu 4 ảnh xe.");
+                if (initialStep == 1)
+                {
+                    initialStep = 3;
+                }
+            }
 
             if (!ModelState.IsValid)
             {
                 await PopulateCreateViewDataAsync();
+                ViewBag.InitialStep = initialStep;
                 return View(model);
             }
 
@@ -61,6 +88,7 @@ namespace CarRentalSystem.Controllers
                 {
                     ModelState.AddModelError(nameof(model.ImageFiles), "Chỉ chấp nhận ảnh JPG, PNG, WEBP tối đa 10MB.");
                     await PopulateCreateViewDataAsync();
+                    ViewBag.InitialStep = 3;
                     return View(model);
                 }
             }
@@ -84,6 +112,11 @@ namespace CarRentalSystem.Controllers
             var isWithDriver = model.ServiceTypeID == withDriverId;
             var selectedModel = await _context.CarModels.FirstOrDefaultAsync(m => m.CarModelID == model.CarModelID);
             var carTypeId = await ResolveCarTypeIdAsync(model.Seats);
+            var selectedAmenities = await _context.CarAmenities
+                .Where(a => model.AmenityIDs.Distinct().Contains(a.CarAmenityID))
+                .OrderBy(a => a.DisplayOrder)
+                .ThenBy(a => a.Name)
+                .ToListAsync();
 
             var car = new Car
             {
@@ -111,6 +144,7 @@ namespace CarRentalSystem.Controllers
                 CarAddress = model.CarAddress,
                 Latitude = model.Latitude,
                 Longitude = model.Longitude,
+                Features = string.Join(", ", selectedAmenities.Select(a => a.Name)),
                 CurrentOdometer = 0,
                 CommissionRate = 20m,
                 WeeklyDiscountPercent = model.WeeklyDiscountPercent,
@@ -138,7 +172,7 @@ namespace CarRentalSystem.Controllers
             }
             car.ImageURL = savedUrls.FirstOrDefault();
 
-            foreach (var amenityId in model.AmenityIDs.Distinct())
+            foreach (var amenityId in selectedAmenities.Select(a => a.CarAmenityID))
             {
                 _context.CarAmenityMappings.Add(new CarAmenityMapping
                 {
@@ -231,8 +265,13 @@ namespace CarRentalSystem.Controllers
         public string? District { get; set; }
         public string? Ward { get; set; }
         public string? Street { get; set; }
+        [Required(ErrorMessage = "Vui lòng nhập địa chỉ giao nhận xe.")]
         public string? CarAddress { get; set; }
+
+        [Required(ErrorMessage = "Vui lòng chọn vị trí xe trên bản đồ.")]
         public double? Latitude { get; set; }
+
+        [Required(ErrorMessage = "Vui lòng chọn vị trí xe trên bản đồ.")]
         public double? Longitude { get; set; }
         public List<int> AmenityIDs { get; set; } = new();
         public List<IFormFile>? ImageFiles { get; set; }

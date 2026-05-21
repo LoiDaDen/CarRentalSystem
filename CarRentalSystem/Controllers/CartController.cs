@@ -19,6 +19,7 @@ namespace CarRentalSystem.Controllers
         private readonly IBookingQuoteService _quoteService;
         private readonly IPayOSPaymentService _payOSPaymentService;
         private readonly IEligibilityService _eligibilityService;
+        private readonly ILegalComplianceService _legalCompliance;
 
         public CartController(
             ApplicationDbContext context,
@@ -26,7 +27,8 @@ namespace CarRentalSystem.Controllers
             IReservationService reservationService,
             IBookingQuoteService quoteService,
             IPayOSPaymentService payOSPaymentService,
-            IEligibilityService eligibilityService)
+            IEligibilityService eligibilityService,
+            ILegalComplianceService legalCompliance)
         {
             _context = context;
             _piiEncryption = piiEncryption;
@@ -34,6 +36,7 @@ namespace CarRentalSystem.Controllers
             _quoteService = quoteService;
             _payOSPaymentService = payOSPaymentService;
             _eligibilityService = eligibilityService;
+            _legalCompliance = legalCompliance;
         }
 
         public async Task<IActionResult> Index()
@@ -134,7 +137,7 @@ namespace CarRentalSystem.Controllers
                 return Json(new { success = false, message = "Xe này đã có trong giỏ hàng với cùng khoảng thời gian." });
             }
 
-            // Kiem tra car co ton tai va available khong
+            // Kiểm tra car có tồn tại và available không
             var car = await _context.Cars
                 .Include(c => c.CarStatus)
                 .FirstOrDefaultAsync(c => c.CarID == carId);
@@ -293,7 +296,7 @@ namespace CarRentalSystem.Controllers
             var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
             var days = Math.Max(1, (int)Math.Ceiling(hours / 24.0));
 
-            // Tinh gia co ban
+            // Tính giá cơ bản
             decimal p4 = (item.Car?.PricePerDay ?? 600000m) * 0.4m;
             decimal p8 = (item.Car?.PricePerDay ?? 600000m) * 0.7m;
             decimal p12 = (item.Car?.PricePerDay ?? 600000m) * 0.85m;
@@ -327,7 +330,7 @@ namespace CarRentalSystem.Controllers
 
             decimal originalPrice = carAndDriverPrice + addonTotal;
 
-            // Ap dung discount goi cho gia xe/tai xe; addon duoc tinh rieng khi checkout.
+            // Áp dụng discount gói cho giá xe/tài xế; add-on được tính riêng khi checkout.
             decimal discountedCarPrice = carAndDriverPrice;
             if (package.DiscountPercent > 0)
             {
@@ -383,7 +386,7 @@ namespace CarRentalSystem.Controllers
                 if (ad != null) addonTotal += ad.PricePerDay * days;
             }
 
-            // Tinh gia co ban (khong co addon)
+            // Tính giá cơ bản (không có add-on)
             decimal p4 = (item.Car?.PricePerDay ?? 600000m) * 0.4m;
             decimal p8 = (item.Car?.PricePerDay ?? 600000m) * 0.7m;
             decimal p12 = (item.Car?.PricePerDay ?? 600000m) * 0.85m;
@@ -408,9 +411,21 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CheckoutAll()
+        public async Task<IActionResult> CheckoutAll(bool SelfDriveAgreement, bool LegalAgreement)
         {
             var userId = GetUserId();
+            if (!LegalAgreement)
+            {
+                TempData["Error"] = "Bạn phải đồng ý Điều khoản sử dụng và Thông báo xử lý dữ liệu cá nhân trước khi thanh toán.";
+                return RedirectToAction("Index");
+            }
+
+            if (!SelfDriveAgreement)
+            {
+                TempData["Error"] = "Bạn phải xác nhận là người trực tiếp điều khiển xe và có giấy phép lái xe hợp lệ.";
+                return RedirectToAction("Index");
+            }
+
             var cart = await _context.Carts
                 .Include(c => c.CartItems)
                     .ThenInclude(ci => ci.Car)
@@ -450,7 +465,7 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Index");
             }
 
-            // ===== 1. Validate: Tat ca cac xe trong cart phai khong overlap voi nhau =====
+            // ===== 1. Validate: tất cả các xe trong cart phải không overlap với nhau =====
             var items = cart.CartItems.ToList();
             foreach (var item in items.Where(i => i.WithDriver || i.DriverID != null))
             {
@@ -470,18 +485,18 @@ namespace CarRentalSystem.Controllers
 
                     if (previous.EndDate > current.StartDate)
                     {
-                        TempData["Error"] = $"Xe '{carName}' co 2 don bi trung lich. Vui long chon khoang thoi gian khac.";
+                        TempData["Error"] = $"Xe '{carName}' có 2 đơn bị trùng lịch. Vui lòng chọn khoảng thời gian khác.";
                         return RedirectToAction("Index");
                     }
 
                     if ((current.StartDate - previous.EndDate).TotalHours < 1)
                     {
-                        TempData["Error"] = $"Xe '{carName}' cac don phai cach nhau it nhat 1 tieng.";
+                        TempData["Error"] = $"Xe '{carName}' các đơn phải cách nhau ít nhất 1 tiếng.";
                         return RedirectToAction("Index");
                     }
                 }
             }
-            // ===== 2. Kiem tra availability/hold bang ReservationService =====
+            // ===== 2. Kiểm tra availability/hold bằng ReservationService =====
             var overlapErrors = new List<string>();
 
             foreach (var item in items)
@@ -503,6 +518,12 @@ namespace CarRentalSystem.Controllers
             var addons = await _context.AddOns.ToListAsync();
             var quotes = new List<CheckoutQuoteViewModel>();
             var itemDetails = new List<object>();
+            var termsDocument = await _legalCompliance.GetActiveDocumentAsync(LegalDocumentCodes.TermsOfUse);
+            var privacyDocument = await _legalCompliance.GetActiveDocumentAsync(LegalDocumentCodes.PrivacyNotice);
+            var selfDriveDocument = await _legalCompliance.GetActiveDocumentAsync(LegalDocumentCodes.SelfDriveAgreement);
+            var agreementAt = DateTime.UtcNow;
+            var agreementIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var agreementUserAgent = Request.Headers.UserAgent.ToString();
 
             foreach (var item in items)
             {
@@ -522,6 +543,11 @@ namespace CarRentalSystem.Controllers
                     SelectedAddons = selectedAddons,
                     ContractTypeID = item.ContractTypeID
                 });
+                quote.TermsDocumentVersionID = termsDocument.LegalDocumentVersionID;
+                quote.PrivacyNoticeVersionID = privacyDocument.LegalDocumentVersionID;
+                quote.SelfDriveAgreementAcceptedAt = agreementAt;
+                quote.SelfDriveAgreementIpAddress = agreementIp;
+                quote.SelfDriveAgreementUserAgent = agreementUserAgent;
                 quotes.Add(quote);
 
                 itemDetails.Add(new
@@ -542,7 +568,12 @@ namespace CarRentalSystem.Controllers
                     addonTotal = quote.AddOnFee,
                     addonDetails = quote.AddOns,
                     totalPrice = quote.TotalPrice,
-                    defaultDeposit = quote.CollateralAmount
+                    defaultDeposit = quote.CollateralAmount,
+                    termsDocumentVersionId = quote.TermsDocumentVersionID,
+                    privacyNoticeVersionId = quote.PrivacyNoticeVersionID,
+                    selfDriveAgreementAcceptedAt = quote.SelfDriveAgreementAcceptedAt,
+                    selfDriveAgreementIpAddress = quote.SelfDriveAgreementIpAddress,
+                    selfDriveAgreementUserAgent = quote.SelfDriveAgreementUserAgent
                 });
             }
 
@@ -553,7 +584,19 @@ namespace CarRentalSystem.Controllers
             decimal totalDeposit = quotes.Sum(q => q.CollateralAmount);
             decimal memDiscount = user?.MembershipTier?.DiscountPercent ?? 0;
 
-            // ===== 4. Luu transaction va giu xe, nhung chua xoa cart cho den khi PayOS webhook thanh cong =====
+            var cartConsentEvidence = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Form = "Cart/CheckoutAll",
+                ItemCount = items.Count,
+                CarIds = items.Select(i => i.CarID).ToArray(),
+                SelfDriveAgreement,
+                LegalAgreement
+            });
+            await _legalCompliance.RecordConsentAsync(userId, LegalDocumentCodes.TermsOfUse, ConsentPurposeCodes.BookingTerms, LegalAgreement, "CartCheckout", HttpContext, cartConsentEvidence);
+            await _legalCompliance.RecordConsentAsync(userId, LegalDocumentCodes.PrivacyNotice, ConsentPurposeCodes.PrivacyNoticeAcknowledgement, LegalAgreement, "CartCheckout", HttpContext, cartConsentEvidence);
+            await _legalCompliance.RecordConsentAsync(userId, LegalDocumentCodes.SelfDriveAgreement, ConsentPurposeCodes.SelfDriveAgreement, SelfDriveAgreement, "CartCheckout", HttpContext, cartConsentEvidence);
+
+            // ===== 4. Lưu transaction và giữ xe, nhưng chưa xóa cart cho đến khi PayOS webhook thành công =====
             BookingTransaction? transaction = null;
             BookingHoldsResult? holdResult = null;
 
@@ -638,7 +681,7 @@ namespace CarRentalSystem.Controllers
         }
 
         // =========================================
-        // Helper: Tinh gia cart item phia server
+        // Helper: tính giá cart item phía server
         // =========================================
         private static decimal CalculateCartItemPrice(Car? car, DateTime startDate, DateTime endDate, bool withDriver)
         {

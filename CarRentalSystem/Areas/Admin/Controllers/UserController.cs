@@ -84,7 +84,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             if (string.IsNullOrEmpty(adminPin))
             {
-                TempData["PinError"] = "He thong chua cau hinh Admin PIN. Vui long lien he quan tri.";
+                TempData["PinError"] = "Hệ thống chưa cấu hình Admin PIN. Vui lòng liên hệ quản trị.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -93,7 +93,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 HttpContext.Session.SetString("AdminPinVerified", "true");
                 return RedirectToAction(nameof(Index));
             }
-            TempData["PinError"] = "Ma PIN khong chinh xac!";
+            TempData["PinError"] = "Mã PIN không chính xác!";
             return RedirectToAction(nameof(Index));
         }
 
@@ -281,7 +281,7 @@ if (user.Role == "Partner" && (role == "Staff" || role == "Manager"))
 
             if (!user.IsVerified || user.VerificationStatus != "Verified")
             {
-                TempData["Error"] = $"Doi tac {user.Name} chua duoc duyet eKYC. Vui long duyet eKYC truoc khi duyet doi tac.";
+                TempData["Error"] = $"Đối tác {user.Name} chưa được duyệt eKYC. Vui lòng duyệt eKYC trước khi duyệt đối tác.";
                 return RedirectToAction(nameof(PartnerRequests));
             }
 

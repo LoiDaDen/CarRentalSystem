@@ -23,16 +23,26 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly Mock<ICarService> _mockCarService;
+        private readonly Mock<ISelfDrivePricingService> _mockPricingService;
 
         public CarControllerTests()
         {
             _context = MockRepositoryHelper.CreateSeededDbContext();
             _mockCarService = new Mock<ICarService>();
+            _mockPricingService = new Mock<ISelfDrivePricingService>();
+            _mockPricingService
+                .Setup(s => s.Calculate(It.IsAny<Car>(), It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+                .Returns((Car car, DateTime start, DateTime end) =>
+                {
+                    var totalHours = Math.Max(1, (int)Math.Ceiling((end - start).TotalHours));
+                    var amount = car.PricePerDay / 24m * totalHours;
+                    return new SelfDrivePriceResult(totalHours, 1, Math.Round(amount, 0));
+                });
         }
 
         private CarController CreateController(ClaimsPrincipal? user = null)
         {
-            var controller = new CarController(_mockCarService.Object, _context);
+            var controller = new CarController(_mockCarService.Object, _context, _mockPricingService.Object);
             var httpContext = new DefaultHttpContext();
             if (user != null) httpContext.User = user;
 

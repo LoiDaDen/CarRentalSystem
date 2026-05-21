@@ -1,8 +1,17 @@
+@using System.Globalization
 @model CarRentalSystem.Models.Car
 @{
     ViewData["Title"] = "Chi tiết Xe";
     Layout = "_AdminLayout";
     var car = Model;
+    var mappedAmenities = car.CarAmenityMappings?
+        .Where(mapping => !mapping.IsDeleted && mapping.CarAmenity != null)
+        .OrderBy(mapping => mapping.CarAmenity!.DisplayOrder)
+        .ThenBy(mapping => mapping.CarAmenity!.Name)
+        .Select(mapping => mapping.CarAmenity!)
+        .ToList() ?? new List<CarRentalSystem.Models.CarAmenity>();
+    var mapLatitude = car.Latitude?.ToString(CultureInfo.InvariantCulture);
+    var mapLongitude = car.Longitude?.ToString(CultureInfo.InvariantCulture);
 }
 
 <div class="theme-admin">
@@ -224,7 +233,21 @@
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body">
                     <h5 class="fw-700 mb-3"><i class="bi bi-list-check me-2"></i>Tính năng</h5>
-                    <p class="mb-0">@(string.IsNullOrEmpty(car.Features) ? "Chưa có thông tin" : car.Features)</p>
+                    @if (mappedAmenities.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var amenity in mappedAmenities)
+                            {
+                                <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2">
+                                    <i class="bi @(string.IsNullOrWhiteSpace(amenity.Icon) ? "bi-check2-circle" : amenity.Icon) me-1"></i>@amenity.Name
+                                </span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="mb-0">@(string.IsNullOrEmpty(car.Features) ? "Chưa có thông tin" : car.Features)</p>
+                    }
                 </div>
             </div>
         </div>
@@ -239,11 +262,11 @@
             @if(car.Latitude.HasValue && car.Longitude.HasValue)
             {
                 <text>
-                var map = L.map('map').setView([@car.Latitude.Value, @car.Longitude.Value], 13);
+                var map = L.map('map').setView([@mapLatitude, @mapLongitude], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(map);
-                L.marker([@car.Latitude.Value, @car.Longitude.Value]).addTo(map)
+                L.marker([@mapLatitude, @mapLongitude]).addTo(map)
                     .bindPopup('@car.CarBrand?.Name @car.CarName')
                     .openPopup();
                 </text>

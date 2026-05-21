@@ -87,9 +87,13 @@
                         </form>
                     </div>
                     <div class="col-md-6">
-                        <a asp-controller="Payment" asp-action="CreatePayment" asp-route-bookingId="@Model.BookingID" class="btn btn-primary w-100 py-3 fw-bold rounded-3">
+                        <form asp-controller="Payment" asp-action="CreatePayment" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="bookingId" value="@Model.BookingID" />
+                            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3">
                             <i class="bi bi-qr-code-scan me-2"></i>THANH TOÁN PAYOS
-                        </a>
+                            </button>
+                        </form>
                     </div>
                 </div>
                 <div class="mt-2 text-center">

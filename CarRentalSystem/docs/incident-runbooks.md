@@ -55,6 +55,25 @@ Resolution evidence:
 - Data loss assessment.
 - Slow query/deadlock findings if caused by load.
 
+## eKYC Provider Outage
+
+Severity: High when new self-drive customers cannot complete eligibility; Critical if approved/rejected license decisions are inconsistent.
+
+Immediate actions:
+
+- Check FPT eKYC provider status, app logs, and recent failed verification attempts.
+- Disable automatic approval paths; self-drive rentals must require an approved active `CustomerDrivingLicense`.
+- Keep pending applications in `Pending` and show a customer-facing retry/support path.
+- Do not backfill legacy user license fields as approved during the outage.
+- Export affected users, uploaded evidence metadata, provider responses, and audit trail.
+
+Resolution evidence:
+
+- Provider outage start/end.
+- Count of affected users and retries.
+- Confirmation that no unapproved license was promoted to approved.
+- Follow-up test or ticket covering the failure mode.
+
 ## Job Backlog
 
 Severity: Medium unless payment, contract, notification, or cleanup jobs are stale beyond SLA.

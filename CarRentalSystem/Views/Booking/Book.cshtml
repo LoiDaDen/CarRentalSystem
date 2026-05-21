@@ -130,6 +130,16 @@
                             </label>
                         </div>
 
+                        <div class="form-check p-3 border rounded-4 mb-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" name="LegalAgreement" value="true" id="LegalAgreement" required />
+                            <label class="form-check-label fw-semibold ps-4" for="LegalAgreement">
+                                Tôi đồng ý với
+                                <a asp-controller="Home" asp-action="Terms" class="text-primary fw-bold text-decoration-none">Điều khoản sử dụng</a>
+                                và
+                                <a asp-controller="Home" asp-action="Privacy" class="text-primary fw-bold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                            </label>
+                        </div>
+
                         <div class="d-flex gap-3">
                             <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm py-3 fw-bold">XÁC NHẬN ĐẶT XE</button>
                             <a asp-controller="Car" asp-action="Index" class="btn btn-light btn-lg px-4 rounded-pill py-3">Bỏ qua</a>

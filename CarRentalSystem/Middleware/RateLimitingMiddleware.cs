@@ -1,44 +1,28 @@
-using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
 
 namespace CarRentalSystem.Middleware
 {
-    /// <summary>
-    /// Rate Limiting Middleware — Chống brute force attacks
-    /// Giới hạn số lần request trong khoảng thời gian nhất định.
-    /// Áp dụng cho login endpoint và API endpoints.
-    /// </summary>
     public class RateLimitingMiddleware
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<RateLimitingMiddleware> _logger;
-
-        // Track failed login attempts per IP: IP -> (count, windowStart)
-        private static readonly ConcurrentDictionary<string, RateLimitEntry> _failedLoginAttempts = new();
-
-        // Track PIN verification attempts per IP
-        private static readonly ConcurrentDictionary<string, RateLimitEntry> _pinAttempts = new();
-
-        // Cấu hình: tối đa 5 lần login failed / 15 phút
         private const int LoginMaxAttempts = 5;
-        private static readonly TimeSpan LoginWindow = TimeSpan.FromMinutes(15);
-
-        // Cấu hình: tối đa 60 API calls / phút
         private const int ApiMaxAttempts = 60;
-        private static readonly TimeSpan ApiWindow = TimeSpan.FromMinutes(1);
-
         private const int ChatMaxAttempts = 20;
-        private static readonly TimeSpan ChatWindow = TimeSpan.FromMinutes(1);
-
         private const int TrackingMaxAttempts = 30;
-        private static readonly TimeSpan TrackingWindow = TimeSpan.FromMinutes(1);
-
-        // Cấu hình: tối đa 5 PIN attempts / 5 phút
         private const int PinMaxAttempts = 5;
+        private const string LoginFailedKey = "LoginFailedAttempt";
+
+        private static readonly TimeSpan LoginWindow = TimeSpan.FromMinutes(15);
+        private static readonly TimeSpan ApiWindow = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan ChatWindow = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan TrackingWindow = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan PinWindow = TimeSpan.FromMinutes(5);
 
-        // Key để lưu trạng thái login trong HttpContext.Items
-        private const string LoginFailedKey = "LoginFailedAttempt";
+        private static readonly ConcurrentDictionary<string, RateLimitEntry> FailedLoginAttempts = new();
+        private static readonly ConcurrentDictionary<string, RateLimitEntry> PinAttempts = new();
+        private static readonly ConcurrentDictionary<string, RateLimitEntry> Clients = new();
+
+        private readonly RequestDelegate _next;
+        private readonly ILogger<RateLimitingMiddleware> _logger;
 
         public RateLimitingMiddleware(RequestDelegate next, ILogger<RateLimitingMiddleware> logger)
         {
@@ -50,283 +34,229 @@ namespace CarRentalSystem.Middleware
         {
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
             var method = context.Request.Method;
+            var clientIp = GetTrustedClientIpAddress(context);
 
-            // Lấy IP từ X-Forwarded-For header (khi deploy sau proxy/load balancer)
-            var clientIp = GetClientIpAddress(context);
-
-            // Rate limit login POST requests - kiểm tra TRƯỚC khi xử lý
-            if (path.Contains("/auth/login") && method == "POST")
+            if (path.Contains("/auth/login") && method == HttpMethods.Post)
             {
                 var key = $"login:{clientIp}";
                 if (IsLoginRateLimited(key))
                 {
                     _logger.LogWarning("Rate limit exceeded for login from IP: {IP}", clientIp);
-                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    context.Response.Headers["Retry-After"] = LoginWindow.TotalSeconds.ToString();
-                    context.Response.ContentType = "text/html; charset=utf-8";
-                    await context.Response.WriteAsync(
-                        "<h2>Qua nhieu lan dang nhap that bai</h2>" +
-                        $"<p>Vui long thu lai sau {LoginWindow.TotalMinutes} phut.</p>" +
-                        "<p><a href='/'>Ve trang chu</a></p>");
+                    await RateLimitResponseWriter.WriteHtmlAsync(
+                        context,
+                        "Qua nhieu lan dang nhap",
+                        "Tai khoan hoac dia chi IP da vuot gioi han dang nhap that bai.",
+                        LoginWindow);
                     return;
                 }
 
-                // Đánh dấu để theo dõi sau khi xử lý
-                context.Items[LoginFailedKey] = true; // Mặc định là failed cho đến khi chứng minh ngược lại
+                context.Items[LoginFailedKey] = true;
             }
 
-            if (path.Equals("/api/chat", StringComparison.OrdinalIgnoreCase) && method == "POST")
+            if (path.Equals("/api/chat", StringComparison.OrdinalIgnoreCase) && method == HttpMethods.Post)
             {
                 var key = $"chat:{clientIp}";
                 if (IsRateLimited(key, ChatMaxAttempts, ChatWindow))
                 {
                     _logger.LogWarning("Chat rate limit exceeded from IP: {IP}", clientIp);
-                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    context.Response.Headers["Retry-After"] = ChatWindow.TotalSeconds.ToString();
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync("{\"error\":\"Too many chat requests. Please wait a moment.\"}");
+                    await RateLimitResponseWriter.WriteJsonAsync(
+                        context,
+                        new { error = "Too many chat requests. Please wait a moment." },
+                        ChatWindow);
                     return;
                 }
             }
 
-            // Rate limit API endpoints
-            if (path.StartsWith("/api/"))
+            if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
             {
                 var key = $"api:{clientIp}";
                 if (IsRateLimited(key, ApiMaxAttempts, ApiWindow))
                 {
                     _logger.LogWarning("API rate limit exceeded from IP: {IP}, Path: {Path}", clientIp, path);
-                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    context.Response.Headers["Retry-After"] = ApiWindow.TotalSeconds.ToString();
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync("{\"error\":\"Too many requests. Please slow down.\"}");
+                    await RateLimitResponseWriter.WriteJsonAsync(
+                        context,
+                        new { error = "Too many requests. Please slow down." },
+                        ApiWindow);
                     return;
                 }
             }
 
-            if (path.Equals("/tracking/receivedata", StringComparison.OrdinalIgnoreCase) && method == "POST")
+            if (path.Equals("/tracking/receivedata", StringComparison.OrdinalIgnoreCase) && method == HttpMethods.Post)
             {
                 var key = $"tracking:{clientIp}";
                 if (IsRateLimited(key, TrackingMaxAttempts, TrackingWindow))
                 {
                     _logger.LogWarning("Tracking ingest rate limit exceeded from IP: {IP}", clientIp);
-                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    context.Response.Headers["Retry-After"] = TrackingWindow.TotalSeconds.ToString();
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync("{\"error\":\"Too many tracking requests.\"}");
+                    await RateLimitResponseWriter.WriteJsonAsync(
+                        context,
+                        new { error = "Too many tracking requests." },
+                        TrackingWindow);
                     return;
                 }
             }
 
-            // =========================================
-            // Rate limit PIN verification endpoints
-            // =========================================
-            if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) && method == "POST")
+            if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) && method == HttpMethods.Post)
             {
                 var key = $"pin:{clientIp}";
-                if (IsRateLimited(key, PinMaxAttempts, PinWindow))
+                if (IsRateLimited(key, PinMaxAttempts, PinWindow, PinAttempts))
                 {
                     _logger.LogWarning("PIN rate limit exceeded from IP: {IP}", clientIp);
-                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    context.Response.Headers["Retry-After"] = PinWindow.TotalSeconds.ToString();
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync("{\"success\":false,\"message\":\"Qua nhieu yeu cau. Vui long thu lai sau.\"}");
+                    await RateLimitResponseWriter.WriteJsonAsync(
+                        context,
+                        new { success = false, message = "Qua nhieu yeu cau. Vui long thu lai sau." },
+                        PinWindow);
                     return;
                 }
             }
 
             await _next(context);
 
-            // Xử lý sau khi login - chỉ đếm FAILED attempts
-            if (path.Contains("/auth/login") && method == "POST")
-            {
-                var key = $"login:{clientIp}";
-
-                // Kiểm tra nếu là response thành công (redirect về trang chính hoặc dashboard)
-                var statusCode = context.Response.StatusCode;
-                var location = context.Response.Headers.Location.FirstOrDefault();
-
-                bool isSuccess = statusCode == 302 &&
-                                 (string.IsNullOrEmpty(location) ||
-                                  location.Contains("/home", StringComparison.OrdinalIgnoreCase) ||
-                                  location.Contains("/booking", StringComparison.OrdinalIgnoreCase));
-
-                if (isSuccess)
-                {
-                    // Login thành công - reset counter cho IP này
-                    _failedLoginAttempts.TryRemove(key, out _);
-                    _logger.LogInformation("Login successful, reset failed attempts for IP: {IP}", clientIp);
-                }
-                else if (context.Items.ContainsKey(LoginFailedKey) && (bool)context.Items[LoginFailedKey]!)
-                {
-                    // Login that bai - tang counter
-                    IncrementFailedLoginAttempt(key, clientIp);
-                }
-            }
-
-            // Track PIN verification attempts - reset on success
-            if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) && method == "POST")
-            {
-                var key = $"pin:{clientIp}";
-                if (context.Response.StatusCode == 200)
-                {
-                    _pinAttempts.TryRemove(key, out _);
-                }
-            }
+            TrackLoginResult(context, path, method, clientIp);
+            TrackPinResult(context, path, method, clientIp);
         }
 
-        /// <summary>
-        /// Kiểm tra xem IP có bị rate limit cho login không (chỉ dựa trên failed attempts)
-        /// </summary>
+        private static string GetTrustedClientIpAddress(HttpContext context)
+        {
+            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        }
+
         private bool IsLoginRateLimited(string key)
         {
             var now = DateTime.UtcNow;
 
-            if (_failedLoginAttempts.TryGetValue(key, out var entry))
+            if (!FailedLoginAttempts.TryGetValue(key, out var entry))
+                return false;
+
+            if (now - entry.WindowStart > LoginWindow)
             {
-                if (now - entry.WindowStart > LoginWindow)
-                {
-                    // Window đã hết, xóa entry cũ
-                    _failedLoginAttempts.TryRemove(key, out _);
-                    return false;
-                }
-                return entry.Count >= LoginMaxAttempts;
+                FailedLoginAttempts.TryRemove(key, out _);
+                return false;
             }
 
-            return false;
+            return entry.Count >= LoginMaxAttempts;
         }
 
-        /// <summary>
-        /// Tăng số lần failed login attempt
-        /// </summary>
+        private bool IsRateLimited(
+            string key,
+            int maxAttempts,
+            TimeSpan window,
+            ConcurrentDictionary<string, RateLimitEntry>? bucket = null)
+        {
+            var now = DateTime.UtcNow;
+            var clients = bucket ?? Clients;
+
+            var entry = clients.AddOrUpdate(
+                key,
+                _ => new RateLimitEntry { Count = 1, WindowStart = now },
+                (_, existing) =>
+                {
+                    if (now - existing.WindowStart > window)
+                        return new RateLimitEntry { Count = 1, WindowStart = now };
+
+                    existing.Count++;
+                    return existing;
+                });
+
+            if (clients.Count > 5000)
+                CleanupStaleEntries(now);
+
+            return entry.Count > maxAttempts;
+        }
+
+        private void TrackLoginResult(HttpContext context, string path, string method, string clientIp)
+        {
+            if (!path.Contains("/auth/login") || method != HttpMethods.Post)
+                return;
+
+            var key = $"login:{clientIp}";
+            var statusCode = context.Response.StatusCode;
+            var location = context.Response.Headers.Location.FirstOrDefault();
+            var isSuccess = statusCode == StatusCodes.Status302Found &&
+                (string.IsNullOrEmpty(location) ||
+                 !location.Contains("/auth/login", StringComparison.OrdinalIgnoreCase));
+
+            if (isSuccess)
+            {
+                FailedLoginAttempts.TryRemove(key, out _);
+                _logger.LogInformation("Login successful, reset failed attempts for IP: {IP}", clientIp);
+                return;
+            }
+
+            if (context.Items.TryGetValue(LoginFailedKey, out var value) && value is true)
+                IncrementFailedLoginAttempt(key, clientIp);
+        }
+
+        private static void TrackPinResult(HttpContext context, string path, string method, string clientIp)
+        {
+            if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) &&
+                method == HttpMethods.Post &&
+                context.Response.StatusCode == StatusCodes.Status200OK)
+            {
+                PinAttempts.TryRemove($"pin:{clientIp}", out _);
+            }
+        }
+
         private void IncrementFailedLoginAttempt(string key, string clientIp)
         {
             var now = DateTime.UtcNow;
 
-            _failedLoginAttempts.AddOrUpdate(key,
-                // New entry
+            FailedLoginAttempts.AddOrUpdate(
+                key,
                 _ => new RateLimitEntry { Count = 1, WindowStart = now },
-                // Update existing
                 (_, existing) =>
                 {
                     if (now - existing.WindowStart > LoginWindow)
-                    {
-                        // Reset window nếu đã hết hạn
                         return new RateLimitEntry { Count = 1, WindowStart = now };
-                    }
+
                     existing.Count++;
                     return existing;
                 });
 
             _logger.LogWarning("Failed login attempt #{Count} from IP: {IP}", GetFailedAttemptCount(key), clientIp);
 
-            // Cleanup stale entries định kỳ
-            if (_failedLoginAttempts.Count > 5000)
-            {
+            if (FailedLoginAttempts.Count > 5000)
                 CleanupStaleEntries(now);
-            }
         }
 
-        private int GetFailedAttemptCount(string key)
+        private static int GetFailedAttemptCount(string key)
         {
-            if (_failedLoginAttempts.TryGetValue(key, out var entry))
-            {
-                return entry.Count;
-            }
-            return 0;
+            return FailedLoginAttempts.TryGetValue(key, out var entry) ? entry.Count : 0;
         }
 
-        /// <summary>
-        /// Lấy IP thực của client, hỗ trợ X-Forwarded-For header từ proxy
-        /// </summary>
-        private static string GetClientIpAddress(HttpContext context)
+        private static void CleanupStaleEntries(DateTime now)
         {
-            // Kiểm tra X-Forwarded-For header (nhiều proxy có thể gửi nhiều IPs)
-            var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(forwardedFor))
-            {
-                var ips = forwardedFor.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                if (ips.Length > 0)
-                {
-                    var clientIp = ips[0].Trim();
-                    if (!string.IsNullOrEmpty(clientIp))
-                        return clientIp;
-                }
-            }
-
-            // Kiểm tra X-Real-IP header (nginx)
-            var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(realIp))
-            {
-                return realIp.Trim();
-            }
-
-            // Fallback về RemoteIpAddress
-            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        }
-
-        private bool IsRateLimited(string key, int maxAttempts, TimeSpan window)
-        {
-            var now = DateTime.UtcNow;
-
-            var entry = _clients.AddOrUpdate(key,
-                // New entry
-                _ => new RateLimitEntry { Count = 1, WindowStart = now },
-                // Update existing
-                (_, existing) =>
-                {
-                    if (now - existing.WindowStart > window)
-                    {
-                        // Reset window
-                        return new RateLimitEntry { Count = 1, WindowStart = now };
-                    }
-                    existing.Count++;
-                    return existing;
-                });
-
-            // Cleanup stale entries
-            if (_clients.Count > 5000)
-            {
-                CleanupStaleEntries(now);
-            }
-
-            return entry.Count > maxAttempts;
-        }
-
-        private void CleanupStaleEntries(DateTime now)
-        {
-            // Cleanup cho failed login attempts
-            var staleLoginKeys = _failedLoginAttempts
+            foreach (var key in FailedLoginAttempts
                 .Where(kvp => now - kvp.Value.WindowStart > LoginWindow * 2)
                 .Select(kvp => kvp.Key)
-                .ToList();
+                .ToList())
+            {
+                FailedLoginAttempts.TryRemove(key, out _);
+            }
 
-            foreach (var key in staleLoginKeys)
-                _failedLoginAttempts.TryRemove(key, out _);
-
-            // Cleanup cho API rate limit
-            var staleApiKeys = _clients
+            foreach (var key in Clients
                 .Where(kvp => now - kvp.Value.WindowStart > TimeSpan.FromHours(1))
                 .Select(kvp => kvp.Key)
-                .ToList();
+                .ToList())
+            {
+                Clients.TryRemove(key, out _);
+            }
 
-            foreach (var key in staleApiKeys)
-                _clients.TryRemove(key, out _);
+            foreach (var key in PinAttempts
+                .Where(kvp => now - kvp.Value.WindowStart > PinWindow * 2)
+                .Select(kvp => kvp.Key)
+                .ToList())
+            {
+                PinAttempts.TryRemove(key, out _);
+            }
         }
 
-        // ConcurrentDictionary cho API rate limiting
-        private static readonly ConcurrentDictionary<string, RateLimitEntry> _clients = new();
-
-        private class RateLimitEntry
+        private sealed class RateLimitEntry
         {
             public int Count { get; set; }
             public DateTime WindowStart { get; set; }
         }
     }
 
-    /// <summary>
-    /// Extension method cho pipeline registration
-    /// </summary>
     public static class RateLimitingMiddlewareExtensions
     {
         public static IApplicationBuilder UseRateLimiting(this IApplicationBuilder builder)

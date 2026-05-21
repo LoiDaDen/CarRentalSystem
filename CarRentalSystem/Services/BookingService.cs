@@ -1,5 +1,6 @@
 using CarRentalSystem.Models;
 using CarRentalSystem.Repositories;
+using CarRentalSystem.Helpers;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,7 @@ namespace CarRentalSystem.Services
     public interface IBookingService
     {
         Task<IEnumerable<Booking>> GetAllBookingsAsync();
+        Task<PaginatedList<Booking>> GetAllBookingsPageAsync(int page, int pageSize);
         Task<IEnumerable<Booking>> GetUserBookingsAsync(int userId);
         Task<Booking?> GetBookingByIdAsync(int id);
         Task CreateBookingAsync(Booking booking);
@@ -64,6 +66,23 @@ namespace CarRentalSystem.Services
                 .ToListAsync();
 
             return bookings;
+        }
+
+        public async Task<PaginatedList<Booking>> GetAllBookingsPageAsync(int page, int pageSize)
+        {
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 50);
+
+            var query = _bookingRepo.Query()
+                .Include(b => b.Car)
+                    .ThenInclude(c => c!.CarBrand)
+                .Include(b => b.User)
+                .Include(b => b.BookingStatus)
+                .Include(b => b.DigitalContract)
+                .Include(b => b.ContractType)
+                .OrderByDescending(b => b.CreatedAt);
+
+            return await PaginatedList<Booking>.CreateAsync(query, page, pageSize);
         }
 
         public async Task<IEnumerable<Booking>> GetUserBookingsAsync(int userId)

@@ -690,6 +690,21 @@ else
                 </div>
                 <form asp-controller="Cart" asp-action="CheckoutAll" method="post">
                     @Html.AntiForgeryToken()
+                    <div class="form-check small mb-2 text-start">
+                        <input class="form-check-input" type="checkbox" name="SelfDriveAgreement" value="true" id="CartSelfDriveAgreement" required />
+                        <label class="form-check-label" for="CartSelfDriveAgreement">
+                            Tôi xác nhận tự điều khiển xe, có GPLX hợp lệ và không dùng xe thuê để vận tải có thu tiền.
+                        </label>
+                    </div>
+                    <div class="form-check small mb-3 text-start">
+                        <input class="form-check-input" type="checkbox" name="LegalAgreement" value="true" id="CartLegalAgreement" required />
+                        <label class="form-check-label" for="CartLegalAgreement">
+                            Tôi đồng ý với
+                            <a asp-controller="Home" asp-action="Terms" class="fw-semibold text-decoration-none">Điều khoản sử dụng</a>
+                            và
+                            <a asp-controller="Home" asp-action="Privacy" class="fw-semibold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                        </label>
+                    </div>
                     <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-bold mb-2" id="checkoutBtn" style="font-size: 0.95rem;">
                         <i class="bi bi-credit-card me-2"></i>Thanh toán (@Model.CartItems.Count xe)
                     </button>

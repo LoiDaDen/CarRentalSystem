@@ -64,7 +64,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (result.Booking != null)
                 _ = _emailService.SendBookingConfirmationEmailAsync(result.Booking, result.Payment?.Amount ?? 0m);
 
-            TempData["Success"] = $"Da xac nhan thanh toan cho don #{result.Payment?.BookingID}";
+            TempData["Success"] = $"Đã xác nhận thanh toán cho đơn #{result.Payment?.BookingID}";
             return RedirectToAction(nameof(Index));
         }
 
@@ -73,7 +73,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> RequestRefund(int bookingId, decimal amount, string reason)
         {
             var request = await _refundService.RequestRefundAsync(bookingId, amount, reason);
-            TempData["Success"] = $"Da tao yeu cau hoan tien #{request.RefundRequestID}.";
+            TempData["Success"] = $"Đã tạo yêu cầu hoàn tiền #{request.RefundRequestID}.";
             return RedirectToAction(nameof(Index));
         }
 

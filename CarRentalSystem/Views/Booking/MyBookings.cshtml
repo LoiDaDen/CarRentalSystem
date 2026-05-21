@@ -84,7 +84,7 @@ else
                 <div class="card border-0 shadow-sm booking-card overflow-hidden @(statusName == "Cancelled" ? "opacity-75" : "")">
                     <div class="row g-0">
                         <div class="col-md-5 position-relative" style="min-height: 220px;">
-                            @if (statusName == "Active")
+                            @if (statusName == "Active" || statusName == "Confirmed")
                             {
                                 <div id="map-@booking.BookingID" style="height: 100%; width: 100%; min-height: 220px;"></div>
                                 <div class="position-absolute top-0 start-0 m-3 z-3">
@@ -179,9 +179,13 @@ else
                                     <div class="d-flex gap-2 flex-wrap justify-content-end">
                                         @if (statusName == "Draft")
                                         {
-                                            <a asp-controller="Payment" asp-action="CreatePayment" asp-route-bookingId="@booking.BookingID" class="btn btn-info btn-sm rounded-pill px-3 text-white fw-bold animate-pulse">
+                                            <form asp-controller="Payment" asp-action="CreatePayment" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="bookingId" value="@booking.BookingID" />
+                                                <button type="submit" class="btn btn-info btn-sm rounded-pill px-3 text-white fw-bold animate-pulse">
                                                 <i class="bi bi-credit-card-2-front me-1"></i>Thanh toán ngay
-                                            </a>
+                                                </button>
+                                            </form>
                                         }
                                         @if (statusName == "Confirmed")
                                         {
@@ -201,7 +205,14 @@ else
                                                     </button>
                                                 </form>
                                             }
-                                        }                                        @if (statusName == "Active")
+                                        }
+                                        @if (statusName == "Confirmed" || statusName == "Active")
+                                        {
+                                            <a asp-controller="Tracking" asp-action="Booking" asp-route-id="@booking.BookingID" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm">
+                                                <i class="bi bi-map me-1"></i>Theo dÃµi
+                                            </a>
+                                        }
+                                        @if (statusName == "Active")
                                         {
                                             <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#returnModal-@booking.BookingID">
                                                 <i class="bi bi-check2-circle me-1"></i>Trả xe
@@ -216,7 +227,7 @@ else
                                                 <i class="bi bi-x-circle me-1"></i>Huy
                                             </button>
                                         }
-                                        @* Hop dong vat ly do nhan su noi bo quan ly trong Admin Panel. *@
+                                        @* Hợp đồng vật lý do nhân sự nội bộ quản lý trong Admin Panel. *@
                                         @* Nút tạo biên bản nhận xe (sau khi ký hợp đồng, trước khi nhận xe) *@
                                         @if (statusName == "Confirmed" && cardCheckInRecord == null)
                                         {
@@ -380,12 +391,12 @@ else
 @section Scripts {
     <script>
         $(document).ready(function() {
-            @foreach (var booking in Model.Where(b => b.BookingStatus?.Name == "Active"))
+            @foreach (var booking in Model.Where(b => b.BookingStatus?.Name == "Active" || b.BookingStatus?.Name == "Confirmed"))
             {
                 <text>
                 (function() {
                     var mapId = 'map-@booking.BookingID';
-                    var carId = @booking.CarID;
+                    var bookingId = @booking.BookingID;
                     var mapEl = document.getElementById(mapId);
                     if (!mapEl) return;
                     var map = L.map(mapId, { zoomControl: false, attributionControl: false }).setView([10.7769, 106.7009], 14);
@@ -393,9 +404,9 @@ else
                     
                     var marker;
                     function updatePos() {
-                        $.get('/Tracking/GetCarLocation?carId=' + carId, function(data) {
-                            if (data && data.latitude) {
-                                var pos = [data.latitude, data.longitude];
+                        $.get('/Tracking/Snapshot?bookingId=' + bookingId, function(data) {
+                            if (data && data.current) {
+                                var pos = [data.current.lat, data.current.lng];
                                 if (!marker) {
                                     marker = L.marker(pos, { icon: L.icon({
                                         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',

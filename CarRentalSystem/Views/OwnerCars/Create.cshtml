@@ -4,17 +4,18 @@
     var brands = ViewBag.Brands as IEnumerable<CarRentalSystem.Models.CarBrand> ?? Enumerable.Empty<CarRentalSystem.Models.CarBrand>();
     var serviceTypes = ViewBag.ServiceTypes as IEnumerable<CarRentalSystem.Models.ServiceType> ?? Enumerable.Empty<CarRentalSystem.Models.ServiceType>();
     var amenities = ViewBag.Amenities as IEnumerable<CarRentalSystem.Models.CarAmenity> ?? Enumerable.Empty<CarRentalSystem.Models.CarAmenity>();
+    var initialStep = ViewBag.InitialStep is int step && step >= 1 && step <= 3 ? step : 1;
 }
 
 <form asp-action="Create" method="post" enctype="multipart/form-data" class="mioto-form" id="ownerCarForm">
     @Html.AntiForgeryToken()
     <div class="steps">
-        <button type="button" class="step active" data-step="1"><span>1</span>Thông tin</button>
-        <button type="button" class="step" data-step="2"><span>2</span>Cho thuê</button>
-        <button type="button" class="step" data-step="3"><span>3</span>Hình ảnh</button>
+        <button type="button" class="step @(initialStep == 1 ? "active" : "")" data-step="1"><span>1</span>Thông tin</button>
+        <button type="button" class="step @(initialStep == 2 ? "active" : "")" data-step="2"><span>2</span>Cho thuê</button>
+        <button type="button" class="step @(initialStep == 3 ? "active" : "")" data-step="3"><span>3</span>Hình ảnh</button>
     </div>
 
-    <section class="panel step-panel" data-panel="1">
+    <section class="panel step-panel @(initialStep == 1 ? "" : "d-none")" data-panel="1">
         <h2>Biển số xe</h2>
         <p class="note">Lưu ý: Biển số sẽ không thể thay đổi sau khi đăng ký.</p>
         <input asp-for="LicensePlate" class="input short" required />
@@ -71,7 +72,7 @@
         </div>
     </section>
 
-    <section class="panel step-panel d-none" data-panel="2">
+    <section class="panel step-panel @(initialStep == 2 ? "" : "d-none")" data-panel="2">
         <h2>Đơn giá thuê mặc định</h2>
         <p class="muted">Giá đề xuất: <span id="suggestedPrice">440K</span></p>
         <div class="money-row"><input asp-for="PricePerDay" type="number" min="100000" value="440000" required /><span>đ/ngày</span></div>
@@ -94,6 +95,13 @@
             <input asp-for="CarAddress" id="carAddressInput" placeholder="Địa chỉ mặc định để giao nhận xe." required />
             <button type="button" id="btnUseCurrentLocation"><i class="bi bi-crosshair"></i></button>
         </div>
+        <span asp-validation-for="CarAddress" class="field-error"></span>
+        <div id="ownerMapPicker" class="map-picker"></div>
+        <div class="map-helper">
+            <i class="bi bi-geo-alt"></i>
+            Nhập địa chỉ hoặc chọn trực tiếp trên bản đồ. Vị trí bản đồ là bắt buộc để khách dễ tìm điểm giao nhận xe.
+        </div>
+        <div id="locationError" class="field-error d-none">Vui lòng nhập địa chỉ và chọn vị trí xe trên bản đồ.</div>
         <div class="grid-3">
             <input asp-for="CityOrProvince" placeholder="Tỉnh/Thành phố" />
             <input asp-for="District" placeholder="Quận/Huyện" />
@@ -101,6 +109,7 @@
         </div>
         <input asp-for="Latitude" type="hidden" id="latInput" />
         <input asp-for="Longitude" type="hidden" id="lngInput" />
+        <span asp-validation-for="Latitude" class="field-error"></span>
 
         <div class="toggle-row"><h2>Giao xe tận nơi</h2><input asp-for="DeliveryEnabled" type="checkbox" /></div>
         <div class="grid-3">
@@ -119,12 +128,18 @@
         <textarea asp-for="RentalTerms" rows="4" placeholder="Ghi rõ các yêu cầu để khách có thể thuê xe."></textarea>
     </section>
 
-    <section class="panel step-panel d-none" data-panel="3">
+    <section class="panel step-panel @(initialStep == 3 ? "" : "d-none")" data-panel="3">
         <h2>Hình ảnh xe</h2>
         <p class="note">Bắt buộc upload ít nhất 4 ảnh. Nên có ảnh trước, sau, hai bên và nội thất.</p>
-        <input asp-for="ImageFiles" type="file" accept="image/*" multiple required id="imageInput" />
+        <label class="image-dropzone" id="imageDropzone" for="imageInput">
+            <input asp-for="ImageFiles" type="file" accept="image/*" multiple required id="imageInput" />
+            <span class="upload-icon"><i class="bi bi-cloud-arrow-up"></i></span>
+            <strong>Chọn hoặc kéo thả ảnh xe</strong>
+            <small>JPG, PNG, WEBP. Cần tối thiểu 4 ảnh rõ nét.</small>
+            <span class="image-count" id="imageCount">0/4 ảnh bắt buộc</span>
+        </label>
         <span asp-validation-for="ImageFiles" class="text-danger"></span>
-        <div id="imagePreviewGrid" class="image-grid"></div>
+        <div id="imagePreviewGrid" class="upload-preview-grid"></div>
     </section>
 
     <div class="form-actions">
@@ -139,12 +154,29 @@
     .steps{display:flex;justify-content:center;gap:56px;background:#fff;padding:36px 0 24px;border-bottom:1px solid #ddd}
     .step{border:0;background:transparent;color:#9ca3af;text-align:center}.step span{display:grid;place-items:center;width:50px;height:50px;border-radius:50%;background:#f4f8fb;color:#111;margin:0 auto 10px;font-weight:800}.step.active span{background:#5bd486;color:#fff}
     .panel{background:#fff;padding:36px 52px}.panel h2{font-size:22px;font-weight:800;margin:28px 0 12px}.note{color:red;font-size:14px}.muted{color:#b8bec8}.input,select,textarea,input[type=number],input[type=text]{width:100%;border:1px solid #ddd;border-radius:7px;padding:13px 16px;background:#fff}.short{max-width:360px}.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}.amenities{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.amenity{border:1px solid #ddd;border-radius:4px;min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer}.amenity input{display:none}.amenity:has(input:checked){border-color:#5bd486;background:#effdf4}.amenity i{font-size:22px}.money-row{display:flex;align-items:center;gap:14px}.money-row input{max-width:240px}.toggle-row{display:flex;align-items:center;justify-content:space-between}.address-row{display:flex;gap:10px}.address-row button{width:52px;border:1px solid #ddd;background:#fff;border-radius:7px}.image-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.image-grid img{width:100%;height:110px;object-fit:cover;border-radius:6px}.form-actions{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:24px 6px 0}.btn-back,.btn-next{border-radius:7px;padding:16px;border:1px solid #5bd486;font-weight:800}.btn-back{background:#fff;color:#5bd486}.btn-back:disabled{border-color:#ddd;color:#ddd}.btn-next{background:#5bd486;color:#fff;border-color:#5bd486}
-    @@media(max-width:760px){.grid-2,.grid-3,.amenities{grid-template-columns:1fr}.panel{padding:24px}.steps{gap:18px}.image-grid{grid-template-columns:repeat(2,1fr)}}
+    .map-picker{height:320px;border:1px solid #dbe2ea;border-radius:12px;margin:14px 0 10px;overflow:hidden;position:relative;z-index:1}
+    .map-helper{display:flex;gap:8px;align-items:flex-start;color:#667085;font-size:13px;line-height:1.45;margin:0 0 16px}
+    .map-helper i{color:#16a34a;margin-top:1px}
+    .field-error{display:block;color:#dc2626;font-size:13px;margin-top:7px}
+    .field-error.d-none{display:none}
+    .image-dropzone{border:2px dashed #b7e7c7;background:linear-gradient(180deg,#f8fffb,#ffffff);border-radius:12px;min-height:210px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s}
+    .image-dropzone:hover,.image-dropzone.drag-over{border-color:#22c55e;box-shadow:0 18px 40px rgba(34,197,94,.14);transform:translateY(-1px)}
+    .image-dropzone input{display:none}
+    .upload-icon{width:62px;height:62px;border-radius:999px;background:#dcfce7;color:#16a34a;display:grid;place-items:center;font-size:30px;margin-bottom:4px}
+    .image-dropzone strong{font-size:18px;color:#111827}
+    .image-dropzone small{color:#667085}
+    .image-count{margin-top:6px;border:1px solid #bbf7d0;border-radius:999px;background:#f0fdf4;color:#15803d;padding:5px 12px;font-size:13px;font-weight:800}
+    .upload-preview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
+    .upload-preview-card{position:relative;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08);min-width:0}
+    .upload-preview-card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+    .upload-preview-card .file-name{padding:8px 10px;font-size:12px;color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .remove-image{position:absolute;top:8px;right:8px;width:30px;height:30px;border:0;border-radius:999px;background:rgba(17,24,39,.78);color:#fff;display:grid;place-items:center}
+    @@media(max-width:760px){.grid-2,.grid-3,.amenities{grid-template-columns:1fr}.panel{padding:24px}.steps{gap:18px}.image-grid,.upload-preview-grid{grid-template-columns:repeat(2,1fr)}.map-picker{height:280px}}
 </style>
 
 @section Scripts {
 <script>
-let currentStep = 1;
+let currentStep = @initialStep;
 const panels = document.querySelectorAll('.step-panel');
 const steps = document.querySelectorAll('.step');
 const btnBack = document.getElementById('btnBack');
@@ -159,8 +191,15 @@ function showStep(step){
     btnSubmit.classList.toggle('d-none', step !== 3);
 }
 btnBack.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
-btnNext.addEventListener('click',()=>showStep(Math.min(3,currentStep+1)));
-steps.forEach(s=>s.addEventListener('click',()=>showStep(Number(s.dataset.step))));
+btnNext.addEventListener('click',()=>{
+    if(currentStep === 2 && !validateLocation(true)) return;
+    showStep(Math.min(3,currentStep+1));
+});
+steps.forEach(s=>s.addEventListener('click',()=>{
+    const targetStep = Number(s.dataset.step);
+    if(currentStep === 2 && targetStep > 2 && !validateLocation(true)) return;
+    showStep(targetStep);
+}));
 
 document.getElementById('brandSelect').addEventListener('change', async function(){
     const modelSelect = document.getElementById('modelSelect');
@@ -169,30 +208,129 @@ document.getElementById('brandSelect').addEventListener('change', async function
     const models = await res.json();
     modelSelect.innerHTML = '<option value="">Chọn mẫu xe</option>' + models.map(m=>`<option value="${m.id}" data-seats="${m.seatCount||''}" data-fuel="${m.fuelType||''}" data-transmission="${m.transmission||''}">${m.name}</option>`).join('');
 });
-document.getElementById('btnUseCurrentLocation').addEventListener('click', function(){
-    if(!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(pos=>{
-        document.getElementById('latInput').value = pos.coords.latitude;
-        document.getElementById('lngInput').value = pos.coords.longitude;
-        document.getElementById('carAddressInput').value ||= `Vị trí hiện tại (${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)})`;
+
+function validateLocation(showMessage){
+    const addressInput = document.getElementById('carAddressInput');
+    const latInput = document.getElementById('latInput');
+    const lngInput = document.getElementById('lngInput');
+    const locationError = document.getElementById('locationError');
+    const isValid = Boolean(addressInput.value.trim() && latInput.value && lngInput.value);
+    if(locationError){
+        locationError.classList.toggle('d-none', isValid || !showMessage);
+    }
+    addressInput.classList.toggle('is-invalid', !isValid && showMessage);
+    return isValid;
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    const latInput = document.getElementById('latInput');
+    const lngInput = document.getElementById('lngInput');
+    const hasInitialCoords = Boolean(latInput.value && lngInput.value);
+
+    if(typeof SmartMap !== 'undefined'){
+        const picker = SmartMap.initPickerMap({
+            containerId: 'ownerMapPicker',
+            btnLocationId: 'btnUseCurrentLocation',
+            latInputId: 'latInput',
+            lngInputId: 'lngInput',
+            addressInputId: 'carAddressInput'
+        });
+
+        if(picker && !hasInitialCoords){
+            latInput.value = '';
+            lngInput.value = '';
+        }
+    }
+});
+const imageInput = document.getElementById('imageInput');
+const imageDropzone = document.getElementById('imageDropzone');
+const imagePreviewGrid = document.getElementById('imagePreviewGrid');
+const imageCount = document.getElementById('imageCount');
+let selectedImageFiles = [];
+
+function fileKey(file){
+    return `${file.name}-${file.size}-${file.lastModified}`;
+}
+
+function syncImageInput(){
+    const transfer = new DataTransfer();
+    selectedImageFiles.forEach(file => transfer.items.add(file));
+    imageInput.files = transfer.files;
+}
+
+function renderImagePreviews(){
+    imagePreviewGrid.innerHTML = '';
+    selectedImageFiles.forEach((file, index)=>{
+        const card = document.createElement('div');
+        card.className = 'upload-preview-card';
+        card.innerHTML = `
+            <button type="button" class="remove-image" aria-label="Xóa ảnh" data-index="${index}">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <img src="${URL.createObjectURL(file)}" alt="${file.name}">
+            <div class="file-name" title="${file.name}">${file.name}</div>`;
+        imagePreviewGrid.appendChild(card);
+    });
+    imageCount.textContent = `${selectedImageFiles.length}/4 ảnh bắt buộc`;
+    imageCount.style.color = selectedImageFiles.length >= 4 ? '#15803d' : '#b91c1c';
+}
+
+function addImageFiles(files){
+    const existing = new Set(selectedImageFiles.map(fileKey));
+    [...files].forEach(file=>{
+        if(file.type.startsWith('image/') && !existing.has(fileKey(file))){
+            selectedImageFiles.push(file);
+            existing.add(fileKey(file));
+        }
+    });
+    syncImageInput();
+    renderImagePreviews();
+}
+
+imageInput.addEventListener('change', function(){
+    addImageFiles(this.files);
+});
+
+imagePreviewGrid.addEventListener('click', function(e){
+    const button = e.target.closest('.remove-image');
+    if(!button) return;
+    selectedImageFiles.splice(Number(button.dataset.index), 1);
+    syncImageInput();
+    renderImagePreviews();
+});
+
+['dragenter','dragover'].forEach(eventName=>{
+    imageDropzone.addEventListener(eventName, function(e){
+        e.preventDefault();
+        imageDropzone.classList.add('drag-over');
     });
 });
-document.getElementById('imageInput').addEventListener('change', function(){
-    const grid = document.getElementById('imagePreviewGrid');
-    grid.innerHTML = '';
-    [...this.files].forEach(file=>{
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        grid.appendChild(img);
+['dragleave','drop'].forEach(eventName=>{
+    imageDropzone.addEventListener(eventName, function(e){
+        e.preventDefault();
+        imageDropzone.classList.remove('drag-over');
     });
 });
+imageDropzone.addEventListener('drop', function(e){
+    addImageFiles(e.dataTransfer.files);
+});
+
 document.getElementById('ownerCarForm').addEventListener('submit', function(e){
-    const count = document.getElementById('imageInput').files.length;
+    if(!validateLocation(true)){
+        e.preventDefault();
+        showStep(2);
+        return;
+    }
+
+    const count = imageInput.files.length;
     if(count < 4){
         e.preventDefault();
         alert('Vui lòng upload tối thiểu 4 ảnh xe.');
         showStep(3);
     }
 });
+
+showStep(currentStep);
+renderImagePreviews();
 </script>
 }
