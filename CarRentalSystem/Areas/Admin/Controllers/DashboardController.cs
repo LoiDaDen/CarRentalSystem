@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using CarRentalSystem.Data;
+using CarRentalSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Areas.Admin.Controllers
@@ -38,6 +39,13 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 .AsNoTracking()
                 .Include(b => b.BookingStatus)
                 .Where(b => b.BookingStatus == null || !hiddenStatuses.Contains(b.BookingStatus.Name));
+            var heldDepositQuery = bookingsQuery
+                .Where(b => b.DepositStatus == DepositStatusConstants.Holding && b.ActualReturnDate == null);
+            var statusGroupRows = await bookingsQuery
+                .Select(b => b.BookingStatus != null ? b.BookingStatus.Name : "Unknown")
+                .GroupBy(status => status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
 
             var viewModel = new DashboardViewModel
             {
@@ -46,17 +54,15 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 RentedCars = await _context.Cars.AsNoTracking().CountAsync(c => !c.IsDeleted && c.CarStatus != null && c.CarStatus.Name == "Rented"),
                 TotalBookings = await bookingsQuery.CountAsync(),
                 TotalRevenue = await bookingsQuery.Where(b => b.BookingStatus != null && revenueStatuses.Contains(b.BookingStatus.Name)).SumAsync(b => b.TotalPrice),
-                TotalHeldDepositsAmount = await bookingsQuery.Where(b => b.DepositStatus == "Holding" && (b.BookingStatus == null || b.BookingStatus.Name != "Completed")).SumAsync(b => b.DepositAmount),
-                TotalHeldDepositsCount = await bookingsQuery.CountAsync(b => b.DepositStatus == "Holding" && (b.BookingStatus == null || b.BookingStatus.Name != "Completed")),
+                TotalHeldDepositsAmount = await heldDepositQuery.SumAsync(b => b.DepositAmount),
+                TotalHeldDepositsCount = await heldDepositQuery.CountAsync(),
                 RecentBookings = await bookingsQuery
                     .Include(b => b.User)
                     .Include(b => b.Car)
                     .OrderByDescending(b => b.CreatedAt)
                     .Take(7)
                     .ToListAsync(),
-                StatusGroups = await bookingsQuery
-                    .GroupBy(b => b.BookingStatus != null ? b.BookingStatus.Name : "Unknown")
-                    .ToDictionaryAsync(g => g.Key, g => g.Count())
+                StatusGroups = statusGroupRows.ToDictionary(g => g.Status, g => g.Count)
             };
 
             var last6Months = Enumerable.Range(0, 6)
@@ -108,7 +114,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
             var carGroups = await _context.Cars.AsNoTracking()
                 .Where(c => !c.IsDeleted)
-                .GroupBy(c => c.CarStatus != null ? c.CarStatus.Name : "Unknown")
+                .Select(c => c.CarStatus != null ? c.CarStatus.Name : "Unknown")
+                .GroupBy(status => status)
                 .Select(g => new { Status = g.Key, Count = g.Count() })
                 .ToListAsync();
             viewModel.CarLabels = carGroups.Select(g => g.Status).ToList();

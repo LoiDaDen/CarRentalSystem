@@ -33,14 +33,21 @@ Get-ChildItem -Path $Root -Recurse -File |
         $lines = $content -split "`r?`n"
         for ($i = 0; $i -lt $lines.Length; $i++) {
             if ($lines[$i] -match $mojibakePattern) {
-                $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
-                $hits.Add("{0}:{1}: possible mojibake: {2}" -f $relative, ($i + 1), $lines[$i].Trim())
+                $rootWithSeparator = $Root.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+                if ($file.FullName.StartsWith($rootWithSeparator, [StringComparison]::OrdinalIgnoreCase)) {
+                    $relative = $file.FullName.Substring($rootWithSeparator.Length)
+                }
+                else {
+                    $relative = $file.FullName
+                }
+                $message = "{0}:{1}: possible mojibake: {2}" -f $relative, ($i + 1), $lines[$i].Trim()
+                $hits.Add($message)
             }
         }
     }
 
 if ($hits.Count -gt 0) {
-    $hits | ForEach-Object { Write-Error $_ }
+    $hits | ForEach-Object { Write-Host $_ -ForegroundColor Red }
     exit 1
 }
 

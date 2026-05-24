@@ -53,7 +53,7 @@
                 @if (Model.BookingStatus?.Name == "Confirmed" || Model.BookingStatus?.Name == "Active")
                 {
                     <a asp-controller="Tracking" asp-action="Booking" asp-route-id="@Model.BookingID" class="btn btn-success">
-                        <i class="bi bi-map"></i> Theo dÃµi giao/nháº­n xe
+                        <i class="bi bi-map"></i> Theo dõi giao/nhận xe
                     </a>
                 }
                 @if (Model.BookingStatus?.Name == "Confirmed")

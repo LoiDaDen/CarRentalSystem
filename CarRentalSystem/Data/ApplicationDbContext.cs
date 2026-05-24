@@ -1,3 +1,4 @@
+using CarRentalSystem.Helpers;
 using CarRentalSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -101,6 +102,10 @@ namespace CarRentalSystem.Data
         public DbSet<Area> Areas { get; set; }
         public DbSet<AreaLocation> AreaLocations { get; set; }
         public DbSet<AreaStaff> AreaStaffs { get; set; }
+        public DbSet<CameraDevice> CameraDevices { get; set; }
+        public DbSet<CameraGateEvent> CameraGateEvents { get; set; }
+        public DbSet<VehicleAreaPresence> VehicleAreaPresences { get; set; }
+        public DbSet<CameraWebhookNonce> CameraWebhookNonces { get; set; }
 
         // Snapshot / Backup
         public DbSet<DbSnapshot> DbSnapshots { get; set; }
@@ -944,6 +949,119 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Area>()
                 .HasQueryFilter(a => !a.IsDeleted);
 
+            // Camera ANPR — devices, gate events and vehicle presence
+            modelBuilder.Entity<CameraDevice>()
+                .HasIndex(c => c.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<CameraDevice>()
+                .HasIndex(c => new { c.AreaID, c.LocationID, c.Status });
+
+            modelBuilder.Entity<CameraDevice>()
+                .HasOne(c => c.Area)
+                .WithMany(a => a.CameraDevices)
+                .HasForeignKey(c => c.AreaID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CameraDevice>()
+                .HasOne(c => c.Location)
+                .WithMany(l => l.CameraDevices)
+                .HasForeignKey(c => c.LocationID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasIndex(e => new { e.CameraDeviceID, e.ProviderEventId })
+                .IsUnique()
+                .HasFilter("[ProviderEventId] IS NOT NULL");
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasIndex(e => new { e.AreaID, e.LocationID, e.CapturedAt });
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasIndex(e => new { e.MatchStatus, e.CapturedAt });
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasIndex(e => e.LicensePlateNormalized);
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasOne(e => e.CameraDevice)
+                .WithMany(c => c.GateEvents)
+                .HasForeignKey(e => e.CameraDeviceID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasOne(e => e.Car)
+                .WithMany(c => c.CameraGateEvents)
+                .HasForeignKey(e => e.CarID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasOne(e => e.Area)
+                .WithMany(a => a.CameraGateEvents)
+                .HasForeignKey(e => e.AreaID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CameraGateEvent>()
+                .HasOne(e => e.Location)
+                .WithMany(l => l.CameraGateEvents)
+                .HasForeignKey(e => e.LocationID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasIndex(p => new { p.CarID, p.AreaID, p.LocationID })
+                .IsUnique()
+                .HasFilter(null);
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasIndex(p => new { p.CarID, p.AreaID })
+                .IsUnique()
+                .HasFilter("[AreaID] IS NOT NULL AND [LocationID] IS NULL");
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasIndex(p => new { p.CarID, p.LocationID })
+                .IsUnique()
+                .HasFilter("[AreaID] IS NULL AND [LocationID] IS NOT NULL");
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasIndex(p => new { p.AreaID, p.LocationID, p.IsInside });
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasOne(p => p.Car)
+                .WithMany(c => c.AreaPresences)
+                .HasForeignKey(p => p.CarID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasOne(p => p.Area)
+                .WithMany(a => a.VehicleAreaPresences)
+                .HasForeignKey(p => p.AreaID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasOne(p => p.Location)
+                .WithMany(l => l.VehicleAreaPresences)
+                .HasForeignKey(p => p.LocationID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VehicleAreaPresence>()
+                .HasOne(p => p.LastCameraGateEvent)
+                .WithMany()
+                .HasForeignKey(p => p.LastCameraGateEventID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CameraWebhookNonce>()
+                .HasIndex(n => new { n.CameraDeviceID, n.Nonce })
+                .IsUnique();
+
+            modelBuilder.Entity<CameraWebhookNonce>()
+                .HasIndex(n => n.CreatedAt);
+
+            modelBuilder.Entity<CameraWebhookNonce>()
+                .HasOne(n => n.CameraDevice)
+                .WithMany()
+                .HasForeignKey(n => n.CameraDeviceID)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // ═══ DbSnapshot Configuration ═══
             modelBuilder.Entity<DbSnapshot>()
                 .HasIndex(ds => ds.Status);
@@ -987,6 +1105,9 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Car>()
                 .HasIndex(c => c.LicensePlate)
                 .IsUnique();
+
+            modelBuilder.Entity<Car>()
+                .HasIndex(c => c.LicensePlateNormalized);
 
             modelBuilder.Entity<Car>()
                 .HasIndex(c => c.VIN)
@@ -1064,18 +1185,40 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<VehicleTracking>().HasQueryFilter(vt => !vt.IsDeleted);
             modelBuilder.Entity<AreaLocation>().HasQueryFilter(al => !al.IsDeleted);
             modelBuilder.Entity<AreaStaff>().HasQueryFilter(asx => !asx.IsDeleted);
+            modelBuilder.Entity<CameraDevice>().HasQueryFilter(c => !c.IsDeleted);
+            modelBuilder.Entity<CameraGateEvent>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<VehicleAreaPresence>().HasQueryFilter(p => !p.IsDeleted);
         }
 
         public override int SaveChanges()
         {
+            ApplyDerivedValues();
             ApplySoftDeleteRules();
             return base.SaveChanges();
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            ApplyDerivedValues();
             ApplySoftDeleteRules();
             return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ApplyDerivedValues()
+        {
+            var now = DateTime.UtcNow;
+            foreach (var entry in ChangeTracker.Entries<Car>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+            {
+                entry.Entity.LicensePlateNormalized = LicensePlateNormalizer.Normalize(entry.Entity.LicensePlate);
+            }
+
+            foreach (var entry in ChangeTracker.Entries<CameraDevice>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+            {
+                entry.Entity.Code = entry.Entity.Code.Trim().ToUpperInvariant();
+                entry.Entity.UpdatedAt = now;
+            }
         }
 
         private void ApplySoftDeleteRules()
@@ -1159,6 +1302,15 @@ namespace CarRentalSystem.Data
                         break;
                     case AreaStaff areaStaff:
                         areaStaff.IsDeleted = true;
+                        break;
+                    case CameraDevice cameraDevice:
+                        cameraDevice.IsDeleted = true;
+                        break;
+                    case CameraGateEvent cameraGateEvent:
+                        cameraGateEvent.IsDeleted = true;
+                        break;
+                    case VehicleAreaPresence vehicleAreaPresence:
+                        vehicleAreaPresence.IsDeleted = true;
                         break;
                 }
             }

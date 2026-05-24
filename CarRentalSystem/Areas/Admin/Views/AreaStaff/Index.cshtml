@@ -16,7 +16,7 @@
         "manager" => "<span class='badge bg-danger rounded-pill px-2'><i class='bi bi-shield-check me-1'></i>Manager KV</span>",
         "staff" => "<span class='badge bg-warning text-dark rounded-pill px-2'><i class='bi bi-person-badge me-1'></i>Staff KV</span>",
         "viewer" => "<span class='badge bg-secondary rounded-pill px-2'><i class='bi bi-eye me-1'></i>Viewer</span>",
-        _ => $"<span class='badge bg-light text-dark rounded-pill px-2'>{r}</span>"
+        _ => $"<span class='badge bg-light text-dark rounded-pill px-2'>{System.Net.WebUtility.HtmlEncode(r)}</span>"
     };
 }
 
@@ -214,12 +214,12 @@
                                             @if (!isAreaManager)
                                             {
                                                 <button class="btn btn-sm btn-outline-primary rounded-3 px-3"
-                                                        onclick="openRoleModal(@staff.ID, '@staff.User?.Name?.Replace("'", "\\'")', '@staff.RoleInArea')"
+                                                        onclick='openRoleModal(@staff.ID, @Json.Serialize(staff.User?.Name ?? ""), @Json.Serialize(staff.RoleInArea ?? ""))'
                                                         title="Đổi vai trò">
                                                     <i class="bi bi-arrow-repeat me-1"></i>Đổi vai trò
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-danger rounded-3 px-3"
-                                                        onclick="openRemoveModal(@staff.ID, '@staff.User?.Name?.Replace("'", "\\'")', @area?.AreaID)"
+                                                        onclick='openRemoveModal(@staff.ID, @Json.Serialize(staff.User?.Name ?? ""), @(area?.AreaID ?? 0))'
                                                         title="Gỡ khỏi khu vực">
                                                     <i class="bi bi-person-dash me-1"></i>Gỡ
                                                 </button>

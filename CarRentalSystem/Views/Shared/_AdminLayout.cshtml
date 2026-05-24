@@ -350,7 +350,7 @@
                                 <span><i class="bi bi-geo-alt-fill"></i> Khu vực</span>
                                 <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
-                            <div class="collapse @(new[]{"AreaDashboard", "Area", "AreaStaff", "CarApproval", "AreaBooking", "PhysicalContracts"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="areaDropdown">
+                            <div class="collapse @(new[]{"AreaDashboard", "Area", "AreaStaff", "CarApproval", "AreaBooking", "PhysicalContracts", "Camera"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="areaDropdown">
                                 <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AreaDashboard" ? "active" : "")" asp-area="Admin" asp-controller="AreaDashboard" asp-action="Index">
                                     <i class="bi bi-grid-3x3-gap-fill" style="font-size: 1.1rem;"></i> Dashboard Khu vực
                                 </a>
@@ -370,6 +370,9 @@
                                     </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AreaBooking" ? "active" : "")" asp-area="Admin" asp-controller="AreaBooking" asp-action="Index">
                                         <i class="bi bi-clipboard-check" style="font-size: 1.1rem;"></i> Đơn xe khu vực
+                                    </a>
+                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Camera" ? "active" : "")" asp-area="Admin" asp-controller="Camera" asp-action="Monitor">
+                                        <i class="bi bi-camera-video-fill" style="font-size: 1.1rem;"></i> Camera ANPR
                                     </a>
                                 }
                             </div>

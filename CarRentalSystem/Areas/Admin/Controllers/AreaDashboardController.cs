@@ -110,6 +110,10 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 var isAreaManager = area.AreaStaffs!
                     .Any(asx => asx.UserID == userId && AreaStaffRoleConstants.IsManager(asx.RoleInArea) && !asx.IsDeleted);
 
+                var today = DateTime.UtcNow.Date;
+                var cameraEventQuery = _context.CameraGateEvents.AsNoTracking()
+                    .Where(e => e.AreaID == area.AreaID || (e.LocationID.HasValue && locIds.Contains(e.LocationID.Value)));
+
                 areaStats.Add(new AreaDashboardStats
                 {
                     Area = area,
@@ -119,7 +123,13 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                     MonthlyRevenue = monthlyRevenue,
                     TotalLocations = locIds.Count,
                     TotalStaffs = area.AreaStaffs!.Count(asx => !asx.IsDeleted),
-                    IsAreaManager = isAreaManager
+                    IsAreaManager = isAreaManager,
+                    VehiclesInside = await _context.VehicleAreaPresences.AsNoTracking()
+                        .CountAsync(p => p.IsInside && (p.AreaID == area.AreaID || (p.LocationID.HasValue && locIds.Contains(p.LocationID.Value)))),
+                    CameraEventsToday = await cameraEventQuery.CountAsync(e => e.CapturedAt >= today),
+                    UnknownPlateToday = await cameraEventQuery.CountAsync(e => e.CapturedAt >= today && e.MatchStatus == CameraGateMatchStatusConstants.UnknownPlate),
+                    LowConfidenceToday = await cameraEventQuery.CountAsync(e => e.CapturedAt >= today && e.MatchStatus == CameraGateMatchStatusConstants.LowConfidence),
+                    AreaMismatchToday = await cameraEventQuery.CountAsync(e => e.CapturedAt >= today && e.MatchStatus == CameraGateMatchStatusConstants.AreaMismatch)
                 });
             }
 
@@ -138,6 +148,11 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public int TotalLocations { get; set; }
         public int TotalStaffs { get; set; }
         public bool IsAreaManager { get; set; }
+        public int VehiclesInside { get; set; }
+        public int CameraEventsToday { get; set; }
+        public int UnknownPlateToday { get; set; }
+        public int LowConfidenceToday { get; set; }
+        public int AreaMismatchToday { get; set; }
 
         public decimal UtilizationRate => TotalCars > 0
             ? Math.Round((decimal)(TotalCars - AvailableCars) / TotalCars * 100, 1)

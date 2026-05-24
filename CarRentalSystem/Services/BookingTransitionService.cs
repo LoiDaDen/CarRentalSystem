@@ -65,7 +65,7 @@ namespace CarRentalSystem.Services
             else if (targetStatus == BookingStatusConstants.Completed)
             {
                 booking.ActualReturnDate ??= DateTime.UtcNow;
-                booking.DepositStatus = DepositStatusConstants.PendingRefund;
+                booking.DepositStatus = DepositStatusConstants.Refunded;
                 await SetCarStatusAsync(booking.Car, CarStatusConstants.Available);
             }
             else if (targetStatus == BookingStatusConstants.Confirmed)

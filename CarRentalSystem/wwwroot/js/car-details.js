@@ -468,9 +468,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (locOwner && locOwner.checked && (!deliveryLatInput?.value || !deliveryLngInput?.value)) {
                 e.preventDefault();
                 if (typeof Swal !== 'undefined') {
-                    Swal.fire('ThÃ´ng bÃ¡o', 'Vui lÃ²ng chá»n Ä‘iá»ƒm giao xe trÃªn báº£n Ä‘á»“.', 'warning');
+                    Swal.fire('Thông báo', 'Vui lòng chọn điểm giao xe trên bản đồ.', 'warning');
                 } else {
-                    alert('Vui lÃ²ng chá»n Ä‘iá»ƒm giao xe trÃªn báº£n Ä‘á»“.');
+                    alert('Vui lòng chọn điểm giao xe trên bản đồ.');
                 }
                 return;
             }

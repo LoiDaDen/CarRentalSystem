@@ -86,6 +86,10 @@ public class SnapshotService : ISnapshotService
                 data["Areas"] = await GetTableData<Area>();
                 data["AreaLocations"] = await GetTableData<AreaLocation>();
                 data["AreaStaffs"] = await GetTableData<AreaStaff>();
+                data["CameraDevices"] = await GetTableData<CameraDevice>();
+                data["CameraGateEvents"] = await GetTableData<CameraGateEvent>();
+                data["VehicleAreaPresences"] = await GetTableData<VehicleAreaPresence>();
+                data["CameraWebhookNonces"] = await GetTableData<CameraWebhookNonce>();
                 data["Cars"] = await GetTableData<Car>();
                 data["CarModels"] = await GetTableData<CarModel>();
                 data["CarAmenities"] = await GetTableData<CarAmenity>();
@@ -331,6 +335,10 @@ public class SnapshotService : ISnapshotService
                 "Areas" => typeof(Area),
                 "AreaLocations" => typeof(AreaLocation),
                 "AreaStaffs" => typeof(AreaStaff),
+                "CameraDevices" => typeof(CameraDevice),
+                "CameraGateEvents" => typeof(CameraGateEvent),
+                "VehicleAreaPresences" => typeof(VehicleAreaPresence),
+                "CameraWebhookNonces" => typeof(CameraWebhookNonce),
                 "Cars" => typeof(Car),
                 "CarModels" => typeof(CarModel),
                 "CarAmenities" => typeof(CarAmenity),

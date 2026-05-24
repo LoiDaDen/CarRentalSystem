@@ -44,7 +44,7 @@
             <div class="col-md-6 col-xl-4">
                 <div class="card border-0 shadow-sm rounded-4 h-100 area-card"
                      style="cursor:pointer; transition: all 0.2s;"
-                     onclick="loadAreaDetail(@area.AreaID, '@area.Name.Replace("'", "\\'")')"
+                     onclick='loadAreaDetail(@area.AreaID, @Json.Serialize(area.Name))'
                      id="area-card-@area.AreaID">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-3">
@@ -324,6 +324,20 @@
         let currentAreaName = '';
         let currentAreaManagerId = null;
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[ch]));
+        }
+
+        function escapeJsString(value) {
+            return String(value ?? '').replace(/[\\']/g, '\\$&').replace(/\r?\n/g, ' ');
+        }
+
         // ── Chọn khu vực → load chi tiết ────────────────────
         async function loadAreaDetail(areaId, areaName) {
             currentAreaId = areaId;
@@ -437,6 +451,9 @@
                     const name = nameCell ? nameCell.textContent.trim() : '?';
                     const emailCell = row.querySelector('td:nth-child(2) small');
                     const email = emailCell ? emailCell.textContent.trim() : '';
+                    const escapedName = escapeHtml(name);
+                    const escapedEmail = escapeHtml(email);
+                    const jsName = escapeHtml(escapeJsString(name));
 
                     // Re-build row with action buttons
                     const tr = document.createElement('tr');
@@ -445,10 +462,10 @@
                         <td class="py-3">
                             <div class="d-flex align-items-center gap-3">
                                 <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&size=40"
-                                     alt="${name}" class="rounded-circle shadow-sm" width="40" height="40">
+                                     alt="${escapedName}" class="rounded-circle shadow-sm" width="40" height="40">
                                 <div>
-                                    <div class="fw-bold">${name}</div>
-                                    <small class="text-muted">${email}</small>
+                                    <div class="fw-bold">${escapedName}</div>
+                                    <small class="text-muted">${escapedEmail}</small>
                                 </div>
                             </div>
                         </td>
@@ -458,12 +475,12 @@
                         <td class="py-3 text-end px-4">
                             <div class="d-flex justify-content-end gap-2">
                                 <button class="btn btn-sm btn-outline-primary rounded-3 px-3"
-                                        onclick="openRoleModal(${staffId}, '${name.replace(/'/g, "\\'")}')"
+                                        onclick="openRoleModal(${staffId}, '${jsName}')"
                                         title="Đổi vai trò">
                                     <i class="bi bi-arrow-repeat me-1"></i>Đổi vai trò
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger rounded-3 px-3"
-                                        onclick="openRemoveModal(${staffId}, '${name.replace(/'/g, "\\'")}')"
+                                        onclick="openRemoveModal(${staffId}, '${jsName}')"
                                         title="Gỡ khỏi khu vực">
                                     <i class="bi bi-person-dash me-1"></i>Gỡ
                                 </button>
@@ -473,7 +490,7 @@
                     tbody.appendChild(tr);
                 });
             } catch (e) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Lỗi kết nối: ' + e.message + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Lỗi kết nối: ' + escapeHtml(e.message) + '</td></tr>';
             }
         }
 

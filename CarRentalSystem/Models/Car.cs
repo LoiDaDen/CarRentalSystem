@@ -34,6 +34,9 @@ namespace CarRentalSystem.Models
         [MaxLength(20)]
         public required string LicensePlate { get; set; }
 
+        [MaxLength(40)]
+        public string? LicensePlateNormalized { get; set; }
+
         [Required]
         [MaxLength(17)]
         [StringLength(17, MinimumLength = 17, ErrorMessage = "VIN phải đủ 17 ký tự")]
@@ -126,6 +129,8 @@ namespace CarRentalSystem.Models
         public ICollection<CarAmenityMapping> CarAmenityMappings { get; set; } = new List<CarAmenityMapping>();
         public ICollection<Booking>? Bookings { get; set; } = new List<Booking>();
         public ICollection<VehicleTracking>? Trackings { get; set; } = new List<VehicleTracking>();
+        public ICollection<CameraGateEvent>? CameraGateEvents { get; set; } = new List<CameraGateEvent>();
+        public ICollection<VehicleAreaPresence>? AreaPresences { get; set; } = new List<VehicleAreaPresence>();
         public ICollection<Alert>? Alerts { get; set; } = new List<Alert>();
         public ICollection<Review>? Reviews { get; set; } = new List<Review>();
         public ICollection<MaintenanceLog>? MaintenanceLogs { get; set; } = new List<MaintenanceLog>();

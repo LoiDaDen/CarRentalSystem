@@ -49,6 +49,9 @@ namespace CarRentalSystem.Services
                 await _context.SaveChangesAsync();
             }
 
+            if (blog != null)
+                blog.Content = SanitizeBlogHtml(blog.Content);
+
             return blog;
         }
 

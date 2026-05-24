@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
+using CarRentalSystem.Helpers;
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
+using CarRentalSystem.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,19 +23,335 @@ namespace CarRentalSystem.Controllers
             _fileValidation = fileValidation;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? q = null, string service = "all", string status = "all")
         {
             var userId = GetCurrentUserId();
-            var cars = await _context.Cars
-                .Include(c => c.CarBrand)
-                .Include(c => c.CarModel)
-                .Include(c => c.CarStatus)
-                .Include(c => c.CarImages)
-                .Where(c => c.OwnerID == userId)
-                .OrderByDescending(c => c.CreatedAt)
+            var allCars = await GetOwnerCarsQuery(userId).ToListAsync();
+            var visibleCars = ApplyOwnerCarFilters(allCars, q, service, status).ToList();
+            var allCarIds = allCars.Select(c => c.CarID).ToList();
+            var visibleCarIds = visibleCars.Select(c => c.CarID).ToList();
+            var bookingRows = await LoadOwnerBookingRowsAsync(allCarIds);
+            var visibleBookingRows = bookingRows.Where(b => visibleCarIds.Contains(b.CarID)).ToList();
+            var latestTracking = await LoadLatestTrackingAsync(allCarIds);
+            var contractCarIds = await LoadOwnerContractCarIdsAsync(userId, allCarIds);
+            var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+            var cards = visibleCars.Select(car =>
+            {
+                var carBookings = visibleBookingRows.Where(b => b.CarID == car.CarID).ToList();
+                return new OwnerCarCardViewModel
+                {
+                    CarID = car.CarID,
+                    DisplayName = BuildCarDisplayName(car),
+                    LicensePlate = car.LicensePlate,
+                    ImageUrl = car.CarImages?.FirstOrDefault()?.ImageUrl ?? car.ImageURL ?? "/images/default-car.png",
+                    ServiceLabel = car.IsWithDriverAllowed ? "Xe có tài" : "Xe tự lái",
+                    StatusName = car.CarStatus?.Name ?? "Unknown",
+                    IsApproved = car.IsApproved,
+                    PricePerDay = car.PricePerDay,
+                    TripCount = carBookings.Count(b => b.StatusName == BookingStatusConstants.Completed),
+                    ActiveBookingCount = carBookings.Count(b => b.StatusName is BookingStatusConstants.Confirmed or BookingStatusConstants.Active),
+                    MonthRevenue = carBookings
+                        .Where(b => b.CreatedAt >= monthStart && IsRevenueStatus(b.StatusName))
+                        .Sum(b => b.TotalPrice),
+                    HasGps = latestTracking.ContainsKey(car.CarID),
+                    HasEnoughImages = (car.CarImages?.Count ?? 0) >= 4,
+                    HasRequiredDocuments = contractCarIds.Contains(car.CarID),
+                    Seats = car.Seats,
+                    FuelType = car.FuelType,
+                    Transmission = car.Transmission
+                };
+            }).ToList();
+
+            var model = new OwnerCarsDashboardViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Cars"),
+                Cars = cards,
+                Query = q,
+                Service = NormalizeFilter(service),
+                Status = NormalizeFilter(status),
+                TotalCars = allCars.Count,
+                ApprovedCars = allCars.Count(c => c.IsApproved),
+                PendingCars = allCars.Count(c => !c.IsApproved),
+                ActiveTrips = bookingRows.Count(b => b.StatusName == BookingStatusConstants.Active),
+                MonthRevenue = bookingRows
+                    .Where(b => b.CreatedAt >= monthStart && IsRevenueStatus(b.StatusName))
+                    .Sum(b => b.TotalPrice)
+            };
+
+            return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Calendar(DateTime? from = null, DateTime? to = null, int? carId = null, string brand = "all", string status = "all", string? q = null)
+        {
+            var userId = GetCurrentUserId();
+            var start = (from ?? DateTime.Today).Date;
+            var end = (to ?? start.AddDays(28)).Date;
+            if (end < start) end = start.AddDays(28);
+            if ((end - start).TotalDays > 120) end = start.AddDays(120);
+
+            var cars = await GetOwnerCarsQuery(userId).ToListAsync();
+            var filteredCars = cars.AsEnumerable();
+            if (carId.HasValue) filteredCars = filteredCars.Where(c => c.CarID == carId.Value);
+            if (!string.IsNullOrWhiteSpace(brand) && brand != "all")
+                filteredCars = filteredCars.Where(c => string.Equals(c.CarBrand?.Name, brand, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(q))
+                filteredCars = filteredCars.Where(c => MatchesCarSearch(c, q));
+
+            var selectedCarIds = filteredCars.Select(c => c.CarID).ToList();
+            var bookings = await _context.Bookings
+                .AsNoTracking()
+                .Include(b => b.BookingStatus)
+                .Include(b => b.User)
+                .Include(b => b.Car).ThenInclude(c => c!.CarBrand)
+                .Include(b => b.Car).ThenInclude(c => c!.CarModel)
+                .Where(b => selectedCarIds.Contains(b.CarID) && b.StartDate <= end.AddDays(1) && b.EndDate >= start)
+                .OrderBy(b => b.StartDate)
                 .ToListAsync();
 
-            return View(cars);
+            if (!string.IsNullOrWhiteSpace(status) && status != "all")
+                bookings = bookings.Where(b => string.Equals(b.BookingStatus?.Name, status, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            var model = new OwnerCalendarViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Calendar"),
+                From = start,
+                To = end,
+                CarId = carId,
+                Brand = NormalizeFilter(brand),
+                Status = NormalizeFilter(status),
+                Query = q,
+                Cars = cars.Select(ToOwnerCarOption).ToList(),
+                Brands = cars.Select(c => c.CarBrand?.Name).Where(name => !string.IsNullOrWhiteSpace(name)).Distinct().OrderBy(name => name).Cast<string>().ToList(),
+                Bookings = bookings.Select(b => new OwnerCalendarBookingRowViewModel
+                {
+                    BookingID = b.BookingID,
+                    CarID = b.CarID,
+                    CarName = BuildCarDisplayName(b.Car),
+                    LicensePlate = b.Car?.LicensePlate ?? string.Empty,
+                    CustomerName = b.User?.Name ?? "Khách thuê",
+                    StartDate = b.StartDate,
+                    EndDate = b.EndDate,
+                    StatusName = b.BookingStatus?.Name ?? "Unknown",
+                    StatusClass = GetStatusClass(b.BookingStatus?.Name),
+                    TotalPrice = b.TotalPrice
+                }).ToList()
+            };
+
+            return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Guide()
+        {
+            var userId = GetCurrentUserId();
+            return View(new OwnerGuideViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Guide"),
+                Documents = GetGuideDocuments()
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Fines(int? carId, string? plate)
+        {
+            var userId = GetCurrentUserId();
+            var cars = await GetOwnerCarsQuery(userId).ToListAsync();
+            if (carId.HasValue)
+            {
+                var car = cars.FirstOrDefault(c => c.CarID == carId.Value);
+                if (car != null) plate = car.LicensePlate;
+            }
+
+            var normalized = LicensePlateNormalizer.Normalize(plate);
+            var hasQuery = !string.IsNullOrWhiteSpace(normalized);
+            var isOwned = hasQuery && cars.Any(c => LicensePlateNormalizer.Normalize(c.LicensePlate) == normalized);
+
+            return View(new OwnerFinesViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Fines"),
+                Cars = cars.Select(ToOwnerCarOption).ToList(),
+                CarId = carId,
+                Plate = plate,
+                NormalizedPlate = normalized,
+                HasQuery = hasQuery,
+                IsPlateOwned = isOwned
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> TaxInfo()
+        {
+            var userId = GetCurrentUserId();
+            var user = await _context.Users.AsNoTracking().FirstAsync(u => u.UserID == userId);
+            return View(new OwnerTaxInfoViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "TaxInfo"),
+                FullName = user.Name,
+                Phone = user.Phone,
+                Email = user.Email,
+                Address = user.Address ?? user.PartnerAddress
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Tracking(string gps = "all", string? q = null)
+        {
+            var userId = GetCurrentUserId();
+            var cars = await GetOwnerCarsQuery(userId).ToListAsync();
+            if (!string.IsNullOrWhiteSpace(q))
+                cars = cars.Where(c => MatchesCarSearch(c, q)).ToList();
+
+            var latest = await LoadLatestTrackingAsync(cars.Select(c => c.CarID).ToList());
+            var rows = cars.Select(car =>
+            {
+                latest.TryGetValue(car.CarID, out var tracking);
+                var hasGps = tracking != null;
+                var isLive = hasGps && (DateTime.UtcNow - tracking!.Timestamp).TotalMinutes <= 10;
+                return new OwnerTrackingCarViewModel
+                {
+                    CarID = car.CarID,
+                    Name = BuildCarDisplayName(car),
+                    LicensePlate = car.LicensePlate,
+                    HasGps = hasGps,
+                    IsLive = isLive,
+                    LastUpdated = tracking?.Timestamp,
+                    Latitude = tracking?.Latitude ?? car.Latitude,
+                    Longitude = tracking?.Longitude ?? car.Longitude
+                };
+            }).ToList();
+
+            if (gps == "gps") rows = rows.Where(r => r.HasGps).ToList();
+            if (gps == "nogps") rows = rows.Where(r => !r.HasGps).ToList();
+
+            var points = rows.Select(row => new OwnerTrackingMapPointViewModel
+            {
+                CarID = row.CarID,
+                Name = row.Name,
+                LicensePlate = row.LicensePlate,
+                Latitude = row.Latitude ?? 10.7769,
+                Longitude = row.Longitude ?? 106.7009,
+                Status = !row.HasGps ? "fallback" : row.IsLive ? "live" : "stale",
+                LastUpdatedText = row.LastUpdated.HasValue ? row.LastUpdated.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : null
+            }).ToList();
+
+            return View(new OwnerTrackingViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Tracking"),
+                Cars = rows,
+                MapPoints = points,
+                Query = q,
+                GpsFilter = NormalizeFilter(gps)
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Contracts()
+        {
+            var userId = GetCurrentUserId();
+            var carIds = await _context.Cars.AsNoTracking().Where(c => c.OwnerID == userId).Select(c => c.CarID).ToListAsync();
+            var contracts = await _context.PhysicalContracts
+                .AsNoTracking()
+                .Include(c => c.PhysicalContractType)
+                .Include(c => c.Car).ThenInclude(c => c!.CarBrand)
+                .Include(c => c.Car).ThenInclude(c => c!.CarModel)
+                .Where(c => c.OwnerID == userId || (c.CarID.HasValue && carIds.Contains(c.CarID.Value)))
+                .OrderByDescending(c => c.UploadedAt)
+                .Take(80)
+                .ToListAsync();
+
+            return View(new OwnerContractsViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Contracts"),
+                Templates = GetContractTemplates(),
+                Contracts = contracts.Select(c => new OwnerContractRowViewModel
+                {
+                    PhysicalContractID = c.PhysicalContractID,
+                    Title = string.IsNullOrWhiteSpace(c.Title) ? $"Tài liệu #{c.PhysicalContractID}" : c.Title,
+                    TypeName = c.PhysicalContractType?.Name ?? c.SuggestedContractTypeCode ?? "Chưa phân loại",
+                    Status = c.Status,
+                    FileUrl = c.FileUrl,
+                    CarName = c.Car != null ? BuildCarDisplayName(c.Car) : null,
+                    LicensePlate = c.Car?.LicensePlate,
+                    BookingID = c.BookingID,
+                    UploadedAt = c.UploadedAt
+                }).ToList()
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Privacy()
+        {
+            var userId = GetCurrentUserId();
+            return View(new OwnerPrivacyViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Privacy")
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Wallet()
+        {
+            var userId = GetCurrentUserId();
+            var wallet = await _context.Wallets.AsNoTracking().FirstOrDefaultAsync(w => w.UserID == userId);
+            var transactions = wallet == null
+                ? new List<WalletTransaction>()
+                : await _context.WalletTransactions
+                    .AsNoTracking()
+                    .Where(t => t.WalletID == wallet.WalletID)
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Take(50)
+                    .ToListAsync();
+
+            var revenueStatuses = new[] { BookingStatusConstants.Completed, BookingStatusConstants.Confirmed };
+            var bookings = await _context.Bookings
+                .AsNoTracking()
+                .Include(b => b.BookingStatus)
+                .Include(b => b.Car).ThenInclude(c => c!.CarBrand)
+                .Include(b => b.Car).ThenInclude(c => c!.CarModel)
+                .Where(b => b.Car != null && b.Car.OwnerID == userId && b.BookingStatus != null && revenueStatuses.Contains(b.BookingStatus.Name))
+                .OrderByDescending(b => b.StartDate)
+                .Take(120)
+                .ToListAsync();
+
+            var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var bookingRows = bookings.Select(b =>
+            {
+                var commission = b.Car?.CommissionRate ?? 0m;
+                var ownerIncome = Math.Round(b.TotalPrice * Math.Max(0m, 100m - commission) / 100m, 0, MidpointRounding.AwayFromZero);
+                return new OwnerWalletBookingRowViewModel
+                {
+                    BookingID = b.BookingID,
+                    CarName = BuildCarDisplayName(b.Car),
+                    LicensePlate = b.Car?.LicensePlate ?? string.Empty,
+                    StartDate = b.StartDate,
+                    EndDate = b.EndDate,
+                    RentalAmount = b.TotalPrice,
+                    CommissionRate = commission,
+                    OwnerIncome = ownerIncome,
+                    StatusName = b.BookingStatus?.Name ?? "Unknown"
+                };
+            }).ToList();
+
+            return View(new OwnerWalletViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Wallet"),
+                Balance = wallet?.Balance ?? 0m,
+                LockedBalance = wallet?.LockedBalance ?? 0m,
+                GrossRevenue = bookingRows.Sum(b => b.RentalAmount),
+                EstimatedOwnerIncome = bookingRows.Sum(b => b.OwnerIncome),
+                MonthIncome = bookingRows.Where(b => b.StartDate >= monthStart).Sum(b => b.OwnerIncome),
+                CompletedTrips = bookingRows.Count(b => b.StatusName == BookingStatusConstants.Completed),
+                Transactions = transactions.Select(t => new OwnerWalletTransactionRowViewModel
+                {
+                    CreatedAt = t.CreatedAt,
+                    Type = t.Type,
+                    Description = t.Description,
+                    Amount = t.Amount
+                }).ToList(),
+                BookingRows = bookingRows
+            });
         }
 
         [HttpGet]
@@ -186,6 +504,236 @@ namespace CarRentalSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        private IQueryable<Car> GetOwnerCarsQuery(int userId)
+        {
+            return _context.Cars
+                .AsNoTracking()
+                .Include(c => c.CarBrand)
+                .Include(c => c.CarModel)
+                .Include(c => c.CarStatus)
+                .Include(c => c.CarImages)
+                .Where(c => c.OwnerID == userId)
+                .OrderByDescending(c => c.CreatedAt);
+        }
+
+        private static IEnumerable<Car> ApplyOwnerCarFilters(IEnumerable<Car> cars, string? q, string service, string status)
+        {
+            var query = cars;
+            if (!string.IsNullOrWhiteSpace(q))
+                query = query.Where(c => MatchesCarSearch(c, q));
+
+            query = NormalizeFilter(service) switch
+            {
+                "selfdrive" => query.Where(c => c.IsSelfDriveAllowed),
+                "driver" => query.Where(c => c.IsWithDriverAllowed),
+                _ => query
+            };
+
+            query = NormalizeFilter(status) switch
+            {
+                "approved" => query.Where(c => c.IsApproved),
+                "pending" => query.Where(c => !c.IsApproved),
+                "available" => query.Where(c => string.Equals(c.CarStatus?.Name, CarStatusConstants.Available, StringComparison.OrdinalIgnoreCase)),
+                "rented" => query.Where(c => string.Equals(c.CarStatus?.Name, CarStatusConstants.Rented, StringComparison.OrdinalIgnoreCase)),
+                "maintenance" => query.Where(c => string.Equals(c.CarStatus?.Name, CarStatusConstants.Maintenance, StringComparison.OrdinalIgnoreCase)),
+                _ => query
+            };
+
+            return query;
+        }
+
+        private static bool MatchesCarSearch(Car car, string value)
+        {
+            var keyword = value.Trim();
+            return Contains(car.CarName, keyword)
+                || Contains(car.LicensePlate, keyword)
+                || Contains(car.CarBrand?.Name, keyword)
+                || Contains(car.CarModel?.Name, keyword);
+        }
+
+        private static bool Contains(string? source, string value)
+        {
+            return !string.IsNullOrWhiteSpace(source)
+                && source.Contains(value, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task<OwnerPortalChromeViewModel> BuildChromeAsync(int userId, string activeTab)
+        {
+            var walletBalance = await _context.Wallets
+                .AsNoTracking()
+                .Where(w => w.UserID == userId)
+                .Select(w => (decimal?)w.Balance)
+                .FirstOrDefaultAsync() ?? 0m;
+            var carCount = await _context.Cars.AsNoTracking().CountAsync(c => c.OwnerID == userId);
+
+            return new OwnerPortalChromeViewModel
+            {
+                ActiveTab = activeTab,
+                WalletBalance = walletBalance,
+                CarsCount = carCount,
+                Tabs = GetOwnerTabs()
+            };
+        }
+
+        private static IReadOnlyList<OwnerPortalTabViewModel> GetOwnerTabs()
+        {
+            return new[]
+            {
+                new OwnerPortalTabViewModel("Cars", "Danh sách xe", "Index", "bi-car-front"),
+                new OwnerPortalTabViewModel("Calendar", "Lịch xe", "Calendar", "bi-calendar3"),
+                new OwnerPortalTabViewModel("Guide", "Cẩm nang cho thuê", "Guide", "bi-journal-check"),
+                new OwnerPortalTabViewModel("Fines", "Tra cứu phạt nguội", "Fines", "bi-shield-exclamation"),
+                new OwnerPortalTabViewModel("TaxInfo", "Thông tin khai thuế", "TaxInfo", "bi-receipt"),
+                new OwnerPortalTabViewModel("Tracking", "Định vị", "Tracking", "bi-geo-alt"),
+                new OwnerPortalTabViewModel("Contracts", "Hợp đồng & Chứng từ", "Contracts", "bi-file-earmark-text"),
+                new OwnerPortalTabViewModel("Privacy", "Chính sách dữ liệu", "Privacy", "bi-lock"),
+                new OwnerPortalTabViewModel("Wallet", "Ví của tôi", "Wallet", "bi-wallet2")
+            };
+        }
+
+        private async Task<List<OwnerBookingProjection>> LoadOwnerBookingRowsAsync(IReadOnlyCollection<int> carIds)
+        {
+            if (carIds.Count == 0) return new List<OwnerBookingProjection>();
+
+            return await _context.Bookings
+                .AsNoTracking()
+                .Include(b => b.BookingStatus)
+                .Where(b => carIds.Contains(b.CarID))
+                .Select(b => new OwnerBookingProjection
+                {
+                    BookingID = b.BookingID,
+                    CarID = b.CarID,
+                    StatusName = b.BookingStatus != null ? b.BookingStatus.Name : "Unknown",
+                    TotalPrice = b.TotalPrice,
+                    CreatedAt = b.CreatedAt
+                })
+                .ToListAsync();
+        }
+
+        private async Task<Dictionary<int, VehicleTracking>> LoadLatestTrackingAsync(IReadOnlyCollection<int> carIds)
+        {
+            if (carIds.Count == 0) return new Dictionary<int, VehicleTracking>();
+
+            var recentTrackings = await _context.VehicleTrackings
+                .AsNoTracking()
+                .Where(t => carIds.Contains(t.CarID))
+                .OrderByDescending(t => t.Timestamp)
+                .Take(Math.Max(200, carIds.Count * 4))
+                .ToListAsync();
+
+            return recentTrackings
+                .GroupBy(t => t.CarID)
+                .ToDictionary(g => g.Key, g => g.First());
+        }
+
+        private async Task<HashSet<int>> LoadOwnerContractCarIdsAsync(int userId, IReadOnlyCollection<int> carIds)
+        {
+            if (carIds.Count == 0) return new HashSet<int>();
+
+            var ids = await _context.PhysicalContracts
+                .AsNoTracking()
+                .Where(c => c.OwnerID == userId || (c.CarID.HasValue && carIds.Contains(c.CarID.Value)))
+                .Select(c => c.CarID)
+                .ToListAsync();
+
+            return ids.Where(id => id.HasValue).Select(id => id!.Value).ToHashSet();
+        }
+
+        private static OwnerCarOptionViewModel ToOwnerCarOption(Car car)
+        {
+            return new OwnerCarOptionViewModel
+            {
+                CarID = car.CarID,
+                Name = BuildCarDisplayName(car),
+                LicensePlate = car.LicensePlate,
+                Brand = car.CarBrand?.Name ?? string.Empty
+            };
+        }
+
+        private static string BuildCarDisplayName(Car? car)
+        {
+            if (car == null) return "Xe";
+            var name = $"{car.CarBrand?.Name} {car.CarModel?.Name}".Trim();
+            return string.IsNullOrWhiteSpace(name) ? car.CarName : name;
+        }
+
+        private static bool IsRevenueStatus(string? status)
+        {
+            return status is BookingStatusConstants.Completed or BookingStatusConstants.Confirmed;
+        }
+
+        private static string GetStatusClass(string? status)
+        {
+            return status switch
+            {
+                BookingStatusConstants.Active => "active",
+                BookingStatusConstants.Confirmed => "confirmed",
+                BookingStatusConstants.Completed => "completed",
+                BookingStatusConstants.Cancelled => "cancelled",
+                BookingStatusConstants.Pending => "pending",
+                _ => "neutral"
+            };
+        }
+
+        private static string NormalizeFilter(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? "all" : value.Trim().ToLowerInvariant();
+        }
+
+        private static IReadOnlyList<OwnerDocumentViewModel> GetGuideDocuments()
+        {
+            return new[]
+            {
+                new OwnerDocumentViewModel
+                {
+                    Title = "Cẩm nang cho thuê xe an toàn",
+                    Description = "Quy trình chuẩn bị, bàn giao, theo dõi chuyến đi và xử lý rủi ro.",
+                    Url = "/docs/owner/cam-nang-cho-thue-xe-an-toan.pdf",
+                    Icon = "bi-journal-richtext",
+                    FileType = "PDF"
+                },
+                new OwnerDocumentViewModel
+                {
+                    Title = "Quy trình và biên bản bàn giao xe",
+                    Description = "Mẫu ghi nhận tình trạng xe, tài sản thế chấp, km và nhiên liệu khi giao/trả.",
+                    Url = "/docs/owner/bien-ban-ban-giao-xe.docx",
+                    Icon = "bi-clipboard-check",
+                    FileType = "DOCX"
+                },
+                new OwnerDocumentViewModel
+                {
+                    Title = "Cẩm nang quyết toán thuế",
+                    Description = "Tài liệu tham khảo cho cá nhân kinh doanh qua nền tảng thương mại điện tử.",
+                    Url = "/docs/owner/khai-thue-cnkd-tmdt.pdf",
+                    Icon = "bi-receipt-cutoff",
+                    FileType = "PDF"
+                }
+            };
+        }
+
+        private static IReadOnlyList<OwnerDocumentViewModel> GetContractTemplates()
+        {
+            return new[]
+            {
+                new OwnerDocumentViewModel
+                {
+                    Title = "Hợp đồng cho thuê xe tự lái",
+                    Description = "Mẫu hợp đồng để chủ xe và khách thuê rà soát, ký và lưu hồ sơ.",
+                    Url = "/docs/owner/hop-dong-thue-xe-tu-lai.docx",
+                    Icon = "bi-file-earmark-word",
+                    FileType = "DOCX"
+                },
+                new OwnerDocumentViewModel
+                {
+                    Title = "Biên bản bàn giao xe",
+                    Description = "Mẫu biên bản giao nhận, hoàn trả và ghi nhận tình trạng xe.",
+                    Url = "/docs/owner/bien-ban-ban-giao-xe.docx",
+                    Icon = "bi-clipboard-check",
+                    FileType = "DOCX"
+                }
+            };
+        }
+
         private async Task PopulateCreateViewDataAsync()
         {
             ViewBag.Brands = await _context.CarBrands.AsNoTracking().OrderBy(b => b.Name).ToListAsync();
@@ -234,6 +782,15 @@ namespace CarRentalSystem.Controllers
             await using var stream = System.IO.File.Create(path);
             await file.CopyToAsync(stream);
             return $"/{relativeFolder}/{fileName}".Replace("\\", "/");
+        }
+
+        private sealed class OwnerBookingProjection
+        {
+            public int BookingID { get; set; }
+            public int CarID { get; set; }
+            public string StatusName { get; set; } = string.Empty;
+            public decimal TotalPrice { get; set; }
+            public DateTime CreatedAt { get; set; }
         }
     }
 

@@ -40,6 +40,9 @@ namespace CarRentalSystem.Models
 
         public ICollection<AreaLocation> AreaLocations { get; set; } = new List<AreaLocation>();
         public ICollection<AreaStaff> AreaStaffs { get; set; } = new List<AreaStaff>();
+        public ICollection<CameraDevice> CameraDevices { get; set; } = new List<CameraDevice>();
+        public ICollection<CameraGateEvent> CameraGateEvents { get; set; } = new List<CameraGateEvent>();
+        public ICollection<VehicleAreaPresence> VehicleAreaPresences { get; set; } = new List<VehicleAreaPresence>();
 
         [NotMapped]
         public int TotalCars =>

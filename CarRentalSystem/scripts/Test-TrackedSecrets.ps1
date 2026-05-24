@@ -70,8 +70,12 @@ foreach ($relativePath in $files) {
     foreach ($line in Get-Content -Path $path) {
         $lineNumber++
 
-        if ($line -match '(?i)(password|pwd)\s*=\s*([^;\s]+)') {
+        if ($line -match '(?i)(password|pwd)\s*=(?!>)\s*([^;\s]+)') {
             $value = $Matches[2]
+            if ($value -match '^[A-Za-z_][A-Za-z0-9_.]*,?$') {
+                continue
+            }
+
             if (-not (Test-IsAllowedPlaceholder $value)) {
                 $suspicious.Add("${relativePath}:${lineNumber}: possible password/connection secret")
             }

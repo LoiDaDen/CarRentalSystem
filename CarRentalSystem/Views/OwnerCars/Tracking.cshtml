@@ -1,0 +1,100 @@
+@model CarRentalSystem.ViewModels.OwnerTrackingViewModel
+@{
+    ViewData["Title"] = "Định vị xe";
+    var mapPointsJson = System.Text.Json.JsonSerializer.Serialize(Model.MapPoints);
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    <form method="get" class="owner-toolbar">
+        <div class="owner-field">
+            <label for="q">Tìm xe</label>
+            <input id="q" name="q" value="@Model.Query" placeholder="Tên xe hoặc biển số" />
+        </div>
+        <div class="owner-field">
+            <label for="gps">Trạng thái GPS</label>
+            <select id="gps" name="gps">
+                <option value="all" selected="@(Model.GpsFilter == "all")">Tất cả xe</option>
+                <option value="gps" selected="@(Model.GpsFilter == "gps")">Có tín hiệu GPS</option>
+                <option value="nogps" selected="@(Model.GpsFilter == "nogps")">Chưa có GPS</option>
+            </select>
+        </div>
+        <div></div>
+        <button class="owner-filter-button" type="submit">Lọc</button>
+    </form>
+
+    <section class="owner-split">
+        <aside class="owner-list-panel">
+            @if (!Model.Cars.Any())
+            {
+                <div class="owner-empty" style="min-height:260px;">
+                    <div>
+                        <i class="bi bi-geo-alt"></i>
+                        <h2>Không tìm thấy xe</h2>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @foreach (var car in Model.Cars)
+                {
+                    <article class="owner-tracking-item">
+                        <strong>@car.Name</strong>
+                        <div class="owner-muted">@car.LicensePlate</div>
+                        <div class="owner-badges">
+                            <span class="owner-badge @(car.HasGps ? (car.IsLive ? "ok" : "warn") : "info")">
+                                <i class="bi bi-broadcast-pin"></i>
+                                @(car.HasGps ? (car.IsLive ? "Đang cập nhật" : "GPS cũ") : "Dùng vị trí xe")
+                            </span>
+                        </div>
+                        <small class="owner-muted d-block mt-2">
+                            @(car.LastUpdated.HasValue ? $"Cập nhật: {car.LastUpdated.Value.ToLocalTime():dd/MM/yyyy HH:mm}" : "Chưa có dữ liệu GPS")
+                        </small>
+                    </article>
+                }
+            }
+        </aside>
+        <div id="ownerTrackingMap" class="owner-map"></div>
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const points = @Html.Raw(mapPointsJson);
+            const map = L.map('ownerTrackingMap');
+            const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            const bounds = [];
+            points.forEach(point => {
+                const color = point.Status === 'live' ? '#16a34a' : point.Status === 'stale' ? '#f59e0b' : '#2563eb';
+                const marker = L.circleMarker([point.Latitude, point.Longitude], {
+                    radius: 9,
+                    color,
+                    fillColor: color,
+                    fillOpacity: 0.85,
+                    weight: 2
+                }).addTo(map);
+                marker.bindPopup(`<strong>${escapeHtml(point.Name)}</strong><br>${escapeHtml(point.LicensePlate)}<br>${escapeHtml(point.LastUpdatedText || 'Vị trí đăng ký xe')}`);
+                bounds.push([point.Latitude, point.Longitude]);
+            });
+
+            if (bounds.length) {
+                map.fitBounds(bounds, { padding: [42, 42], maxZoom: 15 });
+            } else {
+                map.setView([10.7769, 106.7009], 12);
+            }
+        });
+    </script>
+}

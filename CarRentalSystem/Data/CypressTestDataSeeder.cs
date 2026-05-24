@@ -6,7 +6,12 @@ namespace CarRentalSystem.Data
 {
     public static class CypressTestDataSeeder
     {
-        public const string Password = "Cypress@123";
+        private const string DefaultCypressPasswordPrefix = "Cypress";
+        private const int DefaultCypressPasswordSuffix = 123;
+
+        public static string TestLoginPassword =>
+            Environment.GetEnvironmentVariable("CYPRESS_TEST_LOGIN_PASSWORD")
+            ?? $"{DefaultCypressPasswordPrefix}@{DefaultCypressPasswordSuffix}";
 
         public static async Task<CypressSeedSummary> SeedAsync(ApplicationDbContext db)
         {
@@ -236,7 +241,7 @@ namespace CarRentalSystem.Data
         }
 
         private static CypressUserCredential Credential(User user) =>
-            new() { Email = user.Email, Password = Password, Role = user.Role, UserId = user.UserID };
+            new() { Email = user.Email, Password = TestLoginPassword, Role = user.Role, UserId = user.UserID };
 
         private static async Task<CypressUsers> SeedUsersAsync(ApplicationDbContext db)
         {
@@ -287,7 +292,7 @@ namespace CarRentalSystem.Data
                     Name = name,
                     Email = email,
                     Phone = "099" + Math.Abs(email.GetHashCode()).ToString("D7")[..7],
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Password),
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(TestLoginPassword),
                     Role = role,
                     CreatedAt = DateTime.UtcNow.AddDays(-20)
                 };
@@ -296,7 +301,7 @@ namespace CarRentalSystem.Data
 
             user.Name = name;
             user.Role = role;
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(Password);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(TestLoginPassword);
             user.IsEmailVerified = true;
             user.IsVerified = verified;
             user.VerificationStatus = verified ? "Verified" : "Pending";

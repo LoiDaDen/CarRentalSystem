@@ -63,6 +63,10 @@
     @if (isManager)
     {
         <div class="d-flex gap-2">
+            <a asp-area="Admin" asp-controller="Camera" asp-action="Index" asp-route-areaId="@Model.AreaID"
+               class="btn btn-outline-primary rounded-3 px-4 fw-bold shadow-sm">
+                <i class="bi bi-camera-video me-2"></i>Camera
+            </a>
             <a asp-area="Admin" asp-controller="Area" asp-action="Edit" asp-route-id="@Model.AreaID"
                class="btn btn-warning rounded-3 px-4 fw-bold shadow-sm text-dark">
                 <i class="bi bi-pencil me-2"></i>Sửa khu vực

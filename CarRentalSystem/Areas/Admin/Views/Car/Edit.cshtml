@@ -335,7 +335,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         var defaultLat = @defaultLatitude;
         var defaultLng = @defaultLongitude;
-        var initialAddress = "@(Html.Raw(Model.CarAddress ?? ""))";
+        var initialAddress = @Json.Serialize(Model.CarAddress ?? "");
 
         if (typeof SmartMap !== 'undefined') {
             const picker = SmartMap.initPickerMap({

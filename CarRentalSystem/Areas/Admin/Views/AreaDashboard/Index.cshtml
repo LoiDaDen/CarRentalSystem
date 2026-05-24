@@ -202,6 +202,28 @@ else
                                 <i class="bi bi-people me-1"></i>@stat.TotalStaffs nhân sự
                             </div>
                         </div>
+
+                        <div class="row g-2 small mb-3">
+                            <div class="col-6">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle w-100 py-2">
+                                    <i class="bi bi-p-circle me-1"></i>@stat.VehiclesInside xe trong bãi
+                                </span>
+                            </div>
+                            <div class="col-6">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle w-100 py-2">
+                                    <i class="bi bi-camera-video me-1"></i>@stat.CameraEventsToday event
+                                </span>
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle w-100">@stat.UnknownPlateToday unknown</span>
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-info-subtle text-info border border-info-subtle w-100">@stat.LowConfidenceToday low</span>
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle w-100">@stat.AreaMismatchToday mismatch</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Footer -->
@@ -213,6 +235,10 @@ else
                             </a>
                             @if (stat.IsAreaManager)
                             {
+                                <a asp-area="Admin" asp-controller="Camera" asp-action="Index" asp-route-areaId="@area.AreaID"
+                                   class="btn btn-outline-primary btn-sm rounded-3 fw-bold">
+                                    <i class="bi bi-camera-video"></i>
+                                </a>
                                 <a asp-area="Admin" asp-controller="Area" asp-action="Edit" asp-route-id="@area.AreaID"
                                    class="btn btn-warning btn-sm rounded-3 text-dark fw-bold">
                                     <i class="bi bi-pencil"></i>

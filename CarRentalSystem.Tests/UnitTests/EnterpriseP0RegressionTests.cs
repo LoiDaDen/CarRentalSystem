@@ -167,7 +167,7 @@ namespace CarRentalSystem.Tests.UnitTests
         }
 
         [Fact]
-        public async Task Transition_ActiveToCompleted_WithCheckOut_MarksPendingRefund()
+        public async Task Transition_ActiveToCompleted_WithCheckOut_MarksDepositRefunded()
         {
             var service = CreateTransitionService();
             var booking = SeedBooking(BookingStatusConstants.Active, PaymentStatusConstants.Paid);
@@ -178,7 +178,8 @@ namespace CarRentalSystem.Tests.UnitTests
             result.IsSuccess.Should().BeTrue();
             var updated = await _context.Bookings.Include(b => b.BookingStatus).FirstAsync(b => b.BookingID == booking.BookingID);
             updated.BookingStatus!.Name.Should().Be(BookingStatusConstants.Completed);
-            updated.DepositStatus.Should().Be(DepositStatusConstants.PendingRefund);
+            updated.DepositStatus.Should().Be(DepositStatusConstants.Refunded);
+            updated.ActualReturnDate.Should().NotBeNull();
             (await _context.Cars.FindAsync(booking.CarID))!.CarStatusID.Should().Be(1);
         }
 

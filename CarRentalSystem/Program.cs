@@ -128,6 +128,7 @@ builder.Services.AddScoped<ILegalComplianceService, LegalComplianceService>();
 builder.Services.AddScoped<ISupportTicketService, SupportTicketService>();
 builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddScoped<IWebhookSigningService, WebhookSigningService>();
+builder.Services.AddScoped<ICameraAnprService, CameraAnprService>();
 builder.Services.AddScoped<ICustomerSelfServiceService, CustomerSelfServiceService>();
 builder.Services.AddScoped<IRefundService, RefundService>();
 builder.Services.AddScoped<IBookingTransitionService, BookingTransitionService>();
@@ -497,7 +498,19 @@ app.Use(async (context, next) =>
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; " +
         "img-src 'self' data: blob: https:; " +
         "font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
-        "connect-src 'self' https://nominatim.openstreetmap.org; frame-ancestors 'none'";
+        "connect-src 'self' https://nominatim.openstreetmap.org; " +
+        "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+    if (app.Environment.IsProduction())
+    {
+        context.Response.Headers["Content-Security-Policy-Report-Only"] =
+            "default-src 'self'; " +
+            "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; " +
+            "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; " +
+            "img-src 'self' data: blob: https:; " +
+            "font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
+            "connect-src 'self' https://nominatim.openstreetmap.org; " +
+            "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
+    }
     await next();
 });
 
@@ -546,11 +559,6 @@ if (app.Environment.IsEnvironment("Cypress"))
 // 🚦 RATE LIMITING — Chống brute force & API abuse
 // ═══════════════════════════════════════════════
 app.UseRateLimiting();
-
-// ═══════════════════════════════════════════════
-// 🛡️ GLOBAL ERROR HANDLING — Bắt mọi exception
-// ═══════════════════════════════════════════════
-app.UseGlobalExceptionHandler();
 
 app.UseSession();
 app.UseAuthentication();

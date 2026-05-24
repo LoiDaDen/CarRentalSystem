@@ -1,6 +1,6 @@
-﻿@model CarRentalSystem.Models.Booking
+@model CarRentalSystem.Models.Booking
 @{
-    ViewData["Title"] = "Thá»§ tá»¥c thanh toÃ¡n";
+    ViewData["Title"] = "Thủ tục thanh toán";
     var diffTime = Model.EndDate - Model.StartDate;
     var totalHours = Math.Ceiling(diffTime.TotalHours);
     if (totalHours <= 0) totalHours = 1;
@@ -115,34 +115,34 @@
                         </div>
                     }
 
-                    <h3 class="fw-800 mb-4 text-center">HoÃ n táº¥t thá»§ tá»¥c thuÃª xe</h3>
+                    <h3 class="fw-800 mb-4 text-center">Hoàn tất thủ tục thuê xe</h3>
 
                     <div class="checkout-card ui-elevated-card">
-                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">1</div> ThÃ´ng tin ngÆ°á»i thuÃª</h5>
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">1</div> Thông tin người thuê</h5>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted">Há» vÃ  tÃªn</label>
-                            <input type="text" class="form-control" name="FullName" value="@User.Identity.Name" required placeholder="Nháº­p há» tÃªn" />
+                            <label class="form-label small fw-bold text-muted">Họ và tên</label>
+                            <input type="text" class="form-control" name="FullName" value="@User.Identity.Name" required placeholder="Nhập họ tên" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted">Sá»‘ Ä‘iá»‡n thoáº¡i</label>
-                            <input type="tel" class="form-control" name="Phone" value="@ViewBag.UserPhone" required placeholder="Nháº­p sá»‘ Ä‘iá»‡n thoáº¡i" />
+                            <label class="form-label small fw-bold text-muted">Số điện thoại</label>
+                            <input type="tel" class="form-control" name="Phone" value="@ViewBag.UserPhone" required placeholder="Nhập số điện thoại" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label small fw-bold text-muted">Ghi chÃº cho chá»§ xe (TÃ¹y chá»n)</label>
-                            <textarea class="form-control" name="Notes" rows="2" placeholder="VÃ­ dá»¥: Lá»‹ch trÃ¬nh, yÃªu cáº§u thÃªm..."></textarea>
+                            <label class="form-label small fw-bold text-muted">Ghi chú cho chủ xe (Tùy chọn)</label>
+                            <textarea class="form-control" name="Notes" rows="2" placeholder="Ví dụ: Lịch trình, yêu cầu thêm..."></textarea>
                         </div>
                     </div>
                 </div>
 
                 <div class="checkout-card ui-elevated-card">
-                    <h5 class="fw-bold mb-3 d-flex align-items-center"><div class="step-badge" style="background:#f59e0b;"><i class="bi bi-ticket-perforated"></i></div> MÃ£ Giáº£m GiÃ¡</h5>
+                    <h5 class="fw-bold mb-3 d-flex align-items-center"><div class="step-badge" style="background:#f59e0b;"><i class="bi bi-ticket-perforated"></i></div> Mã Giảm Giá</h5>
                     <div class="row g-2">
                         <div class="col-12">
                             <div class="input-group" id="voucherGroup">
-                                <input type="text" class="form-control fw-bold text-uppercase" id="promoCodeInput" placeholder="Nháº­p mÃ£ voucher (VD: SUMMER2026)" autocomplete="off" />
+                                <input type="text" class="form-control fw-bold text-uppercase" id="promoCodeInput" placeholder="Nhập mã voucher (VD: SUMMER2026)" autocomplete="off" />
                                 <button class="btn btn-outline-primary fw-bold" type="button" id="applyPromoBtn" onclick="applyPromoCode()">
-                                    <span id="promoBtnText">Ãp dá»¥ng</span>
+                                    <span id="promoBtnText">Áp dụng</span>
                                     <span id="promoBtnSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
                                 </button>
                             </div>
@@ -158,26 +158,26 @@
                         <div class="mt-2 p-2 bg-info bg-opacity-10 border border-info border-opacity-25 rounded-3">
                             <div class="small text-info fw-bold">
                                 <i class="bi bi-star-fill me-1"></i>
-                                Báº¡n Ä‘Æ°á»£c giáº£m <span class="fw-bolder">@ViewBag.MembershipTier.DiscountPercent%</span> theo háº¡ng thÃ nh viÃªn @ViewBag.MembershipTier.Name
+                                Bạn được giảm <span class="fw-bolder">@ViewBag.MembershipTier.DiscountPercent%</span> theo hạng thành viên @ViewBag.MembershipTier.Name
                             </div>
                         </div>
                     }
                 </div>
 
                 <div class="checkout-card ui-elevated-card">
-                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">2</div> CÃ¡c bÆ°á»›c thanh toÃ¡n</h5>
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">2</div> Các bước thanh toán</h5>
 
                     <div class="p-3 border rounded-3 mb-3 bg-light">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="fw-bold text-success"><i class="bi bi-1-circle-fill me-2"></i>Thanh toÃ¡n giá»¯ chá»— qua á»©ng dá»¥ng</div>
+                            <div class="fw-bold text-success"><i class="bi bi-1-circle-fill me-2"></i>Thanh toán giữ chỗ qua ứng dụng</div>
                             <span class="fw-bold" id="depositAmountDisplay">@Model.ReservationFee.ToString("N0") Ä‘</span>
                         </div>
-                        <p class="small text-muted mb-0 ps-4">Tiá»n nÃ y Ä‘á»ƒ xÃ¡c nháº­n Ä‘Æ¡n thuÃª vÃ  giá»¯ xe, sáº½ Ä‘Æ°á»£c trá»« vÃ o tiá»n pháº£i thanh toÃ¡n khi nháº­n xe.</p>
+                        <p class="small text-muted mb-0 ps-4">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào tiền phải thanh toán khi nhận xe.</p>
                     </div>
 
                     <div class="p-3 border rounded-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toÃ¡n khi nháº­n xe</div>
+                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toán khi nhận xe</div>
                             @{
                                 var remainingAmount = Model.TotalPrice - Model.ReservationFee;
                                 if (remainingAmount < 0) remainingAmount = 0;
@@ -185,34 +185,34 @@
                             <span class="fw-bold text-dark" id="balanceAmountDisplay">@remainingAmount.ToString("N0") Ä‘</span>
                         </div>
                         <ul class="small text-muted mb-0 ps-4 list-unstyled">
-                            <li class="d-flex justify-content-between mb-1"><span>Tá»•ng tiá»n thuÃª</span> <span id="rentalTotalDisplay">@Model.TotalPrice.ToString("N0") Ä‘</span></li>
-                            <li class="d-flex justify-content-between mb-1"><span>Tiá»n thuÃª cÃ²n láº¡i</span> <span id="rentalRemainingDisplay">@remainingAmount.ToString("N0") Ä‘</span></li>
-                            <li class="d-flex justify-content-between mb-1"><span>TÃ i sáº£n Ä‘áº·t cá»c / tháº¿ cháº¥p</span> <span>@Model.DepositAmount.ToString("N0") Ä‘</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tổng tiền thuê</span> <span id="rentalTotalDisplay">@Model.TotalPrice.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tiền thuê còn lại</span> <span id="rentalRemainingDisplay">@remainingAmount.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tài sản đặt cọc / thế chấp</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
                         </ul>
                         <div id="voucherDiscountRow" class="d-flex justify-content-between mb-1 text-success fw-bold d-none">
-                            <span><i class="bi bi-ticket-perforated me-1"></i>Giáº£m voucher</span>
+                            <span><i class="bi bi-ticket-perforated me-1"></i>Giảm voucher</span>
                             <span id="voucherDiscountAmount">-0 Ä‘</span>
                         </div>
-                        <div class="d-flex text-warning mt-2"><i class="bi bi-shield-lock me-2"></i> <span>Tiá»n cá»c sáº½ Ä‘Æ°á»£c giá»¯ láº¡i vÃ²ng 15 ngÃ y Ä‘á»ƒ tra cá»©u Pháº¡t Nguá»™i giao thÃ´ng trÆ°á»›c khi hoÃ n tráº£ tá»± Ä‘á»™ng vÃ o vÃ­ cá»§a báº¡n.</span></div>
+                        <div class="d-flex text-warning mt-2"><i class="bi bi-shield-lock me-2"></i> <span>Tiền cọc sẽ được giữ lại vòng 15 ngày để tra cứu Phạt Nguội giao thông trước khi hoàn trả tự động vào ví của bạn.</span></div>
                     </div>
                 </div>
 
                 <div class="checkout-card ui-elevated-card">
-                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge" style="background:#7c3aed;">3</div> Dá»‹ch vá»¥ & Báº£o hiá»ƒm</h5>
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge" style="background:#7c3aed;">3</div> Dịch vụ & Bảo hiểm</h5>
 
                     <!-- Insurance Options -->
                     <div class="p-3 border rounded-3 mb-3 bg-light border-primary">
-                        <div class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary fs-5"></i>GÃ³i Báº£o Hiá»ƒm Chuyáº¿n Äi</div>
+                        <div class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary fs-5"></i>Gói Bảo Hiểm Chuyến Đi</div>
                         <input type="hidden" name="InsuranceTier" id="insuranceTierInput" value="Basic" />
 
                         <div class="form-check p-3 border rounded-3 mb-2 bg-white insurance-option" onclick="selectInsurance('Basic', 0); document.getElementById('insBasic').checked=true;">
                             <input class="form-check-input" type="radio" name="insuranceRadio" id="insBasic" checked>
                             <label class="form-check-label w-100" for="insBasic">
                                 <div class="d-flex justify-content-between">
-                                    <span class="fw-bold">CÆ¡ báº£n (Basic)</span>
-                                    <span class="text-success fw-bold">Miá»…n phÃ­</span>
+                                    <span class="fw-bold">Cơ bản (Basic)</span>
+                                    <span class="text-success fw-bold">Miễn phí</span>
                                 </div>
-                                <small class="text-muted d-block mt-1">Bá»“i thÆ°á»ng cÃ³ má»©c kháº¥u trá»« cao, khÃ¡ch tá»± chá»‹u trÃ¡ch nhiá»‡m pháº§n xÃ¡t xÆ°á»›c nháº¹.</small>
+                                <small class="text-muted d-block mt-1">Bồi thường có mức khấu trừ cao, khách tự chịu trách nhiệm phần xát xước nhẹ.</small>
                             </label>
                         </div>
 
@@ -220,10 +220,10 @@
                             <input class="form-check-input" type="radio" name="insuranceRadio" id="insPremium">
                             <label class="form-check-label w-100" for="insPremium">
                                 <div class="d-flex justify-content-between">
-                                    <span class="fw-bold fs-6">Cao cáº¥p (Premium)</span>
-                                    <span class="text-dark fw-bold">150.000Ä‘/ngÃ y</span>
+                                    <span class="fw-bold fs-6">Cao cấp (Premium)</span>
+                                    <span class="text-dark fw-bold">150.000đ/ngày</span>
                                 </div>
-                                <small class="text-muted d-block mt-1">Há»— trá»£ chi phÃ­ sá»­a chá»¯a thÃ¢n vá», Ä‘Ã¨n kÃ­nh. Giáº£m 80% má»©c kháº¥u trá»«.</small>
+                                <small class="text-muted d-block mt-1">Hỗ trợ chi phí sửa chữa thân vỏ, đèn kính. Giảm 80% mức khấu trừ.</small>
                             </label>
                         </div>
 
@@ -231,10 +231,10 @@
                             <input class="form-check-input" type="radio" name="insuranceRadio" id="insFull">
                             <label class="form-check-label w-100" for="insFull">
                                 <div class="d-flex justify-content-between">
-                                    <span class="fw-bold fs-6">ToÃ n diá»‡n (Full Cover) <span class="badge bg-danger ms-1">HOT</span></span>
-                                    <span class="text-dark fw-bold">300.000Ä‘/ngÃ y</span>
+                                    <span class="fw-bold fs-6">Toàn diện (Full Cover) <span class="badge bg-danger ms-1">HOT</span></span>
+                                    <span class="text-dark fw-bold">300.000đ/ngày</span>
                                 </div>
-                                <small class="text-muted d-block mt-1">Miá»…n thÆ°á»ng 100%. Bao gá»“m thá»§y kÃ­ch, máº¥t cáº¯p. YÃªn tÃ¢m tuyá»‡t Ä‘á»‘i cho khÃ¡ch thuÃª.</small>
+                                <small class="text-muted d-block mt-1">Miễn thường 100%. Bao gồm thủy kích, mất cắp. Yên tâm tuyệt đối cho khách thuê.</small>
                             </label>
                         </div>
                         <input type="hidden" id="insuranceFeeInput" value="0" />
@@ -244,7 +244,7 @@
                     @if (ViewBag.PickupLocationType == "owner")
                     {
                         <div class="p-3 border rounded-3 mb-3 bg-light border-primary">
-                            <div class="fw-bold mb-2"><i class="bi bi-truck me-2 text-primary"></i>Äá»‹a chá»‰ giao xe (@Model.DeliveryFee.ToString("N0")Ä‘)</div>
+                            <div class="fw-bold mb-2"><i class="bi bi-truck me-2 text-primary"></i>Địa chỉ giao xe (@Model.DeliveryFee.ToString("N0")đ)</div>
                             <input type="text" class="form-control bg-white form-control-sm" name="DeliveryAddress" id="deliveryAddressInput" value="@(Model.DeliveryAddress ?? ViewBag.PickupLocation)" readonly />
                             <input type="hidden" name="DeliveryMode" value="@CarRentalSystem.Models.DeliveryModeConstants.OwnerDelivery" />
                             <input type="hidden" name="DeliveryLatitude" value="@Model.DeliveryLatitude" />
@@ -254,7 +254,7 @@
                             <input type="hidden" name="DeliveryQuotedAt" value="@(Model.DeliveryQuotedAt?.ToString("O"))" />
                             <input type="hidden" name="DeliveryFee" id="deliveryFeeInput" value="@Model.DeliveryFee" />
                             <div class="small text-muted mt-2">
-                                @Model.DeliveryDistanceKm.ToString("0.0") km - ETA khoáº£ng @(Model.DeliveryEtaMinutes ?? 0) phÃºt
+                                @Model.DeliveryDistanceKm.ToString("0.0") km - ETA khoảng @(Model.DeliveryEtaMinutes ?? 0) phút
                             </div>
                         </div>
                     }
@@ -266,31 +266,31 @@
 
                     <!-- Addons -->
                     <div class="border rounded-3 p-3">
-                        <div class="fw-bold mb-3"><i class="bi bi-gift me-2 text-danger"></i>Combo & Tiá»‡n Ãch</div>
+                        <div class="fw-bold mb-3"><i class="bi bi-gift me-2 text-danger"></i>Combo & Tiện Ích</div>
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <div class="form-check p-2 border rounded-2 addon-option" onclick="toggleAddon(this)">
-                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="NÆ°á»›c suá»‘i|10000" id="addonWater">
+                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Nước suối|10000" id="addonWater">
                                     <label class="form-check-label" for="addonWater">
-                                        <span class="fw-bold small">NÆ°á»›c suá»‘i</span>
+                                        <span class="fw-bold small">Nước suối</span>
                                         <span class="badge bg-success bg-opacity-10 text-success fw-bold float-end">10K</span>
                                     </label>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check p-2 border rounded-2 addon-option" onclick="toggleAddon(this)">
-                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="KhÄƒn láº¡nh|5000" id="addonTowel">
+                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Khăn lạnh|5000" id="addonTowel">
                                     <label class="form-check-label" for="addonTowel">
-                                        <span class="fw-bold small">KhÄƒn láº¡nh</span>
+                                        <span class="fw-bold small">Khăn lạnh</span>
                                         <span class="badge bg-success bg-opacity-10 text-success fw-bold float-end">5K</span>
                                     </label>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check p-2 border rounded-2 addon-option" onclick="toggleAddon(this)">
-                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Combo Ä‚n Nháº¹|50000" id="addonSnack">
+                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Combo Ăn Nhẹ|50000" id="addonSnack">
                                     <label class="form-check-label" for="addonSnack">
-                                        <span class="fw-bold small">Combo Ä‚n Nháº¹</span>
+                                        <span class="fw-bold small">Combo Ăn Nhẹ</span>
                                         <span class="badge bg-warning bg-opacity-10 text-warning fw-bold float-end">50K</span>
                                     </label>
                                 </div>
@@ -309,43 +309,43 @@
                     </div>
 
                     <div class="border rounded-3 p-3 mt-3 bg-light border-success">
-                        <div class="fw-bold text-success mb-2"><i class="bi bi-steering-wheel me-2 fs-5"></i>ThuÃª xe tá»± lÃ¡i</div>
-                        <small class="text-muted d-block">Báº¡n sáº½ tá»± Ä‘iá»u khiá»ƒn xe. Dá»‹ch vá»¥ nÃ y khÃ´ng bao gá»“m tÃ i xáº¿ vÃ  khÃ´ng phÃ¡t sinh phÃ­ tÃ i xáº¿.</small>
+                        <div class="fw-bold text-success mb-2"><i class="bi bi-steering-wheel me-2 fs-5"></i>Thuê xe tự lái</div>
+                        <small class="text-muted d-block">Bạn sẽ tự điều khiển xe. Dịch vụ này không bao gồm tài xế và không phát sinh phí tài xế.</small>
                     </div>
                         <!-- Submit Action inside Left Sidebar -->
                         <div class="mt-4">
                             <div class="alert alert-success rounded-3 mb-3">
-                                <div class="fw-bold mb-1">Loáº¡i dá»‹ch vá»¥: ThuÃª xe tá»± lÃ¡i</div>
-                                <div class="small">KhÃ¡ch thuÃª pháº£i tá»± Ä‘iá»u khiá»ƒn xe vÃ  cÃ³ giáº¥y phÃ©p lÃ¡i xe phÃ¹ há»£p. Dá»‹ch vá»¥ nÃ y khÃ´ng bao gá»“m tÃ i xáº¿.</div>
+                                <div class="fw-bold mb-1">Loại dịch vụ: Thuê xe tự lái</div>
+                                <div class="small">Khách thuê phải tự điều khiển xe và có giấy phép lái xe phù hợp. Dịch vụ này không bao gồm tài xế.</div>
                             </div>
                             <div class="form-check p-3 border rounded-3 mb-3 bg-light">
                                 <input class="form-check-input" type="checkbox" name="SelfDriveAgreement" value="true" id="SelfDriveAgreement" required />
                                 <label class="form-check-label fw-semibold" for="SelfDriveAgreement">
-                                    TÃ´i xÃ¡c nháº­n lÃ  ngÆ°á»i trá»±c tiáº¿p Ä‘iá»u khiá»ƒn xe, cÃ³ giáº¥y phÃ©p lÃ¡i xe phÃ¹ há»£p, cÃ²n hiá»‡u lá»±c vÃ  khÃ´ng sá»­ dá»¥ng xe thuÃª Ä‘á»ƒ váº­n táº£i hÃ nh khÃ¡ch/hÃ ng hÃ³a cÃ³ thu tiá»n.
+                                    Tôi xác nhận là người trực tiếp điều khiển xe, có giấy phép lái xe phù hợp, còn hiệu lực và không sử dụng xe thuê để vận tải hành khách/hàng hóa có thu tiền.
                                 </label>
                             </div>
                             <div class="form-check p-3 border rounded-3 mb-3 bg-light">
                                 <input class="form-check-input" type="checkbox" name="LegalAgreement" value="true" id="LegalAgreement" required />
                                 <label class="form-check-label fw-semibold" for="LegalAgreement">
-                                    TÃ´i Ä‘á»“ng Ã½ vá»›i
-                                    <a asp-controller="Home" asp-action="Terms" class="text-success fw-bold text-decoration-none">Äiá»u khoáº£n sá»­ dá»¥ng</a>
-                                    vÃ 
-                                    <a asp-controller="Home" asp-action="Privacy" class="text-success fw-bold text-decoration-none">ThÃ´ng bÃ¡o xá»­ lÃ½ dá»¯ liá»‡u cÃ¡ nhÃ¢n</a>.
+                                    Tôi đồng ý với
+                                    <a asp-controller="Home" asp-action="Terms" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a>
+                                    và
+                                    <a asp-controller="Home" asp-action="Privacy" class="text-success fw-bold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
                                 </label>
                             </div>
                             @if(User?.Identity?.IsAuthenticated == true)
                             {
                                 <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3" id="confirmBookingBtn" style="font-size: 1.1rem;">
-                                    XÃ¡c nháº­n & Chuyá»ƒn tá»›i Thanh toÃ¡n / Äáº·t cá»c
+                                    Xác nhận & Chuyển tới Thanh toán / Đặt cọc
                                 </button>
                                 <div class="text-center mt-3 text-muted small">
-                                    Báº±ng viá»‡c báº¥m XÃ¡c nháº­n, báº¡n Ä‘á»“ng Ã½ vá»›i<br>
+                                    Bằng việc bấm Xác nhận, bạn đồng ý với<br>
                                     <a asp-controller="Home" asp-action="Terms" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a> và <a asp-controller="Home" asp-action="Privacy" class="text-success fw-bold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>
                                 </div>
                             }
                             else
                             {
-                                <a asp-controller="Auth" asp-action="Login" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3 text-center">ÄÄƒng nháº­p Ä‘á»ƒ Ä‘áº·t xe</a>
+                                <a asp-controller="Auth" asp-action="Login" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3 text-center">Đăng nhập để đặt xe</a>
                             }
                         </div>
                     </div>
@@ -363,7 +363,7 @@
             if (!code) return;
 
             document.getElementById('promoBtnSpinner').classList.remove('d-none');
-            document.getElementById('promoBtnText').textContent = 'Äang kiá»ƒm tra...';
+            document.getElementById('promoBtnText').textContent = 'Đang kiểm tra...';
             document.getElementById('applyPromoBtn').disabled = true;
             document.getElementById('promoError').classList.add('d-none');
             document.getElementById('promoSuccess').classList.add('d-none');
@@ -378,9 +378,9 @@
                     promoDiscount = data.discountAmount;
                     document.getElementById('promotionIdInput').value = data.promotionId;
                     document.getElementById('promoSuccess').classList.remove('d-none');
-                    document.getElementById('promoSuccessText').textContent = 'Giáº£m ' + data.discountAmount.toLocaleString('vi-VN') + 'Ä‘ cho Ä‘Æ¡n hÃ ng!';
+                    document.getElementById('promoSuccessText').textContent = 'Giảm ' + data.discountAmount.toLocaleString('vi-VN') + 'đ cho đơn hàng!';
                     document.getElementById('promoCodeInput').readOnly = true;
-                    document.getElementById('applyPromoBtn').innerHTML = '<i class="bi bi-check-circle-fill"></i> ÄÃ£ Ã¡p dá»¥ng';
+                    document.getElementById('applyPromoBtn').innerHTML = '<i class="bi bi-check-circle-fill"></i> Đã áp dụng';
                     document.getElementById('applyPromoBtn').classList.remove('btn-outline-primary');
                     document.getElementById('applyPromoBtn').classList.add('btn-success');
                     document.getElementById('applyPromoBtn').disabled = false;
@@ -394,15 +394,15 @@
                     document.getElementById('rentalRemainingDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8)).toLocaleString('vi-VN') + ' Ä‘';
                 } else {
                     document.getElementById('promoError').classList.remove('d-none');
-                    document.getElementById('promoError').textContent = data.message || 'MÃ£ voucher khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.';
+                    document.getElementById('promoError').textContent = data.message || 'Mã voucher không hợp lệ hoặc đã hết hạn.';
                 }
             } catch (e) {
                 document.getElementById('promoError').classList.remove('d-none');
-                document.getElementById('promoError').textContent = 'KhÃ´ng thá»ƒ kiá»ƒm tra mÃ£ voucher. Thá»­ láº¡i sau.';
+                document.getElementById('promoError').textContent = 'Không thể kiểm tra mã voucher. Thử lại sau.';
             }
 
             document.getElementById('promoBtnSpinner').classList.add('d-none');
-            document.getElementById('promoBtnText').textContent = promoApplied ? 'ÄÃ£ Ã¡p dá»¥ng' : 'Ãp dá»¥ng';
+            document.getElementById('promoBtnText').textContent = promoApplied ? 'Đã áp dụng' : 'Áp dụng';
             document.getElementById('applyPromoBtn').disabled = promoApplied;
         }
 

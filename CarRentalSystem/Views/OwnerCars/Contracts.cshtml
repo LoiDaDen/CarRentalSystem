@@ -1,0 +1,73 @@
+@model CarRentalSystem.ViewModels.OwnerContractsViewModel
+@{
+    ViewData["Title"] = "Hợp đồng & Chứng từ";
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    <section class="owner-panel">
+        <h2>Hợp đồng mẫu</h2>
+        <p class="owner-muted">Tải mẫu hợp đồng và biên bản bàn giao để dùng khi giao nhận xe. V1 chưa tự động điền dữ liệu booking.</p>
+        <div class="owner-doc-grid">
+            @foreach (var doc in Model.Templates)
+            {
+                <a class="owner-doc-card" href="@doc.Url" target="_blank" rel="noopener">
+                    <span class="owner-doc-icon"><i class="bi @doc.Icon"></i></span>
+                    <span>
+                        <strong>@doc.Title</strong>
+                        <span class="d-block owner-muted mt-2">@doc.Description</span>
+                    </span>
+                    <span class="owner-badge info">@doc.FileType</span>
+                </a>
+            }
+        </div>
+    </section>
+
+    <section class="owner-panel">
+        <h2>Chứng từ đã lưu</h2>
+        <p class="owner-muted">Danh sách tài liệu liên quan đến xe của bạn đã được hệ thống lưu trữ.</p>
+        @if (!Model.Contracts.Any())
+        {
+            <div class="owner-empty">
+                <div>
+                    <i class="bi bi-file-earmark-text"></i>
+                    <h2>Chưa có chứng từ</h2>
+                    <p class="owner-muted">Khi admin hoặc chủ xe upload hồ sơ, tài liệu sẽ xuất hiện tại đây.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="owner-table-wrap">
+                <table class="owner-table">
+                    <thead>
+                        <tr>
+                            <th>Tài liệu</th>
+                            <th>Xe</th>
+                            <th>Booking</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày tải lên</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Contracts)
+                        {
+                            <tr>
+                                <td><strong>@item.Title</strong><br /><span class="owner-muted">@item.TypeName</span></td>
+                                <td>@(item.CarName ?? "Không gắn xe")<br /><span class="owner-muted">@item.LicensePlate</span></td>
+                                <td>@(item.BookingID.HasValue ? $"#{item.BookingID}" : "-")</td>
+                                <td><span class="owner-badge info">@item.Status</span></td>
+                                <td>@item.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end">
+                                    <a class="owner-pill" href="@item.FileUrl" target="_blank" rel="noopener">Mở</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

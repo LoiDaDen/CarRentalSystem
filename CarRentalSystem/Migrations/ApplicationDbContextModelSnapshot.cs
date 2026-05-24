@@ -617,14 +617,14 @@ namespace CarRentalSystem.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<decimal>("DeliveryFee")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal>("DeliveryDistanceKm")
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<int?>("DeliveryEtaMinutes")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("DeliveryFee")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<double?>("DeliveryLatitude")
                         .HasColumnType("float");
@@ -920,6 +920,189 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("BookingTransactions");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.CameraDevice", b =>
+                {
+                    b.Property<int>("CameraDeviceID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CameraDeviceID"));
+
+                    b.Property<int?>("AreaID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DefaultDirection")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("EncryptedWebhookSecret")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LiveViewUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("LocationID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("CameraDeviceID");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("LocationID");
+
+                    b.HasIndex("AreaID", "LocationID", "Status");
+
+                    b.ToTable("CameraDevices");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.CameraGateEvent", b =>
+                {
+                    b.Property<int>("CameraGateEventID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CameraGateEventID"));
+
+                    b.Property<int?>("AreaID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CameraDeviceID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CapturedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CarID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Confidence")
+                        .HasColumnType("decimal(5,4)");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LicensePlateNormalized")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("LicensePlateRaw")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int?>("LocationID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MatchStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ProviderEventId")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SnapshotUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("CameraGateEventID");
+
+                    b.HasIndex("CarID");
+
+                    b.HasIndex("LicensePlateNormalized");
+
+                    b.HasIndex("LocationID");
+
+                    b.HasIndex("CameraDeviceID", "ProviderEventId")
+                        .IsUnique()
+                        .HasFilter("[ProviderEventId] IS NOT NULL");
+
+                    b.HasIndex("MatchStatus", "CapturedAt");
+
+                    b.HasIndex("AreaID", "LocationID", "CapturedAt");
+
+                    b.ToTable("CameraGateEvents");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.CameraWebhookNonce", b =>
+                {
+                    b.Property<int>("CameraWebhookNonceID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CameraWebhookNonceID"));
+
+                    b.Property<int>("CameraDeviceID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("CameraWebhookNonceID");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CameraDeviceID", "Nonce")
+                        .IsUnique();
+
+                    b.ToTable("CameraWebhookNonces");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.Car", b =>
                 {
                     b.Property<int>("CarID")
@@ -1049,6 +1232,10 @@ namespace CarRentalSystem.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("LicensePlateNormalized")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<int>("LocationID")
                         .HasColumnType("int");
 
@@ -1134,6 +1321,8 @@ namespace CarRentalSystem.Migrations
 
                     b.HasIndex("LicensePlate")
                         .IsUnique();
+
+                    b.HasIndex("LicensePlateNormalized");
 
                     b.HasIndex("LocationID");
 
@@ -4332,6 +4521,65 @@ namespace CarRentalSystem.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.VehicleAreaPresence", b =>
+                {
+                    b.Property<int>("VehicleAreaPresenceID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VehicleAreaPresenceID"));
+
+                    b.Property<int?>("AreaID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CarID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsInside")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LastCameraGateEventID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastDirection")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("LastEventAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LocationID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("VehicleAreaPresenceID");
+
+                    b.HasIndex("LastCameraGateEventID");
+
+                    b.HasIndex("LocationID");
+
+                    b.HasIndex("CarID", "AreaID")
+                        .IsUnique()
+                        .HasFilter("[AreaID] IS NOT NULL AND [LocationID] IS NULL");
+
+                    b.HasIndex("CarID", "LocationID")
+                        .IsUnique()
+                        .HasFilter("[AreaID] IS NULL AND [LocationID] IS NOT NULL");
+
+                    b.HasIndex("AreaID", "LocationID", "IsInside");
+
+                    b.HasIndex("CarID", "AreaID", "LocationID")
+                        .IsUnique();
+
+                    b.ToTable("VehicleAreaPresences");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.VehicleTracking", b =>
                 {
                     b.Property<int>("TrackingID")
@@ -4718,6 +4966,66 @@ namespace CarRentalSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.CameraDevice", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.Area", "Area")
+                        .WithMany("CameraDevices")
+                        .HasForeignKey("AreaID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CarRentalSystem.Models.Location", "Location")
+                        .WithMany("CameraDevices")
+                        .HasForeignKey("LocationID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.CameraGateEvent", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.Area", "Area")
+                        .WithMany("CameraGateEvents")
+                        .HasForeignKey("AreaID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CarRentalSystem.Models.CameraDevice", "CameraDevice")
+                        .WithMany("GateEvents")
+                        .HasForeignKey("CameraDeviceID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.Car", "Car")
+                        .WithMany("CameraGateEvents")
+                        .HasForeignKey("CarID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CarRentalSystem.Models.Location", "Location")
+                        .WithMany("CameraGateEvents")
+                        .HasForeignKey("LocationID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Area");
+
+                    b.Navigation("CameraDevice");
+
+                    b.Navigation("Car");
+
+                    b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.CameraWebhookNonce", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.CameraDevice", "CameraDevice")
+                        .WithMany()
+                        .HasForeignKey("CameraDeviceID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CameraDevice");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Car", b =>
@@ -5481,6 +5789,39 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("ReferredByUser");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.VehicleAreaPresence", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.Area", "Area")
+                        .WithMany("VehicleAreaPresences")
+                        .HasForeignKey("AreaID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CarRentalSystem.Models.Car", "Car")
+                        .WithMany("AreaPresences")
+                        .HasForeignKey("CarID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.CameraGateEvent", "LastCameraGateEvent")
+                        .WithMany()
+                        .HasForeignKey("LastCameraGateEventID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CarRentalSystem.Models.Location", "Location")
+                        .WithMany("VehicleAreaPresences")
+                        .HasForeignKey("LocationID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Car");
+
+                    b.Navigation("LastCameraGateEvent");
+
+                    b.Navigation("Location");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.VehicleTracking", b =>
                 {
                     b.HasOne("CarRentalSystem.Models.Car", "Car")
@@ -5519,6 +5860,12 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("AreaLocations");
 
                     b.Navigation("AreaStaffs");
+
+                    b.Navigation("CameraDevices");
+
+                    b.Navigation("CameraGateEvents");
+
+                    b.Navigation("VehicleAreaPresences");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.Blog", b =>
@@ -5563,11 +5910,20 @@ namespace CarRentalSystem.Migrations
                     b.Navigation("DigitalContract");
                 });
 
+            modelBuilder.Entity("CarRentalSystem.Models.CameraDevice", b =>
+                {
+                    b.Navigation("GateEvents");
+                });
+
             modelBuilder.Entity("CarRentalSystem.Models.Car", b =>
                 {
                     b.Navigation("Alerts");
 
+                    b.Navigation("AreaPresences");
+
                     b.Navigation("Bookings");
+
+                    b.Navigation("CameraGateEvents");
 
                     b.Navigation("CarAmenityMappings");
 
@@ -5621,7 +5977,13 @@ namespace CarRentalSystem.Migrations
                 {
                     b.Navigation("AreaLocations");
 
+                    b.Navigation("CameraDevices");
+
+                    b.Navigation("CameraGateEvents");
+
                     b.Navigation("Cars");
+
+                    b.Navigation("VehicleAreaPresences");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.LongTermRental", b =>

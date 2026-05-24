@@ -128,6 +128,9 @@
                     <a class="admin-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Connect" ? "active" : "")" asp-area="" asp-controller="Tracking" asp-action="Connect">
                         <i class="bi bi-phone-vibrate-fill"></i> Kết nối IoT
                     </a>
+                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Camera" ? "active" : "")" asp-area="Admin" asp-controller="Camera" asp-action="Monitor">
+                        <i class="bi bi-camera-video-fill"></i> Camera ANPR
+                    </a>
 
                     <!-- Footer -->
                     <div class="mt-auto pt-4 px-2 mb-3">
