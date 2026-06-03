@@ -81,9 +81,17 @@
                                 @(car.IsApproved ? "Đã duyệt" : "Chờ duyệt")
                             </span>
                             <span class="owner-badge">@car.StatusName</span>
+                            <span class="owner-badge @car.InspectionStatusClass">
+                                <i class="bi @car.InspectionStatusIcon"></i>
+                                @car.InspectionStatusLabel
+                            </span>
                             <span class="owner-badge @(car.HasGps ? "ok" : "warn")">
                                 <i class="bi bi-geo-alt"></i>
                                 @(car.HasGps ? "Có GPS" : "Chưa có GPS")
+                            </span>
+                            <span class="owner-badge @(car.ContractSigningMode == CarRentalSystem.Models.CarContractSigningModes.Digital ? "ok" : "info")">
+                                <i class="bi bi-file-earmark-text"></i>
+                                @car.ContractSigningModeLabel
                             </span>
                             @if (!car.HasEnoughImages)
                             {

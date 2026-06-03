@@ -17,14 +17,16 @@ namespace CarRentalSystem.Controllers
     {
         private readonly ICarService _carService;
         private readonly ISelfDrivePricingService _selfDrivePricingService;
+        private readonly ICatalogCacheService? _catalogCache;
 
         private readonly ApplicationDbContext _context; // Assuming ApplicationDbContext is the DbContext
 
-        public CarController(ICarService carService, ApplicationDbContext context, ISelfDrivePricingService selfDrivePricingService) // Added DbContext to constructor
+        public CarController(ICarService carService, ApplicationDbContext context, ISelfDrivePricingService selfDrivePricingService, ICatalogCacheService? catalogCache = null) // Added DbContext to constructor
         {
             _carService = carService;
             _context = context; // Initialize DbContext
             _selfDrivePricingService = selfDrivePricingService;
+            _catalogCache = catalogCache;
         }
 
         // Customer view: List all available cars with advanced filtering
@@ -48,13 +50,13 @@ namespace CarRentalSystem.Controllers
         {
             const int pageSize = 12;
             var carsQuery = _context.Cars
+                .AsNoTracking()
                 .Include(c => c.CarType)
                 .Include(c => c.Location)
                 .Include(c => c.CarImages)
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarBrand)
                 .Include(c => c.Reviews)
-                .Include(c => c.Bookings)
                 .Where(c => c.CarStatus!.Name == "Available")
                 .AsSplitQuery()
                 .AsQueryable();
@@ -133,17 +135,23 @@ namespace CarRentalSystem.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
-            var carTypes = await _context.CarTypes.ToListAsync();
-            var brands = await _context.CarBrands.ToListAsync();
+            object carTypes = _catalogCache != null
+                ? await _catalogCache.GetCarTypesAsync()
+                : await _context.CarTypes.AsNoTracking().OrderBy(t => t.Name).ToListAsync();
+            object brands = _catalogCache != null
+                ? await _catalogCache.GetBrandsAsync()
+                : await _context.CarBrands.AsNoTracking().OrderBy(b => b.Name).ToListAsync();
 
             ViewBag.CarTypes = carTypes;
             ViewBag.Brands = brands;
-            ViewBag.Locations = await _context.Locations.OrderBy(l => l.Name).ToListAsync();
+            ViewBag.Locations = _catalogCache != null
+                ? (object)await _catalogCache.GetLocationsAsync()
+                : await _context.Locations.AsNoTracking().OrderBy(l => l.Name).ToListAsync();
             ViewBag.CurrentBrandId = brandId;
             ViewBag.CurrentCarTypeId = carTypeId;
             ViewBag.CurrentSeats = seats;
             ViewBag.ContractId = contractId;
-            ViewBag.Contract = contractId.HasValue ? await _context.ContractTypes.FindAsync(contractId.Value) : null;
+            ViewBag.Contract = contractId.HasValue ? await _context.ContractTypes.AsNoTracking().FirstOrDefaultAsync(c => c.ContractTypeID == contractId.Value) : null;
             ViewBag.TotalCars = totalCars;
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = totalPages;
@@ -161,23 +169,27 @@ namespace CarRentalSystem.Controllers
             ViewBag.EndDate = endDate;
             ViewBag.Duration = duration;
             ViewBag.ContractId = contractId;
-            ViewBag.Contract = contractId.HasValue ? await _context.ContractTypes.FindAsync(contractId.Value) : null;
+            ViewBag.Contract = contractId.HasValue ? await _context.ContractTypes.AsNoTracking().FirstOrDefaultAsync(c => c.ContractTypeID == contractId.Value) : null;
 
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 if (!string.IsNullOrEmpty(userIdStr) && int.TryParse(userIdStr, out int userId))
                 {
-                    var currentUser = await _context.Users.Include(u => u.MembershipTier).FirstOrDefaultAsync(u => u.UserID == userId);
+                    var currentUser = await _context.Users
+                        .AsNoTracking()
+                        .Include(u => u.MembershipTier)
+                        .FirstOrDefaultAsync(u => u.UserID == userId);
                     ViewBag.MembershipTier = currentUser?.MembershipTier;
 
                     // Kiểm tra user đã thuê xe này chưa (booking đã hoàn thành)
                     var hasRentedThisCar = await _context.Bookings
+                        .AsNoTracking()
                         .AnyAsync(b => b.UserID == userId && b.CarID == id && b.BookingStatus != null && b.BookingStatus.Name == "Completed");
                     ViewBag.HasRentedThisCar = hasRentedThisCar;
 
                     // Kiểm tra user đã đánh giá xe này chưa
-                    var hasReviewedThisCar = await _context.Reviews.AnyAsync(r => r.UserID == userId && r.CarID == id);
+                    var hasReviewedThisCar = await _context.Reviews.AsNoTracking().AnyAsync(r => r.UserID == userId && r.CarID == id);
                     ViewBag.HasReviewedThisCar = hasReviewedThisCar;
                 }
             }
@@ -371,10 +383,10 @@ namespace CarRentalSystem.Controllers
         // === EPIC 2: Availability Calendar API ===
         // GET /Car/BusyDates?carId=X
         [HttpGet]
-        public IActionResult BusyDates(int carId)
+        public async Task<IActionResult> BusyDates(int carId)
         {
-            var bookings = _context.Bookings
-                .Include(b => b.BookingStatus)
+            var bookings = await _context.Bookings
+                .AsNoTracking()
                 .Where(b => b.CarID == carId &&
                     b.BookingStatus != null &&
                     (b.BookingStatus.Name == BookingStatusConstants.Confirmed ||
@@ -383,7 +395,7 @@ namespace CarRentalSystem.Controllers
                      b.BookingStatus.Name == BookingStatusConstants.Unpaid ||
                      b.BookingStatus.Name == BookingStatusConstants.Draft))
                 .Select(b => new { b.StartDate, b.EndDate })
-                .ToList();
+                .ToListAsync();
 
             // Expand each booking into individual disabled dates
             var busyDates = new System.Collections.Generic.List<string>();
@@ -397,9 +409,10 @@ namespace CarRentalSystem.Controllers
 
         // === EPIC 3: Map-based Discovery ===
         // GET /Car/MapSearch
-        public IActionResult MapSearch(string? feature = null)
+        public async Task<IActionResult> MapSearch(string? feature = null)
         {
             var carsQuery = _context.Cars
+                .AsNoTracking()
                 .Include(c => c.CarStatus)
                 .Include(c => c.Location)
                 .Include(c => c.CarBrand)
@@ -419,25 +432,32 @@ namespace CarRentalSystem.Controllers
                 carsQuery = carsQuery.Where(c => c.Features != null && c.Features.Contains(feature));
             }
 
-            var cars = carsQuery
-                .ToList() // fetch locally before parsing to avoid EF translation issues with Coalesce
+            var cars = (await carsQuery
+                .OrderByDescending(c => c.IsPremium)
+                .ThenByDescending(c => c.CreatedAt)
+                .Take(200)
+                .ToListAsync())
                 .Select(c => new {
                     c.CarID,
                     c.CarName,
                     Brand = c.CarBrand?.Name ?? "Chưa rõ",
                     c.PricePerDay,
                     Location = c.CarAddress ?? c.Location?.Name ?? "Chưa cập nhật vị trí",
-                    Lat = c.Latitude ?? c.Location?.Latitude ?? 10.7769,
-                    Lng = c.Longitude ?? c.Location?.Longitude ?? 106.7009,
-                    Image = c.ImageURL ?? c.CarImages?.Select(i => i.ImageUrl).FirstOrDefault(),
+                    Lat = c.Latitude ?? (c.Location != null ? c.Location.Latitude : 10.7769),
+                    Lng = c.Longitude ?? (c.Location != null ? c.Location.Longitude : 106.7009),
+                    Image = c.ImageURL ?? c.CarImages.OrderBy(i => i.ImageID).Select(i => i.ImageUrl).FirstOrDefault(),
                     Type = c.CarType?.Name ?? "Khác",
-                    Transmission = c.Transmission,
-                    Rating = c.Reviews != null && c.Reviews.Any() ? c.Reviews.Average(r => r.Rating) : 5.0,
-                    Features = c.Features
+                    c.Transmission,
+                    c.Seats,
+                    c.FuelType,
+                    Rating = c.Reviews.Where(r => r.IsApproved).Select(r => (double?)r.Rating).Average() ?? 5.0,
+                    c.Features
                 })
                 .ToList();
 
-            ViewBag.CarTypes = _context.CarTypes.Select(t => t.Name).ToList();
+            ViewBag.CarTypes = _catalogCache != null
+                ? (await _catalogCache.GetCarTypesAsync()).Select(t => t.Name).ToList()
+                : await _context.CarTypes.AsNoTracking().OrderBy(t => t.Name).Select(t => t.Name).ToListAsync();
             
             // predefined common features for filtering
             ViewBag.Amenities = new List<string> { "Bluetooth", "GPS", "Camera lùi", "Cửa sổ trời", "Số tự động", "Bản đồ" };
@@ -451,6 +471,7 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> CalculateDelivery(int carId, double customerLat, double customerLng)
         {
             var car = await _context.Cars
+                .AsNoTracking()
                 .Include(c => c.Location)
                 .FirstOrDefaultAsync(c => c.CarID == carId);
 
@@ -517,11 +538,16 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> GetAllCarsWithDistance(double customerLat, double customerLng)
         {
             var cars = await _context.Cars
+                .AsNoTracking()
                 .Include(c => c.Location)
                 .Include(c => c.CarBrand)
+                .Include(c => c.CarType)
                 .Include(c => c.CarImages)
+                .Include(c => c.Reviews)
                 .Include(c => c.CarStatus)
-                .Where(c => c.CarStatus != null && c.CarStatus.Name == "Available")
+                .Where(c => c.CarStatus != null && c.CarStatus.Name == "Available" && c.DeliveryEnabled)
+                .OrderByDescending(c => c.IsPremium)
+                .ThenByDescending(c => c.CreatedAt)
                 .Take(50)
                 .ToListAsync();
 
@@ -531,43 +557,52 @@ namespace CarRentalSystem.Controllers
 
             foreach (var car in cars)
             {
-                if (!car.DeliveryEnabled)
-                    continue;
-
                 var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
                 var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
                 var scope = deliveryScope.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, customerLat, customerLng);
                 if (!scope.IsWithinScope)
                     continue;
 
-                var delivery = await deliveryService.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
-                if (car.MaxDeliveryDistanceKm > 0 && (decimal)delivery.DistanceKm > car.MaxDeliveryDistanceKm)
+                var distanceKm = deliveryService.CalculateHaversineDistance(carLat, carLng, customerLat, customerLng);
+                var durationMinutes = distanceKm / 30.0 * 60.0;
+                if (car.MaxDeliveryDistanceKm > 0 && (decimal)distanceKm > car.MaxDeliveryDistanceKm)
                     continue;
 
-                var roundedDistance = Math.Round((decimal)delivery.DistanceKm, 2, MidpointRounding.AwayFromZero);
+                var roundedDistance = Math.Round((decimal)distanceKm, 2, MidpointRounding.AwayFromZero);
                 var billableKm = Math.Max(0m, Math.Ceiling(roundedDistance - car.FreeDeliveryRadiusKm));
                 var deliveryFee = billableKm * car.DeliveryFeePerKm;
+                var totalEstimate = car.PricePerDay + deliveryFee;
+                var approvedReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<Review>();
+                var rating = approvedReviews.Any() ? approvedReviews.Average(r => r.Rating) : 5.0;
                 result.Add(new
                 {
                     carId = car.CarID,
                     carName = car.CarName,
                     brand = car.CarBrand?.Name ?? "",
                     imageUrl = car.ImageURL ?? car.CarImages?.Select(i => i.ImageUrl).FirstOrDefault(),
+                    image = car.ImageURL ?? car.CarImages?.Select(i => i.ImageUrl).FirstOrDefault(),
+                    type = car.CarType?.Name ?? "",
+                    transmission = car.Transmission,
+                    seats = car.Seats,
+                    isPremium = car.IsPremium,
+                    rating,
+                    reviewCount = approvedReviews.Count,
                     pricePerDay = car.PricePerDay,
                     location = car.CarAddress ?? car.Location?.Name ?? "",
-                    distanceKm = delivery.DistanceKm,
-                    durationMinutes = delivery.DurationMinutes,
+                    distanceKm,
+                    durationMinutes,
                     shippingFee = deliveryFee,
-                    formattedDistance = delivery.FormattedDistance,
-                    formattedDuration = delivery.FormattedDuration,
+                    totalEstimate,
+                    formattedDistance = $"{distanceKm:F1} km",
+                    formattedDuration = $"~{Math.Ceiling(1 + durationMinutes / 60.0)} tiếng",
                     formattedShippingFee = $"{deliveryFee:N0} đ",
-                    earliestPickupTime = delivery.EarliestPickupTime,
+                    earliestPickupTime = DateTime.UtcNow.AddHours(1 + durationMinutes / 60.0),
                     originProvince = scope.OriginProvince,
                     destinationProvince = scope.DestinationProvince
                 });
             }
 
-            return Json(result);
+            return Json(new { success = true, cars = result });
         }
 
         // API: Load more cars (JSON)
@@ -587,13 +622,13 @@ namespace CarRentalSystem.Controllers
         {
             const int pageSize = 12;
             var carsQuery = _context.Cars
+                .AsNoTracking()
                 .Include(c => c.CarType)
                 .Include(c => c.Location)
                 .Include(c => c.CarImages)
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarBrand)
                 .Include(c => c.Reviews)
-                .Include(c => c.Bookings)
                 .Where(c => c.CarStatus!.Name == "Available")
                 .AsSplitQuery()
                 .AsQueryable();
@@ -659,7 +694,7 @@ namespace CarRentalSystem.Controllers
                 isSystem = c.OwnerID == null,
                 isElectric = c.FuelType != null && (c.FuelType.Contains("Điện") || c.FuelType.Contains("Electric")),
                 imageUrl = c.CarImages?.FirstOrDefault()?.ImageUrl ?? "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=800",
-                avgRating = c.Reviews != null && c.Reviews.Any() ? c.Reviews.Where(r => r.IsApproved).Average(r => r.Rating) : 5.0,
+                avgRating = c.Reviews != null && c.Reviews.Any(r => r.IsApproved) ? c.Reviews.Where(r => r.IsApproved).Average(r => r.Rating) : 5.0,
                 reviewCount = c.Reviews?.Count(r => r.IsApproved) ?? 0,
                 locationId = c.LocationID,
                 locationName = c.Location?.Name ?? "",

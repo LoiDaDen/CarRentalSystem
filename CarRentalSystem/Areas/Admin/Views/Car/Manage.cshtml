@@ -11,6 +11,61 @@
     var availableCars = cars.Count(c => string.Equals(c.CarStatus?.Name, "Available", StringComparison.OrdinalIgnoreCase));
     var rentedCars = cars.Count(c => string.Equals(c.CarStatus?.Name, "Rented", StringComparison.OrdinalIgnoreCase));
     var maintenanceCars = cars.Count(c => string.Equals(c.CarStatus?.Name, "Maintenance", StringComparison.OrdinalIgnoreCase));
+    var inspectionToday = DateTime.UtcNow.AddHours(7).Date;
+
+    string GetInspectionBadgeClass(CarRentalSystem.Models.Car car)
+    {
+        if (!car.NextInspectionDate.HasValue)
+        {
+            return "bg-warning-subtle text-warning border border-warning";
+        }
+
+        var daysLeft = (car.NextInspectionDate.Value.Date - inspectionToday).Days;
+        if (daysLeft < 0)
+        {
+            return "bg-danger-subtle text-danger border border-danger";
+        }
+
+        if (daysLeft <= 30)
+        {
+            return "bg-warning-subtle text-warning border border-warning";
+        }
+
+        return "bg-success-subtle text-success border border-success";
+    }
+
+    string GetInspectionBadgeText(CarRentalSystem.Models.Car car)
+    {
+        if (!car.NextInspectionDate.HasValue)
+        {
+            return "Thiếu đăng kiểm";
+        }
+
+        var inspectionDate = car.NextInspectionDate.Value.Date;
+        var daysLeft = (inspectionDate - inspectionToday).Days;
+        if (daysLeft < 0)
+        {
+            return $"Quá hạn {Math.Abs(daysLeft)} ngày";
+        }
+
+        if (daysLeft <= 30)
+        {
+            return $"Còn {daysLeft} ngày";
+        }
+
+        return inspectionDate.ToString("dd/MM/yyyy");
+    }
+
+    string GetInspectionBadgeIcon(CarRentalSystem.Models.Car car)
+    {
+        if (!car.NextInspectionDate.HasValue)
+        {
+            return "bi-calendar-x";
+        }
+
+        var daysLeft = (car.NextInspectionDate.Value.Date - inspectionToday).Days;
+        return daysLeft < 0 ? "bi-exclamation-triangle" : daysLeft <= 30 ? "bi-calendar-event" : "bi-shield-check";
+    }
 }
 
 <style>
@@ -28,12 +83,10 @@
         justify-content: space-between;
         gap: 18px;
         padding: 20px;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 22px;
-        background:
-            radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.18), transparent 34%),
-            linear-gradient(135deg, #111827 0%, #1e293b 100%);
-        box-shadow: 0 18px 40px rgba(2, 6, 23, 0.24);
+        border: 1px solid var(--admin-border);
+        border-radius: 8px;
+        background: var(--admin-surface);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
     }
 
     .fleet-stat-grid {
@@ -45,18 +98,18 @@
 
     .fleet-stat-card {
         padding: 14px;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.56);
+        border: 1px solid var(--admin-border);
+        border-radius: 8px;
+        background: var(--admin-surface-2);
     }
 
     .fleet-filter-card,
     .fleet-table-card,
     .fleet-mobile-card {
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 20px;
-        background: #111827;
-        box-shadow: 0 14px 36px rgba(2, 6, 23, 0.18);
+        border: 1px solid var(--admin-border);
+        border-radius: 8px;
+        background: var(--admin-surface);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
     }
 
     .fleet-filter-card {
@@ -65,9 +118,9 @@
 
     .fleet-filter-card .form-select {
         min-height: 42px;
-        border-color: #334155;
-        background-color: #0f172a;
-        color: #f8fafc;
+        border-color: var(--admin-border-light);
+        background-color: var(--admin-surface);
+        color: var(--admin-text);
         font-weight: 700;
     }
 
@@ -78,7 +131,7 @@
 
     .fleet-filter-card .form-label {
         margin-bottom: 6px;
-        color: #94a3b8 !important;
+        color: var(--admin-text-muted) !important;
         font-size: 0.68rem;
         letter-spacing: 0.05em;
     }
@@ -88,17 +141,17 @@
     }
 
     .fleet-table-card .table {
-        color: #e5e7eb;
+        color: var(--admin-text);
     }
 
     .fleet-table-card .table thead {
-        background: #0f172a;
+        background: var(--admin-surface-2);
     }
 
     .fleet-table-card .table > :not(caption) > * > * {
         padding-top: 14px;
         padding-bottom: 14px;
-        border-color: rgba(148, 163, 184, 0.14);
+        border-color: var(--admin-border);
     }
 
     .fleet-car-thumb {
@@ -106,8 +159,8 @@
         height: 58px;
         flex: 0 0 58px;
         overflow: hidden;
-        border-radius: 14px;
-        background: #1e293b;
+        border-radius: 8px;
+        background: var(--admin-surface-2);
     }
 
     .fleet-car-thumb img {
@@ -132,8 +185,8 @@
 
     .fleet-mobile-meta > div {
         padding: 10px;
-        border-radius: 12px;
-        background: rgba(15, 23, 42, 0.78);
+        border-radius: 8px;
+        background: var(--admin-surface-2);
     }
 
     @@media (max-width: 1199.98px) {
@@ -293,13 +346,13 @@
                 {
                     if (User.IsInRole("Admin"))
                     {
-                        <a asp-action="Manage" class="btn btn-outline-light rounded-3 fw-bold w-100">
+                        <a asp-action="Manage" class="btn btn-outline-secondary rounded-3 fw-bold w-100">
                             <i class="bi bi-x-circle"></i>
                         </a>
                     }
                     else
                     {
-                        <a asp-action="Manage" asp-route-areaId="@ViewBag.CurrentAreaId" class="btn btn-outline-light rounded-3 fw-bold w-100">
+                        <a asp-action="Manage" asp-route-areaId="@ViewBag.CurrentAreaId" class="btn btn-outline-secondary rounded-3 fw-bold w-100">
                             <i class="bi bi-x-circle"></i>
                         </a>
                     }
@@ -334,6 +387,7 @@
                             <th>Loại / nhiên liệu</th>
                             <th>Giá/ngày</th>
                             <th>Trạng thái</th>
+                            <th>Đăng kiểm</th>
                             <th class="text-end pe-4">Thao tác</th>
                         </tr>
                     </thead>
@@ -397,6 +451,11 @@
                                 </td>
                                 <td>
                                     <span class="badge @statusClass px-3 py-2 rounded-pill">@statusName</span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetInspectionBadgeClass(car) px-3 py-2 rounded-pill">
+                                        <i class="bi @GetInspectionBadgeIcon(car) me-1"></i>@GetInspectionBadgeText(car)
+                                    </span>
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="d-inline-flex flex-wrap justify-content-end gap-2">
@@ -478,10 +537,16 @@
                             <div class="small text-muted">Nguồn xe</div>
                             <div class="fw-bold">@(car.OwnerID == null ? "Hệ thống" : "Đối tác")</div>
                         </div>
+                        <div>
+                            <div class="small text-muted">Đăng kiểm</div>
+                            <span class="badge @GetInspectionBadgeClass(car) rounded-pill">
+                                <i class="bi @GetInspectionBadgeIcon(car) me-1"></i>@GetInspectionBadgeText(car)
+                            </span>
+                        </div>
                     </div>
 
                     <div class="d-grid gap-2 mt-3">
-                        <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-light rounded-pill fw-bold">
+                        <a asp-action="Details" asp-route-id="@car.CarID" class="btn btn-outline-secondary rounded-pill fw-bold">
                             <i class="bi bi-eye me-1"></i>Chi tiết
                         </a>
                         @if (User.IsInRole("Admin") || User.IsInRole("Manager"))

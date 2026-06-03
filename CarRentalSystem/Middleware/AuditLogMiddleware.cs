@@ -85,7 +85,7 @@ namespace CarRentalSystem.Middleware
                     Description = BuildDescription(method, path, context.Response.StatusCode),
                     IpAddress = GetClientIp(context),
                     UserAgent = userAgent.Length > 500 ? userAgent[..500] : userAgent,
-                    RequestUrl = $"{method} {path}{context.Request.QueryString}",
+                    RequestUrl = TruncateRequestUrl($"{method} {path}{context.Request.QueryString}"),
                     Timestamp = DateTime.UtcNow,
                     CorrelationId = context.TraceIdentifier
                 };
@@ -105,6 +105,13 @@ namespace CarRentalSystem.Middleware
         {
             var claim = context.User.FindFirst("UserID") ?? context.User.FindFirst(ClaimTypes.NameIdentifier);
             return claim != null && int.TryParse(claim.Value, out var id) ? id : null;
+        }
+
+        private static string TruncateRequestUrl(string requestUrl)
+        {
+            return requestUrl.Length <= AuditLog.RequestUrlMaxLength
+                ? requestUrl
+                : requestUrl[..AuditLog.RequestUrlMaxLength];
         }
 
         private string GetClientIp(HttpContext context)

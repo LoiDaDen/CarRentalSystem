@@ -17,6 +17,7 @@ namespace CarRentalSystem.Data
         public DbSet<Payment> Payments { get; set; }
         public DbSet<RentalContract> RentalContracts { get; set; }
         public DbSet<DigitalContract> DigitalContracts { get; set; }
+        public DbSet<OwnerDigitalSignatureProfile> OwnerDigitalSignatureProfiles { get; set; }
         public DbSet<VehicleTracking> VehicleTrackings { get; set; }
         public DbSet<TrackingIngestNonce> TrackingIngestNonces { get; set; }
         public DbSet<CarRentalSystem.Models.Route> Routes { get; set; }
@@ -127,6 +128,27 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Car>()
                 .Property(c => c.PricePerHour)
                 .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Car>()
+                .Property(c => c.ContractSigningMode)
+                .HasMaxLength(40)
+                .HasDefaultValue(CarContractSigningModes.PhysicalSelfManaged);
+
+            modelBuilder.Entity<DigitalContract>()
+                .Property(c => c.ContractSigningMode)
+                .HasMaxLength(40)
+                .HasDefaultValue(CarContractSigningModes.Digital);
+
+            modelBuilder.Entity<OwnerDigitalSignatureProfile>()
+                .HasIndex(p => p.UserID)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
+
+            modelBuilder.Entity<OwnerDigitalSignatureProfile>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
                 
             modelBuilder.Entity<Booking>()
                 .Property(b => b.TotalPrice)
@@ -1165,6 +1187,7 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<CarImage>().HasQueryFilter(ci => !ci.IsDeleted);
             modelBuilder.Entity<CartItem>().HasQueryFilter(ci => !ci.IsDeleted);
             modelBuilder.Entity<DigitalContract>().HasQueryFilter(dc => !dc.IsDeleted);
+            modelBuilder.Entity<OwnerDigitalSignatureProfile>().HasQueryFilter(p => !p.IsDeleted);
             modelBuilder.Entity<DriverBooking>().HasQueryFilter(db => !db.IsDeleted);
             modelBuilder.Entity<TripBooking>().HasQueryFilter(tb => !tb.IsDeleted);
             modelBuilder.Entity<TripStop>().HasQueryFilter(ts => !ts.TripBooking!.IsDeleted);
@@ -1254,6 +1277,9 @@ namespace CarRentalSystem.Data
                         break;
                     case DigitalContract digitalContract:
                         digitalContract.IsDeleted = true;
+                        break;
+                    case OwnerDigitalSignatureProfile signatureProfile:
+                        signatureProfile.IsDeleted = true;
                         break;
                     case DriverBooking driverBooking:
                         driverBooking.IsDeleted = true;

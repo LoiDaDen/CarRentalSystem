@@ -1,84 +1,146 @@
 @model CarRentalSystem.Models.User
-@{ ViewData["Title"] = "Đăng Nhập Thành Viên"; }
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostingEnv
+@{
+    var recaptchaSiteKey = Configuration["Recaptcha:SiteKey"];
+    var showRecaptcha = (string.Equals(HostingEnv.EnvironmentName, "Production", StringComparison.OrdinalIgnoreCase) ||
+        Configuration.GetValue("Security:RequireRecaptcha", false)) &&
+        !string.IsNullOrWhiteSpace(recaptchaSiteKey);
+    ViewData["Title"] = "Đăng nhập thành viên";
+}
 
-<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
-    <div class="col-md-5 col-lg-4">
-        <div class="text-center mb-5">
-            <h1 class="fw-800 text-primary mb-2">Chào Mừng Trở Lại</h1>
-            <p class="text-muted">Đăng nhập để quản lý các chuyến xe của bạn.</p>
-        </div>
-
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <div class="alert alert-success border-0 shadow-sm mb-4 py-3">
-                <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+<div class="pt-auth-shell">
+    <div class="pt-auth-grid">
+        <section>
+            <div class="pt-eyebrow mb-3">CarRental account</div>
+            <h1 class="pt-title display-5 mb-3">Quản lý chuyến xe của bạn trong một tài khoản.</h1>
+            <p class="pt-subtitle fs-6">
+                Đăng nhập để đặt xe nhanh hơn, theo dõi lịch thuê, xử lý thanh toán và cập nhật hồ sơ eKYC.
+            </p>
+            <div class="pt-auth-value">
+                <div>
+                    <div class="fw-bold text-primary mb-1">24/7</div>
+                    <div class="small text-muted">Theo dõi hỗ trợ</div>
+                </div>
+                <div>
+                    <div class="fw-bold text-success mb-1">eKYC</div>
+                    <div class="small text-muted">Xác minh an toàn</div>
+                </div>
+                <div>
+                    <div class="fw-bold text-warning mb-1">PayOS</div>
+                    <div class="small text-muted">Đặt cọc rõ ràng</div>
+                </div>
             </div>
-        }
+        </section>
 
-        @{
-            var lockedParam = Context.Request.Query["locked"].ToString();
-            var blacklistedParam = Context.Request.Query["blacklisted"].ToString();
-        }
-        @if (lockedParam == "1")
-        {
-            <div class="alert alert-danger border-0 shadow-sm mb-4 py-3">
-                <i class="bi bi-lock-fill me-2"></i> Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.
+        <section class="pt-auth-panel">
+            <div class="mb-4">
+                <h2 class="h4 fw-bold mb-1">Chào mừng trở lại</h2>
+                <p class="text-muted mb-0">Nhập email và mật khẩu để tiếp tục.</p>
             </div>
-        }
-        @if (blacklistedParam == "1")
-        {
-            <div class="alert alert-dark border-0 shadow-sm mb-4 py-3">
-                <i class="bi bi-slash-circle me-2"></i> Tài khoản của bạn đã bị chặn khỏi hệ thống. Vui lòng liên hệ quản trị viên.
-            </div>
-        }
 
-        @if (ViewBag.Error != null)
-        {
-            <div class="alert alert-danger border-0 shadow-sm mb-4 py-3">
-                <i class="bi bi-exclamation-triangle me-2"></i> @ViewBag.Error
-                
-                @if (ViewBag.Error.ToString().Contains("xác thực"))
-                {
-                    <hr />
-                    <a asp-action="VerifyEmailStep1" class="btn btn-outline-danger btn-sm rounded-pill mt-2">
-                        <i class="bi bi-shield-check me-1"></i>Xác minh tài khoản
-                    </a>
-                }
-            </div>
-        }
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success mb-4">
+                    <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+                </div>
+            }
 
-        <div class="card border-0 shadow-lg p-4 p-md-5 rounded-4">
+            @{
+                var lockedParam = Context.Request.Query["locked"].ToString();
+                var blacklistedParam = Context.Request.Query["blacklisted"].ToString();
+            }
+            @if (lockedParam == "1")
+            {
+                <div class="alert alert-danger mb-4">
+                    <i class="bi bi-lock-fill me-2"></i>Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.
+                </div>
+            }
+            @if (blacklistedParam == "1")
+            {
+                <div class="alert alert-danger mb-4">
+                    <i class="bi bi-slash-circle me-2"></i>Tài khoản của bạn đã bị chặn khỏi hệ thống.
+                </div>
+            }
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger mb-4">
+                    <i class="bi bi-exclamation-triangle me-2"></i>@ViewBag.Error
+                    @if (ViewBag.Error.ToString().Contains("xác thực"))
+                    {
+                        <hr />
+                        <a asp-action="VerifyEmailStep1" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-shield-check me-1"></i>Xác minh tài khoản
+                        </a>
+                    }
+                </div>
+            }
+
             <form asp-action="Login" method="post">
                 <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-uppercase text-muted">Địa chỉ email</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-envelope text-muted"></i></span>
+                        <input type="email" name="email" class="form-control py-3" placeholder="email@example.com" required />
+                    </div>
+                </div>
+
                 <div class="mb-4">
-                    <label class="form-label small fw-bold text-muted text-uppercase ls-1">Địa chỉ Email</label>
-                    <div class="input-group bg-light rounded-3 overflow-hidden border-0">
-                        <span class="input-group-text bg-transparent border-0"><i class="bi bi-envelope text-muted"></i></span>
-                        <input type="email" name="email" class="form-control bg-transparent border-0 py-3" placeholder="email@example.com" required />
+                    <label class="form-label small fw-bold text-uppercase text-muted">Mật khẩu</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-lock text-muted"></i></span>
+                        <input type="password" name="password" class="form-control py-3" placeholder="••••••••" required />
                     </div>
                 </div>
-                <div class="mb-5">
-                    <label class="form-label small fw-bold text-muted text-uppercase ls-1">Mật khẩu</label>
-                    <div class="input-group bg-light rounded-3 overflow-hidden border-0">
-                        <span class="input-group-text bg-transparent border-0"><i class="bi bi-lock text-muted"></i></span>
-                        <input type="password" name="password" class="form-control bg-transparent border-0 py-3" placeholder="••••••••" required />
-                    </div>
+
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" name="rememberMe" value="true" id="rememberMe" />
+                    <label class="form-check-label small text-muted" for="rememberMe">
+                        Ghi nhớ đăng nhập trong 30 ngày
+                    </label>
                 </div>
-                <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm rounded-pill py-3">Đăng Nhập</button>
+
+                @if (showRecaptcha)
+                {
+                    <div class="mb-4">
+                        <div class="g-recaptcha" data-sitekey="@recaptchaSiteKey"></div>
+                        @if (ViewBag.RecaptchaError != null)
+                        {
+                            <small class="text-danger d-block mt-2">
+                                <i class="bi bi-exclamation-circle me-1"></i>@ViewBag.RecaptchaError
+                            </small>
+                        }
+                    </div>
+                }
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 py-3">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Đăng nhập
+                </button>
 
                 <div class="d-flex justify-content-between align-items-center mt-3 small">
                     <a asp-action="VerifyEmailStep1" class="text-decoration-none">
                         <i class="bi bi-shield-check me-1"></i>Xác minh tài khoản
                     </a>
                     <a asp-action="ForgotPassword" class="text-decoration-none">
-                        <i class="bi bi-question-circle me-1"></i>Quên mật khẩu?
+                        Quên mật khẩu?
                     </a>
                 </div>
-                
-                <div class="mt-5 text-center">
-                    <p class="text-muted small mb-0">Chưa có tài khoản? <a asp-action="Register" class="fw-bold text-decoration-none">Đăng ký ngay</a></p>
+
+                <div class="mt-4 pt-4 border-top text-center">
+                    <span class="text-muted small">Chưa có tài khoản?</span>
+                    <a asp-action="Register" class="fw-bold text-decoration-none">Đăng ký ngay</a>
                 </div>
             </form>
-        </div>
+        </section>
     </div>
 </div>
+
+@section Scripts {
+    @if (showRecaptcha)
+    {
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    }
+}

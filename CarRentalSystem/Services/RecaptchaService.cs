@@ -95,8 +95,8 @@ public class RecaptchaService : IRecaptchaService
                 : DateTime.UtcNow;
             var hostname = root.TryGetProperty("hostname", out var hostElement) ? hostElement.GetString() : null;
 
-            // Validate action for reCAPTCHA v3
-            if (success && expectedAction != null && action != expectedAction)
+            // Validate action only for reCAPTCHA v3 responses. v2 checkbox tokens do not include action.
+            if (success && expectedAction != null && action != null && action != expectedAction)
             {
                 _logger.LogWarning("reCAPTCHA action mismatch. Expected: {Expected}, Got: {Actual}", expectedAction, action);
                 success = false;

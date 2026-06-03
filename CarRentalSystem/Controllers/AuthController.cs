@@ -16,6 +16,7 @@ using System.Linq;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.IO;
 
 namespace CarRentalSystem.Controllers
@@ -28,7 +29,11 @@ namespace CarRentalSystem.Controllers
         private const string PendingMfaReturnUrlSessionKey = "PrivilegedMfaReturnUrl";
         private const string PendingMfaAttemptCountSessionKey = "PrivilegedMfaAttemptCount";
         private const string PendingMfaEmailSessionKey = "PrivilegedMfaEmail";
+        private const string PendingMfaRememberMeSessionKey = "PrivilegedMfaRememberMe";
         private static readonly TimeSpan PrivilegedMfaTtl = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan RememberMeDuration = TimeSpan.FromDays(30);
+        private static readonly TimeSpan DefaultLoginTimeout = TimeSpan.FromSeconds(15);
+        private static readonly TimeSpan DefaultMfaQueueTimeout = TimeSpan.FromSeconds(5);
 
         private readonly IAuthService _authService;
         private readonly IWebHostEnvironment _env;
@@ -40,8 +45,9 @@ namespace CarRentalSystem.Controllers
         private readonly IConfiguration _configuration;
         private readonly IAuditTrailService _auditTrail;
         private readonly ILegalComplianceService _legalCompliance;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService, IReferralService referralService, IConfiguration configuration, IAuditTrailService auditTrail, ILegalComplianceService legalCompliance)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IEmailService emailService, IPiiEncryptionService piiEncryption, ApplicationDbContext context, IRecaptchaService recaptchaService, IReferralService referralService, IConfiguration configuration, IAuditTrailService auditTrail, ILegalComplianceService legalCompliance, ILogger<AuthController> logger)
         {
             _authService = authService;
             _env = env;
@@ -53,6 +59,7 @@ namespace CarRentalSystem.Controllers
             _configuration = configuration;
             _auditTrail = auditTrail;
             _legalCompliance = legalCompliance;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -144,9 +151,17 @@ namespace CarRentalSystem.Controllers
 
             if (RequiresPrivilegedMfa(user))
             {
-                await BeginPrivilegedMfaChallengeAsync(user, returnUrl);
+                if (!await BeginPrivilegedMfaChallengeAsync(user, returnUrl))
+                {
+                    TempData["ErrorMessage"] = "Khong the gui ma MFA luc nay. Vui long thu lai sau it phut.";
+                    return RedirectToAction(nameof(Login));
+                }
+
                 return RedirectToAction(nameof(VerifyMfa));
             }
+
+            if (IsPrivilegedMfaEnabled() && IsPrivilegedMfaExempt(user))
+                await RecordMfaExemptionAsync(user, "ExternalLogin");
 
             await SignInUserAsync(user);
             return RedirectAfterLogin(user, returnUrl);
@@ -154,7 +169,7 @@ namespace CarRentalSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string email, string password, string? recaptchaToken, string? returnUrl = null)
+        public async Task<IActionResult> Login(string email, string password, string? recaptchaToken, bool rememberMe = false, string? returnUrl = null)
         {
             ViewData["ReturnUrl"] = IsSafeLocalReturnUrl(returnUrl) ? returnUrl : null;
 
@@ -176,7 +191,26 @@ namespace CarRentalSystem.Controllers
             //     return View();
             // }
 
-            var user = await _authService.AuthenticateAsync(email, password);
+            User? user;
+            try
+            {
+                user = await RunWithTimeoutAsync(
+                    _authService.AuthenticateAsync(email, password),
+                    GetConfiguredTimeout("Auth:LoginTimeoutSeconds", DefaultLoginTimeout),
+                    "login authentication");
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "Login authentication timed out for {Email}.", email);
+                ViewBag.Error = "Dang nhap dang qua tai hoac ket noi co so du lieu cham. Vui long thu lai sau it phut.";
+                return View();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Login authentication failed unexpectedly for {Email}.", email);
+                ViewBag.Error = "Dang nhap chua hoan tat do loi he thong. Vui long thu lai sau it phut.";
+                return View();
+            }
             if (user == null)
             {
                 ViewBag.Error = "Email hoặc mật khẩu không chính xác.";
@@ -203,12 +237,38 @@ namespace CarRentalSystem.Controllers
 
             if (RequiresPrivilegedMfa(user))
             {
-                await BeginPrivilegedMfaChallengeAsync(user, returnUrl);
+                if (!await BeginPrivilegedMfaChallengeAsync(user, returnUrl, rememberMe))
+                {
+                    ViewBag.Error = "Khong the gui ma MFA luc nay. Vui long thu lai sau it phut.";
+                    return View();
+                }
                 return RedirectToAction("VerifyMfa");
             }
 
-            await SignInUserAsync(user);
+            if (IsPrivilegedMfaEnabled() && IsPrivilegedMfaExempt(user))
+                await RecordMfaExemptionAsync(user, "PasswordLogin");
+
+            await SignInUserAsync(user, rememberMe);
             return RedirectAfterLogin(user, returnUrl);
+        }
+
+        private async Task<T> RunWithTimeoutAsync<T>(Task<T> task, TimeSpan timeout, string operation)
+        {
+            var timeoutTask = Task.Delay(timeout);
+            var completedTask = await Task.WhenAny(task, timeoutTask);
+            if (completedTask != task)
+                throw new TimeoutException($"{operation} timed out after {timeout.TotalSeconds:N0} seconds.");
+
+            return await task;
+        }
+
+        private TimeSpan GetConfiguredTimeout(string key, TimeSpan fallback)
+        {
+            var seconds = _configuration.GetValue<int?>(key);
+            if (!seconds.HasValue || seconds.Value <= 0)
+                return fallback;
+
+            return TimeSpan.FromSeconds(Math.Clamp(seconds.Value, 3, 60));
         }
 
         private bool IsSafeLocalReturnUrl(string? returnUrl)
@@ -226,7 +286,7 @@ namespace CarRentalSystem.Controllers
             if (!ShouldVerifyRecaptcha())
                 return true;
 
-            var result = await _recaptchaService.VerifyAsync(recaptchaToken ?? string.Empty, action);
+            var result = await _recaptchaService.VerifyAsync(GetSubmittedRecaptchaToken(recaptchaToken), action);
             if (result.Success)
                 return true;
 
@@ -240,12 +300,27 @@ namespace CarRentalSystem.Controllers
             if (!ShouldVerifyRecaptcha())
                 return true;
 
-            var result = await _recaptchaService.VerifyAsync(recaptchaToken ?? string.Empty, action);
+            var result = await _recaptchaService.VerifyAsync(GetSubmittedRecaptchaToken(recaptchaToken), action);
             if (result.Success)
                 return true;
 
             TempData["ErrorMessage"] = "Xác thực bảo mật thất bại. Vui lòng thử lại.";
             return false;
+        }
+
+        private string GetSubmittedRecaptchaToken(string? recaptchaToken)
+        {
+            if (!string.IsNullOrWhiteSpace(recaptchaToken))
+                return recaptchaToken;
+
+            if (Request.HasFormContentType &&
+                Request.Form.TryGetValue("g-recaptcha-response", out var checkboxToken) &&
+                !string.IsNullOrWhiteSpace(checkboxToken))
+            {
+                return checkboxToken.ToString();
+            }
+
+            return string.Empty;
         }
 
         [HttpGet]
@@ -304,9 +379,10 @@ namespace CarRentalSystem.Controllers
             }
 
             var returnUrl = HttpContext.Session.GetString(PendingMfaReturnUrlSessionKey);
+            var rememberMe = HttpContext.Session.GetString(PendingMfaRememberMeSessionKey) == "true";
             ClearPrivilegedMfaSession();
 
-            await SignInUserAsync(user);
+            await SignInUserAsync(user, rememberMe);
             return RedirectAfterLogin(user, returnUrl);
         }
 
@@ -325,12 +401,17 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Login");
             }
 
-            await BeginPrivilegedMfaChallengeAsync(user, HttpContext.Session.GetString(PendingMfaReturnUrlSessionKey));
+            var rememberMe = HttpContext.Session.GetString(PendingMfaRememberMeSessionKey) == "true";
+            if (!await BeginPrivilegedMfaChallengeAsync(user, HttpContext.Session.GetString(PendingMfaReturnUrlSessionKey), rememberMe))
+            {
+                TempData["ErrorMessage"] = "Khong the gui ma MFA luc nay. Vui long thu lai sau it phut.";
+                return RedirectToAction("VerifyMfa");
+            }
             TempData["SuccessMessage"] = "Mã MFA mới đã được gửi đến email của bạn.";
             return RedirectToAction("VerifyMfa");
         }
 
-        private Task BeginPrivilegedMfaChallengeAsync(User user, string? returnUrl)
+        private async Task<bool> BeginPrivilegedMfaChallengeAsync(User user, string? returnUrl, bool rememberMe = false)
         {
             var otp = GenerateOtp();
             HttpContext.Session.SetInt32(PendingMfaUserIdSessionKey, user.UserID);
@@ -338,16 +419,29 @@ namespace CarRentalSystem.Controllers
             HttpContext.Session.SetString(PendingMfaExpiresAtSessionKey, DateTime.UtcNow.Add(PrivilegedMfaTtl).ToString("O"));
             HttpContext.Session.SetString(PendingMfaEmailSessionKey, user.Email);
             HttpContext.Session.SetInt32(PendingMfaAttemptCountSessionKey, 0);
+            HttpContext.Session.SetString(PendingMfaRememberMeSessionKey, rememberMe ? "true" : "false");
 
             if (IsSafeLocalReturnUrl(returnUrl))
                 HttpContext.Session.SetString(PendingMfaReturnUrlSessionKey, returnUrl!);
             else
                 HttpContext.Session.Remove(PendingMfaReturnUrlSessionKey);
 
-            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
-                job => job.SendOtpEmail(user.Email, otp));
+            try
+            {
+                await RunWithTimeoutAsync(
+                    Task.Run(() => Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
+                        job => job.SendOtpEmail(user.Email, otp))),
+                    GetConfiguredTimeout("Auth:MfaQueueTimeoutSeconds", DefaultMfaQueueTimeout),
+                    "MFA queue enqueue");
 
-            return Task.CompletedTask;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not enqueue MFA email for user {UserId}.", user.UserID);
+                ClearPrivilegedMfaSession();
+                return false;
+            }
         }
 
         private void ClearPrivilegedMfaSession()
@@ -358,6 +452,7 @@ namespace CarRentalSystem.Controllers
             HttpContext.Session.Remove(PendingMfaReturnUrlSessionKey);
             HttpContext.Session.Remove(PendingMfaAttemptCountSessionKey);
             HttpContext.Session.Remove(PendingMfaEmailSessionKey);
+            HttpContext.Session.Remove(PendingMfaRememberMeSessionKey);
         }
 
         private bool RequiresPrivilegedMfa(User user)
@@ -365,10 +460,48 @@ namespace CarRentalSystem.Controllers
             if (!IsPrivilegedRole(user.Role))
                 return false;
 
-            var configRequiresMfa = HttpContext.RequestServices.GetService(typeof(IConfiguration)) is IConfiguration configuration &&
-                configuration.GetValue("Security:RequirePrivilegedMfa", false);
+            if (IsPrivilegedMfaExempt(user))
+                return false;
 
-            return IsProductionEnvironment() || configRequiresMfa;
+            return IsPrivilegedMfaEnabled();
+        }
+
+        private bool IsPrivilegedMfaEnabled() =>
+            IsProductionEnvironment() || _configuration.GetValue("Security:RequirePrivilegedMfa", false);
+
+        private bool IsPrivilegedMfaExempt(User user)
+        {
+            if (!user.IsEmailVerified || user.IsLocked || user.IsBlacklisted)
+                return false;
+
+            if (string.Equals(user.Role, UserRoleConstants.Admin, StringComparison.OrdinalIgnoreCase))
+                return IsEmailConfiguredForMfaExemption(user.Email, "Security:AdminMfaExemptEmails");
+
+            if (!string.Equals(user.Role, UserRoleConstants.Manager, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(user.Role, UserRoleConstants.Staff, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return IsEmailConfiguredForMfaExemption(user.Email, "Security:MfaExemptEmails");
+        }
+
+        private bool IsEmailConfiguredForMfaExemption(string? userEmail, string configurationKey)
+        {
+            var exemptEmails = _configuration.GetSection(configurationKey).Get<string[]>() ?? Array.Empty<string>();
+            return exemptEmails.Any(email =>
+                string.Equals(email?.Trim(), userEmail?.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private async Task RecordMfaExemptionAsync(User user, string source)
+        {
+            _logger.LogInformation("Privileged MFA skipped for {Email} ({Role}) via configured exemption during {Source}.", user.Email, user.Role, source);
+            await _auditTrail.RecordAsync(new AuditLog
+            {
+                Action = "PrivilegedMfaSkipped",
+                EntityType = nameof(User),
+                EntityId = user.UserID,
+                UserId = user.UserID,
+                Reason = $"MFA exempt via Security:MfaExemptEmails during {source}."
+            });
         }
 
         private bool IsProductionEnvironment() =>
@@ -379,7 +512,7 @@ namespace CarRentalSystem.Controllers
             string.Equals(role, UserRoleConstants.Manager, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(role, UserRoleConstants.Staff, StringComparison.OrdinalIgnoreCase);
 
-        private async Task SignInUserAsync(User user)
+        private async Task SignInUserAsync(User user, bool rememberMe = false)
         {
             var claims = new List<Claim>
             {
@@ -391,8 +524,16 @@ namespace CarRentalSystem.Controllers
 
             var identity = new ClaimsIdentity(claims, "Cookies");
             var principal = new ClaimsPrincipal(identity);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = rememberMe,
+                AllowRefresh = true
+            };
 
-            await HttpContext.SignInAsync("Cookies", principal);
+            if (rememberMe)
+                authProperties.ExpiresUtc = DateTimeOffset.UtcNow.Add(RememberMeDuration);
+
+            await HttpContext.SignInAsync("Cookies", principal, authProperties);
         }
 
         private IActionResult RedirectAfterLogin(User user, string? returnUrl)
@@ -536,8 +677,14 @@ namespace CarRentalSystem.Controllers
             await _legalCompliance.RecordConsentAsync(user.UserID, LegalDocumentCodes.PrivacyNotice, ConsentPurposeCodes.PrivacyNoticeAcknowledgement, model.AcceptPrivacyNotice, "Register", HttpContext, registrationEvidence);
             await _legalCompliance.RecordConsentAsync(user.UserID, LegalDocumentCodes.PrivacyNotice, ConsentPurposeCodes.SensitiveDataProcessing, model.AcceptSensitiveDataProcessing, "Register", HttpContext, registrationEvidence);
 
-            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
-                job => job.SendOtpEmail(user.Email, user.EmailVerificationToken));
+            if (!await TrySendEmailVerificationOtpAsync(user.Email, user.EmailVerificationToken, "Register"))
+            {
+                TempData["ErrorMessage"] = "Tài khoản đã được tạo nhưng hệ thống chưa gửi được mã xác thực. Vui lòng bấm gửi lại mã hoặc liên hệ hỗ trợ nếu lỗi tiếp diễn.";
+            }
+            else
+            {
+                TempData["SuccessMessage"] = "Mã OTP xác thực đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.";
+            }
 
             TempData["RegisteredEmail"] = user.Email;
             return RedirectToAction("VerifyEmailStep2", new { email = user.Email });
@@ -716,9 +863,11 @@ namespace CarRentalSystem.Controllers
             user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
             await _authService.UpdateUserAsync(user);
 
-            // Gửi email OTP qua Hangfire Queue
-            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
-                job => job.SendOtpEmail(user.Email, newOtp));
+            if (!await TrySendEmailVerificationOtpAsync(user.Email, newOtp, "CheckEmail"))
+            {
+                TempData["ErrorMessage"] = "Không gửi được mã OTP lúc này. Vui lòng thử lại sau ít phút.";
+                return RedirectToAction("VerifyEmailStep1");
+            }
 
             // Lưu email vào TempData và chuyển sang trang 2
             TempData["RegisteredEmail"] = email;
@@ -832,8 +981,11 @@ namespace CarRentalSystem.Controllers
             user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
             await _authService.UpdateUserAsync(user);
 
-            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
-                job => job.SendOtpEmail(user.Email, newOtp));
+            if (!await TrySendEmailVerificationOtpAsync(user.Email, newOtp, "ResendOtpStep2"))
+            {
+                TempData["ErrorMessage"] = "Không gửi được mã OTP lúc này. Vui lòng thử lại sau ít phút.";
+                return RedirectToAction("VerifyEmailStep2", new { email });
+            }
 
             TempData["SuccessMessage"] = "Mã OTP mới đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.";
             return RedirectToAction("VerifyEmailStep2");
@@ -1040,11 +1192,37 @@ namespace CarRentalSystem.Controllers
             await _authService.UpdateUserAsync(user);
 
             // Gửi email OTP qua Hangfire Queue
-            Hangfire.BackgroundJob.Enqueue<CarRentalSystem.BackgroundJobs.EmailBackgroundJob>(
-                job => job.SendOtpEmail(user.Email, newOtp));
+            if (!await TrySendEmailVerificationOtpAsync(user.Email, newOtp, "ResendOtp"))
+            {
+                TempData["ErrorMessage"] = "Không gửi được mã OTP lúc này. Vui lòng thử lại sau ít phút.";
+                return RedirectToAction("VerifyEmail");
+            }
 
             TempData["SuccessMessage"] = "Mã OTP mới đã được gửi đến email của bạn. Mã có hiệu lực trong 5 phút.";
             return RedirectToAction("VerifyEmail");
+        }
+
+        private async Task<bool> TrySendEmailVerificationOtpAsync(string email, string otp, string source)
+        {
+            try
+            {
+                await RunWithTimeoutAsync(
+                    SendOtpEmailAndReturnTrueAsync(email, otp),
+                    GetConfiguredTimeout("Auth:EmailSendTimeoutSeconds", TimeSpan.FromSeconds(12)),
+                    "email verification OTP send");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not send email verification OTP for {Email} during {Source}.", email, source);
+                return false;
+            }
+        }
+
+        private async Task<bool> SendOtpEmailAndReturnTrueAsync(string email, string otp)
+        {
+            await _emailService.SendOtpEmailAsync(email, otp);
+            return true;
         }
 
         private static string GenerateOtp()

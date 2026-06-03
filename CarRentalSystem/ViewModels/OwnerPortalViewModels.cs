@@ -42,9 +42,15 @@ public class OwnerCarCardViewModel
     public bool HasGps { get; set; }
     public bool HasEnoughImages { get; set; }
     public bool HasRequiredDocuments { get; set; }
+    public string ContractSigningMode { get; set; } = CarContractSigningModes.PhysicalSelfManaged;
+    public string ContractSigningModeLabel { get; set; } = "Hợp đồng giấy tự quản";
     public int Seats { get; set; }
     public string? FuelType { get; set; }
     public string? Transmission { get; set; }
+    public DateTime? NextInspectionDate { get; set; }
+    public string InspectionStatusLabel { get; set; } = string.Empty;
+    public string InspectionStatusClass { get; set; } = "warn";
+    public string InspectionStatusIcon { get; set; } = "bi-calendar-x";
 }
 
 public class OwnerCalendarViewModel
@@ -155,6 +161,9 @@ public class OwnerContractsViewModel
     public OwnerPortalChromeViewModel Chrome { get; set; } = new();
     public IReadOnlyList<OwnerDocumentViewModel> Templates { get; set; } = Array.Empty<OwnerDocumentViewModel>();
     public IReadOnlyList<OwnerContractRowViewModel> Contracts { get; set; } = Array.Empty<OwnerContractRowViewModel>();
+    public OwnerDigitalSignatureProfileViewModel? SignatureProfile { get; set; }
+    public IReadOnlyList<OwnerContractCarModeViewModel> Cars { get; set; } = Array.Empty<OwnerContractCarModeViewModel>();
+    public IReadOnlyList<OwnerDigitalContractRowViewModel> DigitalContracts { get; set; } = Array.Empty<OwnerDigitalContractRowViewModel>();
 }
 
 public class OwnerContractRowViewModel
@@ -168,6 +177,48 @@ public class OwnerContractRowViewModel
     public string? LicensePlate { get; set; }
     public int? BookingID { get; set; }
     public DateTime UploadedAt { get; set; }
+}
+
+public class OwnerDigitalSignatureProfileViewModel
+{
+    public string ProviderName { get; set; } = string.Empty;
+    public string CertificateSerialNumber { get; set; } = string.Empty;
+    public string CertificateSubject { get; set; } = string.Empty;
+    public DateTime? CertificateValidUntil { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? SignatureImageUrl { get; set; }
+    public bool IsReady { get; set; }
+}
+
+public class OwnerDigitalSignatureProfileInputModel
+{
+    public string ProviderName { get; set; } = string.Empty;
+    public string CertificateSerialNumber { get; set; } = string.Empty;
+    public string CertificateSubject { get; set; } = string.Empty;
+    public DateTime? CertificateValidUntil { get; set; }
+}
+
+public class OwnerContractCarModeViewModel
+{
+    public int CarID { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string LicensePlate { get; set; } = string.Empty;
+    public string ContractSigningMode { get; set; } = CarContractSigningModes.PhysicalSelfManaged;
+    public string ContractSigningModeLabel { get; set; } = "Hợp đồng giấy tự quản";
+    public bool CanEnableDigital { get; set; }
+}
+
+public class OwnerDigitalContractRowViewModel
+{
+    public int DigitalContractID { get; set; }
+    public string ContractNo { get; set; } = string.Empty;
+    public int? BookingID { get; set; }
+    public int? TransactionID { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string CarSummary { get; set; } = string.Empty;
+    public bool IsSignedByCustomer { get; set; }
+    public DateTime? CustomerSignDate { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 public class OwnerPrivacyViewModel

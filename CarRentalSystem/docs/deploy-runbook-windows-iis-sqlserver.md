@@ -1,6 +1,6 @@
 # Deploy runbook - Windows IIS + SQL Server
 
-Ngay cap nhat: 2026-05-13
+Ngay cap nhat: 2026-05-26
 
 Muc tieu: deploy CarRentalSystem len staging/production theo cach co backup, co migration script, co health check va co rollback.
 
@@ -20,33 +20,51 @@ Muc tieu: deploy CarRentalSystem len staging/production theo cach co backup, co 
 - App pool identity co quyen doc thu muc publish, ghi logs neu can, doc/ghi DataProtection key ring.
 - Secret duoc cau hinh bang IIS environment variables hoac secret manager.
 - `appsettings.Production.json` khong commit vao repo.
+- IIS/Plesk physical path phai tro vao thu muc publish output, khong tro vao source folder.
 
 Bien moi truong toi thieu:
 
 - `ASPNETCORE_ENVIRONMENT=Production`
+- `AllowedHosts`
+- `App__PublicBaseUrl`
 - `ConnectionStrings__DefaultConnection`
 - `Cors__AllowedOrigins__0`
 - `Tracking__IngestSecret`
 - `DataProtection__KeysPath`
+- `Security__RunMigrationsOnStartup=false`
+- `Security__SeedReferenceDataOnStartup=false`
+- `Security__RequirePrivilegedMfa=true`
+- `Security__RequireRecaptcha=true`
 - `PayOS__ClientId`
 - `PayOS__ApiKey`
 - `PayOS__ChecksumKey`
 - `PayOS__PayoutEnabled=false` cho den khi payout duoc verify
 - `SmtpSettings__Host`
+- `SmtpSettings__Port`
 - `SmtpSettings__User`
 - `SmtpSettings__Pass`
+- `Recaptcha__SiteKey`
 - `Recaptcha__SecretKey`
 - `FptAi__ApiKey`
 
-Co the tao mot file `.env.staging` nam ngoai repo theo format `.env.example`, sau do ap bien moi truong vao IIS bang:
+Co the tao template env production nam ngoai repo:
+
+```powershell
+.\scripts\New-ProductionEnvFile.ps1 `
+  -Domain "https://your-production-domain.example" `
+  -SqlConnectionString "Server=YOUR_SQL_SERVER;Database=CarRentalDB;User Id=YOUR_SQL_USER;Password=YOUR_SQL_PASSWORD;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=true" `
+  -OutputPath C:\CarRentalSystem\secrets\.env.production
+```
+
+Sau do sua tat ca gia tri `CHANGE_ME`, roi ap bien moi truong vao IIS bang:
 
 ```powershell
 .\scripts\Set-IisEnvironmentVariables.ps1 `
   -SiteName "CarRentalSystem" `
-  -EnvFile C:\CarRentalSystem\secrets\.env.staging
+  -EnvFile C:\CarRentalSystem\secrets\.env.production
 ```
 
-Script se mask ten bien nhay cam khi in ra console, nhung file `.env.staging` van phai duoc luu ngoai repo va phan quyen chi cho admin/deploy user.
+Script set bien moi truong theo cach idempotent: neu bien da ton tai thi update/replace, khong add trung. Script se mask ten bien nhay cam khi in ra console, nhung file `.env.production` van phai duoc luu ngoai repo va phan quyen chi cho admin/deploy user.
 
 ## 2. Tao release package
 
@@ -98,7 +116,42 @@ Production:
 - Luu output terminal vao change ticket.
 - Neu migration fail, dung deploy va rollback DB tu backup neu da co thay doi partial.
 
-## 5. Deploy IIS
+## 5. Deploy Plesk/IIS production
+
+Neu co RDP/Admin tren Windows/Plesk, dung script tong hop production. Script nay se:
+
+- Verify IIS, .NET 10 ASP.NET Core runtime va AspNetCoreModuleV2.
+- Tao `C:\CarRentalSystem\secrets`, `C:\CarRentalSystem\keys`, `C:\CarRentalSystem\backups`.
+- Cap quyen site folder va DataProtection key folder cho app pool identity.
+- Ap IIS environment variables tu `.env.production`.
+- Yeu cau backup DB hoac explicit `-SkipDatabaseBackup` truoc migration.
+- Copy `publish\` vao physical path va restart app pool.
+- Smoke test `/health`, `/ready`, `/`, `/Auth/Login`.
+
+Dry-run truoc:
+
+```powershell
+.\scripts\Invoke-PleskProductionDeploy.ps1 `
+  -PackageDir .\artifacts\release-yyyyMMdd-HHmmss `
+  -SiteName "CarRentalSystem" `
+  -SitePath C:\Inetpub\vhosts\your-domain.example\httpdocs `
+  -AppPoolName "your-domain.example(domain)(4.0)(pool)" `
+  -EnvFile C:\CarRentalSystem\secrets\.env.production `
+  -ApplyMigration `
+  -BackupDatabase `
+  -DatabaseBackupPath D:\Backups\CarRentalDB_before_release.bak `
+  -SqlServer YOUR_SQL_SERVER `
+  -DatabaseName CarRentalDB `
+  -TrustServerCertificate `
+  -BaseUrl https://your-production-domain.example `
+  -WhatIf
+```
+
+Neu `-WhatIf` dung, chay lai lenh tren bo `-WhatIf`.
+
+Neu host khong cho SQL backup qua `BACKUP DATABASE`, phai backup DB bang Plesk/SQL tool truoc, sau do chay script voi `-SkipDatabaseBackup`.
+
+## 6. Deploy IIS thu cong
 
 Staging co the dung script:
 
@@ -119,7 +172,7 @@ Neu ket qua `-WhatIf` dung, chay that:
   -AppPoolName CarRentalSystem
 ```
 
-## 6. Smoke test sau deploy
+## 7. Smoke test sau deploy
 
 ```powershell
 .\scripts\Test-StagingSmoke.ps1 -BaseUrl https://staging.your-domain.example
@@ -138,7 +191,7 @@ Kiem tra thu cong them:
 - Tracking request thieu HMAC => reject.
 - Admin API anonymous => unauthorized.
 
-## 7. Rollback
+## 8. Rollback
 
 Rollback app:
 
@@ -154,7 +207,7 @@ Rollback DB:
 - Chi restore DB neu migration/data change gay loi va da thong nhat downtime.
 - Khong rollback DB tuy tien neu da co giao dich thanh toan moi sau deploy.
 
-## 8. Go/no-go
+## 9. Go/no-go
 
 Duoc go production khi:
 

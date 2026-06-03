@@ -26,6 +26,7 @@ namespace CarRentalSystem.Controllers
         private readonly IBookingTransitionService _bookingTransitionService;
         private readonly IPaymentTransitionService _paymentTransitionService;
         private readonly ISettlementReviewService _settlementReviewService;
+        private readonly IDigitalContractService _digitalContractService;
         private readonly IPiiEncryptionService _piiEncryption;
         private readonly ILogger<BookingController> _logger;
         private readonly ILegalComplianceService _legalCompliance;
@@ -44,6 +45,7 @@ namespace CarRentalSystem.Controllers
             IBookingTransitionService bookingTransitionService,
             IPaymentTransitionService paymentTransitionService,
             ISettlementReviewService settlementReviewService,
+            IDigitalContractService digitalContractService,
             IPiiEncryptionService piiEncryption,
             ILogger<BookingController> logger,
             ILegalComplianceService legalCompliance,
@@ -61,6 +63,7 @@ namespace CarRentalSystem.Controllers
             _bookingTransitionService = bookingTransitionService;
             _paymentTransitionService = paymentTransitionService;
             _settlementReviewService = settlementReviewService;
+            _digitalContractService = digitalContractService;
             _piiEncryption = piiEncryption;
             _logger = logger;
             _legalCompliance = legalCompliance;
@@ -391,6 +394,21 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
+            if (CarContractSigningModes.Normalize(car.ContractSigningMode) == CarContractSigningModes.Digital)
+            {
+                var ownerSignatureReady = car.OwnerID.HasValue && await _context.OwnerDigitalSignatureProfiles
+                    .AsNoTracking()
+                    .AnyAsync(p => p.UserID == car.OwnerID.Value
+                        && p.Status == OwnerDigitalSignatureProfileStatuses.Active
+                        && !string.IsNullOrWhiteSpace(p.SignatureImageHash)
+                        && (!p.CertificateValidUntil.HasValue || p.CertificateValidUntil.Value.Date >= DateTime.UtcNow.Date));
+                if (!ownerSignatureReady)
+                {
+                    TempData["BookingError"] = "Chủ xe chưa hoàn tất hồ sơ chữ ký số. Vui lòng chọn xe khác hoặc thử lại sau.";
+                    return RedirectToAction("Details", "Car", new { id = booking.CarID });
+                }
+            }
+
             var validLicense = await _businessRules.GetValidCustomerDrivingLicenseAsync(booking.UserID);
             if (validLicense == null)
             {
@@ -549,7 +567,7 @@ namespace CarRentalSystem.Controllers
                     _logger.LogWarning(auditException, "Failed to write PayOS hold audit log for hold {HoldId}.", holdResult.Hold.BookingHoldID);
                 }
 
-                return Redirect(payOSResult.CheckoutUrl);
+                return RedirectToAction("Hold", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
             }
             catch (Exception ex)
             {
@@ -645,12 +663,24 @@ namespace CarRentalSystem.Controllers
                 .Include(b => b.BookingStatus)
                 .Include(b => b.Car)
                 .Include(b => b.RentalContract)
+                .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
                 .FirstOrDefaultAsync(b => b.BookingID == id && b.UserID == userId);
 
             if (booking == null || booking.BookingStatus?.Name != BookingStatusConstants.Confirmed)
             {
                 TempData["Error"] = "Đơn đặt xe không hợp lệ để nhận xe.";
                 return RedirectToAction(nameof(MyBookings));
+            }
+
+            var digitalContract = ResolveDigitalContract(booking);
+            var requiresDigitalContract = CarContractSigningModes.Normalize(booking.Car?.ContractSigningMode) == CarContractSigningModes.Digital;
+            if (requiresDigitalContract && (digitalContract == null || !digitalContract.IsSignedByCustomer))
+            {
+                TempData["Error"] = "Bạn phải ký hợp đồng số trước khi xác nhận nhận xe.";
+                return digitalContract == null
+                    ? RedirectToAction("Details", new { id })
+                    : RedirectToAction("Sign", "DigitalContract", new { id = digitalContract.DigitalContractID });
             }
 
             var checkInRecord = await _context.HandoverRecords
@@ -825,20 +855,54 @@ namespace CarRentalSystem.Controllers
             return RedirectToAction(nameof(MyBookings));
         }
 
-        public IActionResult Contract(int id)
+        public async Task<IActionResult> Contract(int id)
         {
             if (!IsInternalUser()) return Forbid();
 
-            TempData["Info"] = "Hệ thống đã bỏ hợp đồng điện tử. Vui lòng upload hợp đồng giấy đã ký vào mục Hợp đồng vật lý.";
-            return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin", bookingId = id });
+            var actorId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedActorId) ? parsedActorId : (int?)null;
+            DigitalContract? contract;
+            try
+            {
+                contract = await _digitalContractService.EnsureForBookingAsync(id, actorId, "GET /Booking/Contract");
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = "Chưa thể tạo hợp đồng số. Vui lòng kiểm tra hồ sơ chữ ký số của chủ xe.";
+                _logger.LogWarning(ex, "Could not create digital contract for booking {BookingId}.", id);
+                return RedirectToAction("Details", new { id });
+            }
+
+            if (contract == null)
+            {
+                TempData["Info"] = "Xe này dùng hợp đồng giấy tự quản nên hệ thống không tạo hợp đồng số.";
+                return RedirectToAction("Details", new { id });
+            }
+            return RedirectToAction("Details", "DigitalContract", new { id = contract.DigitalContractID });
         }
 
-        public IActionResult TransactionContract(int id)
+        public async Task<IActionResult> TransactionContract(int id)
         {
             if (!IsInternalUser()) return Forbid();
 
-            TempData["Info"] = "Hệ thống đã bỏ hợp đồng điện tử. Vui lòng upload hợp đồng giấy đã ký vào mục Hợp đồng vật lý.";
-            return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin" });
+            var actorId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedActorId) ? parsedActorId : (int?)null;
+            DigitalContract? contract;
+            try
+            {
+                contract = await _digitalContractService.EnsureForTransactionAsync(id, actorId, "GET /Booking/TransactionContract");
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = "Chưa thể tạo hợp đồng số. Vui lòng kiểm tra hồ sơ chữ ký số của chủ xe.";
+                _logger.LogWarning(ex, "Could not create digital contract for transaction {TransactionId}.", id);
+                return RedirectToAction(nameof(Manage));
+            }
+
+            if (contract == null)
+            {
+                TempData["Info"] = "Giao dịch này dùng hợp đồng giấy tự quản nên hệ thống không tạo hợp đồng số.";
+                return RedirectToAction(nameof(Manage));
+            }
+            return RedirectToAction("Details", "DigitalContract", new { id = contract.DigitalContractID });
         }
 
         [HttpPost]
@@ -847,8 +911,8 @@ namespace CarRentalSystem.Controllers
         {
             if (!IsInternalUser()) return Forbid();
 
-            TempData["Info"] = "Hệ thống đã bỏ ký hợp đồng điện tử. Vui lòng upload ảnh/PDF hợp đồng giấy đã ký.";
-            return RedirectToAction("Index", "PhysicalContracts", new { area = "Admin" });
+            TempData["Info"] = "Hợp đồng giấy do chủ xe tự chuẩn bị và tự lưu ngoài hệ thống. App không nhận upload hợp đồng vật lý.";
+            return RedirectToAction("Details", new { id });
         }
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Manage(int page = 1)
@@ -1023,7 +1087,7 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                         IsSignedByCustomer = false,
                         IsSignedByOwner = false
                     };
-                    _context.DigitalContracts.Add(newContract);
+                    // Digital contracts are created after bookings exist so the car-level signing mode can be enforced.
 
                     // Tao Booking cho tung item
                     foreach (var item in items.EnumerateArray())
@@ -1089,6 +1153,18 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
             transaction.Status = BookingStatusConstants.Confirmed;
             _context.BookingTransactions.Update(transaction);
             await _context.SaveChangesAsync();
+            if (await _context.Bookings.AnyAsync(b => b.TransactionID == transaction.TransactionID))
+            {
+                try
+                {
+                    await _digitalContractService.EnsureForTransactionAsync(transaction.TransactionID, userId, "POST /Booking/ConfirmManualPaymentTransaction");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    TempData["Warning"] = "Thanh toán đã được xác nhận nhưng hợp đồng số chưa tạo được. Chủ xe cần kiểm tra hồ sơ chữ ký số trước khi khách nhận xe.";
+                    _logger.LogWarning(ex, "Digital contract creation skipped for manually confirmed transaction {TransactionId}.", transaction.TransactionID);
+                }
+            }
 
             TempData["Success"] = $"Thanh toán thành công! Đơn thuê đã được xác nhận.";
             return RedirectToAction("SuccessTransaction", "Payment", new { transactionId = id });
@@ -1108,6 +1184,7 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                 .Include(b => b.Payment)
                 .Include(b => b.RentalContract)
                 .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
                 .Include(b => b.HandoverRecords)
                 .Include(b => b.BookingAddOns).ThenInclude(ba => ba.AddOn)
                 .FirstOrDefaultAsync(b => b.BookingID == id);
@@ -1122,6 +1199,11 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
             return User.IsInRole(UserRoleConstants.Admin) ||
                    User.IsInRole(UserRoleConstants.Manager) ||
                    User.IsInRole(UserRoleConstants.Staff);
+        }
+
+        private static DigitalContract? ResolveDigitalContract(Booking booking)
+        {
+            return booking.DigitalContract ?? booking.BookingTransaction?.DigitalContract;
         }
 
         private async Task<DeliveryQuoteBuildResult> TryBuildDeliveryQuoteAsync(Car car, string? deliveryAddress, double? deliveryLatitude, double? deliveryLongitude)

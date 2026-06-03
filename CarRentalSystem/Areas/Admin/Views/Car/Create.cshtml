@@ -132,8 +132,9 @@
                         <input type="date" asp-for="NextMaintenanceDate" class="form-control" />
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Ngày đăng kiểm tiếp theo</label>
-                        <input type="date" asp-for="NextInspectionDate" class="form-control" />
+                        <label class="form-label">Ngày đăng kiểm tiếp theo <span class="text-danger">*</span></label>
+                        <input type="date" asp-for="NextInspectionDate" class="form-control" required />
+                        <span asp-validation-for="NextInspectionDate" class="text-danger small"></span>
                     </div>
                 </div>
             </div>

@@ -1405,3 +1405,368 @@
     background-color: #ffffff;
     color: #0f172a;
 }
+
+/* =========================================================
+   30. PREMIUM TECH ADMIN REDESIGN
+   ========================================================= */
+[data-bs-theme="light"] .theme-admin,
+.theme-admin {
+    --admin-bg: #f6f8fb;
+    --admin-bg-900: #ffffff;
+    --admin-bg-800: #f3f6fa;
+    --admin-bg-700: #e7edf4;
+    --admin-surface: #ffffff;
+    --admin-surface-2: #f1f5f9;
+    --admin-border: #d9e2ec;
+    --admin-border-light: #c8d3df;
+    --admin-text: #0f172a;
+    --admin-text-secondary: #334155;
+    --admin-text-muted: #667085;
+    --admin-primary: #2563eb;
+    --admin-success: #0f9f6e;
+    --admin-warning: #d97706;
+    --admin-danger: #dc2626;
+    --admin-info: #0284c7;
+    background: var(--admin-bg);
+    color: var(--admin-text);
+}
+
+[data-bs-theme="dark"] .theme-admin {
+    --admin-bg: #0f172a;
+    --admin-bg-900: #0b1220;
+    --admin-bg-800: #111827;
+    --admin-bg-700: #1e293b;
+    --admin-surface: #172033;
+    --admin-surface-2: #22304a;
+    --admin-border: #334155;
+    --admin-border-light: #475569;
+    --admin-text: #f8fafc;
+    --admin-text-secondary: #cbd5e1;
+    --admin-text-muted: #94a3b8;
+}
+
+.theme-admin .admin-sidebar {
+    background: #0f172a !important;
+    color: #cbd5e1;
+    border-right: 1px solid rgba(148, 163, 184, .18);
+}
+
+.theme-admin .admin-sidebar .navbar-brand,
+.theme-admin .admin-sidebar .offcanvas-title {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff;
+    letter-spacing: 0;
+}
+
+.theme-admin .admin-link {
+    min-height: 38px;
+    padding: .56rem .72rem;
+    border-radius: 8px;
+    color: #cbd5e1;
+    font-size: .82rem;
+    font-weight: 720;
+    transform: none !important;
+}
+
+.theme-admin .admin-link i {
+    width: 20px;
+    margin-right: .62rem;
+    font-size: 1rem;
+}
+
+.theme-admin .admin-link:hover {
+    background: rgba(255, 255, 255, .08);
+    color: #ffffff;
+}
+
+.theme-admin .admin-link.active {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.theme-admin .admin-nav-section {
+    margin: 1rem .45rem .45rem;
+    color: rgba(203, 213, 225, .72);
+    font-size: .62rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.theme-admin .admin-nav-subsection {
+    margin: .7rem .65rem .3rem;
+    color: rgba(203, 213, 225, .54);
+    font-size: .58rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.theme-admin .admin-main-content {
+    background: var(--admin-bg) !important;
+}
+
+.theme-admin .admin-desktop-topbar,
+.theme-admin .admin-global-search,
+.theme-admin .card,
+.theme-admin .chart-container,
+.theme-admin .filter-bar,
+.theme-admin .fleet-filter-card,
+.theme-admin .fleet-table-card,
+.theme-admin .fleet-mobile-card,
+.theme-admin .modal-content,
+.theme-admin .table-responsive {
+    background: var(--admin-surface) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06) !important;
+    color: var(--admin-text);
+}
+
+.theme-admin .card-header,
+.theme-admin .card-footer {
+    background: var(--admin-surface) !important;
+    border-color: var(--admin-border) !important;
+}
+
+.theme-admin .admin-stat-card,
+.theme-admin .stat-card-modern,
+.theme-admin .fleet-stat-card {
+    background: var(--admin-surface) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06) !important;
+    color: var(--admin-text);
+}
+
+.theme-admin .admin-stat-card::before {
+    height: 3px;
+}
+
+.theme-admin .admin-stat-card .stat-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    margin-bottom: .75rem;
+}
+
+.theme-admin .admin-stat-card .stat-bg-icon {
+    display: none;
+}
+
+.theme-admin .page-admin-dashboard .admin-stat-card h2,
+.theme-admin .page-admin-dashboard .admin-stat-card .fw-800 {
+    letter-spacing: 0;
+}
+
+.theme-admin .table {
+    color: var(--admin-text);
+}
+
+.theme-admin .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--admin-surface-2) !important;
+    color: var(--admin-text-secondary) !important;
+    border-color: var(--admin-border) !important;
+}
+
+.theme-admin .table tbody td {
+    background: var(--admin-surface) !important;
+    border-color: var(--admin-border) !important;
+}
+
+.theme-admin .table tbody tr:hover td {
+    background: #f8fbff !important;
+}
+
+[data-bs-theme="dark"] .theme-admin .table tbody tr:hover td {
+    background: #22304a !important;
+}
+
+.theme-admin .btn {
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+
+.theme-admin .btn-primary {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.theme-admin .btn-success {
+    background: #0f9f6e;
+    border-color: #0f9f6e;
+}
+
+.theme-admin .btn-outline-light {
+    color: var(--admin-text-secondary);
+    border-color: var(--admin-border-light);
+    background: transparent;
+}
+
+.theme-admin .btn-outline-light:hover {
+    color: var(--admin-text);
+    background: var(--admin-surface-2);
+}
+
+.theme-admin .form-control,
+.theme-admin .form-select {
+    border-radius: 8px !important;
+    background: var(--admin-surface) !important;
+    border-color: var(--admin-border-light) !important;
+    color: var(--admin-text) !important;
+}
+
+.theme-admin .form-control:focus,
+.theme-admin .form-select:focus {
+    border-color: var(--admin-primary) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .14) !important;
+}
+
+.theme-admin .badge {
+    border-radius: 999px;
+}
+
+.theme-admin .rounded-4,
+.theme-admin .rounded-pill {
+    border-radius: 8px !important;
+}
+
+.theme-admin .badge.rounded-pill,
+.theme-admin .rounded-circle {
+    border-radius: 999px !important;
+}
+
+.theme-admin .page-header {
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.theme-admin .page-header h1,
+.theme-admin .page-header h2 {
+    color: var(--admin-text);
+    letter-spacing: 0;
+}
+
+.theme-admin .filter-bar form {
+    gap: .75rem !important;
+}
+
+.theme-admin .search-box {
+    min-width: min(100%, 260px);
+}
+
+.theme-admin .search-box .form-control {
+    min-height: 42px;
+}
+
+.theme-admin .empty-state {
+    background: var(--admin-surface);
+    border: 1px dashed var(--admin-border-light);
+    border-radius: 8px;
+}
+
+.theme-admin .admin-fleet-hero h2,
+.theme-admin .fleet-filter-card h5,
+.theme-admin .fleet-mobile-card h6 {
+    color: var(--admin-text);
+}
+
+.theme-admin .fleet-mobile-card .btn {
+    width: 100%;
+}
+
+@media (max-width: 767.98px) {
+    .theme-admin .admin-main-content {
+        padding: 12px !important;
+    }
+
+    .theme-admin .page-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+/* =========================================================
+   31. LUXURY OPERATIONS FINAL POLISH
+   Keeps admin dense and operational while matching the public premium system.
+   ========================================================= */
+.theme-admin h1,
+.theme-admin h2,
+.theme-admin h3,
+.theme-admin h4,
+.theme-admin h5,
+.theme-admin h6,
+.theme-admin .navbar-brand {
+    letter-spacing: 0 !important;
+}
+
+.theme-admin .admin-desktop-topbar {
+    min-height: 66px;
+}
+
+.theme-admin .admin-page-content,
+.theme-admin .admin-main-content {
+    min-width: 0;
+}
+
+.theme-admin .admin-stat-card,
+.theme-admin .stat-card-modern,
+.theme-admin .fleet-stat-card,
+.theme-admin .alert-ops-card {
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.theme-admin .admin-stat-card:hover,
+.theme-admin .stat-card-modern:hover,
+.theme-admin .fleet-stat-card:hover,
+.theme-admin .alert-ops-card:hover {
+    border-color: #b8cef8 !important;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .1) !important;
+    transform: translateY(-2px);
+}
+
+.theme-admin .table-responsive {
+    overflow: hidden;
+}
+
+.theme-admin .table td,
+.theme-admin .table th {
+    overflow-wrap: anywhere;
+}
+
+.theme-admin .badge.bg-opacity-10 {
+    border-width: 1px;
+}
+
+.theme-admin .alert-table-card .table thead th,
+.theme-admin .fleet-table-card .table thead th {
+    font-size: .72rem;
+}
+
+.theme-admin .page-header p,
+.theme-admin .admin-fleet-hero p,
+.theme-admin .alert-ops-header p {
+    max-width: 720px;
+}
+
+[data-bs-theme="dark"] .theme-admin .admin-stat-card:hover,
+[data-bs-theme="dark"] .theme-admin .stat-card-modern:hover,
+[data-bs-theme="dark"] .theme-admin .fleet-stat-card:hover,
+[data-bs-theme="dark"] .theme-admin .alert-ops-card:hover {
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .32) !important;
+}
+
+@media (max-width: 991.98px) {
+    .theme-admin .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .theme-admin .admin-desktop-topbar {
+        display: none !important;
+    }
+}

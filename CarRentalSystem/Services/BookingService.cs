@@ -61,6 +61,7 @@ namespace CarRentalSystem.Services
                 .Include(b => b.User)
                 .Include(b => b.BookingStatus)
                 .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
                 .Include(b => b.ContractType)
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
@@ -79,6 +80,7 @@ namespace CarRentalSystem.Services
                 .Include(b => b.User)
                 .Include(b => b.BookingStatus)
                 .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
                 .Include(b => b.ContractType)
                 .OrderByDescending(b => b.CreatedAt);
 
@@ -92,6 +94,7 @@ namespace CarRentalSystem.Services
                 .Include(b => b.Car).ThenInclude(c => c.Location)
                 .Include(b => b.BookingStatus)
                 .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
                 .Where(b => b.UserID == userId)
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
@@ -136,6 +139,8 @@ namespace CarRentalSystem.Services
                 .Include(b => b.User)
                 .Include(b => b.Payment)
                 .Include(b => b.RentalContract)
+                .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
                 .Include(b => b.BookingStatus)
                 .FirstOrDefaultAsync(b => b.BookingID == id);
         }

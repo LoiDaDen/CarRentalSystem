@@ -93,6 +93,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 _mockBookingTransitionService.Object,
                 _mockPaymentTransitionService.Object,
                 _mockSettlementReviewService.Object,
+                Mock.Of<IDigitalContractService>(),
                 _mockPiiEncryptionService.Object,
                 _mockLogger.Object,
                 _mockLegalCompliance.Object,

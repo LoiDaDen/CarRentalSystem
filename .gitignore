@@ -26,6 +26,9 @@ obj/
 [Rr]elease/
 x64/
 x86/
+artifacts/
+publish/
+**/publish/
 
 ## Test Results
 **/TestResults/
@@ -42,6 +45,14 @@ Desktop.ini
 
 ## Node modules (for Cypress, etc.)
 node_modules/
+
+## Python local environments and cache
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
 
 ## Misc
 *.log
@@ -63,3 +74,7 @@ CarRentalSystem/wwwroot/uploads/ekyc/
 .env
 .env.*
 !.env.example
+
+## Local camera bridge runtime
+CarRentalSystem/tools/camera-bridge/config.yaml
+CarRentalSystem/tools/camera-bridge/output/

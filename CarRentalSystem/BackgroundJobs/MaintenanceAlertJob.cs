@@ -24,7 +24,8 @@ namespace CarRentalSystem.BackgroundJobs
         {
             _logger.LogInformation("🔔 [Hangfire] Bắt đầu kiểm tra bảo dưỡng & đăng kiểm...");
             var now = DateTime.UtcNow;
-            var warningThreshold = now.AddDays(7); // Cảnh báo trước 7 ngày
+            var inspectionWarningThreshold = now.AddDays(30); // Cảnh báo đăng kiểm trước 30 ngày
+            var maintenanceWarningThreshold = now.AddDays(7); // Cảnh báo bảo dưỡng trước 7 ngày
             int alertsCreated = 0;
 
             var cars = await _db.Cars
@@ -37,12 +38,12 @@ namespace CarRentalSystem.BackgroundJobs
                 string carName = $"{car.CarBrand?.Name} {car.CarName} ({car.LicensePlate})";
 
                 // 🔴 Đăng kiểm sắp hết hạn
-                if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value <= warningThreshold)
+                if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value <= inspectionWarningThreshold)
                 {
                     bool exists = await _db.Alerts.AnyAsync(a => 
                         a.CarID == car.CarID && 
                         a.AlertType == "InspectionExpiring" && 
-                        a.Status == "Active" &&
+                        a.Status != "Resolved" &&
                         a.AlertTime >= now.AddDays(-1));
 
                     if (!exists)
@@ -62,7 +63,7 @@ namespace CarRentalSystem.BackgroundJobs
                 }
 
                 // 🟡 Bảo dưỡng sắp đến hạn
-                if (car.NextMaintenanceDate.HasValue && car.NextMaintenanceDate.Value <= warningThreshold)
+                if (car.NextMaintenanceDate.HasValue && car.NextMaintenanceDate.Value <= maintenanceWarningThreshold)
                 {
                     bool exists = await _db.Alerts.AnyAsync(a => 
                         a.CarID == car.CarID && 

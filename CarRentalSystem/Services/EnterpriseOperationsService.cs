@@ -223,7 +223,7 @@ namespace CarRentalSystem.Services
                         Detail = $"{handoversMissingEvidence:N0} handovers missing evidence",
                         Severity = unsignedContracts + handoversMissingEvidence > 0 ? EnterpriseSeverity.Warning : EnterpriseSeverity.Success,
                         Icon = "bi-file-earmark-text",
-                        Url = "/Admin/PhysicalContracts"
+                        Url = "/Admin/Booking"
                     }
                 },
                 Queues = BuildQueues(
@@ -397,7 +397,7 @@ namespace CarRentalSystem.Services
                 Queue("eKYC / eligibility", "Customers that need identity or eligibility review.", pendingEkyc, "Risk", "/Admin/User", EnterpriseSeverity.Warning),
                 Queue("Fleet readiness", "Cars blocked by approval, maintenance, alerts, or tracking gaps.", fleet.PendingApprovalCars + fleet.MaintenanceDueSoon + fleet.MissingTracking + fleet.OpenAlerts, "Fleet", "/Admin/Car/Manage", EnterpriseSeverity.Warning),
                 Queue("Privacy requests", "Runtime privacy requests waiting for review.", pendingPrivacy, "Compliance", "/Admin/Privacy", EnterpriseSeverity.Warning),
-                Queue("Contract evidence", "Unsigned contracts or recent handovers missing evidence.", unsignedContracts + handoversMissingEvidence, "Legal ops", "/Admin/PhysicalContracts", EnterpriseSeverity.Warning)
+                Queue("Contract evidence", "Unsigned digital contracts or recent handovers missing evidence.", unsignedContracts + handoversMissingEvidence, "Legal ops", "/Admin/Booking", EnterpriseSeverity.Warning)
             };
         }
 

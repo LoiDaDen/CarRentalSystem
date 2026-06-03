@@ -897,14 +897,51 @@ Test tích hợp với database thực (SQL Server hoặc InMemory):
 Local Cypress runs default to mock vendor mode, so PayOS/FPT sandbox keys are not required:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\CarRentalSystem\scripts\Run-CypressA2Z.ps1 -VendorMode Mock
+npm run test:e2e:full
 ```
 
 Run real PayOS/FPT sandbox checks only when keys and an HTTPS public tunnel are configured:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\CarRentalSystem\scripts\Run-CypressA2Z.ps1 -VendorMode Real -PublicBaseUrl https://your-public-cypress-tunnel.example.com
+npm run test:e2e:sandbox
 ```
+
+Production real E2E runs are separate from local Cypress. They require dedicated production test accounts and never call `/__test/reset`, seed endpoints, or provider mocks:
+
+```powershell
+$env:CYPRESS_BASE_URL="https://your-production-domain.example.com"
+$env:CYPRESS_RUN_ID="E2E-$(Get-Date -Format yyyyMMddHHmmss)"
+$env:CYPRESS_PROD_BOOKING_CAR_ID="123" # optional but recommended: approved test car with 10.000 VND holding fee
+$env:CYPRESS_PROD_ADMIN_EMAIL="admin-e2e@example.com"
+$env:CYPRESS_PROD_ADMIN_PASSWORD="***"
+$env:CYPRESS_PROD_MANAGER_EMAIL="manager-e2e@example.com"
+$env:CYPRESS_PROD_MANAGER_PASSWORD="***"
+$env:CYPRESS_PROD_STAFF_EMAIL="staff-e2e@example.com"
+$env:CYPRESS_PROD_STAFF_PASSWORD="***"
+$env:CYPRESS_PROD_VIEWER_EMAIL="viewer-e2e@example.com"
+$env:CYPRESS_PROD_VIEWER_PASSWORD="***"
+$env:CYPRESS_PROD_CUSTOMER_EMAIL="customer-e2e@example.com"
+$env:CYPRESS_PROD_CUSTOMER_PASSWORD="***"
+$env:CYPRESS_PROD_CUSTOMER_UNVERIFIED_EMAIL="customer-unverified-e2e@example.com"
+$env:CYPRESS_PROD_CUSTOMER_UNVERIFIED_PASSWORD="***"
+$env:CYPRESS_PROD_OWNER_EMAIL="owner-e2e@example.com"
+$env:CYPRESS_PROD_OWNER_PASSWORD="***"
+
+npm run test:e2e:prod:preflight
+npm run test:e2e:prod:smoke
+npm run test:e2e:prod:full
+npm run test:e2e:prod:report
+```
+
+For production PayOS, Cypress creates a real payment checkpoint and writes the order code plus checkout URL to `cypress/reports/production-run-summary.md`. Pay the 10.000 VND micro-payment manually while Cypress is polling, then it continues the booking/contract/admin checks. Use `CYPRESS_WAIT_FOR_PROD_PAYMENT=false` only when you want a checkpoint report without waiting.
+
+Traceability now includes coverage depth:
+
+```text
+not-covered -> route-smoke -> ui-real -> business-flow -> external-real
+```
+
+When the full workbook suite is too long for one shell/session, run specs in smaller groups with `CYPRESS_APPEND_TRACEABILITY=true` so `cypress/reports/testcase-traceability.*` keeps previously collected results instead of starting over.
 
 The npm Cypress scripts clear `ELECTRON_RUN_AS_NODE` before launching Cypress. If you call Cypress directly, clear that variable first in the same shell.
 

@@ -2,19 +2,24 @@
 @{ ViewData["Title"] = "Lịch Sử Thuê Xe"; }
 
 <style>
-    .booking-card { border-radius: 24px; transition: transform 0.3s, box-shadow 0.3s; }
+    .booking-card { border-radius: var(--pt-radius, 8px); transition: transform 0.3s, box-shadow 0.3s; }
     .booking-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.08) !important; }
     .tracking-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 5px; animation: blink 1.5s infinite; }
     @@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     .status-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
 </style>
 
-<div class="page-bookings">
-<div class="d-flex justify-content-between align-items-center mb-5">
-    <a asp-controller="Car" asp-action="Index" class="btn btn-primary rounded-pill px-4">
-        <i class="bi bi-plus-lg me-2"></i>Đặt thêm xe
-    </a>
-</div>
+<div class="page-bookings py-3 py-lg-4">
+    <div class="pt-page-header">
+        <div>
+            <div class="pt-eyebrow mb-1">Chuyến xe của tôi</div>
+            <h1 class="pt-title h3 mb-1">Lịch sử thuê xe</h1>
+            <p class="pt-subtitle">Theo dõi đặt xe, thanh toán, bàn giao và trạng thái vận hành trong một nơi.</p>
+        </div>
+        <a asp-controller="Car" asp-action="Index" class="btn btn-primary px-4">
+            <i class="bi bi-plus-lg me-2"></i>Đặt thêm xe
+        </a>
+    </div>
 
 @if (TempData["Warning"] != null)
 {
@@ -79,6 +84,9 @@ else
             var handoverRecords = ViewBag.HandoverRecords as List<CarRentalSystem.Models.HandoverRecord> ?? new List<CarRentalSystem.Models.HandoverRecord>();
             var cardCheckInRecord = handoverRecords.FirstOrDefault(h => h.BookingID == booking.BookingID && h.Type == "CheckIn");
             var cardCheckOutRecord = handoverRecords.FirstOrDefault(h => h.BookingID == booking.BookingID && h.Type == "CheckOut");
+            var cardDigitalContract = booking.DigitalContract ?? booking.BookingTransaction?.DigitalContract;
+            var hasSignedDigitalContract = cardDigitalContract?.IsSignedByCustomer == true;
+            var requiresDigitalContract = CarRentalSystem.Models.CarContractSigningModes.Normalize(booking.Car?.ContractSigningMode) == CarRentalSystem.Models.CarContractSigningModes.Digital;
 
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm booking-card overflow-hidden @(statusName == "Cancelled" ? "opacity-75" : "")">
@@ -118,6 +126,7 @@ else
 
                         <div class="col-md-7">
                             <div class="card-body p-4">
+                                @await Html.PartialAsync("_BookingFlowProgress", CarRentalSystem.ViewModels.BookingFlowProgressViewModel.ForBooking(booking))
                                 @if (statusName != "Cancelled")
                                 {
                                     <div class="d-flex justify-content-between mb-4 mt-2 position-relative">
@@ -187,11 +196,38 @@ else
                                                 </button>
                                             </form>
                                         }
+                                        @if (cardDigitalContract != null)
+                                        {
+                                            if (!hasSignedDigitalContract)
+                                            {
+                                                <a asp-controller="DigitalContract" asp-action="Sign" asp-route-id="@cardDigitalContract.DigitalContractID" class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm fw-bold">
+                                                    <i class="bi bi-pen me-1"></i>Ký hợp đồng
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a asp-controller="DigitalContract" asp-action="Details" asp-route-id="@cardDigitalContract.DigitalContractID" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                                    <i class="bi bi-file-earmark-check me-1"></i>Hợp đồng
+                                                </a>
+                                            }
+                                        }
+                                        else if (requiresDigitalContract)
+                                        {
+                                            <button class="btn btn-outline-warning btn-sm rounded-pill px-3" disabled>
+                                                <i class="bi bi-file-earmark-lock me-1"></i>Chờ hợp đồng số
+                                            </button>
+                                        }
                                         @if (statusName == "Confirmed")
                                         {
                                             @if (cardCheckInRecord == null)
                                             {
                                                 <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Can tao bien ban nhan xe truoc">
+                                                    <i class="bi bi-key me-1"></i>Nhan xe
+                                                </button>
+                                            }
+                                            else if (requiresDigitalContract && !hasSignedDigitalContract)
+                                            {
+                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Can ky hop dong so truoc">
                                                     <i class="bi bi-key me-1"></i>Nhan xe
                                                 </button>
                                             }
@@ -227,9 +263,9 @@ else
                                                 <i class="bi bi-x-circle me-1"></i>Huy
                                             </button>
                                         }
-                                        @* Hợp đồng vật lý do nhân sự nội bộ quản lý trong Admin Panel. *@
+                                        @* Hợp đồng vật lý do chủ xe tự chuẩn bị và tự lưu ngoài hệ thống. *@
                                         @* Nút tạo biên bản nhận xe (sau khi ký hợp đồng, trước khi nhận xe) *@
-                                        @if (statusName == "Confirmed" && cardCheckInRecord == null)
+                                        @if (statusName == "Confirmed" && cardCheckInRecord == null && (!requiresDigitalContract || hasSignedDigitalContract))
                                         {
                                             <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@booking.BookingID" asp-route-type="CheckIn" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-bold">
                                                 <i class="bi bi-clipboard-plus me-1"></i>Tạo biên bản nhận xe
@@ -428,5 +464,3 @@ else
     </script>
 }
 </div>
-
-

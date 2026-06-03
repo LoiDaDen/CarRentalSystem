@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
 using CarRentalSystem.Models;
@@ -15,22 +14,13 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IAreaService _areaService;
-        private readonly IFileUploadValidationService _fileValidation;
-        private readonly IContractClassificationService _classifier;
-        private readonly IAuditTrailService _auditTrail;
 
         public PhysicalContractsController(
             ApplicationDbContext context,
-            IAreaService areaService,
-            IFileUploadValidationService fileValidation,
-            IContractClassificationService classifier,
-            IAuditTrailService auditTrail)
+            IAreaService areaService)
         {
             _context = context;
             _areaService = areaService;
-            _fileValidation = fileValidation;
-            _classifier = classifier;
-            _auditTrail = auditTrail;
         }
 
         [HttpGet]
@@ -112,102 +102,25 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Upload(int? bookingId, int? carId, IFormFile? file, string? title, string? note, int? areaId)
+        public IActionResult Upload(int? bookingId, int? carId, IFormFile? file, string? title, string? note, int? areaId)
         {
-            if (file == null || !await _fileValidation.IsAllowedImageOrPdfAsync(file, 12 * 1024 * 1024))
-            {
-                TempData["Error"] = "Chỉ chấp nhận ảnh/PDF hợp đồng tối đa 12MB.";
-                return RedirectToAction(nameof(Index), new { areaId, bookingId, carId });
-            }
-
-            var userId = GetCurrentUserId();
-            var role = GetCurrentRole();
-            var scopedLocationIds = await ResolveScopedLocationIdsAsync(userId, role, areaId);
-            if (scopedLocationIds == null) return Forbid();
-
-            if (role != UserRoleConstants.Admin && !bookingId.HasValue && !carId.HasValue)
-                return Forbid();
-
-            if (carId.HasValue && !await CanAccessCarAsync(carId.Value, scopedLocationIds))
-                return Forbid();
-
-            if (bookingId.HasValue && !await CanAccessBookingAsync(bookingId.Value, scopedLocationIds))
-                return Forbid();
-
-            var fileHash = await ComputeFileHashAsync(file);
-            var fileUrl = await SaveFileAsync(file, "uploads/contracts");
-            var classification = await _classifier.ClassifyAsync(file.FileName, note);
-
-            var contract = new PhysicalContract
-            {
-                BookingID = bookingId,
-                CarID = carId,
-                OwnerID = userId,
-                Title = title,
-                Note = note,
-                FileUrl = fileUrl,
-                FileKind = Path.GetExtension(file.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase) ? "Pdf" : "Image",
-                SuggestedContractTypeCode = classification.SuggestedContractTypeCode,
-                AiConfidence = classification.Confidence,
-                AiReason = classification.Reason,
-                Status = "PendingConfirmation",
-                FileContentHash = fileHash,
-                UploadedIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                UploadedUserAgent = Request.Headers.UserAgent.ToString()
-            };
-
-            _context.PhysicalContracts.Add(contract);
-            await _context.SaveChangesAsync();
-
-            await _auditTrail.RecordAsync(new AuditLog
-            {
-                Action = "UploadPhysicalContract",
-                EntityType = nameof(PhysicalContract),
-                EntityId = contract.PhysicalContractID,
-                UserId = userId,
-                Reason = "Physical contract uploaded with content hash.",
-                NewValues = JsonSerializer.Serialize(new { contract.BookingID, contract.CarID, contract.FileKind, contract.FileContentHash })
-            });
-
-            TempData["Success"] = "Đã upload hợp đồng. AI đã gợi ý loại hợp đồng, vui lòng xác nhận.";
+            TempData["Error"] = "Hợp đồng vật lý do chủ xe tự chuẩn bị và tự lưu ngoài hệ thống. App không còn nhận upload hợp đồng giấy.";
             return RedirectToAction(nameof(Index), new { areaId, bookingId, carId });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Classify(int id, int? areaId)
+        public IActionResult Classify(int id, int? areaId)
         {
-            var contract = await GetScopedContractAsync(id, areaId);
-            if (contract == null) return NotFound();
-
-            var result = await _classifier.ClassifyAsync(Path.GetFileName(contract.FileUrl), contract.Note);
-            contract.SuggestedContractTypeCode = result.SuggestedContractTypeCode;
-            contract.AiConfidence = result.Confidence;
-            contract.AiReason = result.Reason;
-            contract.Status = "PendingConfirmation";
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "Đã phân loại lại tài liệu.";
+            TempData["Error"] = "Module hợp đồng vật lý chỉ còn đọc dữ liệu cũ; không phân loại tài liệu mới.";
             return RedirectToAction(nameof(Index), new { areaId });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ConfirmType(int id, int contractTypeId, int? areaId)
+        public IActionResult ConfirmType(int id, int contractTypeId, int? areaId)
         {
-            var contract = await GetScopedContractAsync(id, areaId);
-            if (contract == null) return NotFound();
-
-            var exists = await _context.PhysicalContractTypes
-                .AnyAsync(t => t.PhysicalContractTypeID == contractTypeId && t.IsActive);
-            if (!exists) return BadRequest();
-
-            contract.PhysicalContractTypeID = contractTypeId;
-            contract.Status = "Confirmed";
-            contract.ConfirmedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "Đã xác nhận loại hợp đồng.";
+            TempData["Error"] = "Module hợp đồng vật lý chỉ còn đọc dữ liệu cũ; không xác nhận tài liệu mới.";
             return RedirectToAction(nameof(Index), new { areaId });
         }
 
@@ -254,38 +167,6 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             return await _areaService.GetLocationIdsForUserAsync(userId);
         }
 
-        private async Task<PhysicalContract?> GetScopedContractAsync(int id, int? areaId)
-        {
-            var userId = GetCurrentUserId();
-            var role = GetCurrentRole();
-            var scopedLocationIds = await ResolveScopedLocationIdsAsync(userId, role, areaId);
-            if (scopedLocationIds == null) return null;
-
-            return await BuildBaseQuery(scopedLocationIds)
-                .FirstOrDefaultAsync(c => c.PhysicalContractID == id);
-        }
-
-        private async Task<bool> CanAccessCarAsync(int carId, List<int>? scopedLocationIds)
-        {
-            var query = _context.Cars.Where(c => c.CarID == carId);
-            if (scopedLocationIds != null)
-                query = query.Where(c => scopedLocationIds.Contains(c.LocationID));
-            return await query.AnyAsync();
-        }
-
-        private async Task<bool> CanAccessBookingAsync(int bookingId, List<int>? scopedLocationIds)
-        {
-            var query = _context.Bookings.Where(b => b.BookingID == bookingId);
-            if (scopedLocationIds != null)
-            {
-                query = query.Where(b =>
-                    scopedLocationIds.Contains(b.PickupLocationID) ||
-                    scopedLocationIds.Contains(b.ReturnLocationID));
-            }
-
-            return await query.AnyAsync();
-        }
-
         private async Task PopulateLookupsAsync(string role, int? selectedAreaId)
         {
             ViewBag.Types = await _context.PhysicalContractTypes
@@ -319,24 +200,5 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         private string GetCurrentRole() =>
             User.FindFirst(ClaimTypes.Role)?.Value
          ?? User.FindFirst("role")?.Value ?? "";
-
-        private static async Task<string> SaveFileAsync(IFormFile file, string relativeFolder)
-        {
-            var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativeFolder.Replace('/', Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(folder);
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            var fileName = $"{Guid.NewGuid():N}{ext}";
-            var path = Path.Combine(folder, fileName);
-            await using var stream = System.IO.File.Create(path);
-            await file.CopyToAsync(stream);
-            return $"/{relativeFolder}/{fileName}".Replace("\\", "/");
-        }
-
-        private static async Task<string> ComputeFileHashAsync(IFormFile file)
-        {
-            await using var stream = file.OpenReadStream();
-            var hash = await System.Security.Cryptography.SHA256.HashDataAsync(stream);
-            return Convert.ToHexString(hash).ToLowerInvariant();
-        }
     }
 }

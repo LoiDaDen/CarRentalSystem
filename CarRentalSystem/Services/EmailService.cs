@@ -455,9 +455,16 @@ namespace CarRentalSystem.Services
 
         private async Task SendEmailAsync(string host, string portStr, string user, string pass, string toEmail, string subject, string body)
         {
-            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(user))
+            var throwOnFailure = _configuration.GetValue("Email:ThrowOnFailure", false);
+            if (string.IsNullOrWhiteSpace(host) ||
+                string.IsNullOrWhiteSpace(user) ||
+                string.IsNullOrWhiteSpace(pass))
             {
-                _logger.LogError("SMTP settings are not configured. Email to {Email} with subject {Subject} was not sent.", toEmail, subject);
+                var exception = new InvalidOperationException("SMTP settings are not configured.");
+                _logger.LogError(exception, "SMTP settings are not configured. Email to {Email} with subject {Subject} was not sent.", toEmail, subject);
+                if (throwOnFailure)
+                    throw exception;
+
                 return;
             }
 
@@ -487,6 +494,8 @@ namespace CarRentalSystem.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send email to {Email} with subject {Subject}", toEmail, subject);
+                if (throwOnFailure)
+                    throw;
             }
         }
     }

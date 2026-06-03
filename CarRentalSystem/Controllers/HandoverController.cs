@@ -89,6 +89,12 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Booking", new { id = bookingId });
             }
 
+            if (normalizedType == "CheckIn" && RequiresSignedDigitalContract(booking) && !HasSignedDigitalContract(booking))
+            {
+                TempData["ErrorMessage"] = "Vui lòng ký hợp đồng số trước khi lập biên bản nhận xe.";
+                return RedirectToAction("Details", "Booking", new { id = bookingId });
+            }
+
             var alreadyCaptured = await _context.HandoverRecords
                 .AnyAsync(h => h.BookingID == bookingId && h.Type == normalizedType && !h.IsDeleted);
             if (alreadyCaptured)
@@ -128,6 +134,12 @@ namespace CarRentalSystem.Controllers
             if (!IsStatusAllowedForHandover(booking.BookingStatus?.Name, normalizedType))
             {
                 TempData["ErrorMessage"] = "Trạng thái đơn thuê không hợp lệ để lập biên bản bàn giao.";
+                return RedirectToAction("Details", "Booking", new { id = BookingID });
+            }
+
+            if (normalizedType == "CheckIn" && RequiresSignedDigitalContract(booking) && !HasSignedDigitalContract(booking))
+            {
+                TempData["ErrorMessage"] = "Vui lòng ký hợp đồng số trước khi lập biên bản nhận xe.";
                 return RedirectToAction("Details", "Booking", new { id = BookingID });
             }
 
@@ -203,7 +215,21 @@ namespace CarRentalSystem.Controllers
                 .Include(b => b.BookingStatus)
                 .Include(b => b.Car)
                 .ThenInclude(c => c!.CarBrand)
+                .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction)
+                .ThenInclude(t => t!.DigitalContract)
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
+        }
+
+        private static bool HasSignedDigitalContract(Booking booking)
+        {
+            var contract = booking.DigitalContract ?? booking.BookingTransaction?.DigitalContract;
+            return contract?.IsSignedByCustomer == true;
+        }
+
+        private static bool RequiresSignedDigitalContract(Booking booking)
+        {
+            return CarContractSigningModes.Normalize(booking.Car?.ContractSigningMode) == CarContractSigningModes.Digital;
         }
 
         private async Task<string?> SaveEvidenceFileAsync(string uploadPath, IFormFile? file)

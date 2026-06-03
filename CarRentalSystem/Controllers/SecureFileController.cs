@@ -3,6 +3,7 @@ using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace CarRentalSystem.Controllers
@@ -15,6 +16,7 @@ namespace CarRentalSystem.Controllers
             "eKyc",
             "Handovers",
             "Contracts",
+            "OwnerSignatures",
             "PhysicalContracts"
         };
 
@@ -90,7 +92,8 @@ namespace CarRentalSystem.Controllers
             if (!int.TryParse(userIdClaim, out var currentUserId))
                 return SecureFileValidation.Invalid(Unauthorized());
 
-            if (fileOwnerId != currentUserId && !User.IsInRole("Admin"))
+            if (fileOwnerId != currentUserId && !User.IsInRole("Admin") &&
+                !await CanAccessOwnerSignatureFromContractAsync(folder!, normalizedFileName, currentUserId))
                 return SecureFileValidation.Invalid(Forbid());
 
             var fileOwner = await _context.Users.FindAsync(fileOwnerId);
@@ -122,6 +125,18 @@ namespace CarRentalSystem.Controllers
             if (fileName.Contains('\\')) return false;
             if (fileName.Split('/').Any(part => part is "" or "." or "..")) return false;
             return true;
+        }
+
+        private async Task<bool> CanAccessOwnerSignatureFromContractAsync(string folder, string normalizedFileName, int currentUserId)
+        {
+            if (!string.Equals(folder, "OwnerSignatures", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return await _context.DigitalContracts.AnyAsync(c =>
+                c.OwnerSignatureUrl != null &&
+                c.OwnerSignatureUrl.Contains(normalizedFileName) &&
+                ((c.Booking != null && c.Booking.UserID == currentUserId) ||
+                 (c.BookingTransaction != null && c.BookingTransaction.UserID == currentUserId)));
         }
 
         private async Task WriteAuditLogAsync(string action, string? folder, int fileOwnerId, string fileName)

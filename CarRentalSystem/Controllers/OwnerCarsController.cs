@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text.Json;
 using System.ComponentModel.DataAnnotations;
 using CarRentalSystem.Helpers;
 using CarRentalSystem.Data;
@@ -16,11 +18,19 @@ namespace CarRentalSystem.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IFileUploadValidationService _fileValidation;
+        private readonly IAuditTrailService _auditTrail;
+        private readonly IWebHostEnvironment _environment;
 
-        public OwnerCarsController(ApplicationDbContext context, IFileUploadValidationService fileValidation)
+        public OwnerCarsController(
+            ApplicationDbContext context,
+            IFileUploadValidationService fileValidation,
+            IAuditTrailService auditTrail,
+            IWebHostEnvironment environment)
         {
             _context = context;
             _fileValidation = fileValidation;
+            _auditTrail = auditTrail;
+            _environment = environment;
         }
 
         public async Task<IActionResult> Index(string? q = null, string service = "all", string status = "all")
@@ -33,12 +43,17 @@ namespace CarRentalSystem.Controllers
             var bookingRows = await LoadOwnerBookingRowsAsync(allCarIds);
             var visibleBookingRows = bookingRows.Where(b => visibleCarIds.Contains(b.CarID)).ToList();
             var latestTracking = await LoadLatestTrackingAsync(allCarIds);
-            var contractCarIds = await LoadOwnerContractCarIdsAsync(userId, allCarIds);
+            var signatureProfile = await _context.OwnerDigitalSignatureProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.UserID == userId);
+            var hasReadyDigitalSignature = signatureProfile?.IsReady == true;
             var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var today = GetVietnamToday();
 
             var cards = visibleCars.Select(car =>
             {
                 var carBookings = visibleBookingRows.Where(b => b.CarID == car.CarID).ToList();
+                var inspectionStatus = BuildInspectionStatus(car.NextInspectionDate, today);
                 return new OwnerCarCardViewModel
                 {
                     CarID = car.CarID,
@@ -56,10 +71,16 @@ namespace CarRentalSystem.Controllers
                         .Sum(b => b.TotalPrice),
                     HasGps = latestTracking.ContainsKey(car.CarID),
                     HasEnoughImages = (car.CarImages?.Count ?? 0) >= 4,
-                    HasRequiredDocuments = contractCarIds.Contains(car.CarID),
+                    HasRequiredDocuments = CarContractSigningModes.Normalize(car.ContractSigningMode) != CarContractSigningModes.Digital || hasReadyDigitalSignature,
+                    ContractSigningMode = CarContractSigningModes.Normalize(car.ContractSigningMode),
+                    ContractSigningModeLabel = CarContractSigningModes.DisplayName(car.ContractSigningMode),
                     Seats = car.Seats,
                     FuelType = car.FuelType,
-                    Transmission = car.Transmission
+                    Transmission = car.Transmission,
+                    NextInspectionDate = car.NextInspectionDate,
+                    InspectionStatusLabel = inspectionStatus.Label,
+                    InspectionStatusClass = inspectionStatus.CssClass,
+                    InspectionStatusIcon = inspectionStatus.Icon
                 };
             }).ToList();
 
@@ -250,6 +271,64 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> Contracts()
         {
             var userId = GetCurrentUserId();
+            var cars = await GetOwnerCarsQuery(userId).ToListAsync();
+            var signatureProfile = await _context.OwnerDigitalSignatureProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.UserID == userId);
+
+            var contracts = await _context.DigitalContracts
+                .AsNoTracking()
+                .Include(c => c.Booking).ThenInclude(b => b!.User)
+                .Include(c => c.Booking).ThenInclude(b => b!.Car).ThenInclude(c => c!.CarBrand)
+                .Include(c => c.BookingTransaction).ThenInclude(t => t!.User)
+                .Include(c => c.BookingTransaction).ThenInclude(t => t!.Bookings).ThenInclude(b => b.Car).ThenInclude(c => c!.CarBrand)
+                .Where(c =>
+                    (c.Booking != null && c.Booking.Car != null && c.Booking.Car.OwnerID == userId)
+                    || (c.BookingTransaction != null && c.BookingTransaction.Bookings.Any(b => b.Car != null && b.Car.OwnerID == userId)))
+                .OrderByDescending(c => c.CreatedAt)
+                .Take(80)
+                .ToListAsync();
+
+            return View(new OwnerContractsViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Contracts"),
+                SignatureProfile = signatureProfile == null ? null : new OwnerDigitalSignatureProfileViewModel
+                {
+                    ProviderName = signatureProfile.ProviderName,
+                    CertificateSerialNumber = signatureProfile.CertificateSerialNumber,
+                    CertificateSubject = signatureProfile.CertificateSubject,
+                    CertificateValidUntil = signatureProfile.CertificateValidUntil,
+                    Status = signatureProfile.Status,
+                    SignatureImageUrl = signatureProfile.SignatureImageUrl,
+                    IsReady = signatureProfile.IsReady
+                },
+                Cars = cars.Select(car => new OwnerContractCarModeViewModel
+                {
+                    CarID = car.CarID,
+                    DisplayName = BuildCarDisplayName(car),
+                    LicensePlate = car.LicensePlate,
+                    ContractSigningMode = CarContractSigningModes.Normalize(car.ContractSigningMode),
+                    ContractSigningModeLabel = CarContractSigningModes.DisplayName(car.ContractSigningMode),
+                    CanEnableDigital = signatureProfile?.IsReady == true
+                }).ToList(),
+                DigitalContracts = contracts.Select(c => new OwnerDigitalContractRowViewModel
+                {
+                    DigitalContractID = c.DigitalContractID,
+                    ContractNo = c.ContractNo,
+                    BookingID = c.BookingID,
+                    TransactionID = c.TransactionID,
+                    CustomerName = c.Booking?.User?.Name ?? c.BookingTransaction?.User?.Name ?? c.CustomerName,
+                    CarSummary = BuildContractCarSummary(c),
+                    IsSignedByCustomer = c.IsSignedByCustomer,
+                    CustomerSignDate = c.CustomerSignDate,
+                    CreatedAt = c.CreatedAt
+                }).ToList()
+            });
+        }
+
+        private async Task<IActionResult> ContractsLegacy()
+        {
+            var userId = GetCurrentUserId();
             var carIds = await _context.Cars.AsNoTracking().Where(c => c.OwnerID == userId).Select(c => c.CarID).ToListAsync();
             var contracts = await _context.PhysicalContracts
                 .AsNoTracking()
@@ -278,6 +357,110 @@ namespace CarRentalSystem.Controllers
                     UploadedAt = c.UploadedAt
                 }).ToList()
             });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveSignatureProfile(OwnerDigitalSignatureProfileInputModel model, IFormFile? signatureImage)
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(model.ProviderName) ||
+                string.IsNullOrWhiteSpace(model.CertificateSerialNumber) ||
+                string.IsNullOrWhiteSpace(model.CertificateSubject))
+            {
+                TempData["Error"] = "Vui lòng nhập đủ nhà cung cấp CA, số serial và chủ thể chứng thư.";
+                return RedirectToAction(nameof(Contracts));
+            }
+
+            var profile = await _context.OwnerDigitalSignatureProfiles.FirstOrDefaultAsync(p => p.UserID == userId)
+                ?? new OwnerDigitalSignatureProfile { UserID = userId, CreatedAt = DateTime.UtcNow };
+
+            if (profile.OwnerDigitalSignatureProfileID == 0)
+                _context.OwnerDigitalSignatureProfiles.Add(profile);
+
+            profile.ProviderName = model.ProviderName.Trim();
+            profile.CertificateSerialNumber = model.CertificateSerialNumber.Trim();
+            profile.CertificateSubject = model.CertificateSubject.Trim();
+            profile.CertificateValidUntil = model.CertificateValidUntil?.Date;
+            profile.UpdatedAt = DateTime.UtcNow;
+
+            if (signatureImage != null && signatureImage.Length > 0)
+            {
+                if (!await _fileValidation.IsAllowedImageAsync(signatureImage, 2 * 1024 * 1024))
+                {
+                    TempData["Error"] = "Chữ ký mẫu chỉ chấp nhận JPG, PNG, WEBP tối đa 2MB.";
+                    return RedirectToAction(nameof(Contracts));
+                }
+
+                var savedSignature = await SaveOwnerSignatureAsync(userId, signatureImage);
+                profile.SignatureImageUrl = savedSignature.Url;
+                profile.SignatureImageHash = savedSignature.Hash;
+            }
+
+            if (string.IsNullOrWhiteSpace(profile.SignatureImageHash))
+            {
+                profile.Status = OwnerDigitalSignatureProfileStatuses.Pending;
+                TempData["Error"] = "Vui lòng tải lên ảnh chữ ký mẫu để hoàn tất hồ sơ chữ ký số.";
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Contracts));
+            }
+
+            profile.Status = profile.CertificateValidUntil.HasValue && profile.CertificateValidUntil.Value.Date < DateTime.UtcNow.Date
+                ? OwnerDigitalSignatureProfileStatuses.Pending
+                : OwnerDigitalSignatureProfileStatuses.Active;
+            profile.VerifiedAt = profile.Status == OwnerDigitalSignatureProfileStatuses.Active ? DateTime.UtcNow : null;
+
+            await _context.SaveChangesAsync();
+            await RecordOwnerAuditAsync("UpsertOwnerDigitalSignatureProfile", userId, "Owner updated digital signature profile.", new
+            {
+                profile.ProviderName,
+                profile.CertificateSerialNumber,
+                profile.CertificateSubject,
+                profile.CertificateValidUntil,
+                profile.Status,
+                profile.SignatureImageHash
+            });
+
+            TempData["Success"] = profile.IsReady
+                ? "Hồ sơ chữ ký số đã sẵn sàng. Bạn có thể bật hợp đồng số cho xe."
+                : "Đã lưu hồ sơ chữ ký số, nhưng hồ sơ chưa sẵn sàng.";
+            return RedirectToAction(nameof(Contracts));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateContractMode(int carId, string contractSigningMode)
+        {
+            var userId = GetCurrentUserId();
+            var car = await _context.Cars.FirstOrDefaultAsync(c => c.CarID == carId && c.OwnerID == userId);
+            if (car == null) return NotFound();
+
+            var normalizedMode = CarContractSigningModes.Normalize(contractSigningMode);
+            if (normalizedMode == CarContractSigningModes.Digital)
+            {
+                var signatureProfile = await _context.OwnerDigitalSignatureProfiles
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.UserID == userId);
+                if (signatureProfile?.IsReady != true)
+                {
+                    TempData["Error"] = "Bạn cần hoàn tất hồ sơ chữ ký số trước khi bật hợp đồng số cho xe.";
+                    return RedirectToAction(nameof(Contracts));
+                }
+            }
+
+            var oldMode = CarContractSigningModes.Normalize(car.ContractSigningMode);
+            car.ContractSigningMode = normalizedMode;
+            car.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            await RecordOwnerAuditAsync("UpdateCarContractSigningMode", userId, $"Owner changed car #{car.CarID} contract mode.", new
+            {
+                car.CarID,
+                OldMode = oldMode,
+                NewMode = normalizedMode
+            });
+
+            TempData["Success"] = $"Đã cập nhật {BuildCarDisplayName(car)} sang {CarContractSigningModes.DisplayName(normalizedMode)}.";
+            return RedirectToAction(nameof(Contracts));
         }
 
         [HttpGet]
@@ -393,6 +576,25 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
+            if (!model.NextInspectionDate.HasValue)
+            {
+                initialStep = 1;
+            }
+
+            var normalizedContractMode = CarContractSigningModes.Normalize(model.ContractSigningMode);
+            if (normalizedContractMode == CarContractSigningModes.Digital)
+            {
+                var currentUserId = GetCurrentUserId();
+                var signatureProfile = await _context.OwnerDigitalSignatureProfiles
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.UserID == currentUserId);
+                if (signatureProfile?.IsReady != true)
+                {
+                    ModelState.AddModelError(nameof(model.ContractSigningMode), "Bạn cần hoàn tất hồ sơ chữ ký số trước khi chọn hợp đồng số.");
+                    initialStep = 2;
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 await PopulateCreateViewDataAsync();
@@ -462,6 +664,7 @@ namespace CarRentalSystem.Controllers
                 CarAddress = model.CarAddress,
                 Latitude = model.Latitude,
                 Longitude = model.Longitude,
+                NextInspectionDate = model.NextInspectionDate?.Date,
                 Features = string.Join(", ", selectedAmenities.Select(a => a.Name)),
                 CurrentOdometer = 0,
                 CommissionRate = 20m,
@@ -475,6 +678,7 @@ namespace CarRentalSystem.Controllers
                 DailyMileageLimitKm = model.DailyMileageLimitKm,
                 ExtraMileageFeePerKm = model.ExtraMileageFeePerKm,
                 RentalTerms = model.RentalTerms,
+                ContractSigningMode = normalizedContractMode,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -502,6 +706,58 @@ namespace CarRentalSystem.Controllers
             await _context.SaveChangesAsync();
             TempData["Success"] = "Xe đã được gửi lên hệ thống và đang chờ duyệt.";
             return RedirectToAction(nameof(Index));
+        }
+
+        private static string BuildContractCarSummary(DigitalContract contract)
+        {
+            if (contract.Booking != null)
+                return $"{contract.Booking.Car?.CarBrand?.Name} {contract.Booking.Car?.CarName}".Trim();
+
+            if (contract.BookingTransaction?.Bookings != null && contract.BookingTransaction.Bookings.Any())
+            {
+                return string.Join(", ", contract.BookingTransaction.Bookings
+                    .Where(b => b.Car != null)
+                    .Select(b => $"{b.Car?.CarBrand?.Name} {b.Car?.CarName}".Trim()));
+            }
+
+            return contract.CarModel;
+        }
+
+        private async Task<(string Url, string Hash)> SaveOwnerSignatureAsync(int userId, IFormFile file)
+        {
+            var folder = Path.Combine(_environment.ContentRootPath, "App_Data", "SecureUploads", "OwnerSignatures", userId.ToString());
+            Directory.CreateDirectory(folder);
+
+            await using var input = file.OpenReadStream();
+            using var memory = new MemoryStream();
+            await input.CopyToAsync(memory);
+            var bytes = memory.ToArray();
+            var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var path = Path.Combine(folder, fileName);
+            await System.IO.File.WriteAllBytesAsync(path, bytes);
+
+            return ($"/SecureFile/GetSecureImage?folder=OwnerSignatures&fileName={userId}/{fileName}", hash);
+        }
+
+        private async Task RecordOwnerAuditAsync(string action, int userId, string description, object values)
+        {
+            await _auditTrail.RecordAsync(new AuditLog
+            {
+                Action = action,
+                EntityType = "OwnerContracts",
+                EntityId = userId,
+                UserId = userId,
+                UserName = User.Identity?.Name,
+                Description = description,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers.UserAgent.ToString(),
+                RequestUrl = $"{Request.Method} {Request.Path}{Request.QueryString}",
+                NewValues = JsonSerializer.Serialize(values),
+                Timestamp = DateTime.UtcNow
+            });
         }
 
         private IQueryable<Car> GetOwnerCarsQuery(int userId)
@@ -680,6 +936,43 @@ namespace CarRentalSystem.Controllers
             return string.IsNullOrWhiteSpace(value) ? "all" : value.Trim().ToLowerInvariant();
         }
 
+        private static InspectionBadge BuildInspectionStatus(DateTime? nextInspectionDate, DateTime today)
+        {
+            if (!nextInspectionDate.HasValue)
+            {
+                return new InspectionBadge("Thiếu ngày đăng kiểm", "warn", "bi-calendar-x");
+            }
+
+            var inspectionDate = nextInspectionDate.Value.Date;
+            var daysLeft = (inspectionDate - today).Days;
+            if (daysLeft < 0)
+            {
+                return new InspectionBadge($"Quá hạn đăng kiểm {Math.Abs(daysLeft)} ngày", "danger", "bi-exclamation-triangle");
+            }
+
+            if (daysLeft <= 30)
+            {
+                return new InspectionBadge($"Đăng kiểm còn {daysLeft} ngày", "warn", "bi-calendar-event");
+            }
+
+            return new InspectionBadge($"Đăng kiểm: {inspectionDate:dd/MM/yyyy}", "ok", "bi-shield-check");
+        }
+
+        private static DateTime GetVietnamToday()
+        {
+            TimeZoneInfo timeZone;
+            try
+            {
+                timeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                timeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
+            }
+
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).Date;
+        }
+
         private static IReadOnlyList<OwnerDocumentViewModel> GetGuideDocuments()
         {
             return new[]
@@ -792,6 +1085,8 @@ namespace CarRentalSystem.Controllers
             public decimal TotalPrice { get; set; }
             public DateTime CreatedAt { get; set; }
         }
+
+        private sealed record InspectionBadge(string Label, string CssClass, string Icon);
     }
 
     public class OwnerCarCreateViewModel
@@ -806,6 +1101,8 @@ namespace CarRentalSystem.Controllers
         public string FuelType { get; set; } = "Xăng";
         public string? FuelConsumption { get; set; }
         public string? Description { get; set; }
+        [Required(ErrorMessage = "Vui lòng nhập ngày đăng kiểm tiếp theo.")]
+        public DateTime? NextInspectionDate { get; set; }
         public int? ServiceTypeID { get; set; }
         public decimal PricePerDay { get; set; }
         public decimal WeeklyDiscountPercent { get; set; } = 5m;
@@ -818,6 +1115,7 @@ namespace CarRentalSystem.Controllers
         public decimal DailyMileageLimitKm { get; set; } = 400m;
         public decimal ExtraMileageFeePerKm { get; set; } = 3000m;
         public string? RentalTerms { get; set; }
+        public string ContractSigningMode { get; set; } = CarContractSigningModes.PhysicalSelfManaged;
         public string? CityOrProvince { get; set; }
         public string? District { get; set; }
         public string? Ward { get; set; }

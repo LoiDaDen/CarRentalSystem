@@ -118,5 +118,27 @@ namespace CarRentalSystem.Tests.UnitTests
             await act.Should().NotThrowAsync(
                 "vì khi SMTP host không hợp lệ, service phải catch exception và log lỗi thay vì crash");
         }
+
+        [Fact]
+        [Trait("Module", "Email")]
+        [Trait("Type", "Unit")]
+        public async Task SendVerificationEmail_ThrowOnFailureWithMissingSmtp_Throws()
+        {
+            var config = CreateConfiguration(new Dictionary<string, string?>
+            {
+                { "SmtpSettings:Host", "" },
+                { "SmtpSettings:Port", "" },
+                { "SmtpSettings:User", "" },
+                { "SmtpSettings:Pass", "" },
+                { "Email:ThrowOnFailure", "true" }
+            });
+            var emailService = new EmailService(_loggerMock.Object, config);
+
+            var act = async () => await emailService.SendVerificationEmailAsync(
+                "user@test.com",
+                "https://localhost/verify?token=xyz");
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
+        }
     }
 }

@@ -13,6 +13,7 @@ namespace CarRentalSystem.Services
                 ("ConnectionStrings:DefaultConnection", configuration.GetConnectionString("DefaultConnection")),
                 ("Cors:AllowedOrigins", string.Join(",", allowedCorsOrigins)),
                 ("Tracking:IngestSecret", configuration["Tracking:IngestSecret"]),
+                ("DataProtection:ApplicationName", configuration["DataProtection:ApplicationName"]),
                 ("DataProtection:KeysPath", configuration["DataProtection:KeysPath"]),
                 ("PayOS:ClientId", configuration["PayOS:ClientId"]),
                 ("PayOS:ApiKey", configuration["PayOS:ApiKey"]),
@@ -20,6 +21,7 @@ namespace CarRentalSystem.Services
                 ("SmtpSettings:Host", configuration["SmtpSettings:Host"]),
                 ("SmtpSettings:User", configuration["SmtpSettings:User"]),
                 ("SmtpSettings:Pass", configuration["SmtpSettings:Pass"]),
+                ("Recaptcha:SiteKey", configuration["Recaptcha:SiteKey"]),
                 ("Recaptcha:SecretKey", configuration["Recaptcha:SecretKey"]),
                 ("FptAi:ApiKey", configuration["FptAi:ApiKey"])
             };

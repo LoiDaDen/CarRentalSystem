@@ -6,6 +6,7 @@ using CarRentalSystem.Tests.Helpers;
 using CarRentalSystem.ViewModels;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -97,9 +98,60 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             model.BookingRows.Single().LicensePlate.Should().Be("51A-OWN01");
         }
 
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Contracts")]
+        public async Task UpdateContractMode_DigitalWithoutReadyProfile_IsRejected()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (ownCar, _) = await SeedOwnerPortalDataAsync(context);
+            var controller = CreateController(context, userId: 2);
+
+            var result = await controller.UpdateContractMode(ownCar.CarID, CarContractSigningModes.Digital);
+
+            result.Should().BeOfType<RedirectToActionResult>()
+                .Which.ActionName.Should().Be(nameof(OwnerCarsController.Contracts));
+            controller.TempData["Error"]!.ToString().Should().Contain("hồ sơ chữ ký số");
+            (await context.Cars.FindAsync(ownCar.CarID))!.ContractSigningMode.Should().Be(CarContractSigningModes.PhysicalSelfManaged);
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Contracts")]
+        public async Task UpdateContractMode_DigitalWithReadyProfile_UpdatesCar()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (ownCar, _) = await SeedOwnerPortalDataAsync(context);
+            context.OwnerDigitalSignatureProfiles.Add(new OwnerDigitalSignatureProfile
+            {
+                UserID = 2,
+                ProviderName = "Test CA",
+                CertificateSerialNumber = "SERIAL-1",
+                CertificateSubject = "CN=Owner",
+                CertificateValidUntil = DateTime.UtcNow.AddYears(1),
+                Status = OwnerDigitalSignatureProfileStatuses.Active,
+                SignatureImageHash = new string('a', 64),
+                SignatureImageUrl = "/SecureFile/GetSecureImage?folder=OwnerSignatures&fileName=2/test.png"
+            });
+            await context.SaveChangesAsync();
+            var controller = CreateController(context, userId: 2);
+
+            var result = await controller.UpdateContractMode(ownCar.CarID, CarContractSigningModes.Digital);
+
+            result.Should().BeOfType<RedirectToActionResult>()
+                .Which.ActionName.Should().Be(nameof(OwnerCarsController.Contracts));
+            (await context.Cars.FindAsync(ownCar.CarID))!.ContractSigningMode.Should().Be(CarContractSigningModes.Digital);
+        }
+
         private static OwnerCarsController CreateController(CarRentalSystem.Data.ApplicationDbContext context, int userId)
         {
-            var controller = new OwnerCarsController(context, Mock.Of<IFileUploadValidationService>());
+            var env = new Mock<IWebHostEnvironment>();
+            env.Setup(e => e.ContentRootPath).Returns(Path.GetTempPath());
+            var controller = new OwnerCarsController(
+                context,
+                Mock.Of<IFileUploadValidationService>(),
+                Mock.Of<IAuditTrailService>(),
+                env.Object);
             var httpContext = new DefaultHttpContext
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity(new[]

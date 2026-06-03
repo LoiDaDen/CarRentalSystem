@@ -85,6 +85,58 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             controller.TempData.ContainsKey("Error").Should().BeFalse();
         }
 
+        [Fact]
+        [Trait("Module", "Cart")]
+        [Trait("Type", "Contracts")]
+        public async Task CheckoutAll_MixedDigitalAndPhysicalContractModes_IsRejectedBeforePayment()
+        {
+            var user = await _context.Users.FindAsync(2);
+            var digitalCar = await _context.Cars.FindAsync(1);
+            var physicalCar = await _context.Cars.FindAsync(2);
+            digitalCar!.ContractSigningMode = CarContractSigningModes.Digital;
+            physicalCar!.ContractSigningMode = CarContractSigningModes.PhysicalSelfManaged;
+
+            var cart = new Cart { UserID = user!.UserID };
+            _context.Carts.Add(cart);
+            await _context.SaveChangesAsync();
+
+            var start = DateTime.UtcNow.AddDays(3);
+            _context.CartItems.AddRange(
+                new CartItem { CartID = cart.CartID, CarID = digitalCar.CarID, StartDate = start, EndDate = start.AddDays(1), EstimatedPrice = 1_000_000 },
+                new CartItem { CartID = cart.CartID, CarID = physicalCar.CarID, StartDate = start, EndDate = start.AddDays(1), EstimatedPrice = 1_500_000 });
+            await _context.SaveChangesAsync();
+
+            var eligibility = new Mock<IEligibilityService>();
+            eligibility.Setup(s => s.CheckRentalEligibilityAsync(user.UserID))
+                .ReturnsAsync(new EligibilityResult(true, null));
+            var payOS = new Mock<IPayOSPaymentService>();
+
+            var controller = new CartController(
+                _context,
+                Mock.Of<IPiiEncryptionService>(),
+                Mock.Of<IReservationService>(),
+                Mock.Of<IBookingQuoteService>(),
+                payOS.Object,
+                eligibility.Object,
+                Mock.Of<ILegalComplianceService>());
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new List<Claim>
+                {
+                    new(ClaimTypes.NameIdentifier, user.UserID.ToString())
+                }, "Cookies"))
+            };
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
+
+            var result = await controller.CheckoutAll(true, true);
+
+            result.Should().BeOfType<RedirectToActionResult>()
+                .Which.ActionName.Should().Be("Index");
+            controller.TempData["Error"]!.ToString().Should().Contain("hợp đồng số");
+            payOS.Verify(s => s.CreateCartHoldPaymentAsync(It.IsAny<BookingTransaction>(), It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+        }
+
         public void Dispose()
         {
             _context.Dispose();

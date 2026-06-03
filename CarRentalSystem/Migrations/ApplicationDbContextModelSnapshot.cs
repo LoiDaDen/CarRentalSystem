@@ -324,8 +324,8 @@ namespace CarRentalSystem.Migrations
                         .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("RequestUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
@@ -1151,6 +1151,13 @@ namespace CarRentalSystem.Migrations
                     b.Property<decimal>("CommissionRate")
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<string>("ContractSigningMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasDefaultValue("PhysicalSelfManaged");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1918,6 +1925,13 @@ namespace CarRentalSystem.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("ContractSigningMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasDefaultValue("Digital");
+
                     b.Property<int>("ContractVersion")
                         .HasColumnType("int");
 
@@ -1959,6 +1973,14 @@ namespace CarRentalSystem.Migrations
                     b.Property<DateTime?>("CustomerSignDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CustomerSignatureHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("CustomerSignatureUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<decimal>("DepositAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -1973,6 +1995,20 @@ namespace CarRentalSystem.Migrations
 
                     b.Property<DateTime?>("OwnerSignDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("OwnerSignatureHash")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OwnerSignatureProfileSnapshotJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OwnerSignatureUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OwnerUserIdsJson")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PaymentMethod")
                         .HasMaxLength(50)
@@ -2819,6 +2855,69 @@ namespace CarRentalSystem.Migrations
                     b.HasKey("MembershipTierID");
 
                     b.ToTable("MembershipTiers");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.OwnerDigitalSignatureProfile", b =>
+                {
+                    b.Property<int>("OwnerDigitalSignatureProfileID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OwnerDigitalSignatureProfileID"));
+
+                    b.Property<string>("CertificateSerialNumber")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("CertificateSubject")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("CertificateValidUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ProviderName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("SignatureImageHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("SignatureImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("OwnerDigitalSignatureProfileID");
+
+                    b.HasIndex("UserID")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("OwnerDigitalSignatureProfiles");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.PartnerContract", b =>
@@ -5381,6 +5480,17 @@ namespace CarRentalSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("Car");
+                });
+
+            modelBuilder.Entity("CarRentalSystem.Models.OwnerDigitalSignatureProfile", b =>
+                {
+                    b.HasOne("CarRentalSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CarRentalSystem.Models.PartnerContract", b =>

@@ -54,6 +54,25 @@ namespace CarRentalSystem.Tests.UnitTests.Services
         }
 
         [Fact]
+        [Trait("Module", "Audit")]
+        [Trait("Type", "Unit")]
+        public async Task AuditTrail_RecordAsync_TruncatesLongCheckoutRequestUrl()
+        {
+            await using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var longQueryValue = new string('x', AuditLog.RequestUrlMaxLength + 200);
+            var service = CreateAuditService(
+                context,
+                "/Booking/Checkout",
+                $"?CarID=1155&StartDate=2026-05-25T11%3A30&EndDate=2026-05-26T11%3A30&PickupLocation={longQueryValue}");
+
+            var entry = await service.RecordAsync(new AuditLog { Action = "View checkout", EntityType = "Booking", UserId = 2 });
+
+            entry.RequestUrl.Should().NotBeNullOrWhiteSpace();
+            entry.RequestUrl!.Length.Should().BeLessThanOrEqualTo(AuditLog.RequestUrlMaxLength);
+            entry.RequestUrl.Should().StartWith("GET /Booking/Checkout?");
+        }
+
+        [Fact]
         [Trait("Module", "Evidence")]
         [Trait("Type", "Unit")]
         public void EvidenceHash_HandoverHashChanges_WhenEvidenceChanges()
@@ -138,10 +157,16 @@ namespace CarRentalSystem.Tests.UnitTests.Services
             result.ContentHash.Should().HaveLength(64);
         }
 
-        private static AuditTrailService CreateAuditService(ApplicationDbContext context)
+        private static AuditTrailService CreateAuditService(
+            ApplicationDbContext context,
+            string path = "/",
+            string queryString = "")
         {
             var http = new DefaultHttpContext();
             http.TraceIdentifier = "test-correlation";
+            http.Request.Method = "GET";
+            http.Request.Path = path;
+            http.Request.QueryString = new QueryString(queryString);
             var accessor = new HttpContextAccessor { HttpContext = http };
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>

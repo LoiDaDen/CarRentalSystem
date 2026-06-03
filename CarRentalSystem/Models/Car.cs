@@ -202,6 +202,9 @@ namespace CarRentalSystem.Models
         [MaxLength(1200)]
         public string? RentalTerms { get; set; }
 
+        [MaxLength(40)]
+        public string ContractSigningMode { get; set; } = CarContractSigningModes.PhysicalSelfManaged;
+
         // Phase 10: Soft Delete
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }

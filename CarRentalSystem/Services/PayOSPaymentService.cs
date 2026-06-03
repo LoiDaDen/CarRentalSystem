@@ -26,6 +26,7 @@ namespace CarRentalSystem.Services
         private readonly IReferralService _referralService;
         private readonly ILongTermRentalService _longTermRentalService;
         private readonly IAuditTrailService _auditTrail;
+        private readonly IDigitalContractService _digitalContractService;
         private readonly IPayOSGateway _payOSGateway;
         private readonly ILogger<PayOSPaymentService> _logger;
 
@@ -41,6 +42,7 @@ namespace CarRentalSystem.Services
             IReferralService referralService,
             ILongTermRentalService longTermRentalService,
             IAuditTrailService auditTrail,
+            IDigitalContractService digitalContractService,
             ILogger<PayOSPaymentService> logger)
         {
             _context = context;
@@ -52,6 +54,7 @@ namespace CarRentalSystem.Services
             _referralService = referralService;
             _longTermRentalService = longTermRentalService;
             _auditTrail = auditTrail;
+            _digitalContractService = digitalContractService;
             _logger = logger;
         }
 
@@ -592,6 +595,7 @@ namespace CarRentalSystem.Services
 
             if (transaction.Status == PaymentStatusConstants.Paid && transaction.BookingID.HasValue)
             {
+                await TryEnsureBookingDigitalContractAsync(transaction.BookingID.Value, hold.UserID, "already-processed webhook");
                 webhookEvent.Status = "Processed";
                 webhookEvent.ProcessedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -745,6 +749,8 @@ namespace CarRentalSystem.Services
                     Description = $"PayOS holding fee paid and booking #{booking.BookingID} created."
                 });
 
+                await TryEnsureBookingDigitalContractAsync(booking.BookingID, hold.UserID, "hold conversion webhook");
+
                 await _auditTrail.RecordAsync(new AuditLog
                 {
                     Action = "Tạo đơn sau thanh toán",
@@ -802,6 +808,9 @@ namespace CarRentalSystem.Services
             if (!result.IsSuccess)
                 return new PayOSWebhookResult(false, true, result.Message, null, transaction.Amount);
 
+            if (transaction.BookingID.HasValue)
+                await TryEnsureBookingDigitalContractAsync(transaction.BookingID.Value, transaction.UserID, "existing booking webhook");
+
             return new PayOSWebhookResult(true, true, "Payment confirmed", transaction.BookingID, transaction.Amount);
         }
 
@@ -824,6 +833,7 @@ namespace CarRentalSystem.Services
 
             if (transaction.Status == PaymentStatusConstants.Paid && bookingTransaction.Status == PaymentStatusConstants.Paid)
             {
+                await TryEnsureTransactionDigitalContractAsync(bookingTransaction.TransactionID, bookingTransaction.UserID, "already-processed cart webhook");
                 webhookEvent.Status = "Processed";
                 webhookEvent.ProcessedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -996,6 +1006,8 @@ namespace CarRentalSystem.Services
                     Timestamp = DateTime.UtcNow
                 });
 
+                await TryEnsureTransactionDigitalContractAsync(bookingTransaction.TransactionID, bookingTransaction.UserID, "cart conversion webhook");
+
                 webhookEvent.Status = "Processed";
                 webhookEvent.ProcessedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -1013,6 +1025,30 @@ namespace CarRentalSystem.Services
                 webhookEvent.Error = ex.Message;
                 await _context.SaveChangesAsync();
                 return new PayOSWebhookResult(false, true, ex.Message, null, transaction.Amount);
+            }
+        }
+
+        private async Task TryEnsureBookingDigitalContractAsync(int bookingId, int? actorUserId, string context)
+        {
+            try
+            {
+                await _digitalContractService.EnsureForBookingAsync(bookingId, actorUserId, "POST /Payment/Webhook");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Digital contract creation skipped for booking {BookingId} during {Context}.", bookingId, context);
+            }
+        }
+
+        private async Task TryEnsureTransactionDigitalContractAsync(int transactionId, int? actorUserId, string context)
+        {
+            try
+            {
+                await _digitalContractService.EnsureForTransactionAsync(transactionId, actorUserId, "POST /Payment/Webhook");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Digital contract creation skipped for transaction {TransactionId} during {Context}.", transactionId, context);
             }
         }
 

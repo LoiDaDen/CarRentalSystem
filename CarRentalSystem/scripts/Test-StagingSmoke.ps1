@@ -10,6 +10,7 @@ $ErrorActionPreference = "Stop"
 $BaseUrl = $BaseUrl.TrimEnd("/")
 $checks = @(
     @{ Name = "health"; Url = "$BaseUrl/health" },
+    @{ Name = "ready"; Url = "$BaseUrl/ready" },
     @{ Name = "home"; Url = "$BaseUrl/" },
     @{ Name = "login"; Url = "$BaseUrl/Auth/Login" }
 )

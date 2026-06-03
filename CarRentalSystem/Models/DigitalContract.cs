@@ -73,8 +73,29 @@ namespace CarRentalSystem.Models
         public bool IsSignedByCustomer { get; set; }
         public DateTime? CustomerSignDate { get; set; }
 
+        [MaxLength(500)]
+        public string? CustomerSignatureUrl { get; set; }
+
+        [MaxLength(64)]
+        public string? CustomerSignatureHash { get; set; }
+
         public bool IsSignedByOwner { get; set; }
         public DateTime? OwnerSignDate { get; set; }
+
+        [MaxLength(40)]
+        public string ContractSigningMode { get; set; } = CarContractSigningModes.Digital;
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? OwnerUserIdsJson { get; set; }
+
+        [MaxLength(1000)]
+        public string? OwnerSignatureUrl { get; set; }
+
+        [MaxLength(1000)]
+        public string? OwnerSignatureHash { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? OwnerSignatureProfileSnapshotJson { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

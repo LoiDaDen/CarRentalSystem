@@ -98,6 +98,14 @@ namespace CarRentalSystem.Controllers
                 .OrderBy(a => a.PricePerDay)
                 .ToListAsync();
 
+            var contractModes = cart.CartItems
+                .Where(i => i.Car != null)
+                .Select(i => CarContractSigningModes.Normalize(i.Car!.ContractSigningMode))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            ViewBag.HasMixedContractModes = contractModes.Count > 1;
+            ViewBag.CartContractMode = contractModes.Count == 1 ? contractModes[0] : null;
+
             return View(cart);
         }
 
@@ -474,6 +482,35 @@ namespace CarRentalSystem.Controllers
             }
             await _context.SaveChangesAsync();
 
+            var contractModes = items
+                .Where(i => i.Car != null)
+                .Select(i => CarContractSigningModes.Normalize(i.Car!.ContractSigningMode))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (contractModes.Count > 1)
+            {
+                TempData["Error"] = "Giỏ hàng có cả xe dùng hợp đồng số và xe ký giấy. Vui lòng tách giỏ để thanh toán riêng.";
+                return RedirectToAction("Index");
+            }
+
+            if (contractModes.Count == 1 && contractModes[0] == CarContractSigningModes.Digital)
+            {
+                var ownerIds = items.Select(i => i.Car?.OwnerID).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+                var readyOwnerIds = await _context.OwnerDigitalSignatureProfiles
+                    .AsNoTracking()
+                    .Where(p => ownerIds.Contains(p.UserID)
+                        && p.Status == OwnerDigitalSignatureProfileStatuses.Active
+                        && !string.IsNullOrWhiteSpace(p.SignatureImageHash)
+                        && (!p.CertificateValidUntil.HasValue || p.CertificateValidUntil.Value.Date >= DateTime.UtcNow.Date))
+                    .Select(p => p.UserID)
+                    .ToListAsync();
+                if (ownerIds.Any(id => !readyOwnerIds.Contains(id)))
+                {
+                    TempData["Error"] = "Một số chủ xe chưa hoàn tất hồ sơ chữ ký số. Vui lòng chọn xe khác hoặc thử lại sau.";
+                    return RedirectToAction("Index");
+                }
+            }
+
             foreach (var sameCarItems in items.GroupBy(i => i.CarID))
             {
                 var ordered = sameCarItems.OrderBy(i => i.StartDate).ToList();
@@ -569,6 +606,7 @@ namespace CarRentalSystem.Controllers
                     addonDetails = quote.AddOns,
                     totalPrice = quote.TotalPrice,
                     defaultDeposit = quote.CollateralAmount,
+                    contractSigningMode = CarContractSigningModes.Normalize(item.Car?.ContractSigningMode),
                     termsDocumentVersionId = quote.TermsDocumentVersionID,
                     privacyNoticeVersionId = quote.PrivacyNoticeVersionID,
                     selfDriveAgreementAcceptedAt = quote.SelfDriveAgreementAcceptedAt,
@@ -619,6 +657,7 @@ namespace CarRentalSystem.Controllers
                         baseTotal,
                         discountAmount,
                         totalAmount,
+                        contractSigningMode = contractModes.Count == 1 ? contractModes[0] : null,
                         membershipName = user?.MembershipTier?.Name,
                         userName = user?.Name,
                         userEmail = user?.Email,
@@ -647,7 +686,7 @@ namespace CarRentalSystem.Controllers
 
                 var domain = PaymentUrlResolver.ResolvePublicBaseUrl(HttpContext);
                 var payOSResult = await _payOSPaymentService.CreateCartHoldPaymentAsync(transaction, holdingFee, domain);
-                if (!payOSResult.IsSuccess || string.IsNullOrWhiteSpace(payOSResult.CheckoutUrl))
+                if (!payOSResult.IsSuccess || payOSResult.Transaction == null || string.IsNullOrWhiteSpace(payOSResult.CheckoutUrl))
                 {
                     foreach (var hold in holdResult.Holds)
                         await _reservationService.ReleaseHoldAsync(hold.BookingHoldID, "PayOS cart payment create failed.");
@@ -659,7 +698,7 @@ namespace CarRentalSystem.Controllers
                 }
 
                 TempData["Success"] = $"Đơn hàng #{transaction.TransactionID} đã được giữ. Vui lòng thanh toán {holdingFee:N0}đ để xác nhận.";
-                return Redirect(payOSResult.CheckoutUrl);
+                return RedirectToAction("Transaction", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
             }
             catch
             {

@@ -10,6 +10,8 @@ namespace CarRentalSystem.Models
     /// </summary>
     public class AuditLog
     {
+        public const int RequestUrlMaxLength = 2048;
+
         [Key]
         public long AuditLogID { get; set; }
 
@@ -52,7 +54,7 @@ namespace CarRentalSystem.Models
         public string? UserAgent { get; set; }
 
         /// <summary>HTTP Method + URL của request</summary>
-        [MaxLength(500)]
+        [MaxLength(RequestUrlMaxLength)]
         public string? RequestUrl { get; set; }
 
         [MaxLength(1000)]

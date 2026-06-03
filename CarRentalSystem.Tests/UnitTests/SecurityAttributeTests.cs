@@ -18,6 +18,8 @@ namespace CarRentalSystem.Tests.UnitTests
         [Theory]
         [InlineData(nameof(PaymentController.CancelHold))]
         [InlineData(nameof(PaymentController.CancelTransaction))]
+        [InlineData(nameof(PaymentController.ConfirmHold))]
+        [InlineData(nameof(PaymentController.ConfirmTransaction))]
         [InlineData(nameof(PaymentController.CreatePayment))]
         [Trait("Module", "Security")]
         [Trait("Type", "Regression")]

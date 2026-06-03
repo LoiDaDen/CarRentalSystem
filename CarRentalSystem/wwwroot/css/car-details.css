@@ -1,4 +1,4 @@
-/* BonbonCar Style Details Page */
+/* Premium marketplace details page */
 body {
     font-family: 'Inter', sans-serif;
     background-color: #f8fafc;
@@ -177,4 +177,162 @@ input[type="radio"]:checked + div .text-dark {
 
 .custom-small-text {
     font-size: 0.75rem;
+}
+
+/* Premium Tech refinement */
+.page-car-details {
+    color: #0f172a;
+}
+
+.page-car-details .bg-dark.text-white.py-2 {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #d9e2ec;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    margin: 0 1.5rem 1rem;
+}
+
+.page-car-details .bg-dark.text-white.py-2 a,
+.page-car-details .bg-dark.text-white.py-2 h5 {
+    color: #0f172a !important;
+}
+
+.gallery-grid {
+    border-radius: 8px;
+    gap: 6px;
+    background: #d9e2ec;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .12);
+}
+
+.details-trust-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 18px 0 24px;
+}
+
+.details-trust-item {
+    min-height: 84px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid #d9e2ec;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+}
+
+.details-trust-item i {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    background: #eaf1ff;
+    color: #2563eb;
+}
+
+.details-trust-item strong {
+    display: block;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.details-trust-item span {
+    display: block;
+    color: #667085;
+    font-size: .78rem;
+    line-height: 1.35;
+    margin-top: 2px;
+}
+
+.section-card {
+    border-radius: 8px;
+    border-color: #d9e2ec;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+}
+
+.characteristic-icon {
+    border-radius: 8px;
+}
+
+.amenity-item {
+    padding: 12px;
+    border: 1px solid #d9e2ec;
+    border-radius: 8px;
+    background: #f8fbff;
+}
+
+.cancellation-table {
+    border-radius: 8px;
+    border-color: #d9e2ec;
+}
+
+.page-car-details .col-lg-4 > .card,
+.page-car-details .booking-panel,
+.page-car-details form .card {
+    position: sticky;
+    top: 92px;
+    border-radius: 8px !important;
+    border: 1px solid #d9e2ec !important;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .12) !important;
+}
+
+.page-car-details .section-card h5 {
+    letter-spacing: 0;
+}
+
+.page-car-details .table {
+    border-color: #d9e2ec !important;
+}
+
+.page-car-details .btn-success {
+    background: #0f9f6e;
+    border-color: #0f9f6e;
+}
+
+.page-car-details .btn-success:hover {
+    background: #087f5b;
+    border-color: #087f5b;
+}
+
+.price-package-label,
+.location-option,
+.addon-option {
+    border-radius: 8px !important;
+}
+
+@media (max-width: 991.98px) {
+    .gallery-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .gallery-main {
+        aspect-ratio: 16 / 10;
+    }
+
+    .gallery-thumbs {
+        display: none;
+    }
+
+    .details-trust-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .page-car-details .col-lg-4 > .card,
+    .page-car-details .booking-panel,
+    .page-car-details form .card {
+        position: static;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .details-trust-strip {
+        grid-template-columns: 1fr;
+    }
 }

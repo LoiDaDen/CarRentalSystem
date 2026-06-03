@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text;
 
 namespace CarRentalSystem.Controllers
 {
@@ -49,6 +50,7 @@ namespace CarRentalSystem.Controllers
         {
             // Đảm bảo các gói thuê dài hạn tồn tại trong database
             await EnsureLongTermContractsExistAsync();
+            await RepairMojibakeContractTypesAsync();
 
             // Lấy danh sách gói thuê dài hạn (tối thiểu 7 ngày)
             var contracts = await _context.ContractTypes
@@ -482,7 +484,7 @@ namespace CarRentalSystem.Controllers
                     payOSResult.Transaction.OrderCode);
 
                 TempData["Success"] = "Xe đã được giữ cho thuê dài hạn. Vui lòng thanh toán giữ chỗ/cọc để hoàn tất.";
-                return Redirect(payOSResult.CheckoutUrl);
+                return RedirectToAction("Hold", "Payment", new { orderCode = payOSResult.Transaction.OrderCode });
             }
             catch (Exception ex)
             {
@@ -838,6 +840,85 @@ namespace CarRentalSystem.Controllers
                 await _context.SaveChangesAsync();
             }
         }
+
+        private async Task RepairMojibakeContractTypesAsync()
+        {
+            var contracts = await _context.ContractTypes
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.ContractTypeID)
+                .ToListAsync();
+            var changed = false;
+
+            foreach (var contract in contracts)
+            {
+                var fixedName = FixMojibake(contract.Name);
+                var fixedDescription = FixMojibake(contract.Description);
+                var fixedAfterSales = FixMojibake(contract.AfterSalesDescription);
+
+                if (!string.Equals(contract.Name, fixedName, StringComparison.Ordinal))
+                {
+                    contract.Name = fixedName!;
+                    changed = true;
+                }
+
+                if (!string.Equals(contract.Description, fixedDescription, StringComparison.Ordinal))
+                {
+                    contract.Description = fixedDescription;
+                    changed = true;
+                }
+
+                if (!string.Equals(contract.AfterSalesDescription, fixedAfterSales, StringComparison.Ordinal))
+                {
+                    contract.AfterSalesDescription = fixedAfterSales;
+                    changed = true;
+                }
+            }
+
+            var duplicateGroups = contracts
+                .GroupBy(c => new
+                {
+                    Name = c.Name.Trim().ToUpperInvariant(),
+                    c.MinDurationDays,
+                    c.MaxDurationDays,
+                    Discount = decimal.Round(c.DiscountPercent, 2)
+                })
+                .Where(g => g.Count() > 1);
+
+            foreach (var group in duplicateGroups)
+            {
+                foreach (var duplicate in group.Skip(1))
+                {
+                    duplicate.IsActive = false;
+                    changed = true;
+                    _logger.LogInformation("Deactivated duplicate contract type {ContractTypeID} after mojibake repair.", duplicate.ContractTypeID);
+                }
+            }
+
+            if (changed)
+                await _context.SaveChangesAsync();
+        }
+
+        private static string? FixMojibake(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || !LooksLikeMojibake(value))
+                return value;
+
+            try
+            {
+                return Encoding.UTF8.GetString(Encoding.Latin1.GetBytes(value));
+            }
+            catch
+            {
+                return value;
+            }
+        }
+
+        private static bool LooksLikeMojibake(string value) =>
+            value.Contains('Ã') ||
+            value.Contains('Ä') ||
+            value.Contains('Â') ||
+            value.Contains("áº", StringComparison.Ordinal) ||
+            value.Contains("á»", StringComparison.Ordinal);
 
         /// <summary>
         /// Tính ngày kết thúc dựa trên duration và contract type

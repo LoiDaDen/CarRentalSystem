@@ -7,6 +7,14 @@ const addendumPath = path.join(repoRoot, 'cypress', 'fixtures', 'testcase-addend
 const reportJsonPath = path.join(repoRoot, 'cypress', 'reports', 'testcase-traceability.json');
 const reportMdPath = path.join(repoRoot, 'cypress', 'reports', 'testcase-traceability.md');
 
+const coverageRank = {
+  'not-covered': 0,
+  'route-smoke': 1,
+  'ui-real': 2,
+  'business-flow': 3,
+  'external-real': 4,
+};
+
 if (!fs.existsSync(matrixPath)) {
   throw new Error(`Missing ${matrixPath}. Run npm run testcases:extract first.`);
 }
@@ -47,6 +55,7 @@ const rows = matrix.cases.map((testCase) => {
     priority: testCase.priority,
     title: testCase.title,
     status: status || 'not-run',
+    coverageDepth: result?.coverageDepth || 'not-covered',
     spec: result?.spec || '',
     durationMs: result?.durationMs ?? null,
   };
@@ -56,16 +65,23 @@ const summary = rows.reduce((acc, row) => {
   acc[row.status] = (acc[row.status] || 0) + 1;
   return acc;
 }, {});
+const coverageSummary = rows.reduce((acc, row) => {
+  acc[row.coverageDepth] = (acc[row.coverageDepth] || 0) + 1;
+  return acc;
+}, {});
 const unlinkedFailures = existingReport.unlinkedFailures || [];
 if (unlinkedFailures.length) {
   summary.unlinkedFailed = unlinkedFailures.length;
 }
+const missingBusinessFlow = rows.filter((row) => (coverageRank[row.coverageDepth] || 0) < coverageRank['business-flow']);
 
 const report = {
   generatedAtUtc: new Date().toISOString(),
   sourceWorkbook: matrix.sourceWorkbook,
   totalCases: rows.length,
   summary,
+  coverageSummary,
+  missingBusinessFlow,
   results: rows,
   unlinkedFailures,
 };
@@ -80,10 +96,17 @@ const markdown = [
   `- Generated at UTC: \`${report.generatedAtUtc}\``,
   `- Total traceability cases: \`${rows.length}\``,
   `- Summary: ${Object.entries(summary).map(([key, value]) => `\`${key}: ${value}\``).join(', ')}`,
+  `- Coverage depth: ${Object.entries(coverageSummary).map(([key, value]) => `\`${key}: ${value}\``).join(', ')}`,
   '',
-  '| TC | Module | Priority | Status | Spec | Title |',
-  '| --- | --- | --- | --- | --- | --- |',
-  ...rows.map((row) => `| ${row.id} | ${row.moduleCode} | ${row.priority} | ${row.status} | ${row.spec} | ${row.title.replace(/\|/g, '\\|')} |`),
+  '| TC | Module | Priority | Status | Depth | Spec | Title |',
+  '| --- | --- | --- | --- | --- | --- | --- |',
+  ...rows.map((row) => `| ${row.id} | ${row.moduleCode} | ${row.priority} | ${row.status} | ${row.coverageDepth} | ${row.spec} | ${row.title.replace(/\|/g, '\\|')} |`),
+  '',
+  '## Missing Business-Flow Coverage',
+  '',
+  '| TC | Module | Priority | Current Depth | Title |',
+  '| --- | --- | --- | --- | --- |',
+  ...missingBusinessFlow.map((row) => `| ${row.id} | ${row.moduleCode} | ${row.priority} | ${row.coverageDepth} | ${row.title.replace(/\|/g, '\\|')} |`),
   '',
   ...(unlinkedFailures.length
     ? [

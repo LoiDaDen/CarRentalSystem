@@ -465,3 +465,95 @@
         min-height: 420px;
     }
 }
+
+/* Premium partner operations polish */
+.owner-portal {
+    --owner-border: #d9e2ec;
+    --owner-surface: #ffffff;
+    --owner-soft: #f8fbff;
+    --owner-primary: #2563eb;
+    --owner-accent: #0f9f6e;
+}
+
+.owner-hero,
+.owner-toolbar,
+.owner-panel,
+.owner-stat,
+.owner-car-card,
+.owner-doc-card,
+.owner-table-wrap,
+.owner-list-panel,
+.owner-balance {
+    border-color: var(--owner-border);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+}
+
+.owner-hero {
+    padding: 18px;
+    border: 1px solid var(--owner-border);
+    border-radius: 8px;
+    background: var(--owner-surface);
+}
+
+.owner-hero h1 {
+    letter-spacing: 0;
+}
+
+.owner-pill {
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.owner-tabs a {
+    min-height: 52px;
+}
+
+.owner-stat {
+    background: linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.owner-stat strong {
+    letter-spacing: 0;
+}
+
+.owner-car-card {
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.owner-car-card:hover {
+    border-color: #b8cef8;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .1);
+    transform: translateY(-2px);
+}
+
+.owner-car-meta span,
+.owner-card-numbers > div {
+    min-width: 0;
+}
+
+.owner-card-numbers > div {
+    padding: 10px;
+    border: 1px solid var(--owner-border);
+    border-radius: 8px;
+    background: var(--owner-soft);
+}
+
+.owner-badge {
+    border: 1px solid transparent;
+}
+
+.owner-badge.ok {
+    border-color: #bbf7d0;
+}
+
+.owner-badge.warn {
+    border-color: #fed7aa;
+}
+
+.owner-badge.info {
+    border-color: #bfdbfe;
+}
+
+.owner-badge.danger {
+    border-color: #fecaca;
+}

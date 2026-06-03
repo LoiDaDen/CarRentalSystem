@@ -9,6 +9,11 @@
     "test:cypress": "node scripts/run-cypress.mjs run",
     "test:e2e:full": "node scripts/run-cypress.mjs run --browser chrome --spec \"cypress/e2e/**/*.cy.{js,jsx,ts,tsx}\"",
     "test:e2e:sandbox": "node scripts/run-cypress.mjs run --browser chrome --spec \"cypress/e2e/11-sandbox-realtime/**/*.cy.{js,jsx,ts,tsx}\"",
+    "test:e2e:prod:preflight": "node scripts/run-cypress-production.mjs preflight",
+    "test:e2e:prod:smoke": "node scripts/run-cypress-production.mjs smoke",
+    "test:e2e:prod:full": "node scripts/run-cypress-production.mjs full",
+    "test:e2e:prod:cleanup": "node scripts/run-cypress-production.mjs cleanup",
+    "test:e2e:prod:report": "node scripts/report-cypress-traceability.mjs && node scripts/report-cypress-production.mjs",
     "testcases:extract": "node scripts/extract-cypress-testcases.mjs",
     "testcases:report": "node scripts/report-cypress-traceability.mjs"
   },

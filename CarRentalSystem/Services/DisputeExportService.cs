@@ -48,10 +48,12 @@ namespace CarRentalSystem.Services
                 .Include(b => b.Car).ThenInclude(c => c!.CarBrand)
                 .Include(b => b.BookingStatus)
                 .Include(b => b.DigitalContract)
+                .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
                 .Include(b => b.RentalContract)
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
             if (booking == null)
                 return null;
+            var digitalContract = booking.DigitalContract ?? booking.BookingTransaction?.DigitalContract;
 
             var handovers = await _context.HandoverRecords.AsNoTracking().Where(h => h.BookingID == bookingId).OrderBy(h => h.RecordDate).ToListAsync();
             var ledger = await _context.PaymentLedgerEntries.AsNoTracking().Where(l => l.BookingID == bookingId).OrderBy(l => l.CreatedAt).ToListAsync();
@@ -80,7 +82,14 @@ namespace CarRentalSystem.Services
                     booking.DepositStatus,
                     Status = booking.BookingStatus?.Name,
                     Customer = BuildCustomerSnapshot(booking, includeSensitive),
-                    Car = new { booking.CarID, booking.Car?.CarName, Brand = booking.Car?.CarBrand?.Name, booking.Car?.LicensePlate }
+                    Car = new
+                    {
+                        booking.CarID,
+                        booking.Car?.CarName,
+                        Brand = booking.Car?.CarBrand?.Name,
+                        booking.Car?.LicensePlate,
+                        ContractSigningMode = CarContractSigningModes.Normalize(booking.Car?.ContractSigningMode)
+                    }
                 },
                 ExportedAt = DateTime.UtcNow,
                 IncludeSensitive = includeSensitive
@@ -91,7 +100,24 @@ namespace CarRentalSystem.Services
             using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
             {
                 AddJson(archive, manifest, "summary.json", summary);
-                AddJson(archive, manifest, "contract.json", new { booking.DigitalContract, booking.RentalContract });
+                AddJson(archive, manifest, "contract.json", new { DigitalContract = digitalContract, booking.RentalContract });
+                AddJson(archive, manifest, "contract-signature.json", new
+                {
+                    digitalContract?.DigitalContractID,
+                    digitalContract?.ContractNo,
+                    digitalContract?.IsSignedByCustomer,
+                    digitalContract?.CustomerSignDate,
+                    digitalContract?.CustomerSignatureUrl,
+                    digitalContract?.CustomerSignatureHash,
+                    digitalContract?.OwnerSignatureHash,
+                    digitalContract?.OwnerSignatureProfileSnapshotJson,
+                    ContractSigningMode = digitalContract?.ContractSigningMode ?? CarContractSigningModes.Normalize(booking.Car?.ContractSigningMode),
+                    PhysicalContractNote = digitalContract == null ? "self-managed outside app" : null,
+                    digitalContract?.RenderedContentHash,
+                    digitalContract?.SignedIpAddress,
+                    digitalContract?.SignedUserAgent,
+                    digitalContract?.SignerIdentitySnapshotJson
+                });
                 AddJson(archive, manifest, "handover-evidence.json", handovers);
                 AddJson(archive, manifest, "payment-ledger.json", ledger);
                 AddJson(archive, manifest, "payos-transactions.json", BuildPayosSnapshot(payos, includeSensitive));

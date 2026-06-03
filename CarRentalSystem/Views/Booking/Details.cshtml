@@ -1,9 +1,13 @@
 @model CarRentalSystem.Models.Booking
 @{
+    var digitalContract = Model.DigitalContract ?? Model.BookingTransaction?.DigitalContract;
+    var hasSignedDigitalContract = digitalContract?.IsSignedByCustomer == true;
+    var requiresDigitalContract = CarRentalSystem.Models.CarContractSigningModes.Normalize(Model.Car?.ContractSigningMode) == CarRentalSystem.Models.CarContractSigningModes.Digital;
     ViewData["Title"] = "Chi tiết đơn đặt xe #" + Model.BookingID;
 }
 
 <div class="container py-4">
+    @await Html.PartialAsync("_BookingFlowProgress", CarRentalSystem.ViewModels.BookingFlowProgressViewModel.ForBooking(Model))
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-action="MyBookings">Đơn đặt xe của tôi</a></li>
@@ -22,6 +26,27 @@
     {
         <div class="alert alert-danger alert-dismissible fade show">
             @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            @TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            @TempData["Info"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["ErrorMessage"]
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
@@ -58,6 +83,20 @@
                 }
                 @if (Model.BookingStatus?.Name == "Confirmed")
                 {
+                    if (requiresDigitalContract && digitalContract != null && !hasSignedDigitalContract)
+                    {
+                        <a asp-controller="DigitalContract" asp-action="Sign" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-warning fw-bold">
+                            <i class="bi bi-pen"></i> Ký hợp đồng
+                        </a>
+                    }
+                    else if (requiresDigitalContract && digitalContract == null)
+                    {
+                        <button type="button" class="btn btn-outline-warning fw-bold" disabled>
+                            <i class="bi bi-file-earmark-lock"></i> Chờ tạo hợp đồng số
+                        </button>
+                    }
+                    else if (!requiresDigitalContract || hasSignedDigitalContract)
+                    {
                     <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@Model.BookingID" asp-route-type="CheckIn" class="btn btn-outline-primary">
                         <i class="bi bi-camera"></i> Biên bản nhận xe
                     </a>
@@ -68,6 +107,7 @@
                             <i class="bi bi-check-circle"></i> Xác nhận nhận xe
                         </button>
                     </form>
+                    }
                     <form asp-action="CancelBooking" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@Model.BookingID" />
@@ -230,6 +270,36 @@
                                 }
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Digital Contract -->
+            @if (digitalContract != null)
+            {
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header"><h6 class="mb-0">Hợp đồng số</h6></div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div>
+                                <div class="fw-bold">@digitalContract.ContractNo</div>
+                                <div class="small text-muted">
+                                    @(digitalContract.IsSignedByCustomer ? $"Đã ký lúc {digitalContract.CustomerSignDate?.ToString("HH:mm dd/MM/yyyy")}" : "Chưa ký")
+                                </div>
+                            </div>
+                            @if (digitalContract.IsSignedByCustomer)
+                            {
+                                <a asp-controller="DigitalContract" asp-action="Details" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-outline-primary btn-sm rounded-3">
+                                    <i class="bi bi-file-earmark-check me-1"></i>Xem hợp đồng
+                                </a>
+                            }
+                            else
+                            {
+                                <a asp-controller="DigitalContract" asp-action="Sign" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-warning btn-sm rounded-3 fw-bold">
+                                    <i class="bi bi-pen me-1"></i>Ký hợp đồng
+                                </a>
+                            }
+                        </div>
                     </div>
                 </div>
             }

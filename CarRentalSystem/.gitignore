@@ -57,3 +57,20 @@ Logs/
 # Local release artifacts
 # ===========================================
 artifacts/
+publish/
+
+# ===========================================
+# Python local environments and cache
+# ===========================================
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
+
+# ===========================================
+# Local camera bridge runtime
+# ===========================================
+tools/camera-bridge/config.yaml
+tools/camera-bridge/output/

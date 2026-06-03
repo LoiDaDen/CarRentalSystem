@@ -1,13 +1,79 @@
 @model CarRentalSystem.Models.PayOSTransaction
 @{
-    ViewData["Title"] = "Đã hủy giữ chỗ";
+    ViewData["Title"] = "Đã hủy thanh toán";
 }
 
 <div class="container py-5">
-    <div class="mx-auto text-center bg-white border rounded-4 shadow-sm p-5" style="max-width:640px;">
-        <i class="bi bi-x-circle text-secondary display-4"></i>
-        <h2 class="fw-bold mt-3">Đã hủy thanh toán giữ chỗ</h2>
-        <p class="text-muted">Hệ thống đã nhả xe tạm giữ. Không có đơn thuê nào được tạo nếu PayOS chưa xác nhận thanh toán.</p>
-        <a asp-controller="Home" asp-action="Index" class="btn btn-primary rounded-pill px-4">Ve trang chu</a>
+    <div class="payment-panel mx-auto text-center">
+        <div class="payment-icon d-inline-flex align-items-center justify-content-center bg-secondary-subtle text-secondary mb-4">
+            <i class="bi bi-x-circle display-5"></i>
+        </div>
+        <h1 class="h3 fw-bold mb-2">Đã hủy thanh toán PayOS</h1>
+        <p class="text-muted mb-4">
+            Hệ thống đã ghi nhận yêu cầu hủy. Nếu PayOS chưa xác nhận tiền vào, xe tạm giữ sẽ được nhả để bạn có thể đặt lại.
+        </p>
+
+        @if (TempData["Info"] != null)
+        {
+            <div class="alert alert-info text-start rounded-3">
+                <i class="bi bi-info-circle me-2"></i>@TempData["Info"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-warning text-start rounded-3">
+                <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            </div>
+        }
+
+        <div class="bg-light rounded-3 p-3 text-start mb-4">
+            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                <span class="text-muted">Mã PayOS</span>
+                <strong>@Model.OrderCode</strong>
+            </div>
+            <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                <span class="text-muted">Số tiền</span>
+                <strong>@Model.Amount.ToString("N0")đ</strong>
+            </div>
+            <div class="d-flex justify-content-between gap-3 py-2">
+                <span class="text-muted">Trạng thái</span>
+                <strong>@Model.Status</strong>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a asp-controller="Car" asp-action="Index" class="btn btn-primary rounded-3 fw-bold px-4">
+                Xem xe
+            </a>
+            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-outline-primary rounded-3 fw-bold px-4">
+                Chuyến xe của tôi
+            </a>
+            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary rounded-3 fw-bold px-4">
+                Về trang chủ
+            </a>
+        </div>
     </div>
 </div>
+
+<style>
+    .payment-panel {
+        max-width: 720px;
+        background: #fff;
+        border: 1px solid #d8e2ef;
+        border-radius: 8px;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+        padding: 32px;
+    }
+
+    .payment-icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 8px;
+    }
+
+    @@media (max-width: 576px) {
+        .payment-panel {
+            padding: 22px;
+        }
+    }
+</style>

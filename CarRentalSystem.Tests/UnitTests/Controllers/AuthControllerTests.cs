@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using CarRentalSystem.Data;
 using CarRentalSystem.Controllers;
@@ -11,11 +12,15 @@ using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
 using CarRentalSystem.ViewModels;
 using FluentAssertions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -34,6 +39,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IReferralService> _mockReferralService;
         private readonly Mock<IAuditTrailService> _mockAuditTrail;
         private readonly Mock<ILegalComplianceService> _mockLegalCompliance;
+        private readonly Mock<ILogger<AuthController>> _mockLogger;
+        private readonly Mock<IAuthenticationService> _mockAuthenticationService;
         private readonly ApplicationDbContext _context;
         private readonly AuthController _controller;
 
@@ -47,6 +54,17 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockReferralService = new Mock<IReferralService>();
             _mockAuditTrail = new Mock<IAuditTrailService>();
             _mockLegalCompliance = new Mock<ILegalComplianceService>();
+            _mockLogger = new Mock<ILogger<AuthController>>();
+            _mockEmailService
+                .Setup(s => s.SendOtpEmailAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+            _mockAuthenticationService = new Mock<IAuthenticationService>();
+            _mockAuthenticationService
+                .Setup(s => s.SignInAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<ClaimsPrincipal>(), It.IsAny<AuthenticationProperties>()))
+                .Returns(Task.CompletedTask);
+            _mockAuditTrail
+                .Setup(s => s.RecordAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((AuditLog log, CancellationToken _) => log);
             _context = MockRepositoryHelper.CreateSeededDbContext();
             _mockLegalCompliance
                 .Setup(s => s.RecordConsentAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<HttpContext>(), It.IsAny<string?>()))
@@ -56,14 +74,33 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _controller = CreateController(requireRecaptcha: false);
         }
 
-        private AuthController CreateController(bool requireRecaptcha)
+        private AuthController CreateController(
+            bool requireRecaptcha,
+            bool requirePrivilegedMfa = false,
+            string environmentName = "Development",
+            string[]? mfaExemptEmails = null,
+            string[]? adminMfaExemptEmails = null)
         {
+            var settings = new Dictionary<string, string?>
+            {
+                ["Security:RequireRecaptcha"] = requireRecaptcha.ToString(),
+                ["Security:RequirePrivilegedMfa"] = requirePrivilegedMfa.ToString()
+            };
+            if (mfaExemptEmails != null)
+            {
+                for (var i = 0; i < mfaExemptEmails.Length; i++)
+                    settings[$"Security:MfaExemptEmails:{i}"] = mfaExemptEmails[i];
+            }
+            if (adminMfaExemptEmails != null)
+            {
+                for (var i = 0; i < adminMfaExemptEmails.Length; i++)
+                    settings[$"Security:AdminMfaExemptEmails:{i}"] = adminMfaExemptEmails[i];
+            }
+
             var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Security:RequireRecaptcha"] = requireRecaptcha.ToString()
-                })
+                .AddInMemoryCollection(settings)
                 .Build();
+            _mockEnv.Setup(e => e.EnvironmentName).Returns(environmentName);
 
             var controller = new AuthController(
                 _mockAuthService.Object,
@@ -75,11 +112,20 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 _mockReferralService.Object,
                 configuration,
                 _mockAuditTrail.Object,
-                _mockLegalCompliance.Object);
+                _mockLegalCompliance.Object,
+                _mockLogger.Object);
+            var httpContext = new DefaultHttpContext
+            {
+                RequestServices = new ServiceCollection()
+                    .AddSingleton<IConfiguration>(configuration)
+                    .AddSingleton(_mockAuthenticationService.Object)
+                    .BuildServiceProvider()
+            };
             controller.ControllerContext = new ControllerContext
             {
-                HttpContext = new DefaultHttpContext()
+                HttpContext = httpContext
             };
+            controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
 
             var mockUrlHelper = new Mock<IUrlHelper>();
             mockUrlHelper.Setup(u => u.Action(It.IsAny<UrlActionContext>())).Returns("http://localhost/verify");
@@ -107,6 +153,136 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             result.Should().NotBeNull();
             result!.ViewData["Error"].Should().Be("Đăng nhập không thành công do xác thực bảo mật thất bại.");
             _mockAuthService.Verify(s => s.AuthenticateAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public async Task Login_Post_WithRememberMe_CreatesPersistentCookie()
+        {
+            AuthenticationProperties? capturedProperties = null;
+            _mockAuthenticationService
+                .Setup(s => s.SignInAsync(It.IsAny<HttpContext>(), "Cookies", It.IsAny<ClaimsPrincipal>(), It.IsAny<AuthenticationProperties>()))
+                .Callback<HttpContext, string, ClaimsPrincipal, AuthenticationProperties>((_, _, _, properties) => capturedProperties = properties)
+                .Returns(Task.CompletedTask);
+
+            var user = new User
+            {
+                UserID = 10,
+                Email = "customer@test.com",
+                Name = "Customer",
+                PasswordHash = "x",
+                Role = UserRoleConstants.Customer,
+                IsEmailVerified = true
+            };
+            _mockAuthService.Setup(s => s.AuthenticateAsync(user.Email, "pass")).ReturnsAsync(user);
+
+            var result = await _controller.Login(user.Email, "pass", null, rememberMe: true) as RedirectToActionResult;
+
+            result.Should().NotBeNull();
+            capturedProperties.Should().NotBeNull();
+            capturedProperties!.IsPersistent.Should().BeTrue();
+            capturedProperties.ExpiresUtc.Should().NotBeNull();
+            capturedProperties.ExpiresUtc!.Value.Should().BeAfter(DateTimeOffset.UtcNow.AddDays(29));
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public async Task Login_Post_WithoutRememberMe_CreatesSessionCookie()
+        {
+            AuthenticationProperties? capturedProperties = null;
+            _mockAuthenticationService
+                .Setup(s => s.SignInAsync(It.IsAny<HttpContext>(), "Cookies", It.IsAny<ClaimsPrincipal>(), It.IsAny<AuthenticationProperties>()))
+                .Callback<HttpContext, string, ClaimsPrincipal, AuthenticationProperties>((_, _, _, properties) => capturedProperties = properties)
+                .Returns(Task.CompletedTask);
+
+            var user = new User
+            {
+                UserID = 11,
+                Email = "customer2@test.com",
+                Name = "Customer 2",
+                PasswordHash = "x",
+                Role = UserRoleConstants.Customer,
+                IsEmailVerified = true
+            };
+            _mockAuthService.Setup(s => s.AuthenticateAsync(user.Email, "pass")).ReturnsAsync(user);
+
+            var result = await _controller.Login(user.Email, "pass", null) as RedirectToActionResult;
+
+            result.Should().NotBeNull();
+            capturedProperties.Should().NotBeNull();
+            capturedProperties!.IsPersistent.Should().BeFalse();
+            capturedProperties.ExpiresUtc.Should().BeNull();
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public async Task Login_Post_ManagerInMfaExemptEmails_SkipsMfaAndAudits()
+        {
+            var controller = CreateController(
+                requireRecaptcha: false,
+                requirePrivilegedMfa: true,
+                environmentName: "Production",
+                mfaExemptEmails: new[] { "manager@test.com" });
+            var user = new User
+            {
+                UserID = 12,
+                Email = "manager@test.com",
+                Name = "Manager",
+                PasswordHash = "x",
+                Role = UserRoleConstants.Manager,
+                IsEmailVerified = true
+            };
+            _mockAuthService.Setup(s => s.AuthenticateAsync(user.Email, "pass")).ReturnsAsync(user);
+            _mockRecaptchaService
+                .Setup(s => s.VerifyAsync(It.IsAny<string>(), "login"))
+                .ReturnsAsync(new RecaptchaVerifyResult { Success = true });
+
+            var result = await controller.Login(user.Email, "pass", null, rememberMe: true) as RedirectToActionResult;
+
+            result.Should().NotBeNull();
+            result!.ActionName.Should().Be("Index");
+            result.ControllerName.Should().Be("AreaDashboard");
+            _mockAuditTrail.Verify(s => s.RecordAsync(
+                It.Is<AuditLog>(log => log.Action == "PrivilegedMfaSkipped" && log.UserId == user.UserID),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Unit")]
+        public async Task Login_Post_AdminInAdminMfaExemptEmails_SkipsMfaAndAudits()
+        {
+            var controller = CreateController(
+                requireRecaptcha: false,
+                requirePrivilegedMfa: true,
+                environmentName: "Production",
+                adminMfaExemptEmails: new[] { "hloi78274@gmail.com" });
+            var user = new User
+            {
+                UserID = 13,
+                Email = "hloi78274@gmail.com",
+                Name = "Admin",
+                PasswordHash = "x",
+                Role = UserRoleConstants.Admin,
+                IsEmailVerified = true
+            };
+            _mockAuthService.Setup(s => s.AuthenticateAsync(user.Email, "pass")).ReturnsAsync(user);
+            _mockRecaptchaService
+                .Setup(s => s.VerifyAsync(It.IsAny<string>(), "login"))
+                .ReturnsAsync(new RecaptchaVerifyResult { Success = true });
+
+            var result = await controller.Login(user.Email, "pass", null, rememberMe: true) as RedirectToActionResult;
+
+            result.Should().NotBeNull();
+            result!.ActionName.Should().Be("Index");
+            result.ControllerName.Should().Be("Dashboard");
+            result.RouteValues.Should().ContainKey("area").WhoseValue.Should().Be("Admin");
+            _mockAuditTrail.Verify(s => s.RecordAsync(
+                It.Is<AuditLog>(log => log.Action == "PrivilegedMfaSkipped" && log.UserId == user.UserID),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         // =============================================

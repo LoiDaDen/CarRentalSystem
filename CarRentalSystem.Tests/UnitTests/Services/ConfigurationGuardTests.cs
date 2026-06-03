@@ -12,6 +12,20 @@ namespace CarRentalSystem.Tests.UnitTests.Services
         [Fact]
         [Trait("Module", "Configuration")]
         [Trait("Type", "Unit")]
+        public void ValidateProductionConfiguration_RejectsMissingDataProtectionApplicationName()
+        {
+            var values = ValidProductionSettings();
+            values["DataProtection:ApplicationName"] = "";
+
+            var act = () => ConfigurationGuard.ValidateProductionConfiguration(BuildConfiguration(values), ProductionEnvironment());
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*DataProtection:ApplicationName*");
+        }
+
+        [Fact]
+        [Trait("Module", "Configuration")]
+        [Trait("Type", "Unit")]
         public void ValidateProductionConfiguration_RejectsMissingRecaptchaSecret()
         {
             var values = ValidProductionSettings();
@@ -154,6 +168,7 @@ namespace CarRentalSystem.Tests.UnitTests.Services
                 ["ConnectionStrings:DefaultConnection"] = "Server=sql.example;Database=CarRental;User Id=app;Password=strong;Encrypt=True",
                 ["Cors:AllowedOrigins:0"] = "https://app.example.com",
                 ["Tracking:IngestSecret"] = "long-random-tracking-secret",
+                ["DataProtection:ApplicationName"] = "CarRentalSystem",
                 ["DataProtection:KeysPath"] = "C:\\keys",
                 ["PayOS:ClientId"] = "payos-client",
                 ["PayOS:ApiKey"] = "payos-api-key",

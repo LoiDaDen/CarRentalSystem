@@ -62,12 +62,15 @@ namespace CarRentalSystem.Services
         public async Task<Car> GetCarByIdAsync(int id)
         {
             return await _context.Cars
+                .AsNoTracking()
                 .Include(c => c.CarImages)
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarType)
                 .Include(c => c.Location)
                 .Include(c => c.CarBrand)
                 .Include(c => c.CarModel)
+                .Include(c => c.Owner)
+                .Include(c => c.Reviews)
                 .Include(c => c.CarAmenityMappings)
                     .ThenInclude(m => m.CarAmenity)
                 .FirstOrDefaultAsync(m => m.CarID == id);

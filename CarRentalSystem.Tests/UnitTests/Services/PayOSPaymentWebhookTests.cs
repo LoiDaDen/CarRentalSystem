@@ -144,6 +144,7 @@ namespace CarRentalSystem.Tests.UnitTests.Services
                 Mock.Of<IReferralService>(),
                 Mock.Of<ILongTermRentalService>(),
                 Mock.Of<IAuditTrailService>(),
+                Mock.Of<IDigitalContractService>(),
                 NullLogger<PayOSPaymentService>.Instance);
         }
 

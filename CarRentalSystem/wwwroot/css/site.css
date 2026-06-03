@@ -2148,3 +2148,637 @@ body.theme-admin,
         width: calc(100vw - 24px) !important;
     }
 }
+
+/* =========================================================
+   26. PREMIUM TECH REDESIGN SYSTEM
+   Scope: public customer surfaces and shared Bootstrap primitives.
+   ========================================================= */
+:root {
+    --pt-bg: #f6f8fb;
+    --pt-surface: #ffffff;
+    --pt-surface-soft: #eef3f8;
+    --pt-surface-tint: #f8fbff;
+    --pt-border: #d9e2ec;
+    --pt-border-strong: #c3ceda;
+    --pt-text: #0f172a;
+    --pt-text-soft: #334155;
+    --pt-muted: #667085;
+    --pt-primary: #2563eb;
+    --pt-primary-600: #1d4ed8;
+    --pt-primary-soft: #eaf1ff;
+    --pt-accent: #0f9f6e;
+    --pt-accent-600: #087f5b;
+    --pt-accent-soft: #e8f7f1;
+    --pt-warning: #d97706;
+    --pt-warning-soft: #fff6df;
+    --pt-danger: #dc2626;
+    --pt-danger-soft: #fff1f1;
+    --pt-radius: 8px;
+    --pt-shadow-xs: 0 1px 2px rgba(15, 23, 42, .05);
+    --pt-shadow-sm: 0 8px 20px rgba(15, 23, 42, .07);
+    --pt-shadow-md: 0 18px 44px rgba(15, 23, 42, .12);
+    --pt-container: 1240px;
+}
+
+body.theme-public,
+body.theme-carrental {
+    background: var(--pt-bg);
+    color: var(--pt-text);
+}
+
+.theme-public .app-main-shell,
+.theme-carrental .app-main-shell {
+    width: min(100%, var(--pt-container));
+    max-width: var(--pt-container);
+    padding-inline: clamp(1rem, 2.2vw, 1.5rem);
+}
+
+.theme-public .app-navbar {
+    background: rgba(255, 255, 255, .94) !important;
+    border-bottom: 1px solid rgba(217, 226, 236, .86);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .07);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.theme-public .app-navbar .navbar-brand,
+.theme-public .app-navbar .nav-link,
+.theme-public .app-navbar .text-white,
+.theme-public .app-navbar .text-white-50 {
+    color: var(--pt-text) !important;
+}
+
+.theme-public .app-navbar .main-nav-btn {
+    min-height: 38px;
+    border: 1px solid transparent;
+    border-radius: var(--pt-radius);
+    background: transparent;
+    color: var(--pt-text-soft);
+    box-shadow: none;
+    font-weight: 750;
+}
+
+.theme-public .app-navbar .main-nav-btn:hover,
+.theme-public .app-navbar .main-nav-btn.active {
+    border-color: #cfe0ff;
+    background: var(--pt-primary-soft);
+    color: var(--pt-primary);
+    box-shadow: none;
+    transform: none;
+}
+
+.theme-public .app-navbar .main-nav-btn.nav-admin-btn {
+    color: var(--pt-warning);
+    border-color: rgba(217, 119, 6, .2);
+}
+
+.theme-public .app-navbar .main-nav-btn.nav-admin-btn:hover,
+.theme-public .app-navbar .main-nav-btn.nav-admin-btn.active {
+    background: var(--pt-warning-soft);
+    color: #92400e;
+}
+
+.theme-public .app-navbar .navbar-toggler {
+    border-color: var(--pt-border);
+    background: var(--pt-surface-soft);
+}
+
+.theme-public .app-navbar .navbar-toggler-icon {
+    filter: invert(1);
+}
+
+.theme-public .dropdown-menu-dark {
+    background: #ffffff;
+    border: 1px solid var(--pt-border);
+    box-shadow: var(--pt-shadow-md);
+}
+
+.theme-public .dropdown-menu-dark .dropdown-item {
+    color: var(--pt-text-soft) !important;
+}
+
+.theme-public .dropdown-menu-dark .dropdown-item:hover,
+.theme-public .dropdown-menu-dark .dropdown-item.active {
+    background: var(--pt-primary-soft) !important;
+    color: var(--pt-primary) !important;
+}
+
+.theme-public .card,
+.theme-public .section-card,
+.theme-public .checkout-card,
+.theme-public .sidebar-filter,
+.theme-public .search-widget,
+.theme-public .ui-elevated-card,
+.theme-public .filter-bar,
+.theme-public .table-responsive {
+    border: 1px solid var(--pt-border) !important;
+    border-radius: var(--pt-radius) !important;
+    background: var(--pt-surface) !important;
+    box-shadow: var(--pt-shadow-sm) !important;
+}
+
+.theme-public .card:hover,
+.theme-public .car-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--pt-shadow-md) !important;
+}
+
+.theme-public .btn,
+.theme-carrental .btn {
+    border-radius: var(--pt-radius) !important;
+    font-weight: 750;
+}
+
+.theme-public .btn-primary {
+    background: var(--pt-primary);
+    border-color: var(--pt-primary);
+    box-shadow: none;
+}
+
+.theme-public .btn-primary:hover {
+    background: var(--pt-primary-600);
+    border-color: var(--pt-primary-600);
+}
+
+.theme-public .btn-success {
+    background: var(--pt-accent);
+    border-color: var(--pt-accent);
+    box-shadow: none;
+}
+
+.theme-public .btn-success:hover {
+    background: var(--pt-accent-600);
+    border-color: var(--pt-accent-600);
+}
+
+.theme-public .form-control,
+.theme-public .form-select,
+.theme-public .search-input {
+    border: 1px solid var(--pt-border-strong) !important;
+    border-radius: var(--pt-radius) !important;
+    background: #ffffff !important;
+    color: var(--pt-text) !important;
+    box-shadow: none !important;
+}
+
+.theme-public .form-control:focus,
+.theme-public .form-select:focus,
+.theme-public .search-input:focus {
+    border-color: var(--pt-primary) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .14) !important;
+}
+
+.theme-public .badge {
+    border-radius: 999px !important;
+    font-weight: 750;
+}
+
+.theme-public .text-muted {
+    color: var(--pt-muted) !important;
+}
+
+.theme-public .table thead th {
+    background: var(--pt-surface-soft);
+    color: var(--pt-text-soft);
+}
+
+.pt-page-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.pt-eyebrow {
+    color: var(--pt-primary);
+    font-size: .72rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.pt-title {
+    color: var(--pt-text);
+    font-weight: 850;
+    letter-spacing: 0;
+}
+
+.pt-subtitle {
+    color: var(--pt-muted);
+    margin: 0;
+}
+
+.pt-car-card {
+    display: block;
+    height: 100%;
+    color: inherit;
+    text-decoration: none;
+}
+
+.pt-car-card .card-img-top,
+.pt-car-card-img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    height: auto !important;
+    object-fit: cover;
+    background: var(--pt-surface-soft);
+}
+
+.pt-price {
+    color: var(--pt-accent);
+    font-size: 1.15rem;
+    font-weight: 850;
+}
+
+.pt-shell {
+    background: var(--pt-surface);
+    border: 1px solid var(--pt-border);
+    border-radius: var(--pt-radius);
+    box-shadow: var(--pt-shadow-sm);
+}
+
+.pt-sticky-panel {
+    position: sticky;
+    top: 92px;
+}
+
+.app-footer {
+    background: #0f172a !important;
+}
+
+@media (max-width: 1399.98px) {
+    .theme-public .app-navbar .navbar-collapse {
+        background: #ffffff;
+        border-color: var(--pt-border);
+        box-shadow: var(--pt-shadow-md);
+    }
+
+    .theme-public .app-navbar #cartLink::after {
+        color: var(--pt-text-soft);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .pt-page-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .pt-sticky-panel {
+        position: static;
+    }
+}
+
+/* Premium Tech coverage for secondary customer pages */
+.pt-auth-shell,
+.register-shell {
+    min-height: 78vh;
+    display: grid;
+    align-items: center;
+    padding-block: clamp(2rem, 5vw, 4rem);
+}
+
+.pt-auth-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    align-items: center;
+}
+
+.pt-auth-panel,
+.register-card,
+.page-profile .card,
+.page-bookings .card,
+.page-cart .car-row,
+.page-cart .select-bar,
+.page-cart .summary-card,
+.payment-panel {
+    border: 1px solid var(--pt-border) !important;
+    border-radius: var(--pt-radius) !important;
+    background: #ffffff !important;
+    box-shadow: var(--pt-shadow-sm) !important;
+}
+
+.pt-auth-panel,
+.register-card {
+    padding: clamp(1.25rem, 3vw, 2rem) !important;
+}
+
+.pt-auth-value {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: 1.25rem;
+}
+
+.pt-auth-value > div {
+    padding: .9rem;
+    border: 1px solid var(--pt-border);
+    border-radius: var(--pt-radius);
+    background: var(--pt-surface-tint);
+}
+
+.pt-input-icon {
+    border: 1px solid var(--pt-border-strong);
+    border-radius: var(--pt-radius);
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.pt-input-icon .input-group-text,
+.pt-input-icon .form-control {
+    border: 0 !important;
+    background: transparent !important;
+}
+
+.register-shell {
+    background: transparent !important;
+}
+
+.register-card {
+    width: min(100%, 720px) !important;
+}
+
+.page-profile .list-group-item {
+    border-color: var(--pt-border) !important;
+}
+
+.page-profile .list-group-item.active {
+    background: var(--pt-primary-soft) !important;
+    color: var(--pt-primary) !important;
+    border-color: #cfe0ff !important;
+}
+
+.page-bookings .booking-card {
+    border-radius: var(--pt-radius) !important;
+}
+
+.page-bookings .booking-card .bg-light,
+.page-cart .cfg-tab,
+.page-cart .car-price-hours,
+.payment-panel .bg-light {
+    background: var(--pt-surface-tint) !important;
+}
+
+.page-cart .cart-header {
+    margin-top: -1rem;
+    margin-bottom: 1.25rem;
+    padding: 1.5rem 0;
+    background: #ffffff !important;
+    color: var(--pt-text) !important;
+    border-bottom: 1px solid var(--pt-border);
+    box-shadow: var(--pt-shadow-xs);
+}
+
+.page-cart .cart-header h2,
+.page-cart .cart-header .text-white,
+.page-cart .cart-header .text-white-50 {
+    color: var(--pt-text) !important;
+}
+
+.page-cart .car-row {
+    border: 1px solid var(--pt-border) !important;
+    overflow: hidden;
+}
+
+.page-cart .car-row.selected {
+    border-color: #b8cef8 !important;
+    background: #f8fbff !important;
+}
+
+.page-cart .summary-card {
+    top: 92px;
+}
+
+.payment-panel {
+    max-width: 920px;
+    padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.payment-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+}
+
+@media (max-width: 991.98px) {
+    .pt-auth-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pt-auth-value {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   27. LUXURY MARKETPLACE FINAL POLISH
+   Shared pass for public booking flow, customer account pages and
+   secondary Bootstrap surfaces.
+   ========================================================= */
+:root {
+    --pt-luxury-ink: #101828;
+    --pt-luxury-charcoal: #1d2939;
+    --pt-luxury-line: #d9e2ec;
+    --pt-luxury-soft: #f8fbff;
+    --pt-luxury-blue: #2563eb;
+    --pt-luxury-teal: #0f9f6e;
+    --pt-luxury-gold: #b7791f;
+}
+
+.theme-carrental h1,
+.theme-carrental h2,
+.theme-carrental h3,
+.theme-carrental h4,
+.theme-carrental h5,
+.theme-carrental h6,
+.theme-carrental .navbar-brand {
+    letter-spacing: 0 !important;
+}
+
+body.theme-carrental {
+    font-family: var(--cr-font-sans);
+    background:
+        linear-gradient(180deg, #f8fafc 0%, #f4f7fb 42%, #f8fafc 100%);
+}
+
+.theme-public h1,
+.theme-public h2,
+.theme-public .pt-title,
+.theme-public .navbar-brand span {
+    font-family: 'Plus Jakarta Sans', var(--cr-font-sans);
+}
+
+.theme-public .app-navbar {
+    min-height: 72px;
+}
+
+.theme-public .app-navbar .navbar-brand span {
+    color: var(--pt-luxury-ink);
+}
+
+.theme-public .app-navbar .btn-primary,
+.theme-public .app-navbar .btn-outline-primary {
+    min-height: 38px;
+}
+
+.theme-public .app-navbar .user-profile-link img,
+.theme-public .app-navbar .avatar-sm {
+    border: 1px solid var(--pt-luxury-line);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, .08);
+}
+
+.theme-public .pt-shell,
+.theme-public .card,
+.theme-public .checkout-card,
+.theme-public .summary-card,
+.theme-public .payment-panel,
+.theme-public .register-card,
+.theme-public .pt-auth-panel {
+    border-color: var(--pt-luxury-line) !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06) !important;
+}
+
+.theme-public .pt-page-header {
+    margin-bottom: 1.5rem;
+}
+
+.theme-public .pt-eyebrow {
+    color: var(--pt-luxury-blue);
+    letter-spacing: .08em;
+}
+
+.theme-public .pt-title {
+    color: var(--pt-luxury-ink);
+}
+
+.theme-public .pt-subtitle {
+    max-width: 680px;
+}
+
+.theme-public .pt-car-card .card {
+    height: 100%;
+}
+
+.theme-public .pt-car-card img {
+    transition: transform .35s ease;
+}
+
+.theme-public .pt-car-card:hover img {
+    transform: scale(1.035);
+}
+
+.theme-public .pt-price,
+.theme-public .car-price-value,
+.theme-public .summary-row.total .price {
+    color: var(--pt-luxury-teal) !important;
+}
+
+.theme-public .badge.bg-dark {
+    background: var(--pt-luxury-ink) !important;
+}
+
+.theme-public .alert,
+.theme-public .list-group-item,
+.theme-public .dropdown-menu:not(.dropdown-menu-dark) {
+    border-radius: 8px !important;
+}
+
+.theme-public .form-label {
+    color: #526173;
+    font-weight: 800;
+}
+
+.theme-public .form-check-input:checked {
+    background-color: var(--pt-luxury-blue);
+    border-color: var(--pt-luxury-blue);
+}
+
+.theme-public .page-checkout h3,
+.theme-public .cart-header h2,
+.theme-public .page-bookings h2 {
+    font-family: 'Plus Jakarta Sans', var(--cr-font-sans);
+    letter-spacing: 0;
+}
+
+.theme-public .page-checkout .checkout-card {
+    padding: clamp(1rem, 2.4vw, 1.5rem);
+}
+
+.theme-public .page-checkout .step-badge {
+    flex: 0 0 auto;
+    background: var(--pt-luxury-blue) !important;
+}
+
+.theme-public .page-checkout .insurance-option,
+.theme-public .page-checkout .addon-option,
+.theme-public .page-cart .cfg-tab,
+.theme-public .page-cart .addon-chip {
+    border-color: var(--pt-luxury-line) !important;
+}
+
+.theme-public .page-checkout .insurance-option:hover,
+.theme-public .page-checkout .addon-option:hover,
+.theme-public .page-cart .cfg-tab:hover,
+.theme-public .page-cart .addon-chip:hover {
+    border-color: #b8cef8 !important;
+    background: var(--pt-luxury-soft) !important;
+}
+
+.theme-public .page-cart .car-row {
+    border: 1px solid var(--pt-luxury-line) !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .06) !important;
+}
+
+.theme-public .page-cart .car-row:hover {
+    border-color: #b8cef8 !important;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, .1) !important;
+}
+
+.theme-public .page-cart .select-bar,
+.theme-public .page-cart .summary-card {
+    border: 1px solid var(--pt-luxury-line);
+}
+
+.theme-public .payment-panel,
+.theme-public .pt-auth-panel,
+.theme-public .register-card {
+    background:
+        linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+.theme-public .payment-icon {
+    border-radius: 8px;
+}
+
+.theme-public .table-responsive {
+    overflow: hidden;
+}
+
+.theme-public .table tbody tr:hover {
+    background: #f8fbff;
+}
+
+@media (max-width: 575.98px) {
+    .theme-public .app-main-shell,
+    .theme-carrental .app-main-shell {
+        padding-inline: .9rem;
+    }
+
+    .theme-public .btn,
+    .theme-public .form-control,
+    .theme-public .form-select {
+        width: 100%;
+    }
+
+    .theme-public .table-responsive {
+        overflow-x: auto;
+    }
+
+    .theme-public .page-checkout .checkout-card,
+    .theme-public .summary-card,
+    .theme-public .payment-panel {
+        padding: 1rem !important;
+    }
+}

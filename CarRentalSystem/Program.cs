@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -24,6 +25,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Globalization;
+using System.IO.Compression;
 using System.Text.Json;
 
 var earlyEnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
@@ -65,6 +67,27 @@ builder.Services.AddLocalization(options => options.ResourcesPath = "Resources")
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddMemoryCache();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/json",
+        "application/problem+json",
+        "application/manifest+json",
+        "image/svg+xml"
+    });
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
 builder.Services.Configure<AiProviderOptions>(options =>
 {
     options.Enabled = builder.Configuration.GetValue("Ai:Enabled", false);
@@ -94,7 +117,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
+        sqlOptions =>
+        {
+            sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+            sqlOptions.CommandTimeout(builder.Configuration.GetValue("Database:CommandTimeoutSeconds", 20));
+        });
 
     options.ConfigureWarnings(warnings =>
     {
@@ -134,6 +161,7 @@ builder.Services.AddScoped<IRefundService, RefundService>();
 builder.Services.AddScoped<IBookingTransitionService, BookingTransitionService>();
 builder.Services.AddScoped<IFileUploadValidationService, FileUploadValidationService>();
 builder.Services.AddScoped<IContractClassificationService, ContractClassificationService>();
+builder.Services.AddScoped<IDigitalContractService, DigitalContractService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
@@ -185,6 +213,12 @@ builder.Services.AddSingleton<IHolidayPricingService, HolidayPricingService>();
 // 🔒 PII ENCRYPTION — Mã hóa CCCD/GPLX at rest
 // ═══════════════════════════════════════════════════
 var dataProtectionBuilder = builder.Services.AddDataProtection();
+var dataProtectionApplicationName = builder.Configuration["DataProtection:ApplicationName"];
+if (!string.IsNullOrWhiteSpace(dataProtectionApplicationName))
+{
+    dataProtectionBuilder.SetApplicationName(dataProtectionApplicationName);
+}
+
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
@@ -221,8 +255,10 @@ builder.Services.AddScoped<IQrCccdParserService, QrCccdParserService>();
 // ═══════════════════════════════════════════════════
 // 🤖 reCAPTCHA v2 — Chống bot trên form login/register
 // ═══════════════════════════════════════════════════
-builder.Services.AddHttpClient<IRecaptchaService, RecaptchaService>();
-builder.Services.AddScoped<IRecaptchaService, RecaptchaService>();
+builder.Services.AddHttpClient<IRecaptchaService, RecaptchaService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(builder.Configuration.GetValue("Recaptcha:VerifyTimeoutSeconds", 6));
+});
 
 // ═══════════════════════════════════════════════════
 // 🏥 HEALTH CHECKS — Monitoring endpoint /health
@@ -287,6 +323,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // ═══════════════════════════════════════════════════
 if (!isAutomatedTestEnvironment)
 {
+    var enableBackgroundJobs = builder.Configuration.GetValue("Security:EnableRecurringJobs", true);
+
     builder.Services.AddHangfire(config => config
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()
@@ -299,7 +337,9 @@ if (!isAutomatedTestEnvironment)
             UseRecommendedIsolationLevel = true,
             DisableGlobalLocks = true
         }));
-    builder.Services.AddHangfireServer();
+
+    if (enableBackgroundJobs)
+        builder.Services.AddHangfireServer();
 }
 
 // Đăng ký Background Job classes vào DI
@@ -437,6 +477,7 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 });
 
 app.UseForwardedHeaders();
+app.UseResponseCompression();
 
 // ═══════════════════════════════════════════════════
 // 🗄️ DATABASE MIGRATION & SEED
@@ -490,25 +531,27 @@ app.Use(async (context, next) =>
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     context.Response.Headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=(self)";
     var scriptSrc = app.Environment.IsProduction()
-        ? "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; "
-        : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; ";
+        ? "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com https://www.google.com https://www.gstatic.com; "
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com https://www.google.com https://www.gstatic.com; ";
     context.Response.Headers["Content-Security-Policy"] =
         "default-src 'self'; " +
         scriptSrc +
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; " +
         "img-src 'self' data: blob: https:; " +
         "font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
-        "connect-src 'self' https://nominatim.openstreetmap.org; " +
+        "connect-src 'self' https://nominatim.openstreetmap.org https://www.google.com https://recaptcha.google.com; " +
+        "frame-src https://www.google.com https://recaptcha.google.com; " +
         "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
     if (app.Environment.IsProduction())
     {
         context.Response.Headers["Content-Security-Policy-Report-Only"] =
             "default-src 'self'; " +
-            "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com; " +
+            "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com https://www.google.com https://www.gstatic.com; " +
             "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://fonts.googleapis.com; " +
             "img-src 'self' data: blob: https:; " +
             "font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
-            "connect-src 'self' https://nominatim.openstreetmap.org; " +
+            "connect-src 'self' https://nominatim.openstreetmap.org https://www.google.com https://recaptcha.google.com; " +
+            "frame-src https://www.google.com https://recaptcha.google.com; " +
             "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests";
     }
     await next();
@@ -521,7 +564,34 @@ if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Cypress"
 }
 
 // Tắt ServeUnknownFileTypes để bảo mật
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        if (!app.Environment.IsProduction())
+            return;
+
+        var path = context.Context.Request.Path.Value ?? string.Empty;
+        if (path.EndsWith("/sw.js", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith("/service-worker.js", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".webmanifest", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith("/manifest.json", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+            context.Context.Response.Headers["Pragma"] = "no-cache";
+            context.Context.Response.Headers["Expires"] = "0";
+            return;
+        }
+
+        if (path.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Context.Response.Headers["Cache-Control"] = "private, max-age=600";
+            return;
+        }
+
+        context.Context.Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
+    }
+});
 if (app.Environment.IsDevelopment())
 {
     app.UseStaticFiles(new StaticFileOptions

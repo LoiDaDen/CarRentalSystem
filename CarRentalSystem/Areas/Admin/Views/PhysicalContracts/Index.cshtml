@@ -1,6 +1,6 @@
 @model IEnumerable<CarRentalSystem.Models.PhysicalContract>
 @{
-    ViewData["Title"] = "Hợp đồng vật lý";
+    ViewData["Title"] = "Hợp đồng vật lý legacy";
     var types = ViewBag.Types as IEnumerable<CarRentalSystem.Models.PhysicalContractType> ?? Enumerable.Empty<CarRentalSystem.Models.PhysicalContractType>();
     var statuses = ViewBag.Statuses as IEnumerable<string> ?? Enumerable.Empty<string>();
     var areas = ViewBag.Areas as IEnumerable<CarRentalSystem.Models.Area> ?? Enumerable.Empty<CarRentalSystem.Models.Area>();
@@ -14,17 +14,27 @@
 <div class="container-fluid px-0">
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
         <div>
-            <h1 class="h3 fw-bold mb-1" style="color: var(--admin-text);">Hợp đồng vật lý</h1>
-            <p class="mb-0" style="color: var(--admin-text-secondary);">Quản lý ảnh/PDF hợp đồng giấy, biên bản bàn giao và hồ sơ xe theo khu vực.</p>
+            <h1 class="h3 fw-bold mb-1" style="color: var(--admin-text);">Hợp đồng vật lý legacy</h1>
+            <p class="mb-0" style="color: var(--admin-text-secondary);">
+                Chỉ xem lại dữ liệu cũ. Với booking mới, hợp đồng giấy do chủ xe tự in, ký và lưu ngoài hệ thống.
+            </p>
         </div>
-        <span class="badge bg-info-subtle text-info border border-info align-self-start align-self-lg-center">
-            @Model.Count() tai lieu
+        <span class="badge bg-secondary-subtle text-secondary border border-secondary align-self-start align-self-lg-center">
+            @Model.Count() tài liệu cũ
         </span>
+    </div>
+
+    <div class="alert alert-warning border-0 shadow-sm mb-4">
+        <div class="fw-bold mb-1"><i class="bi bi-info-circle me-2"></i>Đã tắt upload hợp đồng vật lý</div>
+        <div class="small">
+            App không còn nhận file hợp đồng giấy, không phân loại AI và không xác nhận loại tài liệu mới.
+            Chủ xe tự quản hợp đồng vật lý; hợp đồng số được quản lý trong trung tâm Hợp đồng &amp; Chứng từ của chủ xe.
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm mb-4" style="background-color: var(--admin-surface);">
         <div class="card-header border-0" style="background-color: var(--admin-surface-2);">
-            <h2 class="h6 fw-bold mb-0" style="color: var(--admin-text);"><i class="bi bi-funnel me-2"></i>Bo loc tai lieu</h2>
+            <h2 class="h6 fw-bold mb-0" style="color: var(--admin-text);"><i class="bi bi-funnel me-2"></i>Bộ lọc dữ liệu cũ</h2>
         </div>
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
@@ -42,11 +52,11 @@
                     </div>
                 }
                 <div class="col-md-4 col-xl-3">
-                    <label class="form-label small fw-bold">Tu khoa</label>
-                    <input name="q" value="@ViewBag.Query" class="form-control" placeholder="Ma, tieu de, bien so, booking..." />
+                    <label class="form-label small fw-bold">Từ khóa</label>
+                    <input name="q" value="@ViewBag.Query" class="form-control" placeholder="Mã, tiêu đề, biển số, booking..." />
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Loại hợp đồng</label>
+                    <label class="form-label small fw-bold">Loại cũ</label>
                     <select name="typeCode" class="form-select">
                         <option value="">Tất cả loại</option>
                         @foreach (var type in types)
@@ -56,7 +66,7 @@
                     </select>
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Trang thai</label>
+                    <label class="form-label small fw-bold">Trạng thái</label>
                     <select name="status" class="form-select">
                         <option value="">Tất cả</option>
                         @foreach (var item in statuses)
@@ -66,7 +76,7 @@
                     </select>
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Dinh dang</label>
+                    <label class="form-label small fw-bold">Định dạng</label>
                     <select name="fileKind" class="form-select">
                         <option value="">Tất cả</option>
                         <option value="Pdf" selected="@(selectedFileKind == "Pdf")">PDF</option>
@@ -82,56 +92,18 @@
                     <input name="bookingId" type="number" value="@ViewBag.BookingId" class="form-control" />
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Tu ngay</label>
+                    <label class="form-label small fw-bold">Từ ngày</label>
                     <input name="uploadedFrom" type="date" value="@ViewBag.UploadedFrom" class="form-control" />
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Den ngay</label>
+                    <label class="form-label small fw-bold">Đến ngày</label>
                     <input name="uploadedTo" type="date" value="@ViewBag.UploadedTo" class="form-control" />
                 </div>
                 <div class="col-md-4 col-xl-2 d-grid">
-                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-search me-1"></i>Loc</button>
+                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-search me-1"></i>Lọc</button>
                 </div>
                 <div class="col-md-4 col-xl-2 d-grid">
-                    <a asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Index" class="btn btn-outline-secondary fw-bold">Xoa loc</a>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="card border-0 shadow-sm mb-4" style="background-color: var(--admin-surface);">
-        <div class="card-header border-0" style="background-color: var(--admin-surface-2);">
-            <h2 class="h6 fw-bold mb-0" style="color: var(--admin-text);"><i class="bi bi-cloud-upload me-2"></i>Upload tai lieu moi</h2>
-        </div>
-        <div class="card-body">
-            <form asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Upload" method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
-                @Html.AntiForgeryToken()
-                @if (selectedAreaId.HasValue)
-                {
-                    <input type="hidden" name="areaId" value="@selectedAreaId.Value" />
-                }
-                <div class="col-md-6 col-xl-3">
-                    <label class="form-label small fw-bold">Ten tai lieu</label>
-                    <input name="title" class="form-control" placeholder="VD: Hợp đồng thuê xe đã ký" />
-                </div>
-                <div class="col-md-3 col-xl-2">
-                    <label class="form-label small fw-bold">Car ID</label>
-                    <input name="carId" type="number" value="@ViewBag.CarId" class="form-control" />
-                </div>
-                <div class="col-md-3 col-xl-2">
-                    <label class="form-label small fw-bold">Booking ID</label>
-                    <input name="bookingId" type="number" value="@ViewBag.BookingId" class="form-control" />
-                </div>
-                <div class="col-md-6 col-xl-3">
-                    <label class="form-label small fw-bold">File anh/PDF</label>
-                    <input name="file" type="file" accept="image/*,.pdf" class="form-control" required />
-                </div>
-                <div class="col-md-6 col-xl-2 d-grid">
-                    <button type="submit" class="btn btn-success fw-bold"><i class="bi bi-upload me-1"></i>Upload</button>
-                </div>
-                <div class="col-12">
-                    <label class="form-label small fw-bold">Ghi chu</label>
-                    <textarea name="note" rows="2" class="form-control" placeholder="Ghi chu de AI goi y chinh xac hon"></textarea>
+                    <a asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Index" class="btn btn-outline-secondary fw-bold">Xóa lọc</a>
                 </div>
             </form>
         </div>
@@ -142,19 +114,18 @@
             <table class="table table-hover align-middle mb-0">
                 <thead style="background-color: var(--admin-surface-2);">
                     <tr>
-                        <th>Tai lieu</th>
-                        <th>Gan voi</th>
-                        <th>AI goi y</th>
-                        <th>Loại xác nhận</th>
-                        <th>Trang thai</th>
-                        <th class="text-end">Thao tac</th>
+                        <th>Tài liệu</th>
+                        <th>Gắn với</th>
+                        <th>Phân loại cũ</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">File</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">Không có tài liệu phù hợp bộ lọc.</td>
+                            <td colspan="5" class="text-center py-5 text-muted">Không có tài liệu cũ phù hợp bộ lọc.</td>
                         </tr>
                     }
                     @foreach (var item in Model)
@@ -162,13 +133,12 @@
                         var suggestedType = types.FirstOrDefault(t => t.Code == item.SuggestedContractTypeCode);
                         <tr>
                             <td>
-                                <div class="fw-bold">@(item.Title ?? $"Tai lieu #{item.PhysicalContractID}")</div>
+                                <div class="fw-bold">@(item.Title ?? $"Tài liệu #{item.PhysicalContractID}")</div>
                                 <div class="small text-muted">#@item.PhysicalContractID · @item.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @item.FileKind</div>
                                 @if (!string.IsNullOrWhiteSpace(item.Note))
                                 {
                                     <div class="small text-muted text-truncate" style="max-width: 320px;">@item.Note</div>
                                 }
-                                <a href="@item.FileUrl" target="_blank" class="small text-decoration-none"><i class="bi bi-box-arrow-up-right me-1"></i>Xem file</a>
                             </td>
                             <td>
                                 @if (item.Car != null)
@@ -181,41 +151,16 @@
                                 }
                             </td>
                             <td style="min-width: 220px;">
-                                <div class="fw-semibold">@(suggestedType?.Name ?? item.SuggestedContractTypeCode ?? "Chưa có")</div>
-                                <div class="small text-success">@(item.AiConfidence?.ToString("0") ?? "0")%</div>
-                                <div class="small text-muted text-truncate" style="max-width: 260px;">@item.AiReason</div>
-                            </td>
-                            <td style="min-width: 230px;">
-                                <form asp-area="Admin" asp-controller="PhysicalContracts" asp-action="ConfirmType" method="post" class="d-flex gap-2">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@item.PhysicalContractID" />
-                                    @if (selectedAreaId.HasValue)
-                                    {
-                                        <input type="hidden" name="areaId" value="@selectedAreaId.Value" />
-                                    }
-                                    <select name="contractTypeId" class="form-select form-select-sm">
-                                        @foreach (var type in types)
-                                        {
-                                            var selected = item.PhysicalContractTypeID == type.PhysicalContractTypeID || (!item.PhysicalContractTypeID.HasValue && type.Code == item.SuggestedContractTypeCode);
-                                            <option value="@type.PhysicalContractTypeID" selected="@selected">@type.Name</option>
-                                        }
-                                    </select>
-                                    <button type="submit" class="btn btn-sm btn-primary">Lưu</button>
-                                </form>
+                                <div class="fw-semibold">@(item.PhysicalContractType?.Name ?? suggestedType?.Name ?? item.SuggestedContractTypeCode ?? "Chưa có")</div>
+                                <div class="small text-muted">AI cũ: @(item.AiConfidence?.ToString("0") ?? "0")%</div>
                             </td>
                             <td>
                                 <span class="badge bg-secondary-subtle text-secondary border border-secondary">@item.Status</span>
                             </td>
                             <td class="text-end">
-                                <form asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Classify" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@item.PhysicalContractID" />
-                                    @if (selectedAreaId.HasValue)
-                                    {
-                                        <input type="hidden" name="areaId" value="@selectedAreaId.Value" />
-                                    }
-                                    <button type="submit" class="btn btn-outline-info btn-sm"><i class="bi bi-stars me-1"></i>AI lai</button>
-                                </form>
+                                <a href="@item.FileUrl" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Xem file cũ
+                                </a>
                             </td>
                         </tr>
                     }

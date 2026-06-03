@@ -6,7 +6,6 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { background: #f4f6f9; }
         .search-hero {
@@ -346,7 +345,6 @@
 </div>
 
 @section Scripts {
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let allCars = [];
         let currentSort = 'distance';
@@ -537,6 +535,8 @@
                             <img src="${car.image || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=200&fit=crop'}" 
                                  class="car-image" 
                                  alt="${car.carName}"
+                                 loading="lazy"
+                                 decoding="async"
                                  onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=200&fit=crop'">
                             ${car.isPremium ? '<span class="badge bg-dark position-absolute top-0 start-0 m-2"><i class="bi bi-gem text-warning me-1"></i>Premium</span>' : ''}
                         </div>

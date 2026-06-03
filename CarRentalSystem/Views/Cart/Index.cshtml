@@ -5,16 +5,19 @@
 
 <style>
     .cart-header {
-        background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
-        color: white;
-        padding: 20px 0;
-        margin-bottom: 20px;
+        background: #ffffff;
+        color: var(--pt-text, #0f172a);
+        padding: 22px 0;
+        margin: -10px 0 20px;
+        border: 1px solid var(--pt-border, #d9e2ec);
+        border-radius: var(--pt-radius, 8px);
+        box-shadow: var(--pt-shadow-sm, 0 8px 20px rgba(15, 23, 42, .07));
     }
 
     /* ===== CAR ROW — ultra compact ===== */
     .car-row {
         background: white;
-        border-radius: 14px;
+        border-radius: var(--pt-radius, 8px);
         box-shadow: 0 2px 12px rgba(0,0,0,0.04);
         margin-bottom: 10px;
         overflow: visible;
@@ -25,9 +28,9 @@
         animation: slideUp 0.3s ease forwards;
         opacity: 0;
         position: relative;
-        border-radius: 14px;
+        border-radius: var(--pt-radius, 8px);
     }
-    .car-row > .car-img-col { border-radius: 12px 0 0 12px; overflow: hidden; }
+    .car-row > .car-img-col { border-radius: var(--pt-radius, 8px) 0 0 var(--pt-radius, 8px); overflow: hidden; }
     .car-row:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .car-row.selected { border-color: #3b82f6; background: #fafbff; }
     .car-row:nth-child(1) { animation-delay: 0.04s; }
@@ -210,7 +213,7 @@
 
     /* ===== SELECT BAR ===== */
     .select-bar {
-        background: white; border-radius: 10px; padding: 8px 14px;
+        background: white; border-radius: var(--pt-radius, 8px); padding: 8px 14px;
         margin-bottom: 10px; display: flex; justify-content: space-between;
         align-items: center; box-shadow: 0 1px 6px rgba(0,0,0,0.03);
         font-size: 0.85rem;
@@ -224,7 +227,7 @@
 
     /* ===== SUMMARY ===== */
     .summary-card {
-        background: white; border-radius: 14px;
+        background: white; border-radius: var(--pt-radius, 8px);
         box-shadow: 0 4px 16px rgba(0,0,0,0.07);
         padding: 20px; position: sticky; top: 80px;
     }
@@ -500,21 +503,22 @@
     <div class="container">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="fw-bold mb-0" style="font-size: 1.8rem; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.15);">
-                    <i class="bi bi-cart-check me-2" style="color: #10b981;"></i>Giỏ hàng của tôi
+                <div class="pt-eyebrow mb-1">Giỏ đặt xe</div>
+                <h1 class="pt-title h3 mb-1">
+                    <i class="bi bi-cart-check me-2 text-success"></i>Giỏ hàng của tôi
                 </h1>
-                <p class="mb-0 fw-medium" style="font-size: 0.9rem; color: #e2e8f0; text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                <p class="pt-subtitle fw-medium">
                     Chọn xe, cấu hình và thanh toán gộp
                 </p>
             </div>
-            <a asp-controller="Car" asp-action="Index" class="btn btn-light rounded-pill px-4 py-2 fw-bold shadow-sm" style="font-size: 0.9rem; border: 2px solid rgba(255,255,255,0.3);">
-                <i class="bi bi-plus-circle me-1" style="color: #059669;"></i><span style="color: #1e3a5f;">Thêm xe khác</span>
+            <a asp-controller="Car" asp-action="Index" class="btn btn-outline-primary px-4 py-2 fw-bold">
+                <i class="bi bi-plus-circle me-1"></i><span>Thêm xe khác</span>
             </a>
         </div>
     </div>
 </div>
 
-<div class="container pb-5">
+<div class="container pb-5 page-cart">
 @if (Model.CartItems == null || !Model.CartItems.Any())
 {
     <div class="empty-cart">
@@ -530,6 +534,7 @@ else
 {
     var contractTypes = ViewBag.ContractTypes as List<CarRentalSystem.Models.ContractType>;
     var addons = ViewBag.AddOns as List<CarRentalSystem.Models.AddOn>;
+    var hasMixedContractModes = ViewBag.HasMixedContractModes as bool? ?? false;
 
     <div class="row">
         <div class="col-lg-8">
@@ -553,6 +558,8 @@ else
                 var hours = (int)Math.Ceiling((item.EndDate - item.StartDate).TotalHours);
                 var fDays = hours / 24;
                 var rHours = hours % 24;
+                var contractMode = CarRentalSystem.Models.CarContractSigningModes.Normalize(item.Car?.ContractSigningMode);
+                var contractLabel = CarRentalSystem.Models.CarContractSigningModes.DisplayName(contractMode);
                 
                 var basePrice = (fDays * (item.Car?.PricePerDay ?? 600000)) + Math.Min(rHours * (item.Car?.PricePerHour ?? 50000), (item.Car?.PricePerDay ?? 600000));
                 
@@ -586,6 +593,7 @@ else
                                 <span><i class="bi bi-geo-alt"></i> @item.Car?.Location?.Name</span>
                                 <span><i class="bi bi-gear"></i> @item.Car?.Transmission</span>
                                 <span><i class="bi bi-people"></i> @item.Car?.Seats chỗ</span>
+                                <span><i class="bi bi-file-earmark-text"></i> @contractLabel</span>
                             </span>
                         </div>
                         <div class="car-config-tabs">
@@ -623,7 +631,8 @@ else
                                         }
                                     }
                                 </button>
-                            </div>\r\n                        </div>
+                            </div>
+                        </div>
                         @if (addons != null && addons.Any())
                         {
                             <div class="car-addon-row">
@@ -688,6 +697,12 @@ else
                 <div class="alert alert-info mt-3 mb-3" style="font-size: 0.75rem; padding: 8px 10px; border-radius: 8px;">
                     <i class="bi bi-info-circle me-1"></i>Gom vào <strong>1 hợp đồng</strong> duy nhất.
                 </div>
+                @if (hasMixedContractModes)
+                {
+                    <div class="alert alert-warning mt-3 mb-3" style="font-size: 0.75rem; padding: 8px 10px; border-radius: 8px;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Giỏ hàng có cả xe dùng hợp đồng số và xe ký giấy. Vui lòng tách giỏ trước khi thanh toán.
+                    </div>
+                }
                 <form asp-controller="Cart" asp-action="CheckoutAll" method="post">
                     @Html.AntiForgeryToken()
                     <div class="form-check small mb-2 text-start">
@@ -705,7 +720,7 @@ else
                             <a asp-controller="Home" asp-action="Privacy" class="fw-semibold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
                         </label>
                     </div>
-                    <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-bold mb-2" id="checkoutBtn" style="font-size: 0.95rem;">
+                    <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-bold mb-2" id="checkoutBtn" style="font-size: 0.95rem;" disabled="@hasMixedContractModes">
                         <i class="bi bi-credit-card me-2"></i>Thanh toán (@Model.CartItems.Count xe)
                     </button>
                 </form>
@@ -754,7 +769,8 @@ else
     </div>
 </div>
 
-<!-- ===== DRIVER POPUP ===== -->\r\n@section Scripts {
+<!-- ===== DRIVER POPUP ===== -->
+@section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
@@ -795,7 +811,8 @@ else
             }
         });
 
-        // ===== DRIVER POPUP =====\r\n// ===== PACKAGE POPUP =====
+        // ===== DRIVER POPUP =====
+        // ===== PACKAGE POPUP =====
         
         function openPackagePopup(itemId) {
             document.getElementById('packageOverlay').classList.add('show');
@@ -1235,4 +1252,3 @@ else
         }
     </script>
 }
-

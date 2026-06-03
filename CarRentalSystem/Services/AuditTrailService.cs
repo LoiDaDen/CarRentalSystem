@@ -32,6 +32,7 @@ namespace CarRentalSystem.Services
         public async Task<AuditLog> RecordAsync(AuditLog log, CancellationToken cancellationToken = default)
         {
             PopulateHttpContext(log);
+            log.RequestUrl = TruncateRequestUrl(log.RequestUrl);
 
             if (_configuration.GetValue("Audit:HashChainEnabled", true))
             {
@@ -107,8 +108,18 @@ namespace CarRentalSystem.Services
             log.UserName ??= http.User.Identity?.Name ?? http.User.FindFirstValue(ClaimTypes.Email);
             log.IpAddress ??= http.Connection.RemoteIpAddress?.ToString();
             log.UserAgent ??= http.Request.Headers.UserAgent.ToString();
-            log.RequestUrl ??= $"{http.Request.Method} {http.Request.Path}{http.Request.QueryString}";
+            log.RequestUrl ??= TruncateRequestUrl($"{http.Request.Method} {http.Request.Path}{http.Request.QueryString}");
             log.CorrelationId ??= http.TraceIdentifier;
+        }
+
+        private static string? TruncateRequestUrl(string? requestUrl)
+        {
+            if (string.IsNullOrEmpty(requestUrl))
+                return requestUrl;
+
+            return requestUrl.Length <= AuditLog.RequestUrlMaxLength
+                ? requestUrl
+                : requestUrl[..AuditLog.RequestUrlMaxLength];
         }
     }
 }

@@ -1,6 +1,8 @@
 using BCrypt.Net;
 using CarRentalSystem.Models;
+using CarRentalSystem.ViewModels;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CarRentalSystem.Data
 {
@@ -79,6 +81,35 @@ namespace CarRentalSystem.Data
                 .Where(c => c.IsApproved && !c.IsDeleted)
                 .OrderBy(c => c.CarID)
                 .FirstAsync();
+
+            if (normalizedScenario is "payos-pending-hold" or "payment-pending-hold")
+            {
+                await ConfigureDeliveryCarAsync(db, car, users.Owner.UserID);
+                var payosHold = await EnsurePendingPayOSHoldAsync(db, users, car);
+                var payosAmenity = await EnsureSandboxAmenityAsync(db, car.CarID);
+
+                return new CypressScenarioSummary
+                {
+                    ScenarioName = normalizedScenario,
+                    CarId = car.CarID,
+                    PendingOwnerCarId = await db.Cars
+                        .Where(c => c.LicensePlate == "CYP-00001")
+                        .Select(c => c.CarID)
+                        .FirstOrDefaultAsync(),
+                    OrderCode = payosHold.OrderCode,
+                    AreaId = area.AreaID,
+                    AdminUserId = users.Admin.UserID,
+                    StaffUserId = users.Staff.UserID,
+                    CustomerUserId = users.CustomerVerified.UserID,
+                    OwnerUserId = users.Owner.UserID,
+                    AmenityId = payosAmenity.CarAmenityID,
+                    AmenityName = payosAmenity.Name,
+                    CarLatitude = car.Latitude,
+                    CarLongitude = car.Longitude,
+                    BookingHoldId = payosHold.BookingHoldID,
+                    CheckoutUrl = payosHold.CheckoutUrl
+                };
+            }
 
             await ConfigureDeliveryCarAsync(db, car, users.Owner.UserID);
             var booking = await EnsureDeliveryTrackingBookingAsync(db, users, car);
@@ -591,6 +622,80 @@ namespace CarRentalSystem.Data
 
             await db.SaveChangesAsync();
             return amenity;
+        }
+
+        private static async Task<PayOSTransaction> EnsurePendingPayOSHoldAsync(ApplicationDbContext db, CypressUsers users, Car car)
+        {
+            const string description = "Cypress pending hold payment fixture";
+            var existing = await db.PayOSTransactions
+                .Include(t => t.BookingHold)
+                .Where(t => t.UserID == users.CustomerVerified.UserID && t.PayOSDescription == description)
+                .OrderByDescending(t => t.PayOSTransactionID)
+                .FirstOrDefaultAsync();
+
+            if (existing?.BookingHold != null
+                && existing.Status == PaymentStatusConstants.Pending
+                && existing.BookingHold.Status == BookingHoldStatusConstants.Active
+                && existing.BookingHold.ExpiresAt > DateTime.UtcNow.AddMinutes(2))
+            {
+                return existing;
+            }
+
+            var start = DateTime.UtcNow.AddDays(12);
+            var end = start.AddDays(2);
+            var quote = new CheckoutQuoteViewModel
+            {
+                UserID = users.CustomerVerified.UserID,
+                CarID = car.CarID,
+                CarName = car.CarName,
+                LicensePlate = car.LicensePlate,
+                StartDate = start,
+                EndDate = end,
+                TotalHours = 48,
+                RentalDays = 2,
+                BaseRentalAmount = car.PricePerDay * 2,
+                TotalPrice = car.PricePerDay * 2,
+                HoldingFee = 108000m
+            };
+
+            var hold = new BookingHold
+            {
+                UserID = users.CustomerVerified.UserID,
+                CarID = car.CarID,
+                StartDate = start,
+                EndDate = end,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+                Status = BookingHoldStatusConstants.Active,
+                QuoteSnapshotJson = JsonSerializer.Serialize(quote, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            };
+            db.BookingHolds.Add(hold);
+            await db.SaveChangesAsync();
+
+            var orderCode = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + Random.Shared.Next(1000, 9999);
+            var checkoutUrl = $"https://pay.payos.vn/web/checkout/cypress-{orderCode}";
+            var accountNumber = "123456789";
+            var bin = "970422";
+            var transferContent = $"CYPRESS {orderCode}";
+
+            var transaction = new PayOSTransaction
+            {
+                BookingHoldID = hold.BookingHoldID,
+                UserID = users.CustomerVerified.UserID,
+                OrderCode = orderCode,
+                Amount = quote.HoldingFee,
+                Status = PaymentStatusConstants.Pending,
+                CheckoutUrl = checkoutUrl,
+                QrCode = $"https://img.vietqr.io/image/{bin}-{accountNumber}-compact.png?amount=108000&addInfo={Uri.EscapeDataString(transferContent)}&accountName=CAR%20RENTAL",
+                Bin = bin,
+                AccountNumber = accountNumber,
+                AccountName = "CAR RENTAL",
+                PayOSDescription = description
+            };
+            db.PayOSTransactions.Add(transaction);
+            await db.SaveChangesAsync();
+
+            transaction.BookingHold = hold;
+            return transaction;
         }
 
         private static async Task<Booking> SeedOperationalRecordsAsync(ApplicationDbContext db, CypressUsers users, Car car, Area area)

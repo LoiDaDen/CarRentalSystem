@@ -21,14 +21,14 @@
         : string.Concat(layoutNameParts.Take(2).Select(p => p[0])).ToUpperInvariant();
 }
 <!DOCTYPE html>
-<html lang="vi" data-bs-theme="dark">
+<html lang="vi" data-bs-theme="light">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Quản trị Hệ thống</title>
     <script>
         (() => {
-            const savedTheme = localStorage.getItem('admin-theme') || 'dark';
+            const savedTheme = localStorage.getItem('admin-theme') || 'light';
             document.documentElement.setAttribute('data-bs-theme', savedTheme);
         })();
     </script>
@@ -53,7 +53,7 @@
         .admin-link i { font-size: 1.25rem; margin-right: 0.75rem; transition: transform 0.3s ease; }
         .admin-link.active { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
         .admin-link.active i { transform: scale(1.1); }
-        .navbar-brand { font-weight: 800; letter-spacing: -1px; background: linear-gradient(135deg, #fff 0%, #94a3b8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .navbar-brand { font-weight: 800; letter-spacing: 0; background: linear-gradient(135deg, #fff 0%, #94a3b8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
         /* Logo size */
         .logo-admin-desktop { width: 32px; height: 32px; object-fit: contain; }
@@ -245,6 +245,7 @@
                 @{                }
 
                 <nav class="nav flex-column px-2 pb-4 flex-grow-1">
+                    <div class="admin-nav-section">Overview</div>
                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
                         <i class="bi bi-grid-1x2-fill"></i> Tổng quan
                     </a>
@@ -254,12 +255,14 @@
 
                     @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                     {
+                        <div class="admin-nav-section">Fleet / Bookings</div>
                         <div class="mb-2">
                             <a class="admin-link d-flex justify-content-between align-items-center w-100" data-bs-toggle="collapse" href="#managementDropdown" role="button" aria-expanded="false">
-                                <span><i class="bi bi-kanban-fill"></i> Quản lý</span>
+                                <span><i class="bi bi-kanban-fill"></i> Đội xe & Đơn thuê</span>
                                 <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
                             <div class="collapse @(new[]{"Car", "CarApproval", "Booking", "User", "Maintenance", "Membership", "HolidayPricing"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="managementDropdown">
+                                <div class="admin-nav-subsection">Fleet</div>
                                 @if (User.IsInRole("Admin"))
                                 {
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Car" && ViewContext.RouteData.Values["action"]?.ToString() == "Manage" ? "active" : "")" asp-area="Admin" asp-controller="Car" asp-action="Manage">
@@ -277,6 +280,7 @@
                                 }
                                 @if (User.IsInRole("Admin"))
                                 {
+                                    <div class="admin-nav-subsection">Finance / Customers</div>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Payment" ? "active" : "")" asp-area="Admin" asp-controller="Payment" asp-action="Index">
                                         <i class="bi bi-currency-exchange" style="font-size: 1.1rem;"></i> Lịch sử Giao dịch
                                     </a>
@@ -287,6 +291,7 @@
                                         <i class="bi bi-gem text-info" style="font-size: 1.1rem;"></i> Hạng TV & Hợp đồng
                                     </a>
                                 }
+                                <div class="admin-nav-subsection">Bookings</div>
                                 <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Booking" ? "active" : "")" asp-area="Admin" asp-controller="Booking" asp-action="Index">
                                     <i class="bi bi-calendar2-check-fill" style="font-size: 1.1rem;"></i> Đơn đặt xe
                                 </a>
@@ -309,6 +314,7 @@
 
                     @if (User.IsInRole("Admin"))
                     {
+                        <div class="admin-nav-section">Content</div>
                         <div class="mb-2">
                             <a class="admin-link d-flex justify-content-between align-items-center w-100" data-bs-toggle="collapse" href="#crmDropdown" role="button" aria-expanded="false">
                                 <span><i class="bi bi-headset"></i> CRM & Marketing</span>
@@ -330,6 +336,7 @@
                             </div>
                         </div>
 
+                        <div class="admin-nav-section">System</div>
                         <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Alert" ? "active" : "")" asp-area="Admin" asp-controller="Alert" asp-action="Index">
                             <i class="bi bi-shield-lock-fill"></i> Bảo mật
                         </a>
@@ -345,12 +352,13 @@
 
                     @if (User.IsInRole("Manager") || User.IsInRole("Staff") || User.IsInRole("Admin"))
                     {
+                        <div class="admin-nav-section">Operations</div>
                         <div class="mb-2">
                             <a class="admin-link d-flex justify-content-between align-items-center w-100" data-bs-toggle="collapse" href="#areaDropdown" role="button" aria-expanded="false">
                                 <span><i class="bi bi-geo-alt-fill"></i> Khu vực</span>
                                 <i class="bi bi-chevron-down small opacity-50 ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
-                            <div class="collapse @(new[]{"AreaDashboard", "Area", "AreaStaff", "CarApproval", "AreaBooking", "PhysicalContracts", "Camera"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="areaDropdown">
+                            <div class="collapse @(new[]{"AreaDashboard", "Area", "AreaStaff", "CarApproval", "AreaBooking", "Camera"}.Contains(ViewContext.RouteData.Values["controller"]?.ToString()) ? "show" : "") ps-3" id="areaDropdown">
                                 <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AreaDashboard" ? "active" : "")" asp-area="Admin" asp-controller="AreaDashboard" asp-action="Index">
                                     <i class="bi bi-grid-3x3-gap-fill" style="font-size: 1.1rem;"></i> Dashboard Khu vực
                                 </a>
@@ -365,9 +373,6 @@
                                 }
                                 @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Staff"))
                                 {
-                                    <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "PhysicalContracts" ? "active" : "")" asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Index">
-                                        <i class="bi bi-file-earmark-text" style="font-size: 1.1rem;"></i> Hợp đồng vật lý
-                                    </a>
                                     <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AreaBooking" ? "active" : "")" asp-area="Admin" asp-controller="AreaBooking" asp-action="Index">
                                         <i class="bi bi-clipboard-check" style="font-size: 1.1rem;"></i> Đơn xe khu vực
                                     </a>
@@ -383,6 +388,7 @@
                     @if (User.IsInRole("Admin"))
                     {
 
+                        <div class="admin-nav-section">System Tools</div>
                         <a class="admin-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Lookups" ? "active" : "")" asp-area="Admin" asp-controller="Lookups" asp-action="Index">
                             <i class="bi bi-sliders2"></i> Danh mục hệ thống
                         </a>

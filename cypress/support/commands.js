@@ -19,6 +19,53 @@ const cypressSecretHeaders = () => ({
   'X-Cypress-Reset-Secret': Cypress.env('resetSecret') || 'local-cypress-reset',
 });
 
+const isProductionRun = () => Cypress.env('productionMode') === true
+  || /^prod(?:uction)?$/i.test(String(Cypress.env('e2eEnv') || ''));
+
+const assertNotProductionCommand = (commandName) => {
+  if (!isProductionRun()) return;
+  throw new Error(`${commandName} is disabled in Cypress production mode. Use tagged production test data and real providers only.`);
+};
+
+const requireProductionCommand = (commandName) => {
+  if (isProductionRun()) return;
+  throw new Error(`${commandName} requires Cypress production mode. Run with CYPRESS_E2E_ENV=production and CYPRESS_BASE_URL.`);
+};
+
+const roleEnvName = (roleKey) => String(roleKey || '')
+  .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+  .replace(/[^a-zA-Z0-9]+/g, '_')
+  .toUpperCase();
+
+const productionUserFor = (roleKey) => {
+  const users = Cypress.env('prodUsers') || {};
+  const configured = users[roleKey] || {};
+  const envName = roleEnvName(roleKey);
+  const user = {
+    email: configured.email || Cypress.env(`PROD_${envName}_EMAIL`) || '',
+    password: configured.password || Cypress.env(`PROD_${envName}_PASSWORD`) || '',
+  };
+
+  expect(user.email, `CYPRESS_PROD_${envName}_EMAIL`).to.be.a('string').and.not.be.empty;
+  expect(user.password, `CYPRESS_PROD_${envName}_PASSWORD`).to.be.a('string').and.not.be.empty;
+  return user;
+};
+
+const activeRunId = () => {
+  const runId = String(Cypress.env('productionRunId') || Cypress.env('RUN_ID') || '').trim();
+  if (isProductionRun()) {
+    expect(runId, 'CYPRESS_RUN_ID').to.match(/^E2E-[A-Za-z0-9_.-]+$/);
+  }
+  return runId || `LOCAL-${Date.now()}`;
+};
+
+const futureIso = (daysFromNow, hour = 10) => {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromNow);
+  date.setHours(hour, 0, 0, 0);
+  return date.toISOString().slice(0, 16);
+};
+
 Cypress.on('window:before:load', (win) => {
   if (!browserGeolocationStub) return;
   const position = {
@@ -47,6 +94,7 @@ Cypress.on('window:before:load', (win) => {
 });
 
 Cypress.Commands.add('resetTestData', (options = {}) => {
+  assertNotProductionCommand('cy.resetTestData');
   const force = options.force === true || Cypress.env('resetEverySpec') === true;
 
   return cy.task('getCypressSeed', null, { log: false }).then((existingSeed) => {
@@ -71,6 +119,7 @@ Cypress.Commands.add('resetTestData', (options = {}) => {
 });
 
 Cypress.Commands.add('assertSandboxConfigured', (options = {}) => {
+  assertNotProductionCommand('cy.assertSandboxConfigured');
   const requirePayOS = options.payos ?? (Cypress.env('usePayOSSandbox') === true);
   const requireFpt = options.fpt ?? (Cypress.env('useFptSandbox') === true);
   const requireReady = options.ready ?? (requirePayOS || requireFpt);
@@ -108,6 +157,7 @@ Cypress.Commands.add('assertSandboxConfigured', (options = {}) => {
 });
 
 Cypress.Commands.add('seedScenario', (name) => {
+  assertNotProductionCommand('cy.seedScenario');
   return cy.request({
     method: 'POST',
     url: '/__test/seed/scenario',
@@ -123,6 +173,7 @@ Cypress.Commands.add('seedScenario', (name) => {
 });
 
 Cypress.Commands.add('waitForPayOSWebhook', (orderCode, options = {}) => {
+  assertNotProductionCommand('cy.waitForPayOSWebhook');
   const timeoutSeconds = options.timeoutSeconds || 120;
   return cy.request({
     method: 'GET',
@@ -211,6 +262,12 @@ Cypress.Commands.add('login', (email, password) => {
 });
 
 Cypress.Commands.add('loginAs', (roleKey) => {
+  if (isProductionRun()) {
+    const user = productionUserFor(roleKey);
+    cy.login(user.email, user.password);
+    return;
+  }
+
   cy.fixture('users').then((users) => {
     const user = users[roleKey];
     expect(user, `fixture user ${roleKey}`).to.exist;
@@ -248,6 +305,108 @@ Cypress.Commands.add('clearCart', () => {
         }).its('body.success').should('eq', true);
       });
     });
+  });
+});
+
+Cypress.Commands.add('requireProductionMode', () => {
+  requireProductionCommand('cy.requireProductionMode');
+  const baseUrl = String(Cypress.config('baseUrl') || '');
+  expect(baseUrl, 'CYPRESS_BASE_URL').to.match(/^https?:\/\//i);
+  expect(baseUrl, 'production base URL must not be localhost').not.to.match(/localhost|127\.0\.0\.1/i);
+  expect(activeRunId(), 'production run id').to.match(/^E2E-/);
+});
+
+Cypress.Commands.add('productionRunId', () => cy.wrap(activeRunId(), { log: false }));
+
+Cypress.Commands.add('productionDataName', (label = 'data') => {
+  const safeLabel = String(label).replace(/[^a-zA-Z0-9_.-]+/g, '-').replace(/^-+|-+$/g, '') || 'data';
+  return cy.wrap(`${activeRunId()}-${safeLabel}`, { log: false });
+});
+
+Cypress.Commands.add('registerProductionArtifact', (type, label, data = {}) => {
+  if (!isProductionRun()) return cy.wrap(null, { log: false });
+
+  const runId = activeRunId();
+  const safeData = { ...data, runId };
+  return cy.task('registerProductionArtifact', {
+    type,
+    label,
+    data: safeData,
+  }, { log: false });
+});
+
+Cypress.Commands.add('getProductionUser', (roleKey) => {
+  requireProductionCommand('cy.getProductionUser');
+  return cy.wrap(productionUserFor(roleKey), { log: false });
+});
+
+Cypress.Commands.add('waitForProductionPayment', (orderCode, options = {}) => {
+  requireProductionCommand('cy.waitForProductionPayment');
+  const timeoutMs = Number(options.timeoutMs || Cypress.env('productionPaymentTimeoutMs') || 10 * 60 * 1000);
+  const pollIntervalMs = Number(options.pollIntervalMs || Cypress.env('productionPaymentPollIntervalMs') || 10 * 1000);
+  const order = String(orderCode || '').trim();
+  const started = Date.now();
+  const pollUrl = options.pollUrl || `/Payment/Hold?orderCode=${encodeURIComponent(order)}`;
+
+  expect(order, 'PayOS order code').to.match(/^\d+$/);
+
+  const poll = () => cy.request({
+    url: pollUrl,
+    followRedirect: false,
+    failOnStatusCode: false,
+  }).then((response) => {
+    const location = String(response.headers?.location || '');
+    const body = typeof response.body === 'string' ? response.body : JSON.stringify(response.body || {});
+    const paid = response.status === 302 && /\/Payment\/Success/i.test(location)
+      || /Thanh to[aá]n th[aà]nh c[oô]ng|payment success|PayOS.*Paid|K[yý] h[oợ]p d[oồ]ng/i.test(body);
+
+    if (paid) {
+      return cy.wrap({ orderCode: order, status: 'paid', location, pollUrl }, { log: false });
+    }
+
+    if (Date.now() - started > timeoutMs) {
+      throw new Error(`Timed out waiting for production PayOS payment ${order}. Pay manually, then rerun or increase CYPRESS_PAYMENT_TIMEOUT_MS.`);
+    }
+
+    cy.log(`Waiting for production PayOS payment ${order}. Polling again in ${pollIntervalMs}ms.`);
+    return cy.wait(pollIntervalMs, { log: false }).then(poll);
+  });
+
+  return poll();
+});
+
+Cypress.Commands.add('findFirstBookableCarHref', () => {
+  const configuredCarId = String(Cypress.env('productionBookingCarId') || '').trim();
+  if (configuredCarId) {
+    return cy.wrap(`/Car/Details/${configuredCarId}`, { log: false });
+  }
+
+  cy.safeVisit('/Car');
+  return cy.get('a[href*="/Car/Details"]', { timeout: 15000 })
+    .first()
+    .invoke('attr', 'href')
+    .then((href) => {
+      expect(href, 'first car details href').to.be.a('string').and.not.be.empty;
+      return href;
+    });
+});
+
+Cypress.Commands.add('openProductionBookingCheckout', (options = {}) => {
+  requireProductionCommand('cy.openProductionBookingCheckout');
+  const startDate = options.startDate || futureIso(options.startDaysFromNow || 35, 10);
+  const endDate = options.endDate || futureIso(options.endDaysFromNow || 35, 14);
+
+  return cy.findFirstBookableCarHref().then((href) => {
+    const detailsUrl = new URL(href, Cypress.config('baseUrl'));
+    detailsUrl.searchParams.set('startDate', startDate);
+    detailsUrl.searchParams.set('endDate', endDate);
+    cy.safeVisit(`${detailsUrl.pathname}${detailsUrl.search}`);
+    cy.get('input[name="StartDate"], #startDate').first().invoke('val', startDate);
+    cy.get('input[name="EndDate"], #endDate').first().invoke('val', endDate);
+    cy.get('form#bookingForm').should('exist').submit();
+    cy.url().should('include', '/Booking/Checkout');
+    cy.assertNoFatalPageError();
+    return cy.wrap({ href: detailsUrl.pathname, startDate, endDate }, { log: false });
   });
 });
 
@@ -455,7 +614,69 @@ const runRouteCheck = (route) => {
   });
 };
 
+const runPayOSPendingRouteCase = (testCase, title) => {
+  cy.seedScenario('payos-pending-hold').then((scenario) => {
+    expect(scenario.orderCode, 'pending PayOS order code').to.exist;
+    cy.ensureLoggedInAs('customer');
+
+    const pendingRoute = `/Payment/Hold?orderCode=${scenario.orderCode}`;
+
+    if (/layout|responsive|accessibility|console/.test(title)) {
+      cy.assertResponsiveBaseline(pendingRoute);
+      cy.assertNoSeriousConsoleErrors(pendingRoute);
+      cy.assertKeyboardBaseline();
+      return;
+    }
+
+    if (/validation|edge|csrf|idor|rbac|phÃ¢n quyá»n|phan quyen|security/.test(title)) {
+      cy.request({
+        method: 'GET',
+        url: '/Payment/CancelHold?orderCode=999999123456',
+        followRedirect: false,
+        failOnStatusCode: false,
+      }).then((response) => {
+        expect(response.status, 'GET PayOS cancel callback must not be 405').not.to.eq(405);
+        expect(response.status, 'GET PayOS cancel callback must not crash').to.be.lessThan(500);
+      });
+    }
+
+    cy.safeVisit(pendingRoute);
+    cy.contains(/Thanh to[aÃ¡]n gi[á»¯u] ch[á»—o] qua PayOS|Thanh toán giữ chỗ qua PayOS/i).should('be.visible');
+    cy.contains(/T[oÃ´]i [Ä‘d][aÃ£] thanh to[aÃ¡]n|Tôi đã thanh toán/i).should('be.visible');
+    cy.contains(/M[á»Ÿo] PayOS|Mở PayOS/i).should('be.visible');
+    cy.contains(/H[á»§u]y thanh to[aÃ¡]n|Hủy thanh toán/i).should('be.visible');
+    cy.get('img[alt*="QR"]').should('be.visible');
+    cy.contains(/M[aÃ£] PayOS|Mã PayOS/i).should('be.visible');
+    cy.contains(String(scenario.orderCode)).should('be.visible');
+    cy.contains(/S[á»‘o] ti[á»e]n|Số tiền/i).should('be.visible');
+    cy.contains(/N[á»™o]i dung chuy[á»ƒe]n kho[áº£a]n|Nội dung chuyển khoản/i).should('be.visible');
+
+    cy.contains('button', /T[oÃ´]i [Ä‘d][aÃ£] thanh to[aÃ¡]n|Tôi đã thanh toán/i)
+      .closest('form')
+      .submit();
+    cy.contains(/PayOS not configured|Chưa hoàn thành yêu cầu thanh toán|ChÆ°a hoÃ n thÃ nh yÃªu cáº§u thanh toÃ¡n|Không thể kiểm tra trạng thái PayOS|KhÃ´ng thá»ƒ kiá»ƒm tra tráº¡ng thÃ¡i PayOS/i)
+      .should('be.visible');
+  });
+};
+
 Cypress.Commands.add('ensureLoggedInAs', (roleKey) => {
+  if (isProductionRun()) {
+    const user = productionUserFor(roleKey);
+    cy.session(`production:${activeRunId()}:${roleKey}:${user.email}`, () => {
+      cy.visit('/Auth/Login');
+      cy.get('input[name="email"]').clear().type(user.email);
+      cy.get('input[name="password"]').clear().type(user.password, { log: false });
+      cy.get('input[name="email"]').closest('form').submit();
+      cy.url().should('not.include', '/Auth/Login');
+      cy.getCookie('CarRental.Auth').should('exist');
+    }, {
+      validate() {
+        cy.getCookie('CarRental.Auth').should('exist');
+      },
+    });
+    return;
+  }
+
   cy.fixture('users').then((users) => {
     const user = users[roleKey];
     expect(user, `fixture user ${roleKey}`).to.exist;
@@ -480,6 +701,7 @@ Cypress.Commands.add('tc', (testCase) => {
 });
 
 Cypress.Commands.add('mockExternalProviders', () => {
+  assertNotProductionCommand('cy.mockExternalProviders');
   cy.intercept(/payos|fpt|groq|gemini|googleapis|nominatim|osrm|smtp/i, {
     statusCode: 200,
     body: { success: true, mocked: true, provider: 'cypress' },
@@ -594,6 +816,11 @@ Cypress.Commands.add('runWorkbookTestCase', (testCase) => {
       cy.ensureLoggedInAs(roleKey);
     } else {
       cy.clearCookies();
+    }
+
+    if (testCase.moduleCode === 'MD08' && ['TC154', 'TC155', 'TC156'].includes(testCase.id)) {
+      runPayOSPendingRouteCase(testCase, title);
+      return;
     }
 
     if (testCase.moduleCode === 'MD16') {

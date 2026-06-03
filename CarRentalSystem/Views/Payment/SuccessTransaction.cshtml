@@ -3,11 +3,15 @@
     ViewData["Title"] = "Thanh toán giỏ hàng thành công";
     var paidAmount = ViewBag.PaidAmount as decimal? ?? Model.Bookings.Sum(b => b.Payment?.Amount ?? b.ReservationFee);
     var status = ViewBag.PayOSStatus as string ?? Model.Status;
+    var digitalContract = Model.DigitalContract;
+    var firstMode = CarRentalSystem.Models.CarContractSigningModes.Normalize(Model.Bookings.FirstOrDefault()?.Car?.ContractSigningMode);
+    var requiresDigitalContract = firstMode == CarRentalSystem.Models.CarContractSigningModes.Digital;
 }
 
 <div class="container py-5">
-    <div class="mx-auto bg-white border rounded-4 shadow-sm p-4 p-md-5 text-center" style="max-width: 840px;">
-        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success-subtle text-success mb-4" style="width:88px;height:88px;">
+    @await Html.PartialAsync("_BookingFlowProgress", CarRentalSystem.ViewModels.BookingFlowProgressViewModel.ForTransaction(Model))
+    <div class="payment-panel mx-auto text-center">
+        <div class="payment-icon d-inline-flex align-items-center justify-content-center bg-success-subtle text-success mb-4">
             <i class="bi bi-check2-circle display-5"></i>
         </div>
 
@@ -18,6 +22,18 @@
         {
             <div class="alert alert-success text-start rounded-3">
                 <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            </div>
+        }
+        @if (TempData["Warning"] != null)
+        {
+            <div class="alert alert-warning text-start rounded-3">
+                <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Warning"]
+            </div>
+        }
+        @if (TempData["Info"] != null)
+        {
+            <div class="alert alert-info text-start rounded-3">
+                <i class="bi bi-info-circle me-2"></i>@TempData["Info"]
             </div>
         }
 
@@ -67,6 +83,24 @@
         </div>
 
         <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
+            @if (digitalContract != null && !digitalContract.IsSignedByCustomer)
+            {
+                <a asp-controller="DigitalContract" asp-action="Sign" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-warning rounded-3 fw-bold px-4">
+                    <i class="bi bi-pen me-1"></i>Ký hợp đồng
+                </a>
+            }
+            else if (digitalContract != null)
+            {
+                <a asp-controller="DigitalContract" asp-action="Details" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-outline-primary rounded-3 fw-bold px-4">
+                    <i class="bi bi-file-earmark-check me-1"></i>Hợp đồng
+                </a>
+            }
+            else if (requiresDigitalContract)
+            {
+                <button type="button" class="btn btn-outline-warning rounded-3 fw-bold px-4" disabled>
+                    <i class="bi bi-file-earmark-lock me-1"></i>Chờ hợp đồng số
+                </button>
+            }
             <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-primary rounded-3 fw-bold px-4">
                 Chuyến xe của tôi
             </a>

@@ -298,6 +298,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             if (await _context.Cars.AnyAsync(c => c.VIN == car.VIN))
                 ModelState.AddModelError("VIN", "Số VIN này đã tồn tại.");
 
+            if (!car.NextInspectionDate.HasValue)
+                ModelState.AddModelError(nameof(Car.NextInspectionDate), "Vui lòng nhập ngày đăng kiểm tiếp theo.");
+
             if (ModelState.IsValid)
             {
                 await _carService.AddCarAsync(car);
@@ -443,6 +446,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 ModelState.AddModelError("LicensePlate", "Biển số xe này đã tồn tại.");
             if (await _context.Cars.AnyAsync(c => c.VIN == car.VIN && c.CarID != car.CarID))
                 ModelState.AddModelError("VIN", "Số VIN này đã tồn tại.");
+
+            if (!car.NextInspectionDate.HasValue)
+                ModelState.AddModelError(nameof(Car.NextInspectionDate), "Vui lòng nhập ngày đăng kiểm tiếp theo.");
 
             if (ModelState.IsValid)
             {
