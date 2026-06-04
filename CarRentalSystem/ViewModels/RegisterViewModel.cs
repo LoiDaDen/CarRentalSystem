@@ -1,7 +1,28 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace CarRentalSystem.ViewModels
 {
+    public sealed class MustBeTrueAttribute : ValidationAttribute, IClientModelValidator
+    {
+        public override bool IsValid(object? value)
+        {
+            return value is bool boolValue && boolValue;
+        }
+
+        public void AddValidation(ClientModelValidationContext context)
+        {
+            MergeAttribute(context.Attributes, "data-val", "true");
+            MergeAttribute(context.Attributes, "data-val-mustbetrue", FormatErrorMessage(context.ModelMetadata.GetDisplayName()));
+        }
+
+        private static void MergeAttribute(IDictionary<string, string> attributes, string key, string value)
+        {
+            if (!attributes.ContainsKey(key))
+                attributes.Add(key, value);
+        }
+    }
+
     public class RegisterViewModel
     {
         [Required(ErrorMessage = "Vui lòng nhập họ tên.")]
@@ -43,13 +64,13 @@ namespace CarRentalSystem.ViewModels
         [MaxLength(6)]
         public string? ReferralCode { get; set; }
 
-        [Range(typeof(bool), "true", "true", ErrorMessage = "Bạn phải đồng ý Điều khoản sử dụng.")]
+        [MustBeTrue(ErrorMessage = "Bạn phải đồng ý Điều khoản sử dụng.")]
         public bool AcceptTerms { get; set; }
 
-        [Range(typeof(bool), "true", "true", ErrorMessage = "Bạn phải xác nhận đã đọc Thông báo xử lý dữ liệu cá nhân.")]
+        [MustBeTrue(ErrorMessage = "Bạn phải xác nhận đã đọc Thông báo xử lý dữ liệu cá nhân.")]
         public bool AcceptPrivacyNotice { get; set; }
 
-        [Range(typeof(bool), "true", "true", ErrorMessage = "Bạn phải đồng ý xử lý CCCD/GPLX và dữ liệu nhạy cảm phục vụ xác minh thuê xe.")]
+        [MustBeTrue(ErrorMessage = "Bạn phải đồng ý xử lý CCCD/GPLX và dữ liệu nhạy cảm phục vụ xác minh thuê xe.")]
         public bool AcceptSensitiveDataProcessing { get; set; }
     }
 }

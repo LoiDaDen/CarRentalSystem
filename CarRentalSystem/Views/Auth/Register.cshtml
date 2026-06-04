@@ -163,6 +163,29 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function ($) {
+            if (!$ || !$.validator || !$.validator.unobtrusive) {
+                return;
+            }
+
+            $.validator.addMethod("mustbetrue", function (value, element) {
+                return element.checked === true;
+            });
+            $.validator.unobtrusive.adapters.addBool("mustbetrue");
+
+            $(function () {
+                var $form = $("#AcceptTerms").closest("form");
+                $form.removeData("validator");
+                $form.removeData("unobtrusiveValidation");
+                $.validator.unobtrusive.parse($form);
+
+                $("#AcceptTerms, #AcceptPrivacyNotice, #AcceptSensitiveDataProcessing").on("change", function () {
+                    $(this).valid();
+                });
+            });
+        })(window.jQuery);
+    </script>
     @if (showRecaptcha)
     {
         <script src="https://www.google.com/recaptcha/api.js" async defer></script>
