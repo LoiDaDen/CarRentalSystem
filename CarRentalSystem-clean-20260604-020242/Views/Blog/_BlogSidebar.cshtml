@@ -1,0 +1,32 @@
+@model CarRentalSystem.ViewModels.BlogListViewModel
+
+<aside class="d-grid gap-3">
+    <div class="blog-panel">
+        <div class="blog-panel-title">Bài viết mới nhất</div>
+        <div class="d-grid gap-3">
+            @foreach (var blog in Model.LatestBlogs)
+            {
+                <a asp-controller="Blog" asp-action="Detail" asp-route-slug="@blog.Slug" class="text-decoration-none">
+                    <div class="fw-bold text-dark">@blog.Title</div>
+                    <div class="small text-muted">@blog.PublishedDate.ToString("dd/MM/yyyy") · @blog.ReadingTime phút đọc</div>
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="blog-panel">
+        <div class="blog-panel-title">Tag phổ biến</div>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var tag in Model.PopularTags)
+            {
+                <a class="blog-chip @(Model.CurrentTagSlug == tag.Slug ? "active" : "")" asp-controller="Blog" asp-action="Index" asp-route-tag="@tag.Slug">#@tag.Name</a>
+            }
+        </div>
+    </div>
+
+    <div class="blog-cta">
+        <h3 class="h5 fw-bold mb-2">Bạn cần thuê xe tự lái?</h3>
+        <p class="mb-3 small opacity-75">Xem danh sách xe đang có và đặt xe online chỉ trong vài phút.</p>
+        <a asp-controller="Car" asp-action="Index" class="btn btn-light rounded-3 fw-bold w-100">Xem xe ngay</a>
+    </div>
+</aside>

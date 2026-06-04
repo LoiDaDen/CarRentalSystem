@@ -1,0 +1,246 @@
+@model CarRentalSystem.Areas.Admin.Models.EnterpriseCommandCenterViewModel
+@using CarRentalSystem.Areas.Admin.Models
+@{
+    ViewData["Title"] = "Enterprise Command Center";
+}
+
+@section Styles {
+    <style>
+        .enterprise-header {
+            border: 1px solid var(--admin-border);
+            background: var(--admin-surface);
+            border-radius: 8px;
+        }
+
+        .enterprise-kpi,
+        .enterprise-panel,
+        .enterprise-queue,
+        .enterprise-workflow {
+            border: 1px solid var(--admin-border);
+            background: var(--admin-surface);
+            border-radius: 8px;
+        }
+
+        .enterprise-kpi {
+            min-height: 132px;
+        }
+
+        .enterprise-icon {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: var(--admin-surface-2);
+        }
+
+        .enterprise-severity-critical { border-left: 4px solid #ef4444; }
+        .enterprise-severity-warning { border-left: 4px solid #f59e0b; }
+        .enterprise-severity-success { border-left: 4px solid #22c55e; }
+        .enterprise-severity-info { border-left: 4px solid #38bdf8; }
+
+        .enterprise-status {
+            min-width: 92px;
+            text-align: center;
+        }
+
+        .enterprise-table td,
+        .enterprise-table th {
+            vertical-align: middle;
+        }
+    </style>
+}
+
+<div class="enterprise-header p-3 p-lg-4 mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+        <div>
+            <div class="text-uppercase text-info fw-bold small mb-2">Enterprise operating layer</div>
+            <h1 class="h3 fw-bold mb-2">Command Center</h1>
+            <p class="mb-0 text-secondary">
+                One screen for booking, money, fleet, evidence, support, compliance and API readiness signals.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap align-items-start gap-2">
+            <a href="/Admin/Enterprise/Snapshot" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-braces me-1"></i> JSON snapshot
+            </a>
+            <a href="/Admin/Enterprise" class="btn btn-primary btn-sm">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </a>
+        </div>
+    </div>
+    <div class="small text-secondary mt-3">
+        Generated UTC: @Model.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    @foreach (var kpi in Model.Kpis)
+    {
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="@kpi.Url" class="text-decoration-none">
+                <div class="enterprise-kpi enterprise-severity-@kpi.Severity p-3 h-100">
+                    <div class="d-flex justify-content-between gap-3">
+                        <div>
+                            <div class="small text-secondary fw-semibold">@kpi.Title</div>
+                            <div class="display-6 fw-bold text-white my-2">@kpi.Value</div>
+                            <div class="small text-secondary">@kpi.Detail</div>
+                        </div>
+                        <span class="enterprise-icon text-info">
+                            <i class="bi @kpi.Icon fs-5"></i>
+                        </span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    }
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-xl-7">
+        <div class="enterprise-panel p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 fw-bold mb-0">Operational Queues</h2>
+                <span class="badge bg-secondary">@Model.Queues.Sum(q => q.Count).ToString("N0") total signals</span>
+            </div>
+            <div class="row g-3">
+                @foreach (var queue in Model.Queues)
+                {
+                    <div class="col-12 col-md-6">
+                        <a href="@queue.Url" class="text-decoration-none">
+                            <div class="enterprise-queue enterprise-severity-@queue.Severity p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-start gap-3">
+                                    <div>
+                                        <div class="fw-bold text-white">@queue.Title</div>
+                                        <div class="small text-secondary mt-1">@queue.Description</div>
+                                        <div class="small text-info mt-2">@queue.Owner</div>
+                                    </div>
+                                    <span class="badge @BadgeClass(queue.Severity) fs-6">@queue.Count.ToString("N0")</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-xl-5">
+        <div class="enterprise-panel p-3 mb-3">
+            <h2 class="h5 fw-bold mb-3">Finance Snapshot</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-dark table-hover enterprise-table mb-0">
+                    <tbody>
+                        <tr><th>Ledger charges 30d</th><td class="text-end">@Money(Model.Finance.LedgerCharge30Days)</td></tr>
+                        <tr><th>Refunds 30d</th><td class="text-end">@Money(Model.Finance.LedgerRefund30Days)</td></tr>
+                        <tr><th>Deductions 30d</th><td class="text-end">@Money(Model.Finance.LedgerDeduction30Days)</td></tr>
+                        <tr><th>Payouts 30d</th><td class="text-end">@Money(Model.Finance.LedgerPayout30Days)</td></tr>
+                        <tr><th>PayOS without ledger</th><td class="text-end">@Model.Finance.PayOSPaidWithoutLedger</td></tr>
+                        <tr><th>Ledger without PayOS</th><td class="text-end">@Model.Finance.LedgerWithoutPayOS</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="enterprise-panel p-3">
+            <h2 class="h5 fw-bold mb-3">Fleet Snapshot</h2>
+            <div class="row g-2">
+                <div class="col-6"><div class="p-2 bg-dark rounded">Available<br /><strong>@Model.Fleet.AvailableCars/@Model.Fleet.TotalCars</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Utilization<br /><strong>@Model.Fleet.MonthlyUtilizationPercent.ToString("N1")%</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Maintenance due<br /><strong>@Model.Fleet.MaintenanceDueSoon</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Tracking gaps<br /><strong>@Model.Fleet.MissingTracking</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Open alerts<br /><strong>@Model.Fleet.OpenAlerts</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Pending approval<br /><strong>@Model.Fleet.PendingApprovalCars</strong></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="enterprise-panel p-3 mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
+        <div>
+            <h2 class="h5 fw-bold mb-1">Capability Coverage</h2>
+            <div class="small text-secondary">The 14 enterprise modules from the roadmap, mapped to current runtime coverage.</div>
+        </div>
+        <span class="small text-secondary">Live: @Model.Capabilities.Count(c => c.Status == EnterpriseCapabilityState.Live) / @Model.Capabilities.Count</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-dark table-hover enterprise-table mb-0">
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Status</th>
+                    <th>Current coverage</th>
+                    <th>Next step</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var capability in Model.Capabilities)
+                {
+                    <tr>
+                        <td class="fw-semibold">@capability.Module</td>
+                        <td><span class="badge enterprise-status @CapabilityBadgeClass(capability.Status)">@capability.Status</span></td>
+                        <td>@capability.CurrentCoverage</td>
+                        <td>@capability.NextStep</td>
+                        <td><span class="badge bg-secondary">@capability.Priority</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3">
+    @foreach (var group in Model.WorkflowGroups)
+    {
+        <div class="col-12 col-xl-6">
+            <div class="enterprise-workflow p-3 h-100">
+                <h2 class="h5 fw-bold mb-1">@group.Role</h2>
+                <div class="small text-secondary mb-3">@group.Focus</div>
+                <div class="list-group list-group-flush">
+                    @foreach (var link in group.Links)
+                    {
+                        <a href="@link.Url" class="list-group-item list-group-item-action bg-transparent text-white border-secondary-subtle px-0">
+                            <div class="d-flex gap-3">
+                                <i class="bi @link.Icon text-info"></i>
+                                <div>
+                                    <div class="fw-semibold">@link.Label</div>
+                                    <div class="small text-secondary">@link.Description</div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@functions {
+    private static string BadgeClass(string severity)
+    {
+        return severity switch
+        {
+            EnterpriseSeverity.Critical => "bg-danger",
+            EnterpriseSeverity.Warning => "bg-warning text-dark",
+            EnterpriseSeverity.Success => "bg-success",
+            _ => "bg-info text-dark"
+        };
+    }
+
+    private static string CapabilityBadgeClass(string status)
+    {
+        return status switch
+        {
+            EnterpriseCapabilityState.Live => "bg-success",
+            EnterpriseCapabilityState.NeedsEvidence => "bg-warning text-dark",
+            EnterpriseCapabilityState.Planned => "bg-secondary",
+            _ => "bg-info text-dark"
+        };
+    }
+
+    private static string Money(decimal amount)
+    {
+        return string.Format("{0:N0} VND", amount);
+    }
+}

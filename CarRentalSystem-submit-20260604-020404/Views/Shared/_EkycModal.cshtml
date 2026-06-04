@@ -1,0 +1,202 @@
+@model string
+@{
+    var returnUrl = string.IsNullOrWhiteSpace(Model) ? (Context.Request.Path + Context.Request.QueryString).ToString() : Model;
+    var warnings = (TempData["EkycWarnings"] as string)?.Split('|', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+}
+
+<div class="modal fade" id="ekycQuickModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form asp-controller="Ekyc" asp-action="Submit" method="post" enctype="multipart/form-data" id="ekycQuickForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <div class="modal-header border-0 bg-primary bg-opacity-10 rounded-top-4 ekyc-readable">
+                    <div>
+                        <h5 class="modal-title fw-bold"><i class="bi bi-shield-check text-primary me-2"></i>Cần xác thực eKYC trước khi thuê xe</h5>
+                        <div class="small text-muted">Tải ảnh CCCD, GPLX và chụp selfie bằng camera để hệ thống cập nhật hồ sơ của bạn.</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 ekyc-readable">
+                    <div class="alert alert-info border-0 rounded-3 mb-3 d-flex gap-2">
+                        <i class="bi bi-info-circle-fill text-primary mt-1"></i>
+                        <div>
+                            <div class="fw-bold">Checkout đang được tạm dừng để bảo vệ tài khoản.</div>
+                            <div class="small text-muted">Sau khi gửi eKYC thành công, bạn sẽ quay lại đúng trang hiện tại để tiếp tục thuê xe.</div>
+                        </div>
+                    </div>
+
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger rounded-3">
+                            <div class="fw-bold mb-1">@TempData["ErrorMessage"]</div>
+                            @if (warnings.Length > 0)
+                            {
+                                <ul class="mb-0 ps-3">
+                                    @foreach (var warning in warnings)
+                                    {
+                                        <li>@warning</li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    }
+                    @if (TempData["WarningMessage"] != null)
+                    {
+                        <div class="alert alert-warning rounded-3">
+                            <div class="fw-bold mb-1">@TempData["WarningMessage"]</div>
+                            @if (warnings.Length > 0)
+                            {
+                                <ul class="mb-0 ps-3">
+                                    @foreach (var warning in warnings)
+                                    {
+                                        <li>@warning</li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">CCCD mặt trước</label>
+                            <input type="file" name="idFront" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">CCCD mặt sau</label>
+                            <input type="file" name="idBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">GPLX mặt trước</label>
+                            <input type="file" name="license" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">GPLX mặt sau</label>
+                            <input type="file" name="licenseBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Ảnh selfie rõ mặt</label>
+                            <input type="file" name="face" id="quickFaceInput" class="d-none" accept=".jpg,.jpeg,.png,.webp,image/*" required />
+                            <div class="border rounded-3 p-3 bg-light text-center">
+                                <video id="quickFaceCamera" class="w-100 rounded-3 d-none" autoplay playsinline muted style="max-height:260px;object-fit:cover;"></video>
+                                <canvas id="quickFaceCanvas" class="d-none"></canvas>
+                                <img id="quickFacePreview" class="rounded-3 d-none mb-2" alt="Selfie preview" style="max-height:260px;max-width:100%;object-fit:cover;" />
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="quickStartCameraBtn">Mở camera</button>
+                                    <button type="button" class="btn btn-primary btn-sm d-none" id="quickCaptureFaceBtn">Chụp ảnh</button>
+                                    <button type="button" class="btn btn-light btn-sm d-none" id="quickRetakeFaceBtn">Chụp lại</button>
+                                </div>
+                                <div class="form-text mt-2">Bắt buộc dùng camera thật, chụp rõ mặt, không upload ảnh selfie có sẵn.</div>
+                                <div class="text-danger small mt-2 d-none" id="quickFaceError">Vui lòng chụp selfie bằng camera.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Quay lại</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                        <i class="bi bi-cloud-upload me-2"></i>Gửi xác thực
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    #ekycQuickModal .ekyc-readable,
+    #ekycQuickModal .ekyc-readable .modal-title,
+    #ekycQuickModal .ekyc-readable .form-label,
+    #ekycQuickModal .ekyc-readable .small {
+        color: #111827 !important;
+    }
+
+    #ekycQuickModal .form-text,
+    #ekycQuickModal .text-muted {
+        color: #4b5563 !important;
+    }
+
+    [data-bs-theme="dark"] #ekycQuickModal .modal-content {
+        background: #f8fafc;
+        color: #111827;
+    }
+</style>
+
+<script>
+    (() => {
+        const form = document.getElementById('ekycQuickForm');
+        const input = document.getElementById('quickFaceInput');
+        const video = document.getElementById('quickFaceCamera');
+        const canvas = document.getElementById('quickFaceCanvas');
+        const preview = document.getElementById('quickFacePreview');
+        const startBtn = document.getElementById('quickStartCameraBtn');
+        const captureBtn = document.getElementById('quickCaptureFaceBtn');
+        const retakeBtn = document.getElementById('quickRetakeFaceBtn');
+        const error = document.getElementById('quickFaceError');
+        let stream = null;
+
+        if (!form || !input || !video || !canvas || !preview || !startBtn || !captureBtn || !retakeBtn) return;
+
+        async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                error.classList.remove('d-none');
+                error.textContent = 'Trình duyệt không hỗ trợ camera.';
+                return;
+            }
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            video.srcObject = stream;
+            video.classList.remove('d-none');
+            preview.classList.add('d-none');
+            captureBtn.classList.remove('d-none');
+        }
+
+        function stopCamera() {
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            stream = null;
+            video.srcObject = null;
+        }
+
+        startBtn.addEventListener('click', async () => {
+            try { await startCamera(); }
+            catch {
+                error.classList.remove('d-none');
+                error.textContent = 'Không mở được camera. Vui lòng cấp quyền camera.';
+            }
+        });
+
+        captureBtn.addEventListener('click', () => {
+            if (!video.videoWidth || !video.videoHeight) return;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const file = new File([blob], 'face-camera.jpg', { type: 'image/jpeg' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                preview.src = URL.createObjectURL(file);
+                preview.classList.remove('d-none');
+                error.classList.add('d-none');
+                stopCamera();
+                video.classList.add('d-none');
+                captureBtn.classList.add('d-none');
+                retakeBtn.classList.remove('d-none');
+            }, 'image/jpeg', 0.92);
+        });
+
+        retakeBtn.addEventListener('click', async () => {
+            input.value = '';
+            retakeBtn.classList.add('d-none');
+            await startCamera();
+        });
+
+        form.addEventListener('submit', event => {
+            if (!input.files.length) {
+                event.preventDefault();
+                error.classList.remove('d-none');
+                error.textContent = 'Vui lòng chụp selfie bằng camera.';
+            }
+        });
+    })();
+</script>

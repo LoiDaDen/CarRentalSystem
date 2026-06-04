@@ -1,0 +1,102 @@
+@model CarRentalSystem.Models.ContactMessage
+@{
+    ViewData["Title"] = "Chi tiết Yêu cầu";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    .theme-admin .message-card { background: var(--admin-card-bg); border-radius: 20px; padding: 2.5rem; border: 1px solid var(--admin-border-color); box-shadow: var(--admin-shadow); }
+    .theme-admin .reply-box { background: var(--admin-surface-200); border-radius: 16px; padding: 2rem; border: 1px dashed var(--admin-border-color); margin-top: 2rem; }
+    .theme-admin .form-control:focus { border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+</style>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-3">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-3">
+        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        <span>@TempData["Error"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a asp-action="Index" class="btn btn-light shadow-sm rounded-3 fw-bold px-4 py-2 border text-muted">
+        <i class="bi bi-arrow-left me-2"></i>Quay lại Hộp thư
+    </a>
+    <form asp-action="Delete" asp-route-id="@Model.MessageID" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa tin nhắn này?');">
+        <button type="submit" class="btn btn-outline-danger rounded-3 fw-bold px-4">
+            <i class="bi bi-trash3 me-2"></i>Xóa
+        </button>
+    </form>
+</div>
+
+<div class="message-card">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4 shadow-sm" style="width: 56px; height: 56px;">
+                @Model.Name.Substring(0, 1).ToUpper()
+            </div>
+            <div>
+                <h5 class="fw-bold mb-1">@Model.Name</h5>
+                <div class="text-muted"><i class="bi bi-envelope me-1"></i>@Model.Email</div>
+            </div>
+        </div>
+        <div class="text-end">
+            <div class="text-muted small mb-1"><i class="bi bi-calendar3 me-1"></i>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+            @if (Model.IsResolved)
+            {
+                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1"><i class="bi bi-check2-all me-1"></i>Đã xử lý</span>
+            }
+            else
+            {
+                <span class="badge bg-danger rounded-pill px-3 py-1 shadow-sm"><i class="bi bi-clock me-1"></i>Chờ xử lý</span>
+            }
+        </div>
+    </div>
+
+    <hr class="border-light opacity-50 mb-4">
+
+    <div class="mb-4">
+        <h6 class="fw-bold text-uppercase small text-muted mb-3">Chủ đề (Subject)</h6>
+        <h4 class="fw-bold">@Model.Subject</h4>
+    </div>
+
+    <div class="mb-4">
+        <h6 class="fw-bold text-uppercase small text-muted mb-3">Nội dung tin nhắn</h6>
+        <div class="p-4 bg-light rounded-4 text-dark lh-lg" style="white-space: pre-wrap; font-size: 1.05rem;">@Model.Message</div>
+    </div>
+
+    @if (Model.IsResolved)
+    {
+        <div class="p-4 bg-success bg-opacity-10 rounded-4 border border-success border-opacity-25 mt-5">
+            <h6 class="fw-bold text-success mb-3"><i class="bi bi-reply-all-fill me-2"></i>Phản hồi của Admin:</h6>
+            <div class="text-dark lh-lg" style="white-space: pre-wrap;">@Model.AdminResponse</div>
+        </div>
+    }
+    else
+    {
+        <div class="reply-box">
+            <h6 class="fw-bold mb-3"><i class="bi bi-reply-fill text-primary me-2"></i>Gửi Email Phản Hồi</h6>
+            <form asp-action="Respond" method="post">
+                <input type="hidden" name="id" value="@Model.MessageID" />
+                <div class="mb-3">
+                    <textarea name="adminResponse" class="form-control rounded-4 p-3 shadow-sm border-0" rows="5" placeholder="Nhập nội dung phản hồi. Hệ thống sẽ gửi email tự động tới khách hàng..." required></textarea>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary fw-bold px-5 py-2 rounded-pill shadow">
+                        <i class="bi bi-send-fill me-2"></i>Gửi khách hàng
+                    </button>
+                </div>
+            </form>
+        </div>
+    }
+</div>
+</div>

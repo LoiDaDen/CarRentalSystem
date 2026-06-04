@@ -1,0 +1,170 @@
+@model CarRentalSystem.ViewModels.RegisterViewModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostingEnv
+@{
+    var recaptchaSiteKey = Configuration["Recaptcha:SiteKey"];
+    var showRecaptcha = (string.Equals(HostingEnv.EnvironmentName, "Production", StringComparison.OrdinalIgnoreCase) ||
+        Configuration.GetValue("Security:RequireRecaptcha", false)) &&
+        !string.IsNullOrWhiteSpace(recaptchaSiteKey);
+    ViewData["Title"] = "Tạo tài khoản";
+}
+
+<div class="register-shell">
+    <div class="register-card">
+        <div class="text-center mb-4">
+            <div class="pt-eyebrow mb-2">Join CarRental</div>
+            <h1 class="h3 fw-bold mb-2">Tạo tài khoản CarRental</h1>
+            <p class="text-muted mb-0">Thông tin CCCD và GPLX sẽ được xác minh qua eKYC trước khi bạn thuê xe tự lái.</p>
+        </div>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>@ViewBag.Error
+            </div>
+        }
+
+        <form asp-action="Register" method="post" novalidate>
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label fw-semibold">Họ tên / tên hiển thị</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input asp-for="Name" class="form-control py-3" autocomplete="name" placeholder="VD: Nguyễn Văn A" />
+                    </div>
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Phone" class="form-label fw-semibold">Số điện thoại</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-phone"></i></span>
+                        <input asp-for="Phone" class="form-control py-3" autocomplete="tel" placeholder="090..." />
+                    </div>
+                    <span asp-validation-for="Phone" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-8">
+                    <label asp-for="Email" class="form-label fw-semibold">Email</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input asp-for="Email" class="form-control py-3" autocomplete="email" placeholder="email@example.com" />
+                    </div>
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="DateOfBirth" class="form-label fw-semibold">Ngày sinh</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                        <input asp-for="DateOfBirth" type="date" class="form-control py-3" autocomplete="bday" />
+                    </div>
+                    <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="CitizenId" class="form-label fw-semibold">CCCD</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-person-vcard"></i></span>
+                        <input asp-for="CitizenId" class="form-control py-3" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="12 chữ số" />
+                    </div>
+                    <span asp-validation-for="CitizenId" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="DrivingLicenseNumber" class="form-label fw-semibold">GPLX</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-card-checklist"></i></span>
+                        <input asp-for="DrivingLicenseNumber" class="form-control py-3" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="12 chữ số" />
+                    </div>
+                    <span asp-validation-for="DrivingLicenseNumber" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Password" class="form-label fw-semibold">Mật khẩu</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input asp-for="Password" type="password" class="form-control py-3" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự" />
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="ConfirmPassword" class="form-label fw-semibold">Xác nhận mật khẩu</label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                        <input asp-for="ConfirmPassword" type="password" class="form-control py-3" autocomplete="new-password" />
+                    </div>
+                    <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="ReferralCode" class="form-label fw-semibold">Mã giới thiệu <span class="text-muted fw-normal">(nếu có)</span></label>
+                    <div class="input-group pt-input-icon">
+                        <span class="input-group-text"><i class="bi bi-gift"></i></span>
+                        <input asp-for="ReferralCode" class="form-control py-3 text-uppercase" maxlength="6" placeholder="ABC123" />
+                    </div>
+                    <div class="form-text">Mã hợp lệ giảm 100.000đ cho lần thuê xe đầu tiên sau khi thanh toán PayOS thành công.</div>
+                    <span asp-validation-for="ReferralCode" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="mt-4 p-3 border rounded-3 bg-light">
+                <div class="form-check mb-2">
+                    <input asp-for="AcceptTerms" class="form-check-input" required />
+                    <label asp-for="AcceptTerms" class="form-check-label small">
+                        Tôi đồng ý với <a asp-controller="Home" asp-action="Terms" class="fw-semibold text-decoration-none">Điều khoản sử dụng</a>.
+                    </label>
+                    <span asp-validation-for="AcceptTerms" class="text-danger small d-block"></span>
+                </div>
+                <div class="form-check mb-2">
+                    <input asp-for="AcceptPrivacyNotice" class="form-check-input" required />
+                    <label asp-for="AcceptPrivacyNotice" class="form-check-label small">
+                        Tôi đã đọc <a asp-controller="Home" asp-action="Privacy" class="fw-semibold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                    </label>
+                    <span asp-validation-for="AcceptPrivacyNotice" class="text-danger small d-block"></span>
+                </div>
+                <div class="form-check">
+                    <input asp-for="AcceptSensitiveDataProcessing" class="form-check-input" required />
+                    <label asp-for="AcceptSensitiveDataProcessing" class="form-check-label small">
+                        Tôi đồng ý để CarRental xử lý CCCD, GPLX, ngày sinh và dữ liệu liên quan nhằm xác minh điều kiện thuê xe tự lái.
+                    </label>
+                    <span asp-validation-for="AcceptSensitiveDataProcessing" class="text-danger small d-block"></span>
+                </div>
+            </div>
+
+            @if (showRecaptcha)
+            {
+                <div class="mt-4">
+                    <div class="g-recaptcha" data-sitekey="@recaptchaSiteKey"></div>
+                    @if (ViewBag.RecaptchaError != null)
+                    {
+                        <small class="text-danger d-block mt-2">
+                            <i class="bi bi-exclamation-circle me-1"></i>@ViewBag.RecaptchaError
+                        </small>
+                    }
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 py-3 mt-4">
+                <i class="bi bi-person-plus me-2"></i>Tạo tài khoản
+            </button>
+        </form>
+
+        <div class="text-center mt-4 small">
+            Đã có tài khoản?
+            <a asp-action="Login" class="fw-bold text-decoration-none">Đăng nhập</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    @if (showRecaptcha)
+    {
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    }
+}

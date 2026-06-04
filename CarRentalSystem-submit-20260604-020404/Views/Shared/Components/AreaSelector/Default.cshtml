@@ -1,0 +1,101 @@
+@* CarRentalSystem/Views/Shared/Components/AreaSelector/Default.cshtml *@
+@model CarRentalSystem.ViewComponents.AreaSelectorViewComponent.AreaSelectorVm
+@{
+    var currentArea = Model.Areas.FirstOrDefault(a => a.AreaID == Model.CurrentAreaId);
+    var currentReturnUrl = Context.Request.Path + Context.Request.QueryString;
+    var isManagerOrStaff = User.IsInRole("Manager") || User.IsInRole("Staff");
+}
+
+@if (Model.Areas.Count == 0)
+{
+    @* Không có khu vực nào -> ẩn đi *@
+    return;
+}
+
+@if (isManagerOrStaff)
+{
+    @* Hien thi card noi bat cho Manager/Staff *@
+    <div class="px-2 mb-3">
+        <div class="rounded-3 p-3 text-white" style="background: linear-gradient(135deg, rgba(59,130,246,0.4) 0%, rgba(99,102,241,0.4) 100%); border: 1px solid rgba(255,255,255,0.15);">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-geo-alt-fill" style="font-size: 1.2rem;"></i>
+                <div>
+                    <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.7;">Khu vực của bạn</div>
+                </div>
+            </div>
+            @if (currentArea != null)
+            {
+                <div class="fw-bold mb-2" style="font-size: 0.9rem;">@currentArea.Name</div>
+                <div class="mb-3" style="font-size: 0.72rem; opacity: 0.75;">@currentArea.Province</div>
+            }
+            else
+            {
+                <div class="mb-2 text-white-50" style="font-size: 0.85rem;">Chưa chọn khu vực</div>
+                <div class="mb-3"></div>
+            }
+            <a href="/admin/areadashboard" class="btn btn-light btn-sm w-100 d-flex align-items-center justify-content-center gap-1 fw-semibold" style="font-size: 0.75rem;">
+                <i class="bi bi-grid-3x3-gap-fill"></i>
+                Dashboard Khu vực
+            </a>
+        </div>
+    </div>
+}
+else if (Model.Areas.Count == 1)
+{
+    @* Chỉ có 1 khu vực -> hiển thị label thay vì dropdown *@
+    <div class="px-2 mb-2">
+        <a href="/admin/area/setcurrentarea?areaId=@Model.Areas[0].AreaID&returnUrl=@Uri.EscapeDataString(currentReturnUrl)"
+           class="d-flex align-items-center gap-2 text-decoration-none py-2 px-2 rounded-3"
+           style="background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; font-size: 0.75rem; font-weight: 600;">
+            <i class="bi bi-geo-alt-fill" style="font-size: 1rem;"></i>
+            <div>
+                <div>@Model.Areas[0].Name</div>
+                <small style="opacity: 0.7; font-weight: 400;">@Model.Areas[0].Province</small>
+            </div>
+        </a>
+    </div>
+}
+else
+{
+    @* Nhiều hơn 1 khu vực -> hiển thị dropdown chọn *@
+    <div class="px-2 mb-2">
+        <div class="text-muted small text-uppercase fw-bold px-2 mb-1" style="font-size: 0.6rem; letter-spacing: 0.8px; opacity: 0.5;">
+            Khu vực đang làm việc
+        </div>
+        <div class="dropdown">
+            <button class="w-100 d-flex align-items-center gap-2 py-2 px-2 rounded-3 border-0 text-start text-white dropdown-toggle"
+                    style="background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.3) !important; font-size: 0.78rem; font-weight: 600; cursor: pointer;"
+                    data-bs-toggle="dropdown" aria-expanded="false" id="areaDropdown">
+                <i class="bi bi-geo-alt-fill text-primary" style="font-size: 1rem;"></i>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="text-truncate">@(currentArea?.Name ?? "— Chọn khu vực —")</div>
+                    @if (currentArea != null)
+                    {
+                        <small class="fw-normal text-white-50">@currentArea.Province</small>
+                    }
+                </div>
+            </button>
+            <ul class="dropdown-menu w-100 shadow-lg border-0 rounded-3 py-1" style="background: #1e293b; min-width: 220px;">
+                @foreach (var area in Model.Areas)
+                {
+                    var isActive = area.AreaID == Model.CurrentAreaId;
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-1 @(isActive ? "active" : "")"
+                           href="/admin/area/setcurrentarea?areaId=@area.AreaID&returnUrl=@Uri.EscapeDataString(currentReturnUrl)"
+                           style="font-size: 0.78rem; color: @(isActive ? "#fff" : "#94a3b8"); background: @(isActive ? "rgba(59,130,246,0.3) !important" : "transparent");">
+                            <i class="bi @(isActive ? "bi-check-circle-fill text-primary" : "bi-circle")" style="font-size: 0.9rem;"></i>
+                            <div>
+                                <div class="fw-semibold">@area.Name</div>
+                                <small class="text-muted">@area.Province</small>
+                            </div>
+                            @if (isActive)
+                            {
+                                <span class="badge bg-primary ms-auto" style="font-size: 0.6rem;">Đang chọn</span>
+                            }
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+}

@@ -1,0 +1,29 @@
+@model AdminBlogFormViewModel
+@{
+    ViewData["Title"] = "Thêm bài viết Blog";
+    Layout = "_AdminLayout";
+}
+
+<div class="theme-admin">
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 mb-1"><i class="bi bi-plus-circle me-2 text-primary"></i>Thêm bài viết Blog</h2>
+            <p class="text-muted mb-0">Viết nội dung hướng dẫn thuê xe, du lịch tự lái và SEO cho website.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary rounded-3 fw-bold">Quay lại</a>
+    </div>
+
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        @await Html.PartialAsync("_FormFields", Model)
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <a asp-action="Index" class="btn btn-outline-secondary rounded-3 fw-bold px-4">Hủy</a>
+            <button type="submit" class="btn btn-primary rounded-3 fw-bold px-4">Đăng bài</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/admin/blog-form.js" asp-append-version="true"></script>
+}

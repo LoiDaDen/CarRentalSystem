@@ -1,0 +1,85 @@
+@model CarRentalSystem.ViewModels.BlogListViewModel
+@{
+    ViewData["Title"] = "Blog thuê xe tự lái";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/blog.css" asp-append-version="true" />
+}
+
+<div class="blog-page">
+    <section class="blog-hero">
+        <div class="container">
+            <span class="badge bg-light text-primary rounded-pill px-3 py-2 fw-bold mb-3">CarRental Blog</span>
+            <h1 class="display-5 mb-3">Blog thuê xe tự lái</h1>
+            <p class="lead mb-0">Cập nhật kinh nghiệm thuê xe, mẹo lái xe an toàn, hướng dẫn đặt xe và các gợi ý du lịch tự lái.</p>
+        </div>
+    </section>
+
+    @await Html.PartialAsync("_BlogSearch", Model)
+
+    <div class="mt-4">
+        @await Html.PartialAsync("_BlogCategoryFilter", Model)
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-lg-8">
+            @await Html.PartialAsync("_FeaturedBlog", Model.FeaturedBlog)
+
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="h4 fw-bold mb-1">Tất cả bài viết</h2>
+                    <div class="text-muted small">@Model.TotalItems bài viết phù hợp</div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.CurrentKeyword) || !string.IsNullOrWhiteSpace(Model.CurrentCategorySlug) || !string.IsNullOrWhiteSpace(Model.CurrentTagSlug))
+                {
+                    <a asp-controller="Blog" asp-action="Index" class="btn btn-sm btn-outline-secondary rounded-3 fw-bold">Xóa bộ lọc</a>
+                }
+            </div>
+
+            @if (Model.Blogs.Any())
+            {
+                <div class="row g-4">
+                    @foreach (var blog in Model.Blogs)
+                    {
+                        <div class="col-md-6">
+                            @await Html.PartialAsync("_BlogCard", blog)
+                        </div>
+                    }
+                </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <nav class="mt-4" aria-label="Blog pagination">
+                        <ul class="pagination justify-content-center">
+                            @for (var i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                    <a class="page-link"
+                                       asp-controller="Blog"
+                                       asp-action="Index"
+                                       asp-route-page="@i"
+                                       asp-route-keyword="@Model.CurrentKeyword"
+                                       asp-route-category="@Model.CurrentCategorySlug"
+                                       asp-route-tag="@Model.CurrentTagSlug">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="blog-empty text-center">
+                    <i class="bi bi-search display-5 text-primary d-block mb-3"></i>
+                    <h3 class="h5 fw-bold">Chưa tìm thấy bài viết phù hợp</h3>
+                    <p class="text-muted mb-3">Thử tìm bằng từ khóa ngắn hơn hoặc chọn danh mục khác nhé.</p>
+                    <a asp-controller="Blog" asp-action="Index" class="btn btn-primary rounded-3 fw-bold">Xem tất cả bài viết</a>
+                </div>
+            }
+        </div>
+        <div class="col-lg-4">
+            @await Html.PartialAsync("_BlogSidebar", Model)
+        </div>
+    </div>
+</div>

@@ -1,0 +1,268 @@
+@model CarRentalSystem.Models.Booking
+@{ ViewData["Title"] = "Đặt Xe"; }
+
+<style>
+    .booking-card {
+        border-radius: 30px;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .form-floating > .form-control:focus, .form-floating > .form-control:not(:placeholder-shown) {
+        padding-top: 1.625rem;
+        padding-bottom: 0.625rem;
+    }
+    .location-btn {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 5;
+    }
+</style>
+
+<div class="row justify-content-center py-5">
+    <div class="col-lg-10">
+        <div class="card booking-card shadow-lg overflow-hidden border-0">
+            <div class="row g-0">
+                <div class="col-md-4 bg-primary p-5 text-white d-flex flex-column justify-content-between">
+                    <div>
+                        <h6 class="text-white-50 fw-bold mb-4">THÔNG TIN XE</h6>
+                        <h2 class="fw-800 mb-0">@Model.Car.CarBrand?.Name</h2>
+                        <h4 class="fw-bold opacity-75">@Model.Car.CarName</h4>
+                    </div>
+                    
+                    <div class="py-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="opacity-75">Giá thuê / ngày</span>
+                            <span class="fw-bold">@Model.Car.PricePerDay.ToString("N0") đ</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="opacity-75">Bảo hiểm</span>
+                            <span class="fw-bold">Miễn phí</span>
+                        </div>
+                        <div class="border-top border-white border-opacity-20 pt-3 mt-1">
+                        </div>
+                    </div>
+
+                    <!-- Deposit Section -->
+                    <div class="p-3 rounded-4 border border-white border-opacity-20" style="background: rgba(255,210,0,0.15);">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-shield-lock-fill me-2" style="color: #FFD700;"></i>
+                            <span class="fw-bold" style="color: #FFD700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">Đặt cọc xe</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small opacity-75">20% tổng giá thuê</span>
+                            <span class="fw-800 fs-5" id="depositAmountLeft" style="color: #FFD700;">—</span>
+                        </div>
+                        <small class="opacity-60" style="font-size: 0.7rem;">Hoàn cọc khi trả xe đúng hạn</small>
+                    </div>
+
+                    <div class="mt-3 p-3 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10">
+                        <p class="small mb-0 opacity-75"><i class="bi bi-info-circle me-2"></i>Giá cuối cùng tính theo số ngày thực tế. Cọc hoàn trả sau khi trả xe.</p>
+                    </div>
+                </div>
+
+                <div class="col-md-8 p-5 bg-white">
+                    <h3 class="fw-800 mb-4 text-dark">Lên Kế Hoạch <span class="text-primary">Hành Trình</span></h3>
+                    
+                    <form asp-action="Book" id="bookingForm">
+                        <input type="hidden" asp-for="CarID" />
+                        
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">THỜI GIAN BẮT ĐẦU</label>
+                                <input asp-for="StartDate" type="datetime-local" class="form-control form-control-lg border-0 bg-light rounded-4 py-3" required id="startDate" min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" value="@Model.StartDate.ToString("yyyy-MM-ddTHH:mm")" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">THỜI GIAN KẾT THÚC (DỰ KIẾN)</label>
+                                <input asp-for="EndDate" type="datetime-local" class="form-control form-control-lg border-0 bg-light rounded-4 py-3" required id="endDate" min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" value="@Model.EndDate.ToString("yyyy-MM-ddTHH:mm")" />
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold text-muted">VỊ TRÍ NHẬN XE</label>
+                            <div class="position-relative">
+                                <input id="PickupLocation" name="PickupLocation" class="form-control form-control-lg border-0 bg-light rounded-4 py-3 pe-5" placeholder="Chọn trên bản đồ hoặc dùng vị trí hiện tại" required />
+                                <button type="button" id="useMyLocation" class="btn btn-primary btn-sm rounded-circle location-btn" title="Sử dụng vị trí của tôi">
+                                    <i class="bi bi-crosshair"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="map" class="rounded-4 mb-4 shadow-sm border" style="height: 300px; z-index: 1;"></div>
+
+                        <div class="alert alert-success rounded-4 mb-4">
+                            <div class="fw-bold mb-1">Loại dịch vụ: Thuê xe tự lái</div>
+                            <div class="small">Khách thuê phải tự điều khiển xe và có giấy phép lái xe phù hợp. Dịch vụ này không bao gồm tài xế.</div>
+                        </div>
+
+                        <div class="bg-light rounded-4 mb-4 overflow-hidden">
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger py-2 mb-0 rounded-0 small border-0">
+        <i class="bi bi-exclamation-circle me-2"></i> @ViewBag.Error
+    </div>
+}
+                            <div class="p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="fw-600 text-muted">Thời gian thuê</span>
+                                    <span class="fw-bold text-dark" id="durationText">—</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="fw-600 text-muted">Tổng tiền thuê</span>
+                                    <span class="fw-800 text-primary fs-5"><span id="totalPrice">0</span> đ</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center p-3 rounded-3" style="background: linear-gradient(135deg, #fff8e1, #fff3cd);">
+                                    <div>
+                                        <div class="fw-bold text-warning-emphasis" style="font-size:0.9rem;">
+                                            <i class="bi bi-shield-lock-fill me-1 text-warning"></i>Tiền cọc xe (20%)
+                                        </div>
+                                        <small class="text-muted">Hoàn trả sau khi trả xe đúng hạn</small>
+                                    </div>
+                                    <span class="fw-800" style="color:#d97706; font-size:1.1rem;"><span id="depositAmount">0</span> đ</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-check p-3 border rounded-4 mb-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" name="SelfDriveAgreement" value="true" id="SelfDriveAgreement" required />
+                            <label class="form-check-label fw-semibold ps-4" for="SelfDriveAgreement">
+                                Tôi xác nhận là người trực tiếp điều khiển xe, có giấy phép lái xe phù hợp, còn hiệu lực và không sử dụng xe thuê để vận tải hành khách/hàng hóa có thu tiền.
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 border rounded-4 mb-4 bg-light">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" name="LegalAgreement" value="true" id="LegalAgreement" required />
+                            <label class="form-check-label fw-semibold ps-4" for="LegalAgreement">
+                                Tôi đồng ý với
+                                <a asp-controller="Home" asp-action="Terms" class="text-primary fw-bold text-decoration-none">Điều khoản sử dụng</a>
+                                và
+                                <a asp-controller="Home" asp-action="Privacy" class="text-primary fw-bold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                            </label>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm py-3 fw-bold">XÁC NHẬN ĐẶT XE</button>
+                            <a asp-controller="Car" asp-action="Index" class="btn btn-light btn-lg px-4 rounded-pill py-3">Bỏ qua</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var map, marker;
+        var pricePerDay = @Model.Car.PricePerDay;
+        var pricePerHour = @Model.Car.PricePerHour;
+        var price4h = pricePerDay * 0.4;
+        var price8h = pricePerDay * 0.7;
+        var price12h = pricePerDay * 0.85;
+        var price24h = pricePerDay;
+
+        function initMap() {
+            map = L.map('map').setView([21.0285, 105.8542], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            map.on('click', function(e) {
+                setMarker(e.latlng);
+            });
+        }
+
+        function setMarker(latlng) {
+            if (marker) map.removeLayer(marker);
+            marker = L.marker(latlng).addTo(map).bindPopup("Vị trí nhận xe").openPopup();
+            $('#PickupLocation').val(latlng.lat.toFixed(6) + ", " + latlng.lng.toFixed(6));
+        }
+
+        function calculatePrice() {
+            var startVal = $('#startDate').val();
+            var endVal = $('#endDate').val();
+            
+            if (!startVal) return;
+
+            // Sync end datetime min with start
+            $('#endDate').attr('min', startVal);
+            
+            if (endVal && new Date(endVal) <= new Date(startVal)) {
+                var autoEnd = new Date(new Date(startVal).getTime() + 4 * 3600000);
+                var pad = n => String(n).padStart(2, '0');
+                var newEndStr = autoEnd.getFullYear() + '-' + pad(autoEnd.getMonth()+1) + '-' + pad(autoEnd.getDate()) + 'T' + pad(autoEnd.getHours()) + ':' + pad(autoEnd.getMinutes());
+                $('#endDate').val(newEndStr);
+                endVal = newEndStr;
+            }
+
+            var start = new Date(startVal);
+            var end = new Date(endVal);
+            
+            if (start && end && end > start) {
+                var diffMs = end - start;
+                var totalHours = Math.ceil(diffMs / (1000 * 60 * 60));
+                if (totalHours <= 0) totalHours = 1;
+
+                // Hiển thị thời gian thuê: X ngày Y giờ
+                var days = Math.floor(totalHours / 24);
+                var remHours = totalHours % 24;
+                var durationStr = '';
+                if (days > 0) durationStr += days + ' ngày';
+                if (remHours > 0) durationStr += (days > 0 ? ' ' : '') + remHours + ' giờ';
+                if (!durationStr) durationStr = '1 giờ';
+                $('#durationText').text(durationStr);
+
+                // Tính giá theo gói giờ
+                var total = 0;
+                if (totalHours <= 4) {
+                    total = price4h > 0 ? price4h : (totalHours * pricePerHour);
+                } else if (totalHours <= 8) {
+                    total = price8h > 0 ? price8h : (totalHours * pricePerHour);
+                } else if (totalHours <= 12) {
+                    total = price12h > 0 ? price12h : (totalHours * pricePerHour);
+                } else if (totalHours <= 24) {
+                    total = price24h > 0 ? price24h : pricePerDay;
+                } else {
+                    var fullDays = Math.floor(totalHours / 24);
+                    var rem = totalHours % 24;
+                    var extra = 0;
+                    if (rem > 0) {
+                        if (rem <= 4) extra = price4h > 0 ? price4h : (rem * pricePerHour);
+                        else if (rem <= 8) extra = price8h > 0 ? price8h : (rem * pricePerHour);
+                        else if (rem <= 12) extra = price12h > 0 ? price12h : (rem * pricePerHour);
+                        else extra = price24h > 0 ? price24h : pricePerDay;
+                    }
+                    total = (fullDays * (price24h > 0 ? price24h : pricePerDay)) + extra;
+                }
+
+                var deposit = Math.round(total * 0.2);
+                $('#totalPrice').text(total.toLocaleString('vi-VN'));
+                $('#depositAmount').text(deposit.toLocaleString('vi-VN'));
+                $('#depositAmountLeft').text(deposit.toLocaleString('vi-VN') + ' đ');
+            } else {
+                $('#durationText').text('—');
+                $('#depositAmount').text('0');
+                $('#depositAmountLeft').text('—');
+            }
+        }
+
+        $(document).ready(function() {
+            initMap();
+            
+            $('#startDate, #endDate').on('change', calculatePrice);
+            
+            // Set initial state
+            calculatePrice();
+
+            $('#useMyLocation').click(function() {
+                if (navigator.geolocation) {
+                    $('#useMyLocation i').addClass('bi-spin');
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        var latlng = L.latLng(position.coords.latitude, position.coords.longitude);
+                        map.setView(latlng, 16);
+                        setMarker(latlng);
+                        $('#useMyLocation i').removeClass('bi-spin');
+                    });
+                }
+            });
+        });
+    </script>
+}

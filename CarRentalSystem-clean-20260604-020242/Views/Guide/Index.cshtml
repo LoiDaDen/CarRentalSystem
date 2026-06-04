@@ -1,0 +1,820 @@
+@{
+    Layout = null;
+    var role = ViewData["Role"]?.ToString() ?? "customer";
+    var roleName = ViewData["RoleName"]?.ToString() ?? "Khách hàng";
+    var roleIcon = ViewData["RoleIcon"]?.ToString() ?? "bi-person-fill";
+    var roleColor = ViewData["RoleColor"]?.ToString() ?? "#8b5cf6";
+    var content = ViewData["Content"]?.ToString() ?? "";
+    var mdFile = ViewData["MarkdownFile"]?.ToString() ?? "";
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hướng dẫn sử dụng — @roleName | CarRental</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --role-color: @roleColor;
+            --sidebar-width: 280px;
+            --header-height: 64px;
+            --content-max: 900px;
+        }
+
+        * { font-family: 'Inter', sans-serif; }
+
+        body {
+            background: #f8fafc;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+
+        /* ─── HEADER ─── */
+        .guide-header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--header-height);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            gap: 1rem;
+        }
+
+        .guide-header .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #fff;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .guide-header .role-badge i { font-size: 1rem; }
+
+        .guide-header .header-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            flex: 1;
+        }
+
+        .guide-header .header-actions { display: flex; gap: 0.5rem; }
+
+        .btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .btn-ghost:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* ─── LAYOUT ─── */
+        .guide-layout {
+            display: flex;
+            margin-top: var(--header-height);
+            min-height: calc(100vh - var(--header-height));
+        }
+
+        /* ─── SIDEBAR (TOC) ─── */
+        .guide-sidebar {
+            width: var(--sidebar-width);
+            flex-shrink: 0;
+            position: sticky;
+            top: var(--header-height);
+            height: calc(100vh - var(--header-height));
+            overflow-y: auto;
+            background: #fff;
+            border-right: 1px solid #e2e8f0;
+            padding: 1.5rem 0;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .guide-sidebar::-webkit-scrollbar { width: 4px; }
+        .guide-sidebar::-webkit-scrollbar-track { background: transparent; }
+        .guide-sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .sidebar-section {
+            padding: 0.25rem 1.25rem;
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #94a3b8;
+            margin-top: 1rem;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #475569;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .sidebar-item:hover {
+            color: var(--role-color);
+            background: rgba(0,0,0,0.03);
+            border-left-color: var(--role-color);
+        }
+
+        .sidebar-item.active {
+            color: var(--role-color);
+            background: color-mix(in srgb, var(--role-color) 8%, transparent);
+            border-left-color: var(--role-color);
+            font-weight: 700;
+        }
+
+        .sidebar-item i {
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+        .sidebar-item.active i { opacity: 1; }
+
+        /* Role switcher in sidebar */
+        .role-switcher {
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-switcher-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            width: 100%;
+            padding: 0.4rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #64748b;
+            background: transparent;
+            border: 1px solid transparent;
+            text-decoration: none;
+            transition: all 0.15s;
+            cursor: pointer;
+            margin-bottom: 2px;
+        }
+        .role-btn:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .role-btn.active {
+            background: color-mix(in srgb, var(--role-color) 10%, transparent);
+            color: var(--role-color);
+            border-color: color-mix(in srgb, var(--role-color) 20%, transparent);
+            font-weight: 700;
+        }
+        .role-btn i { font-size: 0.85rem; }
+
+        /* ─── MAIN CONTENT ─── */
+        .guide-content {
+            flex: 1;
+            padding: 2rem 2.5rem;
+            max-width: calc(var(--content-max) + 5rem);
+        }
+
+        /* ─── PROGRESS BAR ─── */
+        .reading-progress {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            height: 3px;
+            background: var(--role-color);
+            z-index: 999;
+            transition: width 0.1s;
+            border-radius: 0 2px 2px 0;
+        }
+
+        /* ─── CONTENT TYPOGRAPHY ─── */
+        .guide-content h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .guide-content h1 i {
+            color: var(--role-color);
+            font-size: 1.5rem;
+        }
+
+        .guide-content .guide-subtitle {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .guide-content h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--role-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .guide-content h2 i {
+            color: var(--role-color);
+            font-size: 1.1rem;
+        }
+
+        .guide-content h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #334155;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .guide-content p {
+            font-size: 0.875rem;
+            line-height: 1.75;
+            color: #475569;
+            margin-bottom: 0.75rem;
+        }
+
+        .guide-content ul, .guide-content ol {
+            padding-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .guide-content li {
+            font-size: 0.875rem;
+            line-height: 1.7;
+            color: #475569;
+            margin-bottom: 0.3rem;
+        }
+
+        .guide-content a {
+            color: var(--role-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .guide-content a:hover { text-decoration: underline; }
+
+        .guide-content strong { color: #1e293b; }
+
+        .guide-content code {
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #7c3aed;
+            border: 1px solid #e2e8f0;
+        }
+
+        .guide-content pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 1.25rem;
+            border-radius: 12px;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin: 1rem 0;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .guide-content pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+            border: none;
+            font-size: inherit;
+        }
+
+        /* Blockquote (admonition) */
+        .guide-content blockquote {
+            background: color-mix(in srgb, var(--role-color) 6%, transparent);
+            border-left: 4px solid var(--role-color);
+            padding: 1rem 1.25rem;
+            border-radius: 0 10px 10px 0;
+            margin: 1rem 0;
+        }
+
+        .guide-content blockquote p {
+            margin: 0;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        /* Table */
+        .guide-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .guide-content table thead {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #fff;
+        }
+
+        .guide-content table th {
+            padding: 0.65rem 1rem;
+            font-weight: 700;
+            text-align: left;
+            font-size: 0.8rem;
+        }
+
+        .guide-content table td {
+            padding: 0.55rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            color: #475569;
+        }
+
+        .guide-content table tbody tr:last-child td { border-bottom: none; }
+        .guide-content table tbody tr:nth-child(even) { background: #f8fafc; }
+
+        /* HR */
+        .guide-content hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 1.5rem 0;
+        }
+
+        /* ─── SECTION CARD ─── */
+        .section-divider {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+        }
+        .section-divider::before, .section-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+        .section-divider span {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #94a3b8;
+        }
+
+        /* ─── TABLE OF CONTENTS ─── */
+        .toc-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+
+        .toc-card h4 {
+            font-size: 0.9rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toc-card h4 i { color: var(--role-color); }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0;
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            transition: all 0.2s;
+        }
+        .toc-item:last-child { border-bottom: none; }
+        .toc-item:hover { color: #fff; }
+        .toc-item.active { color: var(--role-color); font-weight: 600; }
+        .toc-item i { font-size: 0.75rem; opacity: 0.5; }
+
+        /* ─── QUICK STATS ─── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.65rem 1rem;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            color: #475569;
+            transition: all 0.2s;
+        }
+        .stat-pill:hover {
+            border-color: var(--role-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+        .stat-pill i { font-size: 1rem; color: var(--role-color); }
+        .stat-pill .stat-val { font-weight: 700; color: #1e293b; }
+
+        /* ─── MOBILE SIDEBAR TOGGLE ─── */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            z-index: 1001;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--role-color);
+            color: #fff;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            box-shadow: 0 4px 16px color-mix(in srgb, var(--role-color) 40%, transparent);
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        .sidebar-toggle:hover { transform: scale(1.1); }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 999;
+            backdrop-filter: blur(2px);
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @@media (max-width: 991px) {
+            .guide-sidebar {
+                position: fixed;
+                top: 0;
+                left: -320px;
+                width: 300px;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+            }
+            .guide-sidebar.open { left: 0; }
+            .sidebar-toggle { display: flex; }
+            .guide-content { padding: 1.5rem 1rem; }
+            .guide-header .header-title { font-size: 0.85rem; }
+        }
+
+        /* ─── SCROLL TO TOP ─── */
+        .scroll-top {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 998;
+        }
+        .scroll-top.visible { opacity: 1; pointer-events: auto; }
+        .scroll-top:hover {
+            background: var(--role-color);
+            color: #fff;
+            border-color: var(--role-color);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Reading Progress -->
+    <div class="reading-progress" id="readingProgress" style="width: 0;"></div>
+
+    <!-- Header -->
+    <header class="guide-header">
+        <div class="role-badge">
+            <i class="bi @roleIcon"></i>
+            <span>@roleName</span>
+        </div>
+        <div class="header-title">
+            <i class="bi bi-book-fill me-1" style="color: rgba(255,255,255,0.4);"></i>
+            Hướng dẫn sử dụng
+        </div>
+        <div class="header-actions">
+            <a href="@mdFile" target="_blank" class="btn-ghost">
+                <i class="bi bi-file-code"></i>
+                Xem Markdown
+            </a>
+            <a asp-controller="Home" asp-action="Index" class="btn-ghost">
+                <i class="bi bi-house"></i>
+                Trang chủ
+            </a>
+        </div>
+    </header>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <div class="guide-layout">
+        <!-- Sidebar TOC -->
+        <aside class="guide-sidebar" id="guideSidebar">
+            <!-- Role Switcher -->
+            <div class="role-switcher">
+                <div class="role-switcher-label">Chuyển đổi vai trò</div>
+                <a href="/Guide?role=customer" class="role-btn @(role == "customer" ? "active" : "")">
+                    <i class="bi bi-person-fill"></i> Khách hàng
+                </a>
+                <a href="/Guide?role=partner" class="role-btn @(role == "partner" ? "active" : "")">
+                    <i class="bi bi-building-fill"></i> Đối tác
+                </a>
+                <a href="/Guide?role=driver" class="role-btn @(role == "driver" ? "active" : "")">
+                    <i class="bi bi-steering-fill"></i> Tài xế
+                </a>
+                <a href="/Guide?role=staff" class="role-btn @(role == "staff" ? "active" : "")">
+                    <i class="bi bi-person-badge-fill"></i> Nhân viên
+                </a>
+                <a href="/Guide?role=manager" class="role-btn @(role == "manager" ? "active" : "")">
+                    <i class="bi bi-person-check-fill"></i> Quản lý
+                </a>
+                <a href="/Guide?role=admin" class="role-btn @(role == "admin" ? "active" : "")">
+                    <i class="bi bi-shield-lock-fill"></i> Quản trị viên
+                </a>
+            </div>
+
+            <!-- TOC items will be generated by JS -->
+            <div id="tocList">
+                <div class="sidebar-section">Mục lục</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="guide-content" id="guideContent">
+            <!-- Content rendered here by JS -->
+        </main>
+    </div>
+
+    <!-- Mobile Toggle -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Scroll to top -->
+    <button class="scroll-top" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+        <i class="bi bi-chevron-up"></i>
+    </button>
+
+    <!-- Hidden markdown source -->
+    <textarea id="mdSource" hidden>@content</textarea>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ─── MARKDOWN PARSER ───
+        function parseMarkdown(text) {
+            text = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Code blocks
+            text = text.replace(/```([\s\S]*?)```/g, function(m, g) {
+                return '<pre><code>' + g.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>';
+            });
+
+            // Inline code
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers
+            text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            text = text.replace(/^## (.+)$/gm, '<h2><i class="bi bi-chevron-right"></i>$1</h2>');
+            text = text.replace(/^# (.+)$/gm, '<h1><i class="bi @roleIcon"></i>$1</h1>');
+
+            // Blockquotes (admonitions)
+            text = text.replace(/^> \*\*(.+?)\*\*(.*)$/gm, '<blockquote><p><strong>$1</strong>$2</p></blockquote>');
+
+            // Horizontal rules
+            text = text.replace(/^---$/gm, '<hr/>');
+
+            // Bold/italic
+            text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+            // Tables
+            var lines = text.split('\n');
+            var inTable = false;
+            var tableRows = [];
+            var result = [];
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (/^\|/.test(line)) {
+                    if (!inTable) { inTable = true; tableRows = []; }
+                    var cells = line.split('|').filter(function(c) { return c !== undefined && c !== null; });
+                    var isHeaderSep = cells.every(function(c) { return /^[\-\s:]+$/.test(c.trim()); });
+                    if (!isHeaderSep) {
+                        tableRows.push(cells);
+                    }
+                } else {
+                    if (inTable) {
+                        // Build table
+                        if (tableRows.length > 0) {
+                            var thead = tableRows[0].map(function(c) { return '<th>' + c.trim() + '</th>'; }).join('');
+                            var tbody = tableRows.slice(1).map(function(row) {
+                                return '<tr>' + row.map(function(c) { return '<td>' + c.trim() + '</td>'; }).join('') + '</tr>';
+                            }).join('');
+                            result.push('<table><thead><tr>' + thead + '</tr></thead><tbody>' + tbody + '</tbody></table>');
+                        }
+                        inTable = false;
+                        tableRows = [];
+                    }
+                    result.push(line);
+                }
+            }
+            if (inTable && tableRows.length > 0) {
+                var thead = tableRows[0].map(function(c) { return '<th>' + c.trim() + '</th>'; }).join('');
+                var tbody = tableRows.slice(1).map(function(row) {
+                    return '<tr>' + row.map(function(c) { return '<td>' + c.trim() + '</td>'; }).join('') + '</tr>';
+                }).join('');
+                result.push('<table><thead><tr>' + thead + '</tr></thead><tbody>' + tbody + '</tbody></table>');
+            }
+            text = result.join('\n');
+
+            // Unordered lists
+            text = text.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+            // Ordered lists
+            text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+            // Paragraphs
+            var blocks = text.split(/\n\n+/);
+            text = blocks.map(function(block) {
+                block = block.trim();
+                if (!block) return '';
+                if (/^<(h[1-6]|ul|ol|pre|table|blockquote|hr)/.test(block)) return block;
+                if (block.startsWith('#') || block.startsWith('>')) return block;
+                return '<p>' + block.replace(/\n/g, '<br/>') + '</p>';
+            }).join('\n');
+
+            return text;
+        }
+
+        // ─── BUILD TOC ───
+        function buildTOC(html) {
+            var tocDiv = document.getElementById('tocList');
+            var headings = document.querySelectorAll('#guideContent h2, #guideContent h3');
+            var tocHtml = '<div class="sidebar-section">Mục lục</div>';
+
+            headings.forEach(function(h, i) {
+                var id = 'section-' + i;
+                h.id = id;
+                var text = h.textContent.replace(/[^\wÀ-ỹ\s]/g, '').trim();
+                var level = h.tagName === 'H2' ? '' : 'style="padding-left:1.5rem;font-size:0.78rem;"';
+                tocHtml += '<a class="sidebar-item" href="#' + id + '" ' + level + '>' +
+                    '<i class="bi bi-chevron-right"></i>' + text + '</a>';
+            });
+
+            tocDiv.innerHTML = tocHtml;
+
+            // Add IDs to h1 too
+            var h1s = document.querySelectorAll('#guideContent h1');
+            h1s.forEach(function(h) {
+                h.id = 'page-title';
+            });
+        }
+
+        // ─── SCROLL SPY ───
+        function initScrollSpy() {
+            var items = document.querySelectorAll('.sidebar-item');
+            window.addEventListener('scroll', function() {
+                var scrollY = window.scrollY + 120;
+                var current = '';
+                document.querySelectorAll('#guideContent h2[id], #guideContent h3[id]').forEach(function(h) {
+                    if (h.offsetTop <= scrollY) current = h.id;
+                });
+                items.forEach(function(item) {
+                    item.classList.toggle('active', item.getAttribute('href') === '#' + current);
+                });
+
+                // Progress bar
+                var docH = document.documentElement.scrollHeight - window.innerHeight;
+                var progress = docH > 0 ? (window.scrollY / docH) * 100 : 0;
+                document.getElementById('readingProgress').style.width = progress + '%';
+
+                // Scroll top btn
+                document.getElementById('scrollTopBtn').classList.toggle('visible', window.scrollY > 400);
+            });
+        }
+
+        // ─── SIDEBAR TOGGLE ───
+        function toggleSidebar() {
+            document.getElementById('guideSidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').style.display =
+                document.getElementById('guideSidebar').classList.contains('open') ? 'block' : 'none';
+        }
+        function closeSidebar() {
+            document.getElementById('guideSidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').style.display = 'none';
+        }
+
+        // ─── INIT ───
+        (function() {
+            var md = document.getElementById('mdSource').textContent;
+            var html = parseMarkdown(md);
+            document.getElementById('guideContent').innerHTML = html;
+
+            // Add subtitle after h1
+            var h1 = document.querySelector('#guideContent h1');
+            if (h1) {
+                var subtitle = document.createElement('div');
+                subtitle.className = 'guide-subtitle';
+                var roleStrong = document.createElement('strong');
+                roleStrong.textContent = @Json.Serialize(roleName);
+                subtitle.append('Tài liệu hướng dẫn dành cho vai trò ', roleStrong, '. Sử dụng mục lục bên trái để di chuyển nhanh giữa các phần.');
+                h1.insertAdjacentElement('afterend', subtitle);
+            }
+
+            buildTOC();
+            initScrollSpy();
+
+            // Smooth scroll for TOC
+            document.querySelectorAll('.sidebar-item').forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    closeSidebar();
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

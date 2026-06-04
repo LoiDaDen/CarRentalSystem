@@ -1,0 +1,148 @@
+@model IEnumerable<CarRentalSystem.Models.Promotion>
+@{
+    ViewData["Title"] = "Quản lý Khuyến mãi";
+    Layout = "_AdminLayout";
+}
+
+<div class="theme-admin">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>@TempData["Success"]</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 ls-neg-1 mb-1">
+                <i class="bi bi-ticket-perforated me-2" style="color: var(--admin-primary);"></i>Mã Khuyến Mãi
+            </h2>
+            <p class="text-muted mb-0">Tạo mới và quản lý các chiến dịch giảm giá, voucher.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-area="Admin" asp-controller="Promotions" asp-action="TrashBin" class="btn btn-outline-secondary shadow-sm px-4 py-2 rounded-3 fw-bold">
+                <i class="bi bi-trash3 me-2"></i>Thùng rác
+            </a>
+            <a asp-area="Admin" asp-controller="Promotions" asp-action="Create" class="btn btn-primary shadow-sm px-4 py-2 rounded-3 fw-bold">
+                <i class="bi bi-tag-fill me-2"></i>Thêm mã mới
+            </a>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr class="small text-uppercase fw-bold" style="color: var(--admin-text-secondary);">
+                        <th class="ps-4">Mã Code</th>
+                        <th>Mức Giảm</th>
+                        <th>Tối đa</th>
+                        <th>Thời hạn</th>
+                        <th>Đã dùng</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end pe-4">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <span class="badge bg-light border fw-bold d-block" style="font-family: monospace; font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                                    <i class="bi bi-ticket-perforated me-1" style="color: var(--admin-primary);"></i>@p.PromoCode
+                                </span>
+                            </td>
+                            <td class="fw-bold" style="color: var(--admin-danger);">
+                                -@p.DiscountPercent.ToString("0.##")%
+                            </td>
+                            <td>
+                                <small class="text-muted">@(p.MaxDiscountAmount.HasValue ? p.MaxDiscountAmount.Value.ToString("N0") + "đ" : "Không giới hạn")</small>
+                            </td>
+                            <td class="small">
+                                <div class="fw-bold">@p.ValidFrom.ToString("dd/MM/yyyy")</div>
+                                <div class="text-muted">@p.ValidUntil.ToString("dd/MM/yyyy")</div>
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 6px; width: 80px; margin-bottom: 4px;">
+                                    <div class="progress-bar" role="progressbar" style="width: @((p.UsedCount * 100) / p.UsageLimit)%; background: @(p.UsedCount >= p.UsageLimit ? "var(--admin-danger)" : "var(--admin-primary)");"></div>
+                                </div>
+                                <small class="text-muted fw-bold">@p.UsedCount / @p.UsageLimit</small>
+                            </td>
+                            <td>
+                                @if (p.IsActive)
+                                {
+                                    @if (p.ValidUntil < DateTime.Now)
+                                    {
+                                        <span class="badge bg-secondary rounded-pill px-3 py-1">Hết hạn</span>
+                                    }
+                                    else if (p.UsedCount >= p.UsageLimit)
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1">Hết lượt</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success rounded-pill px-3 py-1">Hoạt động</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger rounded-pill px-3 py-1">Đã tắt</span>
+                                }
+                            </td>
+                            <td class="text-end pe-4">
+                                <form asp-action="ToggleStatus" asp-route-id="@p.PromotionID" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-3 px-2 me-1" title="@(p.IsActive ? "Tắt mã" : "Bật mã")">
+                                        <i class="bi @(p.IsActive ? "bi-pause-circle text-warning" : "bi-play-circle text-success")"></i>
+                                    </button>
+                                </form>
+                                <a asp-action="Edit" asp-route-id="@p.PromotionID" class="btn btn-sm btn-outline-primary rounded-3 px-2 me-1">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2" data-bs-toggle="modal" data-bs-target="#deleteModal-@p.PromotionID">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+
+                                <!-- Delete Modal -->
+                                <div class="modal fade text-start" id="deleteModal-@p.PromotionID" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                                        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
+                                            <div class="mb-3">
+                                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:60px;height:60px; background: var(--admin-danger-100);">
+                                                    <i class="bi bi-trash3-fill" style="color: var(--admin-danger); font-size: 1.5rem;"></i>
+                                                </span>
+                                            </div>
+                                            <h6 class="fw-bold mb-2">Xóa mã @p.PromoCode?</h6>
+                                            <p class="text-muted small mb-4">Hành động này không thể hoàn tác.</p>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-outline-secondary flex-grow-1 rounded-3 fw-bold" data-bs-dismiss="modal">Hủy</button>
+                                                <form asp-action="Delete" asp-route-id="@p.PromotionID" method="post" class="flex-grow-1">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">Xóa</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="bi bi-tags display-4 opacity-10 d-block mb-3"></i>
+                                    <p class="fw-bold opacity-50 mb-0">Chưa có mã khuyến mãi nào</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

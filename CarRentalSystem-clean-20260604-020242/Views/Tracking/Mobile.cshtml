@@ -1,0 +1,90 @@
+@model CarRentalSystem.Models.Booking
+@{
+    ViewData["Title"] = "Mobile tracker #" + Model.BookingID;
+}
+
+<style>
+    .mobile-tracker{max-width:520px;margin:0 auto}
+    .tracker-panel{border-radius:24px;background:#0f172a;color:#fff;padding:28px;box-shadow:0 24px 60px rgba(15,23,42,.28)}
+    .tracker-button{width:118px;height:118px;border-radius:999px;border:0;background:#22c55e;color:#fff;font-size:38px;display:grid;place-items:center;margin:22px auto;box-shadow:0 0 0 12px rgba(34,197,94,.12)}
+    .tracker-button.active{background:#ef4444;box-shadow:0 0 0 12px rgba(239,68,68,.14)}
+    .tracker-stat{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px}
+</style>
+
+<div class="container py-4 mobile-tracker">
+    <div class="tracker-panel text-center">
+        <div class="small text-white-50">Đơn #@Model.BookingID</div>
+        <h3 class="fw-800 mb-1">@Model.Car?.CarBrand?.Name @Model.Car?.CarName</h3>
+        <div class="text-white-50 small">@Model.Car?.LicensePlate</div>
+
+        <button type="button" id="toggleTracking" class="tracker-button">
+            <i class="bi bi-broadcast-pin"></i>
+        </button>
+        <div id="statusText" class="fw-bold text-success mb-3">Sẵn sàng gửi vị trí</div>
+
+        <div class="row g-2 text-start">
+            <div class="col-6"><div class="tracker-stat"><div class="small text-white-50">Tốc độ</div><div class="fw-bold"><span id="speedText">0.0</span> km/h</div></div></div>
+            <div class="col-6"><div class="tracker-stat"><div class="small text-white-50">Độ chính xác</div><div class="fw-bold"><span id="accuracyText">-</span> m</div></div></div>
+            <div class="col-12"><div class="tracker-stat"><div class="small text-white-50">Tọa độ</div><div class="fw-bold" id="coordText">-</div></div></div>
+        </div>
+
+        <a asp-controller="Tracking" asp-action="Booking" asp-route-id="@Model.BookingID" class="btn btn-outline-light rounded-3 w-100 mt-4">
+            Xem bản đồ khách hàng
+        </a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const bookingId = @Model.BookingID;
+        let watchId = null;
+        let active = false;
+
+        function setActive(next) {
+            active = next;
+            document.getElementById('toggleTracking').classList.toggle('active', active);
+            document.getElementById('statusText').textContent = active ? 'Đang gửi GPS realtime...' : 'Sẵn sàng gửi vị trí';
+            document.getElementById('statusText').classList.toggle('text-danger', active);
+            document.getElementById('statusText').classList.toggle('text-success', !active);
+        }
+
+        async function sendPosition(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const speed = position.coords.speed ? position.coords.speed * 3.6 : 0;
+            document.getElementById('speedText').textContent = speed.toFixed(1);
+            document.getElementById('accuracyText').textContent = Math.round(position.coords.accuracy || 0);
+            document.getElementById('coordText').textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+            await fetch('/Tracking/MobileUpdate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId, latitude: lat, longitude: lng, speed })
+            });
+        }
+
+        function startTracking() {
+            if (!navigator.geolocation) {
+                alert('Trình duyệt không hỗ trợ GPS.');
+                return;
+            }
+            setActive(true);
+            watchId = navigator.geolocation.watchPosition(
+                sendPosition,
+                err => {
+                    alert('Không lấy được GPS: ' + err.message);
+                    stopTracking();
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function stopTracking() {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+            setActive(false);
+        }
+
+        document.getElementById('toggleTracking').addEventListener('click', () => active ? stopTracking() : startTracking());
+    </script>
+}

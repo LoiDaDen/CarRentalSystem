@@ -1,0 +1,99 @@
+@model CarRentalSystem.ViewModels.BookingFlowProgressViewModel
+
+<div class="booking-flow-progress">
+    <div class="booking-flow-track">
+        @foreach (var step in Model.Steps)
+        {
+            var state = step.IsCompleted ? "done" : step.IsActive ? "active" : "todo";
+            <div class="booking-flow-step @state">
+                <span class="booking-flow-dot">
+                    @if (step.IsCompleted)
+                    {
+                        <i class="bi bi-check-lg"></i>
+                    }
+                    else
+                    {
+                        @(step.Index + 1)
+                    }
+                </span>
+                <span class="booking-flow-title">@step.Title</span>
+            </div>
+        }
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.Note))
+    {
+        <div class="booking-flow-note">@Model.Note</div>
+    }
+</div>
+
+<style>
+    .booking-flow-progress {
+        border: 1px solid #d9e2ec;
+        border-radius: 8px;
+        background: #fff;
+        padding: 14px;
+        margin-bottom: 18px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    }
+
+    .booking-flow-track {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .booking-flow-step {
+        min-width: 0;
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        color: #94a3b8;
+        font-size: .72rem;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .booking-flow-dot {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: #eef3f8;
+        color: #475467;
+        font-size: .75rem;
+    }
+
+    .booking-flow-step.done,
+    .booking-flow-step.active {
+        color: #0f766e;
+    }
+
+    .booking-flow-step.done .booking-flow-dot {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .booking-flow-step.active .booking-flow-dot {
+        background: #0f9f6e;
+        color: #fff;
+        box-shadow: 0 0 0 4px rgba(15, 159, 110, .14);
+    }
+
+    .booking-flow-title {
+        line-height: 1.25;
+    }
+
+    .booking-flow-note {
+        margin-top: 10px;
+        color: #667085;
+        font-size: .82rem;
+        text-align: center;
+    }
+
+    @@media(max-width: 760px) {
+        .booking-flow-track {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+</style>

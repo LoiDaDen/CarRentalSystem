@@ -1,0 +1,103 @@
+@model CarRentalSystem.Models.Booking
+@{
+    ViewData["Title"] = "Thanh toán thành công";
+    var paidAmount = ViewBag.PaidAmount as decimal? ?? Model.Payment?.Amount ?? Model.ReservationFee;
+    var status = ViewBag.PayOSStatus as string ?? Model.Payment?.PaymentStatus ?? "Paid";
+    var digitalContract = Model.DigitalContract ?? Model.BookingTransaction?.DigitalContract;
+    var requiresDigitalContract = CarRentalSystem.Models.CarContractSigningModes.Normalize(Model.Car?.ContractSigningMode) == CarRentalSystem.Models.CarContractSigningModes.Digital;
+}
+
+<div class="container py-5">
+    @await Html.PartialAsync("_BookingFlowProgress", CarRentalSystem.ViewModels.BookingFlowProgressViewModel.ForBooking(Model))
+    <div class="payment-panel mx-auto text-center">
+        <div class="payment-icon d-inline-flex align-items-center justify-content-center bg-success-subtle text-success mb-4">
+            <i class="bi bi-check2-circle display-5"></i>
+        </div>
+
+        <h1 class="h2 fw-800 mb-2">Thanh toán thành công!</h1>
+        <p class="lead text-muted mb-4">PayOS đã ghi nhận phí giữ chỗ. Đơn thuê xe của bạn đã được tạo trên CarRental.</p>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success text-start rounded-3">
+                <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            </div>
+        }
+        @if (TempData["Warning"] != null)
+        {
+            <div class="alert alert-warning text-start rounded-3">
+                <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Warning"]
+            </div>
+        }
+        @if (TempData["Info"] != null)
+        {
+            <div class="alert alert-info text-start rounded-3">
+                <i class="bi bi-info-circle me-2"></i>@TempData["Info"]
+            </div>
+        }
+
+        <div class="bg-light rounded-4 p-3 p-md-4 text-start mb-4">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">Mã đặt xe</div>
+                    <div class="fw-bold">#@Model.BookingID</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Trạng thái PayOS</div>
+                    <div class="fw-bold text-success">@status</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Xe đã đặt</div>
+                    <div class="fw-bold">@Model.Car?.CarBrand?.Name @Model.Car?.CarName</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Phí giữ chỗ đã thanh toán</div>
+                    <div class="fw-bold text-primary">@paidAmount.ToString("N0")đ</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Ngày nhận</div>
+                    <div class="fw-bold">@Model.StartDate.ToString("HH:mm dd/MM/yyyy")</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-muted small">Ngày trả</div>
+                    <div class="fw-bold">@Model.EndDate.ToString("HH:mm dd/MM/yyyy")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info text-start rounded-3">
+            <i class="bi bi-info-circle me-2"></i>
+            Khi nhận xe, bạn thanh toán phần tiền thuê còn lại và tiền cọc/thế chấp theo thông tin đơn thuê.
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-center gap-2 mt-4">
+            @if (digitalContract != null && !digitalContract.IsSignedByCustomer)
+            {
+                <a asp-controller="DigitalContract" asp-action="Sign" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-warning rounded-3 fw-bold px-4">
+                    <i class="bi bi-pen me-1"></i>Ký hợp đồng
+                </a>
+            }
+            else if (digitalContract != null)
+            {
+                <a asp-controller="DigitalContract" asp-action="Details" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-outline-primary rounded-3 fw-bold px-4">
+                    <i class="bi bi-file-earmark-check me-1"></i>Hợp đồng
+                </a>
+            }
+            else if (requiresDigitalContract)
+            {
+                <button type="button" class="btn btn-outline-warning rounded-3 fw-bold px-4" disabled>
+                    <i class="bi bi-file-earmark-lock me-1"></i>Chờ hợp đồng số
+                </button>
+            }
+            <a asp-controller="Booking" asp-action="Details" asp-route-id="@Model.BookingID" class="btn btn-primary rounded-3 fw-bold px-4">
+                Xem chi tiết đơn
+            </a>
+            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-outline-primary rounded-3 fw-bold px-4">
+                Chuyến xe của tôi
+            </a>
+            <a asp-controller="Car" asp-action="Index" class="btn btn-outline-secondary rounded-3 fw-bold px-4">
+                Xem xe khác
+            </a>
+        </div>
+    </div>
+</div>

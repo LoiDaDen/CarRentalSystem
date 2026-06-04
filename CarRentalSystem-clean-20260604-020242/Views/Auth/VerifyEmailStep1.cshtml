@@ -1,0 +1,210 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostingEnv
+@{
+    var recaptchaSiteKey = Configuration["Recaptcha:SiteKey"];
+    var showRecaptcha = (string.Equals(HostingEnv.EnvironmentName, "Production", StringComparison.OrdinalIgnoreCase) ||
+        Configuration.GetValue("Security:RequireRecaptcha", false)) &&
+        !string.IsNullOrWhiteSpace(recaptchaSiteKey);
+    ViewData["Title"] = "Xác Thực Email";
+    var errorMessage = TempData["ErrorMessage"]?.ToString();
+    var successMessage = TempData["SuccessMessage"]?.ToString();
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-lg border-0" style="border-radius: 20px; overflow: hidden; margin-top: 80px;">
+                <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h3 class="mb-0">
+                        <i class="bi bi-shield-lock me-2"></i>Xác Thực Email
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Alert Errors -->
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show animate__animated animate__shakeX" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@errorMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show animate__animated animate__bounceIn" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>@successMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <i class="bi bi-envelope-at" style="font-size: 4rem; color: #667eea;"></i>
+                        </div>
+                        <p class="text-muted">Nhập địa chỉ email đã đăng ký để xác thực tài khoản.</p>
+                    </div>
+
+                    <form asp-action="CheckEmail" method="post" id="emailForm">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-4">
+                            <label for="email" class="form-label fw-semibold">
+                                <i class="bi bi-envelope me-1"></i>Địa chỉ Email
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="bi bi-at"></i>
+                                </span>
+                                <input type="email"
+                                       class="form-control form-control-lg"
+                                       id="email"
+                                       name="email"
+                                       placeholder="example@email.com"
+                                       required
+                                       autofocus>
+                            </div>
+                        </div>
+
+                        @* <!-- Google reCAPTCHA v2 -->
+                        <div class="mb-4 text-center">
+                            <div class="g-recaptcha" data-sitekey="6LcvBuAsAAAAAJCXltz352OQ4ZFhePvlluJwaBlA"></div>
+                            <input type="hidden" name="recaptchaToken" id="checkEmailRecaptchaToken" />
+                            @if (ViewBag.RecaptchaError != null)
+                            {
+                                <small class="text-danger d-block mt-2">
+                                    <i class="bi bi-exclamation-circle me-1"></i> @ViewBag.RecaptchaError
+                                </small>
+                            }
+                        </div>
+                        *@
+
+                        @if (showRecaptcha)
+                        {
+                            <div class="mb-4 text-center">
+                                <div class="g-recaptcha d-inline-block" data-sitekey="@recaptchaSiteKey"></div>
+                                @if (ViewBag.RecaptchaError != null)
+                                {
+                                    <small class="text-danger d-block mt-2">
+                                        <i class="bi bi-exclamation-circle me-1"></i>@ViewBag.RecaptchaError
+                                    </small>
+                                }
+                            </div>
+                        }
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <span class="submit-text">
+                                    <i class="bi bi-arrow-right-circle me-2"></i>Tiếp Tục
+                                </span>
+                                <span class="loading-text d-none">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    Đang kiểm tra...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Mã xác thực sẽ được gửi đến email của bạn trong vòng 5 phút.
+                        </small>
+                    </div>
+                </div>
+                <div class="card-footer text-center py-3 bg-light">
+                    <small class="text-muted">
+                        <a asp-action="Login" asp-controller="Auth" class="text-decoration-none">
+                            <i class="bi bi-arrow-left me-1"></i>Quay lại đăng nhập
+                        </a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        animation: slideUp 0.5s ease-out;
+    }
+    
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .input-group-text {
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+    
+    .bi-envelope-at {
+        animation: pulse 2s infinite;
+    }
+    
+    @@keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+</style>
+
+@*@section Scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script>
+        function onCheckEmailRecaptchaSuccess(token) {
+            document.getElementById('checkEmailRecaptchaToken').value = token;
+        }
+
+        document.getElementById('emailForm').addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            btn.querySelector('.submit-text').classList.add('d-none');
+            btn.querySelector('.loading-text').classList.remove('d-none');
+            btn.disabled = true;
+        });
+    </script>
+}*@
+
+@section Scripts {
+    @if (showRecaptcha)
+    {
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    }
+    <script>
+        document.getElementById('emailForm')?.addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            if (!btn) return;
+            btn.querySelector('.submit-text')?.classList.add('d-none');
+            btn.querySelector('.loading-text')?.classList.remove('d-none');
+            btn.disabled = true;
+        });
+    </script>
+}

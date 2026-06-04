@@ -1,0 +1,351 @@
+@model CarRentalSystem.Models.Booking
+@{
+    var digitalContract = Model.DigitalContract ?? Model.BookingTransaction?.DigitalContract;
+    var hasSignedDigitalContract = digitalContract?.IsSignedByCustomer == true;
+    var requiresDigitalContract = CarRentalSystem.Models.CarContractSigningModes.Normalize(Model.Car?.ContractSigningMode) == CarRentalSystem.Models.CarContractSigningModes.Digital;
+    ViewData["Title"] = "Chi tiết đơn đặt xe #" + Model.BookingID;
+}
+
+<div class="container py-4">
+    @await Html.PartialAsync("_BookingFlowProgress", CarRentalSystem.ViewModels.BookingFlowProgressViewModel.ForBooking(Model))
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="MyBookings">Đơn đặt xe của tôi</a></li>
+            <li class="breadcrumb-item active">Chi tiết #@Model.BookingID</li>
+        </ol>
+    </nav>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            @TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            @TempData["Info"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Action Buttons - Prominent at top -->
+    <div class="card border-primary shadow-sm mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-gear"></i> Hành động</span>
+            <span class="badge @(Model.BookingStatus?.Name switch {
+                "Confirmed" => "bg-success",
+                "Active" => "bg-primary",
+                "Completed" => "bg-info",
+                "Cancelled" => "bg-danger",
+                "Pending" => "bg-warning text-dark",
+                _ => "bg-secondary"
+            }) fs-6">
+                @Model.BookingStatus?.Name
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                @if (Model.BookingStatus?.Name == "Confirmed" || Model.BookingStatus?.Name == "Active")
+                {
+                    <a asp-controller="Tracking" asp-action="Booking" asp-route-id="@Model.BookingID" class="btn btn-success">
+                        <i class="bi bi-map"></i> Theo dõi giao/nhận xe
+                    </a>
+                }
+                @if (Model.BookingStatus?.Name == "Confirmed")
+                {
+                    if (requiresDigitalContract && digitalContract != null && !hasSignedDigitalContract)
+                    {
+                        <a asp-controller="DigitalContract" asp-action="Sign" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-warning fw-bold">
+                            <i class="bi bi-pen"></i> Ký hợp đồng
+                        </a>
+                    }
+                    else if (requiresDigitalContract && digitalContract == null)
+                    {
+                        <button type="button" class="btn btn-outline-warning fw-bold" disabled>
+                            <i class="bi bi-file-earmark-lock"></i> Chờ tạo hợp đồng số
+                        </button>
+                    }
+                    else if (!requiresDigitalContract || hasSignedDigitalContract)
+                    {
+                    <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@Model.BookingID" asp-route-type="CheckIn" class="btn btn-outline-primary">
+                        <i class="bi bi-camera"></i> Biên bản nhận xe
+                    </a>
+                    <form asp-action="CustomerConfirmPickup" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.BookingID" />
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Xác nhận nhận xe
+                        </button>
+                    </form>
+                    }
+                    <form asp-action="CancelBooking" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.BookingID" />
+                        <input type="hidden" name="reason" value="Khách hàng hủy chuyến" />
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Bạn chắc chắn muốn hủy chuyến?')">
+                            <i class="bi bi-x-circle-fill"></i> Hủy chuyến
+                        </button>
+                    </form>
+                }
+                @if (Model.BookingStatus?.Name == "Active")
+                {
+                    <a asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@Model.BookingID" asp-route-type="CheckOut" class="btn btn-outline-warning">
+                        <i class="bi bi-camera"></i> Biên bản trả xe
+                    </a>
+                    <form asp-action="CustomerConfirmReturn" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.BookingID" />
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Bạn chắc chắn muốn kết thúc chuyến đi?')">
+                            <i class="bi bi-check-circle-fill"></i> Xác nhận kết thúc chuyến
+                        </button>
+                    </form>
+                    <form asp-action="CancelBooking" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.BookingID" />
+                        <input type="hidden" name="reason" value="Khách hàng hủy chuyến" />
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Bạn chắc chắn muốn hủy chuyến? Phí hủy có thể áp dụng.')">
+                            <i class="bi bi-x-circle-fill"></i> Hủy chuyến
+                        </button>
+                    </form>
+                }
+                @if (Model.BookingStatus?.Name == "Pending")
+                {
+                    <form asp-action="CancelBooking" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.BookingID" />
+                        <input type="hidden" name="reason" value="Khách hàng tự hủy" />
+                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Bạn chắc chắn muốn hủy đơn này?')">
+                            <i class="bi bi-x-circle"></i> Hủy đơn
+                        </button>
+                    </form>
+                }
+                <a asp-action="MyBookings" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left: Car Info -->
+        <div class="col-md-5">
+            <div class="card shadow-sm">
+                @if (Model.Car != null)
+                {
+                    var imgUrl = Model.Car.ImageURL ?? Model.Car.CarImages?.Select(i => i.ImageUrl).FirstOrDefault();
+                    <img src="@(imgUrl ?? "/images/default-car.png")" class="card-img-top" alt="@Model.Car.CarName" style="max-height:260px;object-fit:cover;">
+                }
+                <div class="card-body">
+                    <h5 class="card-title mb-1">
+                        @(Model.Car?.CarBrand?.Name) @(Model.Car?.CarName)
+                    </h5>
+                    <p class="text-muted mb-2">
+                        <i class="bi bi-geo-alt"></i> @(Model.Car?.Location?.Name ?? "Chưa cập nhật")
+                    </p>
+                    <span class="badge bg-secondary">Biển số: @(Model.Car?.LicensePlate)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Booking Info -->
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Thông tin đơn đặt xe</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr>
+                            <th style="width:40%">Mã đơn:</th>
+                            <td><strong>#@Model.BookingID</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Ngày nhận xe:</th>
+                            <td>@Model.StartDate.ToString("HH:mm dd/MM/yyyy")</td>
+                        </tr>
+                        <tr>
+                            <th>Ngày trả xe:</th>
+                            <td>@Model.EndDate.ToString("HH:mm dd/MM/yyyy")</td>
+                        </tr>
+                        <tr>
+                            <th>Tổng giờ thuê:</th>
+                            <td>@Model.TotalHours giờ</td>
+                        </tr>
+                        <tr>
+                            <th>Bảo hiểm:</th>
+                            <td>@Model.InsuranceTier</td>
+                        </tr>
+                        @if (Model.DeliveryFee > 0)
+                        {
+                            <tr>
+                                <th>Phí giao xe:</th>
+                                <td>@Model.DeliveryFee.ToString("N0") VNĐ</td>
+                            </tr>
+                            <tr>
+                                <th>Địa chỉ giao:</th>
+                                <td>@Model.DeliveryAddress</td>
+                            </tr>
+                        }
+                        @if (Model.DiscountAmount > 0)
+                        {
+                            <tr>
+                                <th>Giảm giá:</th>
+                                <td class="text-success">-@Model.DiscountAmount.ToString("N0") VNĐ</td>
+                            </tr>
+                        }
+                        <tr class="border-top">
+                            <th>Tổng tiền thuê:</th>
+                            <td class="fs-5 fw-bold text-danger">@Model.TotalPrice.ToString("N0") VNĐ</td>
+                        </tr>
+                        <tr>
+                            <th>Tiền cọc:</th>
+                            <td>@Model.DepositAmount.ToString("N0") VNĐ <span class="badge bg-secondary">@Model.DepositStatus</span></td>
+                        </tr>
+                        @if (Model.ActualPickupDate.HasValue)
+                        {
+                            <tr>
+                                <th>Nhận xe thực tế:</th>
+                                <td>@Model.ActualPickupDate.Value.ToString("HH:mm dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                        @if (Model.ActualReturnDate.HasValue)
+                        {
+                            <tr>
+                                <th>Trả xe thực tế:</th>
+                                <td>@Model.ActualReturnDate.Value.ToString("HH:mm dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add-ons -->
+            @if (Model.BookingAddOns != null && Model.BookingAddOns.Any())
+            {
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header"><h6 class="mb-0">Phụ kiện đã chọn</h6></div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr><th>Phụ kiện</th><th>SL</th><th class="text-end">Thành tiền</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var addon in Model.BookingAddOns)
+                                {
+                                    <tr>
+                                        <td>@addon.AddOn?.Name</td>
+                                        <td>@addon.Quantity</td>
+                                        <td class="text-end">@addon.TotalPrice.ToString("N0")đ</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Digital Contract -->
+            @if (digitalContract != null)
+            {
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header"><h6 class="mb-0">Hợp đồng số</h6></div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div>
+                                <div class="fw-bold">@digitalContract.ContractNo</div>
+                                <div class="small text-muted">
+                                    @(digitalContract.IsSignedByCustomer ? $"Đã ký lúc {digitalContract.CustomerSignDate?.ToString("HH:mm dd/MM/yyyy")}" : "Chưa ký")
+                                </div>
+                            </div>
+                            @if (digitalContract.IsSignedByCustomer)
+                            {
+                                <a asp-controller="DigitalContract" asp-action="Details" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-outline-primary btn-sm rounded-3">
+                                    <i class="bi bi-file-earmark-check me-1"></i>Xem hợp đồng
+                                </a>
+                            }
+                            else
+                            {
+                                <a asp-controller="DigitalContract" asp-action="Sign" asp-route-id="@digitalContract.DigitalContractID" class="btn btn-warning btn-sm rounded-3 fw-bold">
+                                    <i class="bi bi-pen me-1"></i>Ký hợp đồng
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Rental Contract -->
+            @if (Model.RentalContract != null)
+            {
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header"><h6 class="mb-0">Hợp đồng thuê xe</h6></div>
+                    <div class="card-body">
+                        <table class="table table-borderless table-sm mb-0">
+                            <tr><th>KM lúc nhận:</th><td>@Model.RentalContract.StartKm.ToString("N0") km</td></tr>
+                            <tr><th>KM lúc trả:</th><td>@Model.RentalContract.EndKm.ToString("N0") km</td></tr>
+                            <tr><th>Tổng KM:</th><td>@Model.RentalContract.TotalKm.ToString("N0") km</td></tr>
+                            <tr class="border-top"><th>Giá cuối cùng:</th><td class="fw-bold">@Model.RentalContract.FinalPrice.ToString("N0") VNĐ</td></tr>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Handover Records -->
+            @if (Model.HandoverRecords != null && Model.HandoverRecords.Any())
+            {
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header"><h6 class="mb-0">Biên bản giao nhận xe</h6></div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr><th>Loại</th><th>Ngày</th><th>ODO</th><th>Xăng</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var hr in Model.HandoverRecords)
+                                {
+                                    <tr>
+                                        <td>@(hr.Type == "CheckIn" ? "Nhận xe" : "Trả xe")</td>
+                                        <td>@hr.RecordDate.ToString("HH:mm dd/MM")</td>
+                                        <td>@hr.Odo km</td>
+                                        <td>@hr.FuelLevel</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,106 @@
+@model CarRentalSystem.ViewModels.OwnerWalletViewModel
+@{
+    ViewData["Title"] = "Ví của tôi";
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    <section class="owner-wallet-hero mb-3">
+        <div class="owner-balance">
+            <span class="owner-muted">Số dư ví</span>
+            <strong>@Model.Balance.ToString("N0")đ</strong>
+            <span class="owner-muted">Số dư khóa: @Model.LockedBalance.ToString("N0")đ</span>
+        </div>
+        <div class="owner-panel mb-0">
+            <h2>Bảng tổng hợp</h2>
+            <div class="owner-stats mt-3" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                <div class="owner-stat"><span>Thu nhập ước tính</span><strong>@Model.EstimatedOwnerIncome.ToString("N0")đ</strong></div>
+                <div class="owner-stat"><span>Thu nhập tháng</span><strong>@Model.MonthIncome.ToString("N0")đ</strong></div>
+                <div class="owner-stat"><span>Doanh thu gộp</span><strong>@Model.GrossRevenue.ToString("N0")đ</strong></div>
+                <div class="owner-stat"><span>Chuyến hoàn tất</span><strong>@Model.CompletedTrips</strong></div>
+            </div>
+            <button class="owner-filter-button w-100" type="button" disabled>Yêu cầu rút tiền đang phát triển</button>
+        </div>
+    </section>
+
+    <section class="owner-panel">
+        <h2>Doanh thu theo chuyến</h2>
+        @if (!Model.BookingRows.Any())
+        {
+            <div class="owner-empty">
+                <div>
+                    <i class="bi bi-wallet2"></i>
+                    <h2>Chưa có giao dịch chuyến xe</h2>
+                    <p class="owner-muted">Khi xe có booking được xác nhận hoặc hoàn tất, doanh thu sẽ hiển thị tại đây.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="owner-table-wrap">
+                <table class="owner-table">
+                    <thead>
+                        <tr>
+                            <th>Mã chuyến</th>
+                            <th>Xe</th>
+                            <th>Ngày đi</th>
+                            <th>Ngày về</th>
+                            <th class="text-end">Tiền thuê</th>
+                            <th class="text-end">Hoa hồng</th>
+                            <th class="text-end">Thu nhập chủ xe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.BookingRows)
+                        {
+                            <tr>
+                                <td>#@row.BookingID<br /><span class="owner-muted">@row.StatusName</span></td>
+                                <td><strong>@row.CarName</strong><br /><span class="owner-muted">@row.LicensePlate</span></td>
+                                <td>@row.StartDate.ToString("dd/MM/yyyy")</td>
+                                <td>@row.EndDate.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">@row.RentalAmount.ToString("N0")đ</td>
+                                <td class="text-end">@row.CommissionRate.ToString("N0")%</td>
+                                <td class="text-end"><strong>@row.OwnerIncome.ToString("N0")đ</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="owner-panel">
+        <h2>Sổ giao dịch ví</h2>
+        @if (!Model.Transactions.Any())
+        {
+            <p class="owner-muted mb-0">Chưa có giao dịch ví.</p>
+        }
+        else
+        {
+            <div class="owner-table-wrap">
+                <table class="owner-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Hình thức</th>
+                            <th>Nội dung</th>
+                            <th class="text-end">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tx in Model.Transactions)
+                        {
+                            <tr>
+                                <td>@tx.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@tx.Type</td>
+                                <td>@tx.Description</td>
+                                <td class="text-end">@tx.Amount.ToString("N0")đ</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

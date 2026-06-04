@@ -1,0 +1,468 @@
+@model CarRentalSystem.Models.Booking
+@{
+    ViewData["Title"] = "Thủ tục thanh toán";
+    var diffTime = Model.EndDate - Model.StartDate;
+    var totalHours = Math.Ceiling(diffTime.TotalHours);
+    if (totalHours <= 0) totalHours = 1;
+    var rentalDays = (int)Math.Ceiling(totalHours / 24.0);
+    if (rentalDays == 0) rentalDays = 1;
+}
+
+<style>
+    #driverOverlay,
+    .driver-popup-overlay {
+        display: none !important;
+    }
+
+    .checkout-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .form-control { border-radius: 8px; padding: 12px 16px; border: 1px solid #cbd5e1; }
+    .form-control:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+    .step-badge { width: 28px; height: 28px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; }
+
+    /* Driver cards styling */
+    .drv-card {
+        background: white; border-radius: 14px; padding: 14px;
+        margin-bottom: 10px; border: 2px solid transparent;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        display: flex; gap: 14px; align-items: center;
+        transition: all 0.25s ease; cursor: pointer;
+    }
+    .drv-card:hover { border-color: #93c5fd; box-shadow: 0 4px 20px rgba(59,130,246,0.12); transform: translateY(-1px); }
+    .drv-card.active { border-color: #3b82f6; background: #eff6ff; }
+    .drv-card-avatar {
+        width: 60px; height: 60px; border-radius: 50%; object-fit: cover;
+        border: 3px solid #e2e8f0; flex-shrink: 0;
+    }
+    .drv-card-avatar-placeholder {
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .drv-card-info { flex: 1; min-width: 0; }
+    .drv-card-name { font-weight: 700; font-size: 0.9rem; color: #1e293b; }
+    .drv-card-meta { font-size: 0.68rem; color: #64748b; display: flex; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
+    .drv-card-meta span { display: flex; align-items: center; gap: 2px; }
+    .drv-card-stars { display: flex; gap: 1px; margin-top: 3px; }
+    .drv-card-stars i { font-size: 0.7rem; color: #f59e0b; }
+    .drv-card-rating-text { font-size: 0.68rem; color: #f59e0b; font-weight: 700; margin-left: 4px; }
+    .drv-card-price { text-align: right; flex-shrink: 0; }
+    .drv-card-price .price-val { font-weight: 800; font-size: 0.95rem; color: #059669; }
+    .drv-card-price .price-unit { font-size: 0.6rem; color: #94a3b8; }
+
+    /* Self-drive option */
+    .drv-selfdrive {
+        background: white; border-radius: 14px; padding: 14px;
+        margin-bottom: 14px; border: 2px solid transparent;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        display: flex; align-items: center; gap: 14px;
+        cursor: pointer; transition: all 0.25s;
+    }
+    .drv-selfdrive:hover { border-color: #a3e635; }
+    .drv-selfdrive.active { border-color: #65a30d; background: #f7fee7; }
+    .drv-selfdrive-icon {
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #65a30d, #84cc16);
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.5rem; flex-shrink: 0;
+    }
+
+    /* Driver Popup Styles */
+    .driver-popup-overlay {
+        display: none; position: fixed; inset: 0; z-index: 10000;
+        background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
+        align-items: center; justify-content: center;
+    }
+    .driver-popup-overlay.show { display: flex; }
+    .driver-popup {
+        background: #f8fafc; border-radius: 20px; max-width: 680px; width: 95%;
+        max-height: 85vh; box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+        animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+        overflow: hidden; display: flex; flex-direction: column;
+    }
+    .driver-popup-header {
+        padding: 16px 20px; display: flex; align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%);
+        color: white; flex-shrink: 0;
+    }
+    .driver-popup-header h5 { margin: 0; font-weight: 800; font-size: 1rem; }
+    .driver-popup-header .subtitle { font-size: 0.7rem; opacity: 0.8; margin-top: 2px; }
+    .driver-popup-body {
+        padding: 16px 20px; overflow-y: auto; flex: 1;
+    }
+    .driver-popup-body::-webkit-scrollbar { width: 5px; }
+    .driver-popup-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    .page-checkout {
+        max-width: 1180px;
+    }
+
+    .page-checkout h3 {
+        color: #0f172a;
+        letter-spacing: 0;
+    }
+
+    .checkout-card {
+        border-radius: 8px;
+        border-color: #d9e2ec;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+    }
+
+    .step-badge {
+        border-radius: 8px;
+        background: #2563eb;
+    }
+
+    .page-checkout .bg-light {
+        background: #f8fbff !important;
+    }
+
+    .page-checkout .form-check,
+    .page-checkout .insurance-option,
+    .page-checkout .addon-option {
+        border-radius: 8px !important;
+    }
+
+    .page-checkout .btn-success {
+        background: #0f9f6e;
+        border-color: #0f9f6e;
+    }
+
+    .page-checkout .btn-success:hover {
+        background: #087f5b;
+        border-color: #087f5b;
+    }
+
+    @@media (min-width: 992px) {
+        .page-checkout .col-lg-4 .checkout-card,
+        .page-checkout aside,
+        .page-checkout .order-summary {
+            position: sticky;
+            top: 92px;
+        }
+    }
+</style>
+
+<div class="container py-5 page-checkout">
+    @await Html.PartialAsync("_BookingFlowProgress", CarRentalSystem.ViewModels.BookingFlowProgressViewModel.ForCheckout(Model))
+    <div class="row g-4">
+        <form asp-action="Book" method="post" id="checkoutForm" class="w-100">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="CarID" />
+            <input type="hidden" asp-for="StartDate" />
+            <input type="hidden" asp-for="EndDate" />
+            <input type="hidden" name="PickupLocationText" value="@(Model.Car?.CarAddress ?? Model.Car?.Location?.Name)" />
+            <input type="hidden" name="PromotionID" id="promotionIdInput" value="" />
+
+            <div class="row w-100 m-0 justify-content-center">
+                <div class="col-12 col-lg-8">
+                    @if (TempData["BookingError"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show mb-4 rounded-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["BookingError"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <h3 class="fw-800 mb-4 text-center">Hoàn tất thủ tục thuê xe</h3>
+
+                    <div class="checkout-card ui-elevated-card">
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">1</div> Thông tin người thuê</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Họ và tên</label>
+                            <input type="text" class="form-control" name="FullName" value="@User.Identity.Name" required placeholder="Nhập họ tên" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Số điện thoại</label>
+                            <input type="tel" class="form-control" name="Phone" value="@ViewBag.UserPhone" required placeholder="Nhập số điện thoại" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold text-muted">Ghi chú cho chủ xe (Tùy chọn)</label>
+                            <textarea class="form-control" name="Notes" rows="2" placeholder="Ví dụ: Lịch trình, yêu cầu thêm..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checkout-card ui-elevated-card">
+                    <h5 class="fw-bold mb-3 d-flex align-items-center"><div class="step-badge" style="background:#f59e0b;"><i class="bi bi-ticket-perforated"></i></div> Mã Giảm Giá</h5>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <div class="input-group" id="voucherGroup">
+                                <input type="text" class="form-control fw-bold text-uppercase" id="promoCodeInput" placeholder="Nhập mã voucher (VD: SUMMER2026)" autocomplete="off" />
+                                <button class="btn btn-outline-primary fw-bold" type="button" id="applyPromoBtn" onclick="applyPromoCode()">
+                                    <span id="promoBtnText">Áp dụng</span>
+                                    <span id="promoBtnSpinner" class="spinner-border spinner-border-sm ms-1 d-none" role="status"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="promoError" class="text-danger small mt-2 fw-bold d-none"></div>
+                    <div id="promoSuccess" class="text-success small mt-2 fw-bold d-none">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        <span id="promoSuccessText"></span>
+                    </div>
+                    @if (ViewBag.MembershipTier != null && ViewBag.MembershipTier.DiscountPercent > 0)
+                    {
+                        <div class="mt-2 p-2 bg-info bg-opacity-10 border border-info border-opacity-25 rounded-3">
+                            <div class="small text-info fw-bold">
+                                <i class="bi bi-star-fill me-1"></i>
+                                Bạn được giảm <span class="fw-bolder">@ViewBag.MembershipTier.DiscountPercent%</span> theo hạng thành viên @ViewBag.MembershipTier.Name
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="checkout-card ui-elevated-card">
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge">2</div> Các bước thanh toán</h5>
+
+                    <div class="p-3 border rounded-3 mb-3 bg-light">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="fw-bold text-success"><i class="bi bi-1-circle-fill me-2"></i>Thanh toán giữ chỗ qua ứng dụng</div>
+                            <span class="fw-bold" id="depositAmountDisplay">@Model.ReservationFee.ToString("N0") đ</span>
+                        </div>
+                        <p class="small text-muted mb-0 ps-4">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào tiền phải thanh toán khi nhận xe.</p>
+                    </div>
+
+                    <div class="p-3 border rounded-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="fw-bold"><i class="bi bi-2-circle me-2"></i>Thanh toán khi nhận xe</div>
+                            @{
+                                var remainingAmount = Model.TotalPrice - Model.ReservationFee;
+                                if (remainingAmount < 0) remainingAmount = 0;
+                            }
+                            <span class="fw-bold text-dark" id="balanceAmountDisplay">@remainingAmount.ToString("N0") đ</span>
+                        </div>
+                        <ul class="small text-muted mb-0 ps-4 list-unstyled">
+                            <li class="d-flex justify-content-between mb-1"><span>Tổng tiền thuê</span> <span id="rentalTotalDisplay">@Model.TotalPrice.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tiền thuê còn lại</span> <span id="rentalRemainingDisplay">@remainingAmount.ToString("N0") đ</span></li>
+                            <li class="d-flex justify-content-between mb-1"><span>Tài sản đặt cọc / thế chấp</span> <span>@Model.DepositAmount.ToString("N0") đ</span></li>
+                        </ul>
+                        <div id="voucherDiscountRow" class="d-flex justify-content-between mb-1 text-success fw-bold d-none">
+                            <span><i class="bi bi-ticket-perforated me-1"></i>Giảm voucher</span>
+                            <span id="voucherDiscountAmount">-0 đ</span>
+                        </div>
+                        <div class="d-flex text-warning mt-2"><i class="bi bi-shield-lock me-2"></i> <span>Tiền cọc sẽ được giữ lại vòng 15 ngày để tra cứu Phạt Nguội giao thông trước khi hoàn trả tự động vào ví của bạn.</span></div>
+                    </div>
+                </div>
+
+                <div class="checkout-card ui-elevated-card">
+                    <h5 class="fw-bold mb-4 d-flex align-items-center"><div class="step-badge" style="background:#7c3aed;">3</div> Dịch vụ & Bảo hiểm</h5>
+
+                    <!-- Insurance Options -->
+                    <div class="p-3 border rounded-3 mb-3 bg-light border-primary">
+                        <div class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary fs-5"></i>Gói Bảo Hiểm Chuyến Đi</div>
+                        <input type="hidden" name="InsuranceTier" id="insuranceTierInput" value="Basic" />
+
+                        <div class="form-check p-3 border rounded-3 mb-2 bg-white insurance-option" onclick="selectInsurance('Basic', 0); document.getElementById('insBasic').checked=true;">
+                            <input class="form-check-input" type="radio" name="insuranceRadio" id="insBasic" checked>
+                            <label class="form-check-label w-100" for="insBasic">
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold">Cơ bản (Basic)</span>
+                                    <span class="text-success fw-bold">Miễn phí</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Bồi thường có mức khấu trừ cao, khách tự chịu trách nhiệm phần xát xước nhẹ.</small>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 border rounded-3 mb-2 bg-white insurance-option" onclick="selectInsurance('Premium', 150000); document.getElementById('insPremium').checked=true;">
+                            <input class="form-check-input" type="radio" name="insuranceRadio" id="insPremium">
+                            <label class="form-check-label w-100" for="insPremium">
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold fs-6">Cao cấp (Premium)</span>
+                                    <span class="text-dark fw-bold">150.000đ/ngày</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Hỗ trợ chi phí sửa chữa thân vỏ, đèn kính. Giảm 80% mức khấu trừ.</small>
+                            </label>
+                        </div>
+
+                        <div class="form-check p-3 border rounded-3 bg-white insurance-option" onclick="selectInsurance('Full Cover', 300000); document.getElementById('insFull').checked=true;">
+                            <input class="form-check-input" type="radio" name="insuranceRadio" id="insFull">
+                            <label class="form-check-label w-100" for="insFull">
+                                <div class="d-flex justify-content-between">
+                                    <span class="fw-bold fs-6">Toàn diện (Full Cover) <span class="badge bg-danger ms-1">HOT</span></span>
+                                    <span class="text-dark fw-bold">300.000đ/ngày</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Miễn thường 100%. Bao gồm thủy kích, mất cắp. Yên tâm tuyệt đối cho khách thuê.</small>
+                            </label>
+                        </div>
+                        <input type="hidden" id="insuranceFeeInput" value="0" />
+                    </div>
+
+                    <!-- Delivery Option -->
+                    @if (ViewBag.PickupLocationType == "owner")
+                    {
+                        <div class="p-3 border rounded-3 mb-3 bg-light border-primary">
+                            <div class="fw-bold mb-2"><i class="bi bi-truck me-2 text-primary"></i>Địa chỉ giao xe (@Model.DeliveryFee.ToString("N0")đ)</div>
+                            <input type="text" class="form-control bg-white form-control-sm" name="DeliveryAddress" id="deliveryAddressInput" value="@(Model.DeliveryAddress ?? ViewBag.PickupLocation)" readonly />
+                            <input type="hidden" name="DeliveryMode" value="@CarRentalSystem.Models.DeliveryModeConstants.OwnerDelivery" />
+                            <input type="hidden" name="DeliveryLatitude" value="@Model.DeliveryLatitude" />
+                            <input type="hidden" name="DeliveryLongitude" value="@Model.DeliveryLongitude" />
+                            <input type="hidden" name="DeliveryDistanceKm" value="@Model.DeliveryDistanceKm" />
+                            <input type="hidden" name="DeliveryEtaMinutes" value="@Model.DeliveryEtaMinutes" />
+                            <input type="hidden" name="DeliveryQuotedAt" value="@(Model.DeliveryQuotedAt?.ToString("O"))" />
+                            <input type="hidden" name="DeliveryFee" id="deliveryFeeInput" value="@Model.DeliveryFee" />
+                            <div class="small text-muted mt-2">
+                                @Model.DeliveryDistanceKm.ToString("0.0") km - ETA khoảng @(Model.DeliveryEtaMinutes ?? 0) phút
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" name="DeliveryMode" value="@CarRentalSystem.Models.DeliveryModeConstants.CustomerPickup" />
+                        <input type="hidden" name="DeliveryFee" id="deliveryFeeInput" value="0" />
+                    }
+
+                    <!-- Addons -->
+                    <div class="border rounded-3 p-3">
+                        <div class="fw-bold mb-3"><i class="bi bi-gift me-2 text-danger"></i>Combo & Tiện Ích</div>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="form-check p-2 border rounded-2 addon-option" onclick="toggleAddon(this)">
+                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Nước suối|10000" id="addonWater">
+                                    <label class="form-check-label" for="addonWater">
+                                        <span class="fw-bold small">Nước suối</span>
+                                        <span class="badge bg-success bg-opacity-10 text-success fw-bold float-end">10K</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check p-2 border rounded-2 addon-option" onclick="toggleAddon(this)">
+                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Khăn lạnh|5000" id="addonTowel">
+                                    <label class="form-check-label" for="addonTowel">
+                                        <span class="fw-bold small">Khăn lạnh</span>
+                                        <span class="badge bg-success bg-opacity-10 text-success fw-bold float-end">5K</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check p-2 border rounded-2 addon-option" onclick="toggleAddon(this)">
+                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Combo Ăn Nhẹ|50000" id="addonSnack">
+                                    <label class="form-check-label" for="addonSnack">
+                                        <span class="fw-bold small">Combo Ăn Nhẹ</span>
+                                        <span class="badge bg-warning bg-opacity-10 text-warning fw-bold float-end">50K</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check p-2 border rounded-2 addon-option" onclick="toggleAddon(this)">
+                                    <input class="form-check-input" type="checkbox" name="SelectedAddons" value="Combo VIP|100000" id="addonVip">
+                                    <label class="form-check-label" for="addonVip">
+                                        <span class="fw-bold small">Combo VIP</span>
+                                        <span class="badge bg-primary bg-opacity-10 text-primary fw-bold float-end">100K</span>
+                                    </label>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border rounded-3 p-3 mt-3 bg-light border-success">
+                        <div class="fw-bold text-success mb-2"><i class="bi bi-steering-wheel me-2 fs-5"></i>Thuê xe tự lái</div>
+                        <small class="text-muted d-block">Bạn sẽ tự điều khiển xe. Dịch vụ này không bao gồm tài xế và không phát sinh phí tài xế.</small>
+                    </div>
+                        <!-- Submit Action inside Left Sidebar -->
+                        <div class="mt-4">
+                            <div class="alert alert-success rounded-3 mb-3">
+                                <div class="fw-bold mb-1">Loại dịch vụ: Thuê xe tự lái</div>
+                                <div class="small">Khách thuê phải tự điều khiển xe và có giấy phép lái xe phù hợp. Dịch vụ này không bao gồm tài xế.</div>
+                            </div>
+                            <div class="form-check p-3 border rounded-3 mb-3 bg-light">
+                                <input class="form-check-input" type="checkbox" name="SelfDriveAgreement" value="true" id="SelfDriveAgreement" required />
+                                <label class="form-check-label fw-semibold" for="SelfDriveAgreement">
+                                    Tôi xác nhận là người trực tiếp điều khiển xe, có giấy phép lái xe phù hợp, còn hiệu lực và không sử dụng xe thuê để vận tải hành khách/hàng hóa có thu tiền.
+                                </label>
+                            </div>
+                            <div class="form-check p-3 border rounded-3 mb-3 bg-light">
+                                <input class="form-check-input" type="checkbox" name="LegalAgreement" value="true" id="LegalAgreement" required />
+                                <label class="form-check-label fw-semibold" for="LegalAgreement">
+                                    Tôi đồng ý với
+                                    <a asp-controller="Home" asp-action="Terms" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a>
+                                    và
+                                    <a asp-controller="Home" asp-action="Privacy" class="text-success fw-bold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                                </label>
+                            </div>
+                            @if(User?.Identity?.IsAuthenticated == true)
+                            {
+                                <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3" id="confirmBookingBtn" style="font-size: 1.1rem;">
+                                    Xác nhận & Chuyển tới Thanh toán / Đặt cọc
+                                </button>
+                                <div class="text-center mt-3 text-muted small">
+                                    Bằng việc bấm Xác nhận, bạn đồng ý với<br>
+                                    <a asp-controller="Home" asp-action="Terms" class="text-success fw-bold text-decoration-none">Điều khoản sử dụng</a> và <a asp-controller="Home" asp-action="Privacy" class="text-success fw-bold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>
+                                </div>
+                            }
+                            else
+                            {
+                                <a asp-controller="Auth" asp-action="Login" class="btn btn-success btn-lg w-100 fw-bold rounded-3 shadow-sm py-3 text-center">Đăng nhập để đặt xe</a>
+                            }
+                        </div>
+                    </div>
+            </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var promoApplied = false;
+        var promoDiscount = 0;
+
+        async function applyPromoCode() {
+            var code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
+            if (!code) return;
+
+            document.getElementById('promoBtnSpinner').classList.remove('d-none');
+            document.getElementById('promoBtnText').textContent = 'Đang kiểm tra...';
+            document.getElementById('applyPromoBtn').disabled = true;
+            document.getElementById('promoError').classList.add('d-none');
+            document.getElementById('promoSuccess').classList.add('d-none');
+
+            try {
+                var totalPrice = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TotalPrice));
+                var res = await fetch('/api/Voucher/check?code=' + encodeURIComponent(code) + '&totalPrice=' + totalPrice);
+                var data = await res.json();
+
+                if (data.success) {
+                    promoApplied = true;
+                    promoDiscount = data.discountAmount;
+                    document.getElementById('promotionIdInput').value = data.promotionId;
+                    document.getElementById('promoSuccess').classList.remove('d-none');
+                    document.getElementById('promoSuccessText').textContent = 'Giảm ' + data.discountAmount.toLocaleString('vi-VN') + 'đ cho đơn hàng!';
+                    document.getElementById('promoCodeInput').readOnly = true;
+                    document.getElementById('applyPromoBtn').innerHTML = '<i class="bi bi-check-circle-fill"></i> Đã áp dụng';
+                    document.getElementById('applyPromoBtn').classList.remove('btn-outline-primary');
+                    document.getElementById('applyPromoBtn').classList.add('btn-success');
+                    document.getElementById('applyPromoBtn').disabled = false;
+
+                    var discountedTotal = totalPrice - promoDiscount;
+                    document.getElementById('voucherDiscountRow').classList.remove('d-none');
+                    document.getElementById('voucherDiscountAmount').textContent = '-' + promoDiscount.toLocaleString('vi-VN') + 'đ';
+                    document.getElementById('depositAmountDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.2)).toLocaleString('vi-VN') + ' đ';
+                    document.getElementById('balanceAmountDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8)).toLocaleString('vi-VN') + ' đ';
+                    document.getElementById('rentalTotalDisplay').textContent = Math.max(0, Math.round(discountedTotal)).toLocaleString('vi-VN') + ' đ';
+                    document.getElementById('rentalRemainingDisplay').textContent = Math.max(0, Math.round(discountedTotal * 0.8)).toLocaleString('vi-VN') + ' đ';
+                } else {
+                    document.getElementById('promoError').classList.remove('d-none');
+                    document.getElementById('promoError').textContent = data.message || 'Mã voucher không hợp lệ hoặc đã hết hạn.';
+                }
+            } catch (e) {
+                document.getElementById('promoError').classList.remove('d-none');
+                document.getElementById('promoError').textContent = 'Không thể kiểm tra mã voucher. Thử lại sau.';
+            }
+
+            document.getElementById('promoBtnSpinner').classList.add('d-none');
+            document.getElementById('promoBtnText').textContent = promoApplied ? 'Đã áp dụng' : 'Áp dụng';
+            document.getElementById('applyPromoBtn').disabled = promoApplied;
+        }
+
+        function selectInsurance(tier, fee) {
+            document.getElementById('insuranceTierInput').value = tier;
+            document.getElementById('insuranceFeeInput').value = fee;
+        }
+        function toggleAddon(row) {}
+</script>
+}
+
+
+

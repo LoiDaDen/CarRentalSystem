@@ -1,0 +1,171 @@
+@model IEnumerable<CarRentalSystem.Models.PhysicalContract>
+@{
+    ViewData["Title"] = "Hợp đồng vật lý legacy";
+    var types = ViewBag.Types as IEnumerable<CarRentalSystem.Models.PhysicalContractType> ?? Enumerable.Empty<CarRentalSystem.Models.PhysicalContractType>();
+    var statuses = ViewBag.Statuses as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var areas = ViewBag.Areas as IEnumerable<CarRentalSystem.Models.Area> ?? Enumerable.Empty<CarRentalSystem.Models.Area>();
+    var currentRole = ViewBag.CurrentRole as string ?? "";
+    int? selectedAreaId = ViewBag.SelectedAreaId as int?;
+    string selectedType = ViewBag.TypeCode as string ?? "";
+    string selectedStatus = ViewBag.Status as string ?? "";
+    string selectedFileKind = ViewBag.FileKind as string ?? "";
+}
+
+<div class="container-fluid px-0">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1" style="color: var(--admin-text);">Hợp đồng vật lý legacy</h1>
+            <p class="mb-0" style="color: var(--admin-text-secondary);">
+                Chỉ xem lại dữ liệu cũ. Với booking mới, hợp đồng giấy do chủ xe tự in, ký và lưu ngoài hệ thống.
+            </p>
+        </div>
+        <span class="badge bg-secondary-subtle text-secondary border border-secondary align-self-start align-self-lg-center">
+            @Model.Count() tài liệu cũ
+        </span>
+    </div>
+
+    <div class="alert alert-warning border-0 shadow-sm mb-4">
+        <div class="fw-bold mb-1"><i class="bi bi-info-circle me-2"></i>Đã tắt upload hợp đồng vật lý</div>
+        <div class="small">
+            App không còn nhận file hợp đồng giấy, không phân loại AI và không xác nhận loại tài liệu mới.
+            Chủ xe tự quản hợp đồng vật lý; hợp đồng số được quản lý trong trung tâm Hợp đồng &amp; Chứng từ của chủ xe.
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4" style="background-color: var(--admin-surface);">
+        <div class="card-header border-0" style="background-color: var(--admin-surface-2);">
+            <h2 class="h6 fw-bold mb-0" style="color: var(--admin-text);"><i class="bi bi-funnel me-2"></i>Bộ lọc dữ liệu cũ</h2>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                @if (currentRole == CarRentalSystem.Models.UserRoleConstants.Admin)
+                {
+                    <div class="col-md-4 col-xl-3">
+                        <label class="form-label small fw-bold">Khu vực</label>
+                        <select name="areaId" class="form-select">
+                            <option value="">Tất cả khu vực</option>
+                            @foreach (var area in areas)
+                            {
+                                <option value="@area.AreaID" selected="@(selectedAreaId == area.AreaID)">@area.Name - @area.Province</option>
+                            }
+                        </select>
+                    </div>
+                }
+                <div class="col-md-4 col-xl-3">
+                    <label class="form-label small fw-bold">Từ khóa</label>
+                    <input name="q" value="@ViewBag.Query" class="form-control" placeholder="Mã, tiêu đề, biển số, booking..." />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Loại cũ</label>
+                    <select name="typeCode" class="form-select">
+                        <option value="">Tất cả loại</option>
+                        @foreach (var type in types)
+                        {
+                            <option value="@type.Code" selected="@(selectedType == type.Code)">@type.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Trạng thái</label>
+                    <select name="status" class="form-select">
+                        <option value="">Tất cả</option>
+                        @foreach (var item in statuses)
+                        {
+                            <option value="@item" selected="@(selectedStatus == item)">@item</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Định dạng</label>
+                    <select name="fileKind" class="form-select">
+                        <option value="">Tất cả</option>
+                        <option value="Pdf" selected="@(selectedFileKind == "Pdf")">PDF</option>
+                        <option value="Image" selected="@(selectedFileKind == "Image")">Image</option>
+                    </select>
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Car ID</label>
+                    <input name="carId" type="number" value="@ViewBag.CarId" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Booking ID</label>
+                    <input name="bookingId" type="number" value="@ViewBag.BookingId" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Từ ngày</label>
+                    <input name="uploadedFrom" type="date" value="@ViewBag.UploadedFrom" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2">
+                    <label class="form-label small fw-bold">Đến ngày</label>
+                    <input name="uploadedTo" type="date" value="@ViewBag.UploadedTo" class="form-control" />
+                </div>
+                <div class="col-md-4 col-xl-2 d-grid">
+                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-search me-1"></i>Lọc</button>
+                </div>
+                <div class="col-md-4 col-xl-2 d-grid">
+                    <a asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Index" class="btn btn-outline-secondary fw-bold">Xóa lọc</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm" style="background-color: var(--admin-surface);">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background-color: var(--admin-surface-2);">
+                    <tr>
+                        <th>Tài liệu</th>
+                        <th>Gắn với</th>
+                        <th>Phân loại cũ</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">File</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">Không có tài liệu cũ phù hợp bộ lọc.</td>
+                        </tr>
+                    }
+                    @foreach (var item in Model)
+                    {
+                        var suggestedType = types.FirstOrDefault(t => t.Code == item.SuggestedContractTypeCode);
+                        <tr>
+                            <td>
+                                <div class="fw-bold">@(item.Title ?? $"Tài liệu #{item.PhysicalContractID}")</div>
+                                <div class="small text-muted">#@item.PhysicalContractID · @item.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @item.FileKind</div>
+                                @if (!string.IsNullOrWhiteSpace(item.Note))
+                                {
+                                    <div class="small text-muted text-truncate" style="max-width: 320px;">@item.Note</div>
+                                }
+                            </td>
+                            <td>
+                                @if (item.Car != null)
+                                {
+                                    <div class="small"><i class="bi bi-car-front me-1"></i>@item.Car.LicensePlate - @item.Car.CarName</div>
+                                }
+                                @if (item.BookingID.HasValue)
+                                {
+                                    <div class="small"><i class="bi bi-calendar2-check me-1"></i>Booking #@item.BookingID</div>
+                                }
+                            </td>
+                            <td style="min-width: 220px;">
+                                <div class="fw-semibold">@(item.PhysicalContractType?.Name ?? suggestedType?.Name ?? item.SuggestedContractTypeCode ?? "Chưa có")</div>
+                                <div class="small text-muted">AI cũ: @(item.AiConfidence?.ToString("0") ?? "0")%</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary">@item.Status</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="@item.FileUrl" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Xem file cũ
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

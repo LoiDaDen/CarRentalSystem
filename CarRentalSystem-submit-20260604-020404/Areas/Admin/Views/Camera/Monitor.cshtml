@@ -1,0 +1,177 @@
+@using CarRentalSystem.ViewModels.Cameras
+@model CameraMonitorViewModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Camera Gate Monitor";
+    var areas = ViewBag.Areas as List<Area> ?? new();
+    var locations = ViewBag.Locations as List<Location> ?? new();
+    var cameras = ViewBag.Cameras as List<CameraDevice> ?? new();
+    var directions = ViewBag.Directions as string[] ?? Array.Empty<string>();
+    var statuses = ViewBag.MatchStatuses as string[] ?? Array.Empty<string>();
+    int? currentAreaId = ViewBag.CurrentAreaId as int?;
+    int? currentLocationId = ViewBag.CurrentLocationId as int?;
+    int? currentCameraId = ViewBag.CurrentCameraId as int?;
+}
+
+<div class="theme-admin">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="fw-800 mb-1"><i class="bi bi-activity text-primary me-2"></i>Camera Gate Monitor</h2>
+            <p class="text-muted mb-0">Theo dõi xe vào/ra theo nhận diện biển số, snapshot và cảnh báo đối soát.</p>
+        </div>
+        <a asp-area="Admin" asp-controller="Camera" asp-action="Index" class="btn btn-outline-primary rounded-3 fw-bold">
+            <i class="bi bi-camera-video me-1"></i>Quản lý camera
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-2 col-6"><div class="p-3 bg-white shadow-sm rounded-4"><div class="small text-muted">Xe trong bãi</div><div class="h4 fw-bold mb-0">@Model.InsideCount</div></div></div>
+        <div class="col-md-2 col-6"><div class="p-3 bg-white shadow-sm rounded-4"><div class="small text-muted">Event hôm nay</div><div class="h4 fw-bold mb-0">@Model.TodayCount</div></div></div>
+        <div class="col-md-2 col-6"><div class="p-3 bg-white shadow-sm rounded-4"><div class="small text-muted">Unknown plate</div><div class="h4 fw-bold mb-0 text-warning">@Model.UnknownPlateCount</div></div></div>
+        <div class="col-md-2 col-6"><div class="p-3 bg-white shadow-sm rounded-4"><div class="small text-muted">Low confidence</div><div class="h4 fw-bold mb-0 text-info">@Model.LowConfidenceCount</div></div></div>
+        <div class="col-md-2 col-6"><div class="p-3 bg-white shadow-sm rounded-4"><div class="small text-muted">Mismatch</div><div class="h4 fw-bold mb-0 text-danger">@Model.AreaMismatchCount</div></div></div>
+    </div>
+
+    <form method="get" class="row g-2 align-items-end mb-4">
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Khu vực</label>
+            <select name="areaId" class="form-select rounded-3">
+                <option value="">Tất cả</option>
+                @foreach (var area in areas)
+                {
+                    <option value="@area.AreaID" selected="@(currentAreaId == area.AreaID)">@area.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Địa điểm</label>
+            <select name="locationId" class="form-select rounded-3">
+                <option value="">Tất cả</option>
+                @foreach (var location in locations)
+                {
+                    <option value="@location.LocationID" selected="@(currentLocationId == location.LocationID)">@location.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Camera</label>
+            <select name="cameraId" class="form-select rounded-3">
+                <option value="">Tất cả</option>
+                @foreach (var camera in cameras)
+                {
+                    <option value="@camera.CameraDeviceID" selected="@(currentCameraId == camera.CameraDeviceID)">@camera.Code</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Biển số</label>
+            <input name="plate" value="@ViewBag.CurrentPlate" class="form-control rounded-3" placeholder="51A..." />
+        </div>
+        <div class="col-md-1">
+            <label class="form-label small fw-bold text-muted">Hướng</label>
+            <select name="direction" class="form-select rounded-3">
+                <option value="">Tất cả</option>
+                @foreach (var direction in directions)
+                {
+                    <option value="@direction" selected="@(ViewBag.CurrentDirection == direction)">@direction</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-bold text-muted">Match</label>
+            <select name="matchStatus" class="form-select rounded-3">
+                <option value="">Tất cả</option>
+                @foreach (var status in statuses)
+                {
+                    <option value="@status" selected="@(ViewBag.CurrentMatchStatus == status)">@status</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-1">
+            <button class="btn btn-primary rounded-3 fw-bold w-100" type="submit">Lọc</button>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Thời gian</th>
+                        <th>Camera</th>
+                        <th>Biển số</th>
+                        <th>Xe</th>
+                        <th>Hướng</th>
+                        <th>Confidence</th>
+                        <th>Scope</th>
+                        <th>Match</th>
+                        <th>Media</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Events.Any())
+                    {
+                        <tr><td colspan="9" class="text-center text-muted py-5">Chưa có event phù hợp.</td></tr>
+                    }
+                    @foreach (var item in Model.Events)
+                    {
+                        var statusClass = item.MatchStatus switch
+                        {
+                            CameraGateMatchStatusConstants.Matched => "bg-success",
+                            CameraGateMatchStatusConstants.AreaMismatch => "bg-danger",
+                            CameraGateMatchStatusConstants.LowConfidence => "bg-info text-dark",
+                            _ => "bg-warning text-dark"
+                        };
+                        <tr>
+                            <td class="small text-muted">@item.CapturedAt.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                            <td>
+                                <div class="fw-bold">@item.CameraCode</div>
+                                <small class="text-muted">@item.CameraName</small>
+                            </td>
+                            <td>
+                                <div class="fw-bold">@item.LicensePlateRaw</div>
+                                <small class="text-muted">@item.LicensePlateNormalized</small>
+                            </td>
+                            <td>
+                                @if (item.CarID.HasValue)
+                                {
+                                    <span class="fw-bold">@item.CarName</span><br />
+                                    <small class="text-muted">@item.CarLicensePlate</small>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Không khớp xe</span>
+                                }
+                            </td>
+                            <td><span class="badge bg-light text-dark border">@item.Direction</span></td>
+                            <td>@item.Confidence.ToString("P1")</td>
+                            <td>
+                                <div>@(item.AreaName ?? "—")</div>
+                                <small class="text-muted">@item.LocationName</small>
+                            </td>
+                            <td>
+                                <span class="badge @statusClass">@item.MatchStatus</span>
+                                @if (!string.IsNullOrWhiteSpace(item.FailureReason))
+                                {
+                                    <div class="small text-muted mt-1">@item.FailureReason</div>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    @if (!string.IsNullOrWhiteSpace(item.SnapshotUrl))
+                                    {
+                                        <a href="@item.SnapshotUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">Snapshot</a>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.LiveViewUrl))
+                                    {
+                                        <a href="@item.LiveViewUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success">Live</a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

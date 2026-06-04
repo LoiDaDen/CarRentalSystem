@@ -1,0 +1,83 @@
+@model IEnumerable<CarRentalSystem.Models.User>
+@{
+    ViewData["Title"] = "Yêu cầu đối tác";
+    Layout = "_AdminLayout";
+}
+
+<div class="theme-admin">
+    <div class="page-header mb-4">
+        <div>
+            <h2 class="fw-800 mb-1">Yêu cầu đối tác</h2>
+            <p class="text-muted mb-0">Duyệt các tài khoản Partner đang chờ xác minh.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary rounded-3">
+            <i class="bi bi-arrow-left me-2"></i>Quay lại người dùng
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-3">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger rounded-3">@TempData["Error"]</div>
+    }
+
+    <div class="admin-card p-0 overflow-hidden">
+        @if (!Model.Any())
+        {
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                Không có yêu cầu đối tác đang chờ duyệt.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Đối tác</th>
+                            <th>Liên hệ</th>
+                            <th>Địa chỉ</th>
+                            <th>Ngày tạo</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@user.Name</div>
+                                    <small class="text-muted">ID #@user.UserID</small>
+                                </td>
+                                <td>
+                                    <div>@user.Email</div>
+                                    <small class="text-muted">@user.Phone</small>
+                                </td>
+                                <td>@(string.IsNullOrWhiteSpace(user.PartnerAddress) ? "Chưa cập nhật" : user.PartnerAddress)</td>
+                                <td>@user.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end">
+                                    <form asp-action="ApprovePartner" method="post" class="d-inline">
+                                        <input type="hidden" name="id" value="@user.UserID" />
+                                        <button type="submit" class="btn btn-sm btn-success rounded-3">
+                                            <i class="bi bi-check2 me-1"></i>Duyệt
+                                        </button>
+                                    </form>
+                                    <form asp-action="RejectPartner" method="post" class="d-inline ms-1">
+                                        <input type="hidden" name="id" value="@user.UserID" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-3">
+                                            <i class="bi bi-x-lg me-1"></i>Từ chối
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

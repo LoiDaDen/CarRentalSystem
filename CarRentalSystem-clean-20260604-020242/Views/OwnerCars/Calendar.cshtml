@@ -1,0 +1,112 @@
+@model CarRentalSystem.ViewModels.OwnerCalendarViewModel
+@{
+    ViewData["Title"] = "Lịch xe";
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    <form method="get" class="owner-toolbar">
+        <div class="owner-field">
+            <label for="from">Từ ngày</label>
+            <input id="from" type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="owner-field">
+            <label for="to">Đến ngày</label>
+            <input id="to" type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="owner-field">
+            <label for="carId">Xe</label>
+            <select id="carId" name="carId">
+                <option value="">Tất cả xe</option>
+                @foreach (var car in Model.Cars)
+                {
+                    <option value="@car.CarID" selected="@(Model.CarId == car.CarID)">@car.Name - @car.LicensePlate</option>
+                }
+            </select>
+        </div>
+        <button class="owner-filter-button" type="submit">Xem lịch</button>
+    </form>
+
+    <form method="get" class="owner-toolbar">
+        <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+        <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+        <div class="owner-field">
+            <label for="q">Lọc tên hoặc biển số</label>
+            <input id="q" name="q" value="@Model.Query" placeholder="VD: Camry hoặc 51A..." />
+        </div>
+        <div class="owner-field">
+            <label for="brand">Hãng xe</label>
+            <select id="brand" name="brand">
+                <option value="all" selected="@(Model.Brand == "all")">Tất cả</option>
+                @foreach (var brand in Model.Brands)
+                {
+                    <option value="@brand" selected="@(Model.Brand == brand.ToLowerInvariant())">@brand</option>
+                }
+            </select>
+        </div>
+        <div class="owner-field">
+            <label for="status">Trạng thái chuyến</label>
+            <select id="status" name="status">
+                <option value="all" selected="@(Model.Status == "all")">Tất cả</option>
+                <option value="Confirmed" selected="@(Model.Status == "confirmed")">Đã xác nhận</option>
+                <option value="Active" selected="@(Model.Status == "active")">Đang thuê</option>
+                <option value="Completed" selected="@(Model.Status == "completed")">Hoàn tất</option>
+                <option value="Cancelled" selected="@(Model.Status == "cancelled")">Đã hủy</option>
+            </select>
+        </div>
+        <button class="owner-filter-button" type="submit">Lọc</button>
+    </form>
+
+    <section class="owner-panel">
+        <h2>Lịch xe từ @Model.From.ToString("dd/MM/yyyy") đến @Model.To.ToString("dd/MM/yyyy")</h2>
+        <p class="owner-muted">Mỗi dòng là một chuyến của xe bạn đang quản lý. Khoảng trống là thời gian xe có thể nhận lịch mới.</p>
+        <div class="owner-badges mt-3">
+            <span class="owner-badge"><span class="owner-status-dot confirmed"></span>Đã xác nhận</span>
+            <span class="owner-badge"><span class="owner-status-dot active"></span>Đang thuê</span>
+            <span class="owner-badge"><span class="owner-status-dot completed"></span>Hoàn tất</span>
+            <span class="owner-badge"><span class="owner-status-dot cancelled"></span>Đã hủy</span>
+        </div>
+    </section>
+
+    @if (!Model.Bookings.Any())
+    {
+        <section class="owner-empty">
+            <div>
+                <i class="bi bi-calendar3"></i>
+                <h2>Không có lịch trong khoảng này</h2>
+                <p class="owner-muted">Xe của bạn đang trống lịch hoặc bộ lọc chưa có kết quả.</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <div class="owner-table-wrap">
+            <table class="owner-table">
+                <thead>
+                    <tr>
+                        <th>Xe</th>
+                        <th>Khách thuê</th>
+                        <th>Ngày đi</th>
+                        <th>Ngày về</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Doanh thu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Bookings)
+                    {
+                        <tr>
+                            <td><strong>@row.CarName</strong><br /><span class="owner-muted">@row.LicensePlate</span></td>
+                            <td>@row.CustomerName</td>
+                            <td>@row.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@row.EndDate.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="owner-status-dot @row.StatusClass"></span>@row.StatusName</td>
+                            <td class="text-end">@row.TotalPrice.ToString("N0")đ</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

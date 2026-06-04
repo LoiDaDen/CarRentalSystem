@@ -1,0 +1,344 @@
+@{
+    ViewData["Title"] = "Cấu hình Danh Mục Hệ Thống";
+    Layout = "_AdminLayout";
+    
+    var locations = ViewBag.Locations as List<CarRentalSystem.Models.Location>;
+    var carTypes = ViewBag.CarTypes as List<CarRentalSystem.Models.CarType>;
+    var carStatuses = ViewBag.CarStatuses as List<CarRentalSystem.Models.CarStatus>;
+    var bookingStatuses = ViewBag.BookingStatuses as List<CarRentalSystem.Models.BookingStatus>;
+    var carBrands = ViewBag.CarBrands as List<CarRentalSystem.Models.CarBrand>;
+}
+
+<style>
+    .theme-admin .nav-tabs .nav-link { color: var(--admin-text-secondary); font-weight: 600; padding: 1rem 1.5rem; border: none; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .theme-admin .nav-tabs .nav-link:hover { color: var(--admin-primary); border-bottom-color: rgba(59,130,246,0.3); }
+    .theme-admin .nav-tabs .nav-link.active { color: var(--admin-primary); border-bottom-color: var(--admin-primary); background: transparent; }
+    .theme-admin .lookup-card { background: var(--admin-card-bg); border-radius: 20px; border: 1px solid var(--admin-border-color); box-shadow: var(--admin-shadow); overflow: hidden; }
+    .theme-admin .lookup-card .tab-content { background: var(--admin-surface-200); }
+    .theme-admin .table-lookup th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--admin-text-secondary); font-weight: 700; background: var(--admin-surface-200); padding: 1rem 1.25rem; }
+    .theme-admin .table-lookup td { padding: 1rem 1.25rem; vertical-align: middle; }
+    .theme-admin .table-lookup { color: var(--admin-text); }
+</style>
+
+<div class="theme-admin">
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-3">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <span>@TempData["Success"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4 d-flex align-items-center gap-3">
+        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        <span>@TempData["Error"]</span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1" style="letter-spacing: -1px;">
+            <i class="bi bi-sliders me-2" style="color: var(--admin-primary);"></i>Danh Mục Hệ Thống
+        </h2>
+        <p class="text-muted mb-0">Thiết lập các tham số, danh mục thả xuống dùng chung toàn hệ thống.</p>
+    </div>
+</div>
+
+<div class="lookup-card">
+    <ul class="nav nav-tabs px-3 pt-3 flex-nowrap overflow-auto" id="lookupTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations" type="button" role="tab" aria-selected="false">
+                <i class="bi bi-geo-alt-fill me-2"></i>Địa điểm / Cơ sở
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="cartypes-tab" data-bs-toggle="tab" data-bs-target="#cartypes" type="button" role="tab" aria-selected="true">
+                <i class="bi bi-car-front-fill me-2"></i>Loại Xe (Phân khúc)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="carstatuses-tab" data-bs-toggle="tab" data-bs-target="#carstatuses" type="button" role="tab" aria-selected="false">
+                <i class="bi bi-tag-fill me-2"></i>Trạng thái Xe
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="bookingstatuses-tab" data-bs-toggle="tab" data-bs-target="#bookingstatuses" type="button" role="tab" aria-selected="false">
+                <i class="bi bi-calendar-check-fill me-2"></i>Trạng thái Đơn Đặt
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="carbrands-tab" data-bs-toggle="tab" data-bs-target="#carbrands" type="button" role="tab" aria-selected="false">
+                <i class="bi bi-car-front me-2"></i>Hãng Xe
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content border-top pt-4 pb-4 px-4" id="lookupTabsContent" style="min-height: 500px;">
+        
+        <!-- LOCATIONS TAB -->
+        <div class="tab-pane fade" id="locations" role="tabpanel" tabindex="0">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
+                        <table class="table table-hover mb-0 table-lookup">
+                            <thead>
+                                <tr><th>ID</th><th>Tên Cơ Sở / Tỉnh Thành</th><th>Trụ sở</th><th class="text-end">Xóa</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in locations)
+                                {
+                                    <tr>
+                                        <td class="text-muted fw-bold">#@item.LocationID</td>
+                                        <td class="fw-bold">@item.Name</td>
+                                        <td class="small text-muted">@item.Address</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a asp-action="EditLocation" asp-route-id="@item.LocationID" class="btn btn-sm btn-light text-primary" title="Sửa">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                                <form asp-action="DeleteLocation" asp-route-id="@item.LocationID" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa?');">
+                                                    <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash3"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="bg-white rounded-4 p-4 shadow-sm border border-primary border-opacity-10">
+                        <h6 class="fw-bold mb-3">Thêm Tỉnh thành/Trụ sở</h6>
+                        <form asp-action="AddLocation" method="post">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-bold">Tên hiển thị</label>
+                                <input type="text" name="Name" class="form-control" placeholder="VD: TP Hồ Chí Minh" required />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-bold">Địa chỉ chi tiết</label>
+                                <textarea name="Address" class="form-control" rows="2" placeholder="Địa chỉ cơ sở nếu có"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-2"></i>Thêm Mới</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARTYPES TAB -->
+        <div class="tab-pane fade show active" id="cartypes" role="tabpanel" tabindex="0">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
+                        <table class="table table-hover mb-0 table-lookup">
+                            <thead>
+                                <tr><th>ID</th><th>Tên Loại Xe</th><th>Mô tả</th><th class="text-end">Xóa</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in carTypes!)
+                                {
+                                    <tr>
+                                        <td class="text-muted fw-bold">#@item.CarTypeID</td>
+                                        <td class="fw-bold text-primary">@item.Name</td>
+                                        <td class="small text-muted">@item.Description</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a asp-action="EditCarType" asp-route-id="@item.CarTypeID" class="btn btn-sm btn-light text-primary" title="Sửa">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                                <form asp-action="DeleteCarType" asp-route-id="@item.CarTypeID" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa?');">
+                                                    <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash3"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="bg-white rounded-4 p-4 shadow-sm border border-primary border-opacity-10">
+                        <h6 class="fw-bold mb-3">Thêm Loại xe mới</h6>
+                        <form asp-action="AddCarType" method="post">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-bold">Phân khúc/Tên loại</label>
+                                <input type="text" name="Name" class="form-control" placeholder="VD: Sedan" required />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-bold">Mô tả thêm</label>
+                                <input type="text" name="Description" class="form-control" placeholder="VD: Xe 4-5 chỗ, thích hợp gia đình" />
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-2"></i>Thêm Mới</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARBRANDS TAB -->
+        <div class="tab-pane fade" id="carbrands" role="tabpanel" tabindex="0">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
+                        <table class="table table-hover mb-0 table-lookup">
+                            <thead>
+                                <tr><th>ID</th><th>Hãng Xe</th><th>Mô tả</th><th class="text-end">Thao tác</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in carBrands!)
+                                {
+                                    <tr>
+                                        <td class="text-muted fw-bold">#@item.BrandID</td>
+                                        <td class="fw-bold text-primary">@item.Name</td>
+                                        <td class="small text-muted">@item.Description</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a asp-action="EditCarBrand" asp-route-id="@item.BrandID" class="btn btn-sm btn-light text-primary" title="Chỉnh sửa">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                                <form asp-action="DeleteCarBrand" asp-route-id="@item.BrandID" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn xóa hãng xe này?');">
+                                                    <button class="btn btn-sm btn-light text-danger" title="Xóa"><i class="bi bi-trash3"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="bg-white rounded-4 p-4 shadow-sm border border-primary border-opacity-10">
+                        <h6 class="fw-bold mb-3">Thêm Hãng Xe mới</h6>
+                        <form asp-action="AddCarBrand" method="post">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-bold">Tên Hãng</label>
+                                <input type="text" name="Name" class="form-control" placeholder="VD: Toyota, Mazda..." required />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-bold">Mô tả thêm</label>
+                                <input type="text" name="Description" class="form-control" placeholder="Tùy chọn" />
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-2"></i>Thêm Mới</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARSTATUSES TAB -->
+        <div class="tab-pane fade" id="carstatuses" role="tabpanel" tabindex="0">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
+                        <table class="table table-hover mb-0 table-lookup">
+                            <thead>
+                                <tr><th>ID</th><th>Trạng thái xe</th><th class="text-end">Xóa</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in carStatuses)
+                                {
+                                    <tr>
+                                        <td class="text-muted fw-bold">#@item.CarStatusID</td>
+                                        <td class="fw-bold">@item.Name</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a asp-action="EditCarStatus" asp-route-id="@item.CarStatusID" class="btn btn-sm btn-light text-primary" title="Sửa">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                                <form asp-action="DeleteCarStatus" asp-route-id="@item.CarStatusID" method="post" onsubmit="return confirm('Xóa trạng thái này? Hãy cẩn thận!');">
+                                                    <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash3"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="bg-white rounded-4 p-4 shadow-sm bg-warning bg-opacity-10">
+                        <h6 class="fw-bold mb-3">Thêm Trạng thái xe</h6>
+                        <p class="small text-muted mb-3"><i class="bi bi-info-circle-fill me-1 text-warning"></i>Khuyến cáo không nên sửa đôi hoặc xóa các trạng thái cốt lõi như 'Available', 'Rented', 'Maintenance'.</p>
+                        <form asp-action="AddCarStatus" method="post">
+                            <div class="mb-3">
+                                <input type="text" name="Name" class="form-control fw-bold" placeholder="Tên trạng thái (VD: InRepair)" required />
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100 fw-bold"><i class="bi bi-plus-lg me-2"></i>Thêm Mới</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOOKINGSTATUSES TAB -->
+        <div class="tab-pane fade" id="bookingstatuses" role="tabpanel" tabindex="0">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
+                        <table class="table table-hover mb-0 table-lookup">
+                            <thead>
+                                <tr><th>ID</th><th>Trạng thái Đơn Đặt xe</th><th class="text-end">Xóa</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in bookingStatuses)
+                                {
+                                    <tr>
+                                        <td class="text-muted fw-bold">#@item.BookingStatusID</td>
+                                        <td class="fw-bold">@item.Name</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a asp-action="EditBookingStatus" asp-route-id="@item.BookingStatusID" class="btn btn-sm btn-light text-primary" title="Sửa">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </a>
+                                                <form asp-action="DeleteBookingStatus" asp-route-id="@item.BookingStatusID" method="post" onsubmit="return confirm('Xóa trạng thái này? Hãy cẩn thận!');">
+                                                    <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash3"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="bg-white rounded-4 p-4 shadow-sm bg-info bg-opacity-10">
+                        <h6 class="fw-bold mb-3">Thêm Trạng thái Đơn</h6>
+                        <p class="small text-muted mb-3"><i class="bi bi-info-circle-fill me-1 text-info"></i>Các trạng thái mặc định: Pending, Confirmed, Active, Completed, Cancelled.</p>
+                        <form asp-action="AddBookingStatus" method="post">
+                            <div class="mb-3">
+                                <input type="text" name="Name" class="form-control fw-bold" placeholder="Tên trạng thái" required />
+                            </div>
+                            <button type="submit" class="btn btn-info text-white w-100 fw-bold"><i class="bi bi-plus-lg me-2"></i>Thêm Mới</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Restore tab from Query string
+        document.addEventListener("DOMContentLoaded", function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab');
+            if (tab) {
+                const triggerEl = document.querySelector(`#${tab}-tab`);
+                if (triggerEl) {
+                    const tabInstance = new bootstrap.Tab(triggerEl);
+                    tabInstance.show();
+                }
+            }
+        });
+    </script>
+}

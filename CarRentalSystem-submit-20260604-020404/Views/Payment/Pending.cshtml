@@ -1,0 +1,305 @@
+@model CarRentalSystem.ViewModels.PayOSHoldPaymentViewModel
+@using CarRentalSystem.ViewModels
+@using System.Net
+@{
+    var isCartFlow = string.Equals(Model.PaymentFlow, PayOSPaymentFlow.Cart, StringComparison.OrdinalIgnoreCase);
+    var confirmAction = isCartFlow ? "ConfirmTransaction" : "ConfirmHold";
+    var cancelAction = isCartFlow ? "CancelTransaction" : "CancelHold";
+    var paymentTitle = isCartFlow ? "Thanh toán giỏ hàng qua PayOS" : "Thanh toán giữ chỗ qua PayOS";
+    var amount = Model.Quote.HoldingFee > 0 ? Model.Quote.HoldingFee : Model.Quote.TotalPrice;
+    var transferContent = string.IsNullOrWhiteSpace(Model.Description) ? Model.OrderCode.ToString() : Model.Description;
+    var qrCode = Model.QrCode?.Trim();
+    var qrImageSrc = "";
+
+    if (!string.IsNullOrWhiteSpace(qrCode))
+    {
+        if (qrCode.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || qrCode.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            || qrCode.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
+        {
+            qrImageSrc = qrCode;
+        }
+        else if (qrCode.StartsWith("iVBOR", StringComparison.OrdinalIgnoreCase)
+            || qrCode.StartsWith("/9j/", StringComparison.OrdinalIgnoreCase))
+        {
+            qrImageSrc = $"data:image/png;base64,{qrCode}";
+        }
+    }
+
+    if (string.IsNullOrWhiteSpace(qrImageSrc)
+        && !string.IsNullOrWhiteSpace(Model.Bin)
+        && !string.IsNullOrWhiteSpace(Model.AccountNumber))
+    {
+        var roundedAmount = Convert.ToInt64(decimal.Round(amount, 0));
+        qrImageSrc = $"https://img.vietqr.io/image/{Model.Bin}-{Model.AccountNumber}-compact.png?amount={roundedAmount}&addInfo={WebUtility.UrlEncode(transferContent)}&accountName={WebUtility.UrlEncode(Model.AccountName ?? string.Empty)}";
+    }
+
+    var showRawQrFallback = !string.IsNullOrWhiteSpace(qrCode) && string.IsNullOrWhiteSpace(qrImageSrc);
+    ViewData["Title"] = paymentTitle;
+}
+
+<div class="container py-5">
+    <div class="payment-panel mx-auto">
+        <div class="text-center mb-4">
+            <div class="payment-icon d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary mb-3">
+                <i class="bi bi-qr-code display-5"></i>
+            </div>
+            <h1 class="h3 fw-800 mb-2">@paymentTitle</h1>
+            <p class="text-muted mb-0">
+                Quét QR hoặc mở PayOS để thanh toán. Sau khi chuyển tiền, bấm
+                <strong>Tôi đã thanh toán</strong> để hệ thống kiểm tra trạng thái thật từ PayOS.
+            </p>
+        </div>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success rounded-3">
+                <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger rounded-3">
+                <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+            </div>
+        }
+        @if (TempData["Warning"] != null)
+        {
+            <div class="alert alert-warning rounded-3">
+                <i class="bi bi-exclamation-circle me-2"></i>@TempData["Warning"]
+            </div>
+        }
+        @if (TempData["Info"] != null)
+        {
+            <div class="alert alert-info rounded-3">
+                <i class="bi bi-info-circle me-2"></i>@TempData["Info"]
+            </div>
+        }
+
+        <div class="payment-grid">
+            <section class="qr-panel text-center">
+                @if (!string.IsNullOrWhiteSpace(qrImageSrc))
+                {
+                    <img src="@qrImageSrc" alt="QR thanh toán PayOS" class="payment-qr" />
+                }
+                else
+                {
+                    <div class="qr-placeholder">
+                        <i class="bi bi-qr-code"></i>
+                        <span>Chưa có QR trong giao dịch</span>
+                    </div>
+                }
+
+                @if (showRawQrFallback)
+                {
+                    <div class="raw-qr mt-3 text-start">
+                        <div class="small text-muted fw-semibold mb-1">Dữ liệu QR</div>
+                        <code>@qrCode</code>
+                    </div>
+                }
+            </section>
+
+            <section class="payment-details">
+                <div class="detail-row">
+                    <span>Mã PayOS</span>
+                    <strong>@Model.OrderCode</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Số tiền</span>
+                    <strong>@amount.ToString("N0")đ</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Trạng thái</span>
+                    <strong>@Model.Status</strong>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Bin))
+                {
+                    <div class="detail-row">
+                        <span>Ngân hàng/BIN</span>
+                        <strong>@Model.Bin</strong>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.AccountNumber))
+                {
+                    <div class="detail-row">
+                        <span>Số tài khoản</span>
+                        <strong>@Model.AccountNumber</strong>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.AccountName))
+                {
+                    <div class="detail-row">
+                        <span>Chủ tài khoản</span>
+                        <strong>@Model.AccountName</strong>
+                    </div>
+                }
+                <div class="detail-row">
+                    <span>Nội dung chuyển khoản</span>
+                    <strong>@transferContent</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Hết hạn</span>
+                    <strong>@Model.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong>
+                </div>
+            </section>
+        </div>
+
+        <div class="payment-actions">
+            <form asp-controller="Payment" asp-action="@confirmAction" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="orderCode" value="@Model.OrderCode" />
+                <button type="submit" class="btn btn-primary rounded-3 fw-bold px-4">
+                    <i class="bi bi-check2-circle me-2"></i>Tôi đã thanh toán
+                </button>
+            </form>
+
+            @if (!string.IsNullOrWhiteSpace(Model.CheckoutUrl))
+            {
+                <a href="@Model.CheckoutUrl" class="btn btn-outline-primary rounded-3 fw-bold px-4">
+                    <i class="bi bi-box-arrow-up-right me-2"></i>Mở PayOS
+                </a>
+            }
+
+            <form asp-controller="Payment" asp-action="@cancelAction" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="orderCode" value="@Model.OrderCode" />
+                <button type="submit" class="btn btn-outline-danger rounded-3 fw-bold px-4">
+                    <i class="bi bi-x-circle me-2"></i>Hủy thanh toán
+                </button>
+            </form>
+
+            <a asp-controller="Booking" asp-action="MyBookings" class="btn btn-outline-secondary rounded-3 fw-bold px-4">
+                Chuyến xe của tôi
+            </a>
+            <a asp-controller="Car" asp-action="Index" class="btn btn-outline-secondary rounded-3 fw-bold px-4">
+                Xem xe
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .payment-panel {
+        max-width: 960px;
+        background: #fff;
+        border: 1px solid #d8e2ef;
+        border-radius: 8px;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
+        padding: 32px;
+    }
+
+    .payment-icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 8px;
+    }
+
+    .payment-grid {
+        display: grid;
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        gap: 24px;
+        align-items: stretch;
+        margin-bottom: 28px;
+    }
+
+    .qr-panel,
+    .payment-details {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .payment-qr {
+        width: min(100%, 280px);
+        aspect-ratio: 1;
+        object-fit: contain;
+        background: #fff;
+        border: 1px solid #dbe4ef;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .qr-placeholder {
+        min-height: 280px;
+        display: grid;
+        place-items: center;
+        gap: 10px;
+        color: #64748b;
+    }
+
+    .qr-placeholder i {
+        font-size: 48px;
+    }
+
+    .raw-qr {
+        max-height: 120px;
+        overflow: auto;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .raw-qr code {
+        white-space: normal;
+        word-break: break-word;
+        color: #0f172a;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .detail-row:last-child {
+        border-bottom: 0;
+    }
+
+    .detail-row span {
+        color: #64748b;
+    }
+
+    .detail-row strong {
+        text-align: right;
+        word-break: break-word;
+    }
+
+    .payment-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    @@media (max-width: 768px) {
+        .payment-panel {
+            padding: 22px;
+        }
+
+        .payment-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .detail-row {
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-row strong {
+            text-align: left;
+        }
+
+        .payment-actions .btn,
+        .payment-actions form {
+            width: 100%;
+        }
+
+        .payment-actions .btn {
+            display: block;
+        }
+    }
+</style>

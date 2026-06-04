@@ -1,0 +1,103 @@
+@model IEnumerable<CarRentalSystem.Models.Car>
+@{ 
+    ViewData["Title"] = "Thùng rác - Phương tiện"; 
+    Layout = "_AdminLayout";
+}
+
+<div class="theme-admin">
+<div class="page-admin-carmanage">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-800 ls-neg-1 mb-1 text-danger"><i class="bi bi-trash3-fill me-2"></i>Thùng rác</h2>
+        <p class="text-muted mb-0">
+            Các xe đã bị xóa sẽ tồn tại ở đây, bạn có thể khôi phục hoặc xóa vĩnh viễn.
+            @if (!User.IsInRole("Admin"))
+            {
+                <span class="text-warning">Chỉ Admin mới có thể xóa vĩnh viễn.</span>
+            }
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-area="Admin" asp-controller="Car" asp-action="Manage" class="btn btn-outline-secondary shadow-sm px-4 py-2 rounded-3 fw-bold">
+            <i class="bi bi-arrow-left me-2"></i>Danh sách xe
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-car">
+            <thead style="background: #fdf5f5;">
+                <tr class="text-muted small text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.8px;">
+                    <th class="ps-4">Phương tiện</th>
+                    <th>Biển số / VIN</th>
+                    <th>Loại / Nhiên liệu</th>
+                    <th>Ngày xóa</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if(!Model.Any()) {
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-trash fs-1 d-block mb-3 opacity-50"></i>
+                            Thùng rác trống
+                        </td>
+                    </tr>
+                }
+                @foreach (var car in Model)
+                {
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="car-avatar-admin">
+                                    @if (car.CarImages?.Any() == true)
+                                    {
+                                        <img src="@car.CarImages.First().ImageUrl" alt="@car.CarName" loading="lazy" style="width:100%;height:100%;object-fit:cover; filter: grayscale(1);">
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-car-front text-muted" style="font-size:1.4rem;"></i>
+                                    }
+                                </div>
+                                <div>
+                                    <div class="fw-800 text-dark d-flex align-items-center gap-2 mb-1">
+                                        <span class="text-secondary text-decoration-line-through">@car.CarBrand?.Name @car.CarName</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border border-2 px-3 py-1 d-block mb-1" style="font-family: monospace; border-radius: 8px; max-width: 130px;">
+                                <i class="bi bi-card-text me-1 text-secondary"></i>@car.LicensePlate
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-secondary border fw-bold" style="font-size: 0.75rem; border-radius: 8px;">@car.CarType?.Name</span>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-danger">@(car.DeletedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <form asp-action="Restore" asp-route-id="@car.CarID" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3" title="Khôi phục">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>Khôi phục
+                                </button>
+                            </form>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <form asp-action="PermanentDelete" asp-route-id="@car.CarID" method="post" class="d-inline" onsubmit="return confirm('CẢNH BÁO: Xóa vĩnh viễn sẽ mất hoàn toàn dữ liệu của xe này. Bạn có chắc chắn không?');">
+                                    <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3" title="Xóa vĩnh viễn">
+                                        <i class="bi bi-x-octagon-fill me-1"></i>Xóa sạch
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+

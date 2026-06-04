@@ -1,0 +1,63 @@
+@model IEnumerable<CarRentalSystem.Models.Car>
+@{ 
+    ViewData["Title"] = "Manage Cars"; 
+    Layout = "_AdminLayout"; 
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Car Management</h2>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add New Car</a>
+</div>
+
+@if (!Model.Any())
+{
+    <partial name="_EmptyState" model="@(new EmptyStateViewModel
+    {
+        Icon = "bi-car-front",
+        Title = "No cars yet",
+        Message = "Create the first car profile before opening bookings.",
+        ActionText = "Add New Car",
+        ActionController = "Car",
+        ActionName = "Create"
+    })" />
+}
+else
+{
+<div class="table-responsive bg-white shadow-sm rounded">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Car Details</th>
+                <th>License Plate</th>
+                <th>Price/Day</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var car in Model)
+            {
+                <tr>
+                    <td>@car.CarID</td>
+                    <td>
+                        <div class="fw-bold">@car.CarBrand?.Name @car.CarName</div>
+                        <small class="text-muted">@car.Seats Seats</small>
+                    </td>
+                    <td><span class="badge bg-secondary border">@car.LicensePlate</span></td>
+                    <td>@car.PricePerDay.ToString("N0") đ</td>
+                    <td>
+                        <span class="badge @(car.CarStatus?.Name == "Available" ? "bg-success" : car.CarStatus?.Name == "Rented" ? "bg-warning text-dark" : "bg-danger")">
+                            @car.CarStatus?.Name
+                        </span>
+                    </td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <a href="#" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+}

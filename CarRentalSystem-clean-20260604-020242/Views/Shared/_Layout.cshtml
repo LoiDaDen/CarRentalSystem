@@ -1,0 +1,757 @@
+@using System.Security.Claims
+@using CarRentalSystem.Data
+@using CarRentalSystem.Services
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext LayoutDb
+@inject ICatalogCacheService CatalogCache
+@{
+    var layoutUserName = User.Identity?.Name ?? "User";
+    string? layoutFaceUrl = null;
+    if (User.Identity?.IsAuthenticated == true &&
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var layoutUserId))
+    {
+        layoutFaceUrl = await LayoutDb.Users
+            .AsNoTracking()
+            .Where(u => u.UserID == layoutUserId)
+            .Select(u => u.FaceUrl)
+            .FirstOrDefaultAsync();
+    }
+
+    var layoutNameParts = layoutUserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var layoutInitials = layoutNameParts.Length == 0
+        ? "U"
+        : string.Concat(layoutNameParts.Take(2).Select(p => p[0])).ToUpperInvariant();
+    var layoutController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var layoutAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var layoutArea = ViewContext.RouteData.Values["area"]?.ToString();
+    var isHomeActive = string.Equals(layoutController, "Home", StringComparison.OrdinalIgnoreCase);
+    var isCarListActive = string.Equals(layoutController, "Car", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(layoutAction, "Index", StringComparison.OrdinalIgnoreCase);
+    var isMapSearchActive = string.Equals(layoutController, "Car", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(layoutAction, "MapSearch", StringComparison.OrdinalIgnoreCase);
+    var isBlogActive = string.Equals(layoutController, "Blog", StringComparison.OrdinalIgnoreCase);
+    var isLongTermActive = string.Equals(layoutController, "LongTerm", StringComparison.OrdinalIgnoreCase);
+    var isOwnerCarsActive = string.Equals(layoutController, "OwnerCars", StringComparison.OrdinalIgnoreCase);
+    var isMembershipActive = string.Equals(layoutController, "Membership", StringComparison.OrdinalIgnoreCase);
+    var isAdminAreaActive = string.Equals(layoutArea, "Admin", StringComparison.OrdinalIgnoreCase);
+    var isWithDriverPublicEnabled = false;
+    var requiresRentalCalendar =
+        (string.Equals(layoutController, "Home", StringComparison.OrdinalIgnoreCase) && string.Equals(layoutAction, "Index", StringComparison.OrdinalIgnoreCase)) ||
+        (string.Equals(layoutController, "Car", StringComparison.OrdinalIgnoreCase) && string.Equals(layoutAction, "Details", StringComparison.OrdinalIgnoreCase)) ||
+        (string.Equals(layoutController, "Cart", StringComparison.OrdinalIgnoreCase) && string.Equals(layoutAction, "Index", StringComparison.OrdinalIgnoreCase));
+    var requiresLeaflet =
+        (string.Equals(layoutController, "Car", StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(layoutAction, "Details", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "MapSearch", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "DeliverySearch", StringComparison.OrdinalIgnoreCase))) ||
+        (string.Equals(layoutController, "Booking", StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(layoutAction, "MyBookings", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "Book", StringComparison.OrdinalIgnoreCase))) ||
+        (string.Equals(layoutController, "Tracking", StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(layoutAction, "Map", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "Booking", StringComparison.OrdinalIgnoreCase))) ||
+        (string.Equals(layoutController, "OwnerCars", StringComparison.OrdinalIgnoreCase) && string.Equals(layoutAction, "Tracking", StringComparison.OrdinalIgnoreCase));
+    var requiresSmartMap = string.Equals(layoutController, "Car", StringComparison.OrdinalIgnoreCase) &&
+        (string.Equals(layoutAction, "Details", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(layoutAction, "MapSearch", StringComparison.OrdinalIgnoreCase));
+    var layoutToastSuccess = TempData["Success"]?.ToString();
+    var layoutToastError = TempData["Error"]?.ToString();
+    var hasLayoutToast = !string.IsNullOrWhiteSpace(layoutToastSuccess) || !string.IsNullOrWhiteSpace(layoutToastError);
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="CarRental" />
+    <title>@ViewData["Title"] - CarRental</title>
+    @if (ViewData["MetaDescription"] != null)
+    {
+        <meta name="description" content="@ViewData["MetaDescription"]" />
+    }
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/pwa-192.png" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @if (isOwnerCarsActive)
+    {
+        <link rel="stylesheet" href="~/css/owner-portal.css" asp-append-version="true" />
+    }
+    @if (hasLayoutToast)
+    {
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    }
+    @if (requiresLeaflet)
+    {
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    }
+    @if (requiresRentalCalendar)
+    {
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+    }
+    <style>
+        .hover-white:hover { color: white !important; }
+        .hover-primary:hover { border-color: #0d6efd !important; color: #0d6efd !important; }
+
+        html,
+        body {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .theme-carrental *,
+        .theme-carrental *::before,
+        .theme-carrental *::after {
+            box-sizing: border-box;
+        }
+
+        .theme-carrental .app-navbar {
+            background: rgba(255, 255, 255, 0.96) !important;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding-block: 0.65rem !important;
+            white-space: normal !important;
+        }
+
+        .theme-carrental .app-navbar .nav-shell {
+            width: min(100%, 1640px);
+            max-width: 1640px;
+            min-width: 0;
+            margin-inline: auto;
+            padding-inline: clamp(0.75rem, 2vw, 1.5rem);
+        }
+
+        .theme-carrental .app-navbar .navbar-brand {
+            color: #0f172a !important;
+            flex: 0 0 auto;
+            min-width: 0;
+            margin-right: clamp(0.5rem, 1.2vw, 1rem);
+        }
+
+        .theme-carrental .app-navbar .navbar-brand:hover {
+            color: #1d4ed8 !important;
+        }
+
+        .theme-carrental .app-navbar .navbar-collapse {
+            min-width: 0;
+        }
+
+        .theme-carrental .app-navbar .navbar-nav {
+            min-width: 0;
+            gap: 0.35rem;
+        }
+
+        .theme-carrental .app-navbar .main-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.32rem;
+            min-height: 36px;
+            padding: 0.45rem 0.72rem;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            background: transparent;
+            color: #475569;
+            font-weight: 750;
+            font-size: 0.86rem;
+            text-decoration: none;
+            box-shadow: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .theme-carrental .app-navbar .main-nav-btn:hover,
+        .theme-carrental .app-navbar .main-nav-btn.active {
+            border-color: rgba(37, 99, 235, 0.12);
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.20);
+        }
+
+        .theme-carrental .app-navbar .main-nav-btn.nav-admin-btn {
+            border-color: rgba(245, 158, 11, 0.24);
+            background: #fffbeb;
+            color: #b45309;
+        }
+
+        .theme-carrental .app-navbar .main-nav-btn.nav-admin-btn:hover,
+        .theme-carrental .app-navbar .main-nav-btn.nav-admin-btn.active {
+            border-color: rgba(245, 158, 11, 0.40);
+            background: #f59e0b;
+            color: #111827;
+        }
+
+        .theme-carrental .app-navbar .nav-utility {
+            flex: 0 0 auto;
+            min-width: 0;
+            align-items: center;
+        }
+
+        .theme-carrental .app-navbar .nav-utility .nav-link {
+            color: #475569 !important;
+            min-height: 38px;
+        }
+
+        .theme-carrental .app-navbar .nav-utility .nav-link:hover {
+            color: #1d4ed8 !important;
+            background: #eff6ff;
+        }
+
+        .theme-carrental .app-navbar .text-white,
+        .theme-carrental .app-navbar .text-warning,
+        .theme-carrental .app-navbar .bi-cart3.text-white {
+            color: #0f172a !important;
+        }
+
+        .theme-carrental .app-navbar .text-white-50 {
+            color: #64748b !important;
+        }
+
+        .theme-carrental .app-navbar .btn-primary {
+            background: #2563eb;
+            border-color: #2563eb;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+        }
+
+        .theme-carrental .app-navbar .dropdown-menu-dark {
+            background: #ffffff;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14) !important;
+        }
+
+        .theme-carrental .app-navbar .dropdown-menu-dark .dropdown-item {
+            color: #334155;
+        }
+
+        .theme-carrental .app-navbar .dropdown-menu-dark .dropdown-item:hover {
+            color: #1d4ed8;
+            background: #eff6ff;
+        }
+
+        .theme-carrental .app-navbar .text-region-name,
+        .theme-carrental .app-navbar .user-profile-link .text-white {
+            display: block;
+            max-width: 116px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .theme-carrental .app-main-shell {
+            width: min(100%, 1536px);
+            max-width: 1536px;
+            min-width: 0;
+            margin-inline: auto;
+            padding-inline: clamp(1rem, 2.6vw, 2rem);
+        }
+
+        .theme-carrental .app-main-shell > main {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .theme-carrental .page-shell,
+        .theme-carrental .content-shell,
+        .theme-carrental .split-layout,
+        .theme-carrental .sidebar-panel,
+        .theme-carrental .main-panel {
+            min-width: 0;
+            max-width: 100%;
+        }
+        
+        @@media (min-width: 1400px) {
+            .dropdown:hover > .dropdown-menu { display: block; margin-top: 0; }
+            .dropdown-menu::before {
+                content: "";
+                position: absolute;
+                top: -15px;
+                left: 0;
+                width: 100%;
+                height: 15px;
+                background: transparent;
+            }
+        }
+
+        @@media (max-width: 1599.98px) and (min-width: 1400px) {
+            .theme-carrental .app-navbar .main-nav-btn {
+                padding-inline: 0.56rem;
+                font-size: 0.82rem;
+            }
+
+            .theme-carrental .app-navbar .navbar-brand {
+                font-size: 1.15rem;
+            }
+
+            .theme-carrental .app-navbar .navbar-brand .logo-main {
+                height: 31px;
+            }
+
+            .theme-carrental .app-navbar .text-greeting,
+            .theme-carrental .app-navbar .text-region-label {
+                display: none !important;
+            }
+        }
+
+        @@media (max-width: 1399.98px) {
+            .theme-carrental .app-navbar {
+                padding: 0.65rem 0 !important;
+            }
+
+            .theme-carrental .app-navbar .navbar-toggler {
+                width: 48px;
+                height: 48px;
+                border-radius: 14px;
+                border-color: rgba(148, 163, 184, 0.35);
+                background: #f8fafc;
+            }
+
+            .theme-carrental .app-navbar .navbar-collapse {
+                margin-top: 0.75rem;
+                padding: 0.85rem;
+                border: 1px solid rgba(226, 232, 240, 0.95);
+                border-radius: 18px;
+                background: #ffffff;
+                box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+                max-height: calc(100dvh - 86px);
+                overflow-y: auto;
+            }
+
+            .theme-carrental .app-navbar .navbar-nav {
+                width: 100%;
+                align-items: stretch !important;
+                gap: 0.45rem;
+            }
+
+            .theme-carrental .app-navbar .nav-item {
+                width: 100%;
+                margin: 0 !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                border-right: 0 !important;
+            }
+
+            .theme-carrental .app-navbar .nav-link,
+            .theme-carrental .app-navbar .main-nav-btn,
+            .theme-carrental .app-navbar .btn {
+                width: 100%;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                white-space: normal;
+            }
+
+            .theme-carrental .app-navbar #regionDropdown .d-none,
+            .theme-carrental .app-navbar .user-profile-link .d-none {
+                display: block !important;
+            }
+
+            .theme-carrental .app-navbar #cartLink {
+                justify-content: flex-start;
+                gap: 0.65rem;
+            }
+
+            .theme-carrental .app-navbar #cartLink::after {
+                content: "Giỏ hàng";
+                color: #334155;
+                font-weight: 700;
+                font-size: 0.9rem;
+            }
+
+            .theme-carrental .app-navbar .dropdown-menu {
+                position: static !important;
+                width: 100%;
+                margin-top: 0.4rem !important;
+                transform: none !important;
+            }
+
+            .theme-carrental .app-navbar .nav-utility {
+                margin-top: 0.45rem;
+            }
+
+            .theme-carrental .app-navbar .text-region-name,
+            .theme-carrental .app-navbar .user-profile-link .text-white {
+                max-width: none;
+                white-space: normal;
+            }
+        }
+
+        @@media (max-width: 575.98px) {
+            .theme-carrental .app-navbar .navbar-brand {
+                font-size: 1.1rem;
+                min-width: 0;
+            }
+
+            .theme-carrental .app-navbar .navbar-brand .logo-main {
+                height: 32px;
+            }
+
+            .theme-carrental .app-main-shell {
+                margin-top: 0.75rem !important;
+                padding-inline: 0.85rem;
+            }
+        }
+    </style>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="theme-carrental theme-public">
+    <header>
+        <nav class="navbar navbar-expand-xxl navbar-light sticky-top app-navbar" style="z-index: 1050;">
+            <div class="container-fluid nav-shell">
+                <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-main" />
+                    <span class="fw-bold">CarRental</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+@{
+    var layoutLocations = await CatalogCache.GetLocationsAsync();
+    var currentRegionIdStr = Context.Request.Cookies["RegionID"];
+    int? layoutCurrentRegionId = !string.IsNullOrEmpty(currentRegionIdStr) && int.TryParse(currentRegionIdStr, out int _parsedId) ? _parsedId : null;
+    var currentRegionName = layoutCurrentRegionId.HasValue ? layoutLocations.FirstOrDefault(l => l.LocationID == layoutCurrentRegionId)?.Name ?? "Toàn quốc" : "Toàn quốc";
+}
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="main-nav-btn @(isHomeActive ? "active" : "")" asp-controller="Home" asp-action="Index">Trang chủ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="main-nav-btn @(isCarListActive ? "active" : "")" asp-controller="Car" asp-action="Index">Thuê xe tự lái</a>
+                        </li>
+                        @if (isWithDriverPublicEnabled)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="main-nav-btn dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-signpost-2 me-1"></i>Xe có tài xế
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark shadow border-0">
+                                    <li><span class="dropdown-item disabled">Đưa đón nội thành</span></li>
+                                    <li><span class="dropdown-item disabled">Đưa đón sân bay</span></li>
+                                    <li><span class="dropdown-item disabled">Liên tỉnh một chiều</span></li>
+                                    <li><span class="dropdown-item disabled">Liên tỉnh hai chiều</span></li>
+                                    <li><span class="dropdown-item disabled">Thuê xe theo giờ</span></li>
+                                    <li><span class="dropdown-item disabled">Thuê xe theo ngày</span></li>
+                                </ul>
+                            </li>
+                        }
+                        <li class="nav-item">
+                            <a class="main-nav-btn @(isBlogActive ? "active" : "")" asp-controller="Blog" asp-action="Index">
+                                <i class="bi bi-journal-text"></i>Blog
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="main-nav-btn @(isMapSearchActive ? "active" : "")" asp-controller="Car" asp-action="MapSearch">
+                                <i class="bi bi-map me-1"></i>Tìm xe trên bản đồ
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="main-nav-btn @(isLongTermActive ? "active" : "")" asp-controller="LongTerm" asp-action="Index">
+                                <i class="bi bi-briefcase me-1"></i>Thuê dài hạn
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="main-nav-btn @(isMembershipActive ? "active" : "")" asp-controller="Membership" asp-action="Index">
+                                <i class="bi bi-gem me-1"></i>Hạng thành viên
+                            </a>
+                        </li>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="main-nav-btn nav-admin-btn @(isAdminAreaActive ? "active" : "")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                                    <i class="bi bi-shield-lock me-1"></i>Quản trị
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                    <ul class="navbar-nav nav-utility align-items-center ms-xxl-auto">
+                        <li class="nav-item dropdown px-2 border-end border-secondary border-opacity-25 me-2">
+                            <a class="nav-link dropdown-toggle text-warning fw-bold d-flex align-items-center" href="#" id="regionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-geo-alt-fill me-1 fs-5"></i>
+                                <div class="d-none d-lg-block text-start ms-1">
+                                    <span class="d-block text-white-50 text-region-label">Khu vực hiển thị</span>
+                                    <span class="text-region-name">@currentRegionName</span>
+                                </div>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark shadow-lg border-0 dropdown-region" aria-labelledby="regionDropdown">
+                                <li>
+                                    <form asp-controller="Home" asp-action="SetRegion" method="post" class="m-0">
+                                        <input type="hidden" name="locationId" value="" />
+                                        <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                                        <button type="submit" class="dropdown-item py-2 @(layoutCurrentRegionId == null ? "active fw-bold text-white bg-primary" : "")">
+                                            <i class="bi bi-globe-asia-australia me-2"></i>Khu vực Toàn quốc
+                                        </button>
+                                    </form>
+                                </li>
+                                @foreach (var loc in layoutLocations)
+                                {
+                                    <li>
+                                        <form asp-controller="Home" asp-action="SetRegion" method="post" class="m-0">
+                                            <input type="hidden" name="locationId" value="@loc.LocationID" />
+                                            <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                                            <button type="submit" class="dropdown-item py-2 @(layoutCurrentRegionId == loc.LocationID ? "active fw-bold text-white bg-primary" : "")">
+                                                <i class="bi bi-geo me-2"></i>Khu vực @loc.Name
+                                            </button>
+                                        </form>
+                                    </li>
+                                }
+                            </ul>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item px-2 border-end border-secondary border-opacity-25 me-2">
+                                <a class="nav-link position-relative d-flex align-items-center py-1" asp-controller="Cart" asp-action="Index" id="cartLink" title="Giỏ hàng của tôi">
+                                    <i class="bi bi-cart3 fs-4 text-white"></i>
+                                    <span id="cartBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger cart-badge">0</span>
+                                </a>
+                            </li>
+                            <li class="nav-item px-2">
+                                <a class="nav-link user-profile-link d-flex align-items-center" asp-controller="Auth" asp-action="Profile" title="Hồ sơ cá nhân">
+                                    <div class="text-end me-2 d-none d-lg-block">
+                                        <span class="text-white-50 small d-block text-greeting">Xin chào,</span>
+                                        <span class="text-white fw-bold">@User.Identity.Name</span>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(layoutFaceUrl))
+                                    {
+                                        <img src="@layoutFaceUrl" alt="@layoutUserName" class="rounded-circle avatar-sm" style="width:32px;height:32px;min-width:32px;object-fit:cover;display:block;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center avatar-sm text-white fw-bold" style="width:32px;height:32px;min-width:32px;font-size:.75rem;">@layoutInitials</div>
+                                    }
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Auth" asp-action="Login">Đăng nhập</a>
+                            </li>
+                            <li class="nav-item ms-lg-3">
+                                <a class="btn btn-primary btn-sm px-4" asp-controller="Auth" asp-action="Register">Đăng ký</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="app-main-shell mt-4">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="bg-dark text-white pt-5 mt-5 border-top border-secondary border-opacity-25 app-footer">
+        <div class="container py-4">
+            <div class="row g-4">
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <a class="navbar-brand d-inline-block mb-3 text-white text-decoration-none fs-4 fw-bold" asp-area="" asp-controller="Home" asp-action="Index">
+                        <img src="/images/car_rental_logo.png" alt="Logo" class="me-2 logo-footer" />
+                        CarRental
+                    </a>
+                    <p class="text-white-50 small mb-4">Dịch vụ cho thuê xe tự lái cao cấp, tích hợp định vị trực tuyến, mang lại chuyến đi an toàn và minh bạch.</p>
+                    <div class="d-flex gap-2">
+                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent social-btn"><i class="bi bi-facebook"></i></a>
+                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent social-btn"><i class="bi bi-twitter"></i></a>
+                        <a href="#" class="text-white bg-secondary bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center transition-all hover-primary border border-transparent social-btn"><i class="bi bi-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-4 mb-md-0">
+                    <h6 class="text-uppercase fw-bold text-primary mb-4" style="letter-spacing: 1px;">Khám Phá</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Về chúng tôi</a></li>
+                        <li class="mb-2"><a asp-controller="Car" asp-action="Index" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Thuê xe tự lái</a></li>
+                        <li class="mb-2"><a asp-controller="Blog" asp-action="Index" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Blog thuê xe</a></li>
+                        <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Bảng giá</a></li>
+                        <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Ưu đãi</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-4 mb-md-0">
+                    <h6 class="text-uppercase fw-bold text-primary mb-4" style="letter-spacing: 1px;">Hỗ Trợ</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><a href="/FAQ" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Hỏi đáp FAQ</a></li>
+                        <li class="mb-2"><a asp-controller="Home" asp-action="Privacy" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Bảo mật</a></li>
+                        <li class="mb-2"><a asp-controller="Home" asp-action="Terms" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Điều khoản</a></li>
+                        <li class="mb-2"><a asp-controller="Guide" asp-action="Index" class="text-white-50 text-decoration-none hover-white transition-all"><i class="bi bi-chevron-right small me-1"></i> Hướng dẫn</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-4">
+                    <h6 class="text-uppercase fw-bold text-primary mb-4" style="letter-spacing: 1px;">Liên Hệ</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-3 d-flex text-white-50 align-items-start">
+                            <i class="bi bi-geo-alt-fill text-primary me-3 mt-1 fs-5"></i> 
+                            <span>123 Tòa nhà Innovation, Quận 1<br/>TP. Hồ Chí Minh, Việt Nam</span>
+                        </li>
+                        <li class="mb-3 d-flex text-white-50 align-items-center">
+                            <i class="bi bi-telephone-fill text-primary me-3 fs-5"></i> 
+                            <span>1900 1234 (Hỗ trợ 24/7)</span>
+                        </li>
+                        <li class="d-flex text-white-50 align-items-center">
+                            <i class="bi bi-envelope-fill text-primary me-3 fs-5"></i> 
+                            <span>support@smartrental.vn</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="bg-black py-3 border-top border-secondary border-opacity-25 text-center text-md-start">
+            <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+                <span class="text-white-50 small mb-2 mb-md-0">&copy; 2026 CarRental. All rights reserved.</span>
+                <div>
+                    <i class="bi bi-credit-card mx-2 text-white-50 fs-4"></i>
+                    <i class="bi bi-paypal mx-2 text-white-50 fs-4"></i>
+                    <i class="bi bi-apple mx-2 text-white-50 fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    @if (requiresLeaflet)
+    {
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    }
+    @if (requiresSmartMap)
+    {
+        <script src="~/js/smartrental-map.js" asp-append-version="true"></script>
+    }
+    @if (requiresRentalCalendar)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+        @await Html.PartialAsync("_CarCalendarModal")
+        <script src="~/js/global-calendar.js" asp-append-version="true"></script>
+    }
+    @{
+        var showEkycQuickModal = string.Equals(TempData["ShowEkycModal"]?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+        var ekycQuickReturnUrl = TempData["EkycReturnUrl"]?.ToString() ?? (Context.Request.Path + Context.Request.QueryString).ToString();
+    }
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        @await Html.PartialAsync("_EkycModal", ekycQuickReturnUrl)
+    }
+    @if (showEkycQuickModal)
+    {
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var modalEl = document.getElementById('ekycQuickModal');
+                if (modalEl && window.bootstrap) {
+                    new bootstrap.Modal(modalEl).show();
+                }
+            });
+        </script>
+    }
+    <!-- AI Chatbot Widget -->
+    <div id="chatbot-widget" style="position:fixed;bottom:90px;right:20px;width:370px;max-height:500px;z-index:9999;display:none;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.2);">
+        <div style="background:linear-gradient(135deg,#0f172a,#1e40af);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="bi bi-robot text-white fs-5"></i></div>
+                <div><div style="color:#fff;font-weight:700;font-size:.95rem;">SmartCar AI</div><div style="color:rgba(255,255,255,.6);font-size:.7rem;">Trợ lý ảo 24/7</div></div>
+            </div>
+            <button onclick="document.getElementById('chatbot-widget').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1.2rem;cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="chat-messages" style="height:320px;overflow-y:auto;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:10px;">
+            <div style="background:linear-gradient(135deg,#e0e7ff,#ede9fe);padding:12px 16px;border-radius:16px 16px 16px 4px;max-width:85%;font-size:.85rem;line-height:1.5;">Xin chào! 👋 Tôi là trợ lý ảo SmartCar. Bạn cần hỗ trợ gì ạ?</div>
+        </div>
+        <div style="padding:12px;background:#fff;border-top:1px solid #e2e8f0;display:flex;gap:8px;">
+            <input id="chat-input" type="text" placeholder="Nhập câu hỏi..." style="flex:1;border:1px solid #e2e8f0;border-radius:24px;padding:10px 16px;font-size:.85rem;outline:none;" onkeypress="if(event.key==='Enter')sendChat()" />
+            <button onclick="sendChat()" style="width:40px;height:40px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="bi bi-send-fill"></i></button>
+        </div>
+    </div>
+    <button onclick="var w=document.getElementById('chatbot-widget');w.style.display=w.style.display==='none'?'flex':'none';w.style.flexDirection='column';" style="position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:1.5rem;cursor:pointer;z-index:9998;box-shadow:0 6px 20px rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;transition:transform .3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+        <i class="bi bi-chat-dots-fill"></i>
+    </button>
+    @if (hasLayoutToast)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    }
+    <script>
+        @if (hasLayoutToast)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function() {
+            </text>
+            @if (!string.IsNullOrWhiteSpace(layoutToastSuccess)) {
+                <text>
+                Toastify({
+                    text: @Json.Serialize(layoutToastSuccess),
+                    duration: 4000,
+                    gravity: "top",
+                    position: "right",
+                    style: { background: "linear-gradient(to right, #00b09b, #96c93d)", borderRadius: "12px" }
+                }).showToast();
+                </text>
+            }
+            @if (!string.IsNullOrWhiteSpace(layoutToastError)) {
+                <text>
+                Toastify({
+                    text: @Json.Serialize(layoutToastError),
+                    duration: 5000,
+                    gravity: "top",
+                    position: "right",
+                    style: { background: "linear-gradient(to right, #ff5f6d, #ffc371)", borderRadius: "12px" }
+                }).showToast();
+                </text>
+            }
+            <text>
+            });
+            </text>
+        }
+
+        async function updateCartBadge() {
+            const badge = document.getElementById('cartBadge');
+            if (!badge) return;
+
+            const cachedCount = sessionStorage.getItem('cartBadgeCount');
+            if (cachedCount !== null) {
+                const count = Number(cachedCount) || 0;
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'block' : 'none';
+            }
+
+            try {
+                const res = await fetch('/Cart/GetCartCount', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    cache: 'no-store'
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const count = Number(data.count) || 0;
+                    sessionStorage.setItem('cartBadgeCount', String(count));
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.style.display = 'block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch(e) {}
+        }
+        @if (User.Identity?.IsAuthenticated == true) {
+            <text>
+            window.addEventListener('load', function () {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(updateCartBadge, { timeout: 1500 });
+                } else {
+                    setTimeout(updateCartBadge, 250);
+                }
+            });
+            </text>
+        }
+    </script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/pwa.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

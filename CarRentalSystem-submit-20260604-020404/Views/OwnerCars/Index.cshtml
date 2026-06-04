@@ -1,0 +1,124 @@
+@model CarRentalSystem.ViewModels.OwnerCarsDashboardViewModel
+@{
+    ViewData["Title"] = "Quản lý cho thuê";
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    <form method="get" class="owner-toolbar">
+        <div class="owner-field">
+            <label for="q">Tìm xe</label>
+            <input id="q" name="q" value="@Model.Query" placeholder="Tên xe hoặc biển số" />
+        </div>
+        <div class="owner-field">
+            <label for="service">Dòng xe</label>
+            <select id="service" name="service">
+                <option value="all" selected="@(Model.Service == "all")">Tất cả</option>
+                <option value="selfdrive" selected="@(Model.Service == "selfdrive")">Xe tự lái</option>
+                <option value="driver" selected="@(Model.Service == "driver")">Xe có tài</option>
+            </select>
+        </div>
+        <div class="owner-field">
+            <label for="status">Trạng thái</label>
+            <select id="status" name="status">
+                <option value="all" selected="@(Model.Status == "all")">Tất cả</option>
+                <option value="approved" selected="@(Model.Status == "approved")">Đã duyệt</option>
+                <option value="pending" selected="@(Model.Status == "pending")">Chờ duyệt</option>
+                <option value="available" selected="@(Model.Status == "available")">Sẵn sàng</option>
+                <option value="rented" selected="@(Model.Status == "rented")">Đang thuê</option>
+                <option value="maintenance" selected="@(Model.Status == "maintenance")">Bảo trì</option>
+            </select>
+        </div>
+        <button class="owner-filter-button" type="submit">
+            <i class="bi bi-funnel"></i>
+            Lọc
+        </button>
+    </form>
+
+    <section class="owner-stats" aria-label="Tổng quan xe cho thuê">
+        <div class="owner-stat"><span>Tổng xe</span><strong>@Model.TotalCars</strong></div>
+        <div class="owner-stat"><span>Đã duyệt</span><strong>@Model.ApprovedCars</strong></div>
+        <div class="owner-stat"><span>Đang thuê</span><strong>@Model.ActiveTrips</strong></div>
+        <div class="owner-stat"><span>Doanh thu tháng</span><strong>@Model.MonthRevenue.ToString("N0")đ</strong></div>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-3">@TempData["Success"]</div>
+    }
+
+    @if (!Model.Cars.Any())
+    {
+        <section class="owner-empty">
+            <div>
+                <i class="bi bi-car-front"></i>
+                <h2>Chưa tìm thấy xe phù hợp</h2>
+                <p class="owner-muted mb-3">Bạn có thể đổi bộ lọc hoặc đăng xe mới để bắt đầu cho thuê.</p>
+                <a class="owner-pill primary" asp-action="Create"><i class="bi bi-plus-circle"></i> Đăng xe</a>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="owner-card-grid">
+            @foreach (var car in Model.Cars)
+            {
+                <article class="owner-car-card">
+                    <img src="@car.ImageUrl" alt="@car.DisplayName" />
+                    <div>
+                        <h2>@car.DisplayName</h2>
+                        <div class="owner-car-meta">
+                            <span><i class="bi bi-credit-card-2-front"></i> @car.LicensePlate</span>
+                            <span><i class="bi bi-people"></i> @car.Seats chỗ</span>
+                            <span><i class="bi bi-fuel-pump"></i> @car.FuelType</span>
+                            <span><i class="bi bi-gear"></i> @car.Transmission</span>
+                        </div>
+                        <div class="owner-badges">
+                            <span class="owner-badge info">@car.ServiceLabel</span>
+                            <span class="owner-badge @(car.IsApproved ? "ok" : "warn")">
+                                <i class="bi @(car.IsApproved ? "bi-check-circle" : "bi-hourglass-split")"></i>
+                                @(car.IsApproved ? "Đã duyệt" : "Chờ duyệt")
+                            </span>
+                            <span class="owner-badge">@car.StatusName</span>
+                            <span class="owner-badge @car.InspectionStatusClass">
+                                <i class="bi @car.InspectionStatusIcon"></i>
+                                @car.InspectionStatusLabel
+                            </span>
+                            <span class="owner-badge @(car.HasGps ? "ok" : "warn")">
+                                <i class="bi bi-geo-alt"></i>
+                                @(car.HasGps ? "Có GPS" : "Chưa có GPS")
+                            </span>
+                            <span class="owner-badge @(car.ContractSigningMode == CarRentalSystem.Models.CarContractSigningModes.Digital ? "ok" : "info")">
+                                <i class="bi bi-file-earmark-text"></i>
+                                @car.ContractSigningModeLabel
+                            </span>
+                            @if (!car.HasEnoughImages)
+                            {
+                                <span class="owner-badge warn"><i class="bi bi-image"></i> Thiếu ảnh</span>
+                            }
+                            @if (!car.HasRequiredDocuments)
+                            {
+                                <span class="owner-badge warn"><i class="bi bi-file-earmark-text"></i> Thiếu hồ sơ</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="owner-card-numbers">
+                        <div>
+                            <span class="owner-muted">Đơn giá</span>
+                            <strong>@car.PricePerDay.ToString("N0")đ/ngày</strong>
+                        </div>
+                        <div>
+                            <span class="owner-muted">Chuyến hoàn tất</span>
+                            <strong>@car.TripCount</strong>
+                        </div>
+                        <div>
+                            <span class="owner-muted">Doanh thu tháng</span>
+                            <strong>@car.MonthRevenue.ToString("N0")đ</strong>
+                        </div>
+                    </div>
+                </article>
+            }
+        </section>
+    }
+</div>

@@ -1,0 +1,98 @@
+@{ 
+    ViewData["Title"] = "Admin Dashboard"; 
+    Layout = "_AdminLayout"; 
+}
+
+<h2 class="mb-4">Dashboard Overview</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-car-front"></i> Total Cars</h5>
+                <h2 class="display-5">15</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-check-circle"></i> Available</h5>
+                <h2 class="display-5">8</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-key"></i> Rented</h5>
+                <h2 class="display-5">5</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cash-stack"></i> Revenue Msg.</h5>
+                <h4 class="mt-3">125M VND</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Revenue by Month</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Bookings per Day</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="bookingsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const ctxRevenue = document.getElementById('revenueChart').getContext('2d');
+        new Chart(ctxRevenue, {
+            type: 'bar',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Revenue (VND)',
+                    data: [12000000, 19000000, 15000000, 25000000, 22000000, 30000000],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            }
+        });
+
+        const ctxBookings = document.getElementById('bookingsChart').getContext('2d');
+        new Chart(ctxBookings, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Bookings',
+                    data: [2, 4, 3, 5, 8, 12, 10],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    tension: 0.3,
+                    fill: false
+                }]
+            }
+        });
+    </script>
+}

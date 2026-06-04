@@ -30,6 +30,7 @@ namespace CarRentalSystem.Controllers
         private const string PendingMfaAttemptCountSessionKey = "PrivilegedMfaAttemptCount";
         private const string PendingMfaEmailSessionKey = "PrivilegedMfaEmail";
         private const string PendingMfaRememberMeSessionKey = "PrivilegedMfaRememberMe";
+        private const string DevelopmentEmailVerificationOtpTempDataKey = "DevelopmentEmailVerificationOtp";
         private static readonly TimeSpan PrivilegedMfaTtl = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan RememberMeDuration = TimeSpan.FromDays(30);
         private static readonly TimeSpan DefaultLoginTimeout = TimeSpan.FromSeconds(15);
@@ -664,6 +665,7 @@ namespace CarRentalSystem.Controllers
 
             user.EmailVerificationToken = GenerateOtp();
             user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            StoreDevelopmentEmailVerificationOtp(user.EmailVerificationToken);
 
             await _authService.RegisterAsync(user);
 
@@ -861,10 +863,15 @@ namespace CarRentalSystem.Controllers
             var newOtp = GenerateOtp();
             user.EmailVerificationToken = newOtp;
             user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            StoreDevelopmentEmailVerificationOtp(newOtp);
             await _authService.UpdateUserAsync(user);
 
-            if (!await TrySendEmailVerificationOtpAsync(user.Email, newOtp, "CheckEmail"))
+            var otpSent = await TrySendEmailVerificationOtpAsync(user.Email, newOtp, "CheckEmail");
+            if (!otpSent)
             {
+                if (_env.IsDevelopment())
+                    return RedirectToAction("VerifyEmailStep2", new { email = email });
+
                 TempData["ErrorMessage"] = "Không gửi được mã OTP lúc này. Vui lòng thử lại sau ít phút.";
                 return RedirectToAction("VerifyEmailStep1");
             }
@@ -891,6 +898,7 @@ namespace CarRentalSystem.Controllers
             // Lưu lại vào TempData để dùng cho POST
             TempData["RegisteredEmail"] = emailToUse;
             ViewBag.Email = emailToUse;
+            ViewBag.DevelopmentOtp = GetDevelopmentEmailVerificationOtpForView();
             return View();
         }
 
@@ -904,6 +912,7 @@ namespace CarRentalSystem.Controllers
         {
             ViewBag.Email = email;
             TempData["RegisteredEmail"] = email;
+            ViewBag.DevelopmentOtp = GetDevelopmentEmailVerificationOtpForView();
 
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(otp))
             {
@@ -920,6 +929,9 @@ namespace CarRentalSystem.Controllers
                 ViewBag.Error = "Email không tồn tại trong hệ thống.";
                 return View();
             }
+
+            if (ViewBag.DevelopmentOtp == null && _env.IsDevelopment())
+                ViewBag.DevelopmentOtp = user.EmailVerificationToken;
 
             if (user.IsEmailVerified)
             {
@@ -943,6 +955,7 @@ namespace CarRentalSystem.Controllers
             user.EmailVerificationToken = null;
             user.EmailVerificationTokenExpiry = null;
             await _authService.UpdateUserAsync(user);
+            TempData.Remove(DevelopmentEmailVerificationOtpTempDataKey);
 
             TempData["SuccessMessage"] = "Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.";
             return RedirectToAction("Login");
@@ -979,6 +992,7 @@ namespace CarRentalSystem.Controllers
             var newOtp = GenerateOtp();
             user.EmailVerificationToken = newOtp;
             user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            StoreDevelopmentEmailVerificationOtp(newOtp);
             await _authService.UpdateUserAsync(user);
 
             if (!await TrySendEmailVerificationOtpAsync(user.Email, newOtp, "ResendOtpStep2"))
@@ -1189,6 +1203,7 @@ namespace CarRentalSystem.Controllers
             var newOtp = GenerateOtp();
             user.EmailVerificationToken = newOtp;
             user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(5);
+            StoreDevelopmentEmailVerificationOtp(newOtp);
             await _authService.UpdateUserAsync(user);
 
             // Gửi email OTP qua Hangfire Queue
@@ -1206,6 +1221,12 @@ namespace CarRentalSystem.Controllers
         {
             try
             {
+                if (!IsSmtpConfigured())
+                {
+                    _logger.LogWarning("SMTP is not configured; email verification OTP for {Email} was not sent during {Source}.", email, source);
+                    return false;
+                }
+
                 await RunWithTimeoutAsync(
                     SendOtpEmailAndReturnTrueAsync(email, otp),
                     GetConfiguredTimeout("Auth:EmailSendTimeoutSeconds", TimeSpan.FromSeconds(12)),
@@ -1223,6 +1244,27 @@ namespace CarRentalSystem.Controllers
         {
             await _emailService.SendOtpEmailAsync(email, otp);
             return true;
+        }
+
+        private bool IsSmtpConfigured()
+        {
+            return !string.IsNullOrWhiteSpace(_configuration["SmtpSettings:Host"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["SmtpSettings:User"]) &&
+                !string.IsNullOrWhiteSpace(_configuration["SmtpSettings:Pass"]);
+        }
+
+        private void StoreDevelopmentEmailVerificationOtp(string? otp)
+        {
+            if (_env.IsDevelopment() && !string.IsNullOrWhiteSpace(otp))
+                TempData[DevelopmentEmailVerificationOtpTempDataKey] = otp;
+        }
+
+        private string? GetDevelopmentEmailVerificationOtpForView()
+        {
+            if (!_env.IsDevelopment())
+                return null;
+
+            return TempData.Peek(DevelopmentEmailVerificationOtpTempDataKey)?.ToString();
         }
 
         private static string GenerateOtp()

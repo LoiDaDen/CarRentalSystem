@@ -1,0 +1,36 @@
+@model CarRentalSystem.ViewModels.OwnerGuideViewModel
+@{
+    ViewData["Title"] = "Cẩm nang cho thuê";
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    <section class="owner-panel">
+        <h2>Cẩm nang cho thuê xe</h2>
+        <p class="owner-muted">Tài liệu giúp chủ xe chuẩn bị giấy tờ, bàn giao xe, theo dõi chuyến đi và xử lý tình huống phát sinh.</p>
+        <div class="owner-doc-grid">
+            @foreach (var doc in Model.Documents)
+            {
+                <a class="owner-doc-card" href="@doc.Url" target="_blank" rel="noopener">
+                    <span class="owner-doc-icon"><i class="bi @doc.Icon"></i></span>
+                    <span>
+                        <strong>@doc.Title</strong>
+                        <span class="d-block owner-muted mt-2">@doc.Description</span>
+                    </span>
+                    <span class="owner-badge info">@doc.FileType</span>
+                </a>
+            }
+        </div>
+    </section>
+
+    <section class="owner-panel">
+        <h2>Checklist bàn giao an toàn</h2>
+        <div class="owner-badges mt-3">
+            <span class="owner-badge ok"><i class="bi bi-check-circle"></i> Đối chiếu CCCD/VNeID/GPLX</span>
+            <span class="owner-badge ok"><i class="bi bi-check-circle"></i> Ký hợp đồng và biên bản bàn giao</span>
+            <span class="owner-badge ok"><i class="bi bi-check-circle"></i> Chụp ngoại thất, nội thất, km, nhiên liệu</span>
+            <span class="owner-badge ok"><i class="bi bi-check-circle"></i> Theo dõi GPS trong chuyến đi</span>
+        </div>
+    </section>
+</div>

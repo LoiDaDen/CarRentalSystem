@@ -1,0 +1,165 @@
+@{
+    ViewData["Title"] = "Thuê xe dài hạn";
+    var contracts = (ViewBag.ContractTypes as List<CarRentalSystem.Models.ContractType>)?.Where(c => c.Name.ToLower() != "theo ngày").ToList();
+}
+
+<style>
+    .hero-longterm {
+        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7)), url('/images/placeholder.png') center/cover;
+        padding: 5rem 0;
+        color: white;
+    }
+    .benefit-card {
+        border-radius: 16px;
+        padding: 2rem;
+        background: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        height: 100%;
+        transition: transform .3s;
+        border-bottom: 4px solid transparent;
+    }
+    .benefit-card:hover {
+        transform: translateY(-5px);
+        border-bottom-color: #10b981;
+    }
+    .contract-pillar {
+        background: #f8fafc;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .contract-pillar.featured {
+        background: white;
+        border-color: #10b981;
+        box-shadow: 0 20px 40px rgba(16,185,129,0.1);
+        transform: scale(1.05);
+        z-index: 2;
+    }
+    .ribbon {
+        position: absolute;
+        top: 20px;
+        right: -35px;
+        background: #ef4444;
+        color: white;
+        padding: 5px 40px;
+        transform: rotate(45deg);
+        font-weight: bold;
+        font-size: 0.8rem;
+    }
+</style>
+
+<!-- Hero Section -->
+<div class="hero-longterm text-center mb-5" style="background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=2070');">
+    <div class="container">
+        <span class="badge bg-success mb-3 px-3 py-2 rounded-pill fs-6"><i class="bi bi-star-fill text-warning me-1"></i>Dịch vụ Cao cấp</span>
+        <h1 class="display-4 fw-bold mb-3 text-white" style="text-shadow: 0 2px 8px rgba(0,0,0,0.5); letter-spacing: -0.5px;">
+            Thuê Xe Theo Năm - Giải Pháp Doanh Nghiệp
+        </h1>
+        <p class="lead mb-4 text-white-50 mx-auto" style="max-width: 700px; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">
+            Tối ưu chi phí, không lo khấu hao, bảo dưỡng miễn phí định kỳ. Cung cấp xe mới, có xuất hóa đơn VAT đầy đủ.
+        </p>
+        <a href="#request-form" class="btn btn-success btn-lg px-5 py-3 rounded-pill fw-bold shadow-lg" style="background: linear-gradient(135deg, #10b981, #059669); border: none;">
+            NHẬN BÁO GIÁ NGAY
+        </a>
+    </div>
+</div>
+
+<div class="container mb-5">
+    
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-4 py-3" role="alert">
+            <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+            <strong>@TempData["Success"]</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Lợi ích -->
+    <div class="text-center mb-5">
+        <h2 class="fw-800 mb-3">TẠI SAO CHỌN BONBONCAR?</h2>
+        <p class="text-muted">Đặc quyền riêng biệt dành cho khách hàng thuê xe dài hạn</p>
+    </div>
+    
+    <div class="row g-4 mb-5 pb-4">
+        <div class="col-md-4">
+            <div class="benefit-card text-center">
+                <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center mx-auto mb-4" style="width: 80px; height: 80px;">
+                    <i class="bi bi-piggy-bank text-success display-5"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Tối Ưu Chi Phí</h5>
+                <p class="text-muted small">Chi phí rẻ hơn đến 40% so với thuê lẻ từng ngày. Có xuất hóa đơn VAT linh hoạt hàng tháng cho Doanh nghiệp.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="benefit-card text-center">
+                <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center mx-auto mb-4" style="width: 80px; height: 80px;">
+                    <i class="bi bi-tools text-primary display-5"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Bảo Trì Miễn Phí</h5>
+                <p class="text-muted small">Miễn phí dọn rửa 4 lần/tháng, thay nhớt/bảo dưỡng định kỳ tận nơi tiêu chuẩn hãng. Cho mượn xe thay thế khi bảo trì.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="benefit-card text-center">
+                <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center mx-auto mb-4" style="width: 80px; height: 80px;">
+                    <i class="bi bi-shield-check text-warning display-5"></i>
+                </div>
+                <h5 class="fw-bold mb-3">Bảo Hiểm 2 Chiều</h5>
+                <p class="text-muted small">Bảo hiểm vật chất 100% bao gồm thủy kích, mất cắp. Xử lý tai nạn/sự cố 24/7 chuyên nghiệp toàn quốc.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gói Hợp Đồng -->
+    <div class="text-center mb-5">
+        <h2 class="fw-800 mb-3">CÁC GÓI HỢP ĐỒNG</h2>
+    </div>
+
+    @if (contracts != null && contracts.Any())
+    {
+        <div class="row g-4 align-items-center justify-content-center mb-5 pb-5">
+            @foreach (var ct in contracts)
+            {
+                bool isYearly = ct.MinDurationDays >= 360;
+                string durationStr = (ct.MinDurationDays >= 360) ? (ct.MinDurationDays/360) + " năm" : ((ct.MinDurationDays >= 30) ? (ct.MinDurationDays/30) + " tháng" : ct.MinDurationDays + " ngày");
+                string maxDurationStr = (ct.MaxDurationDays >= 360) ? (ct.MaxDurationDays/360) + " năm" : ((ct.MaxDurationDays >= 30) ? (ct.MaxDurationDays/30) + " tháng" : ct.MaxDurationDays + " ngày");
+                
+                <div class="col-md-6 col-lg-4">
+                    <div class="contract-pillar @(isYearly ? "featured" : "") text-center h-100 d-flex flex-column transition-all" id="pillar_@ct.ContractTypeID">
+                        @if (isYearly)
+                        {
+                            <div class="ribbon">TỐT NHẤT</div>
+                        }
+                        <h4 class="fw-bold mb-2">@ct.Name</h4>
+                        <div class="text-muted small mb-4">@ct.Description</div>
+                        
+                        <div class="mb-4">
+                            <h2 class="fw-bold text-success mb-0">Off @ct.DiscountPercent.ToString("0.##")%</h2>
+                            <small class="text-muted">So với giá niêm yết</small>
+                        </div>
+                        
+                        <ul class="list-unstyled text-start small mb-4 flex-grow-1">
+                            <li class="mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> Thời hạn: @durationStr - @maxDurationStr</li>
+                            @if (ct.FreeMaintenanceCount > 0)
+                            {
+                                <li class="mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> @ct.FreeMaintenanceCount lần bảo dưỡng tận nơi</li>
+                            }
+                            @if (ct.FreeInsurance)
+                            {
+                                <li class="mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i> Bảo hiểm tai nạn 100%</li>
+                            }
+                            @if (!string.IsNullOrEmpty(ct.AfterSalesDescription))
+                            {
+                                <li class="mb-3 fw-bold text-dark"><i class="bi bi-gift-fill text-danger me-2"></i> Đặc quyền: @ct.AfterSalesDescription</li>
+                            }
+                        </ul>
+                        <a href="/LongTerm/RequestForm?contractId=@ct.ContractTypeID" class="btn btn-warning w-100 fw-bold rounded-pill shadow-sm mt-3">Thuê Ngay</a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
