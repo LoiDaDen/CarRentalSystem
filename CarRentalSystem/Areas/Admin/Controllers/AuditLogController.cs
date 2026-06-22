@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Helpers;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class AuditLogController : Controller
     {
         private readonly ApplicationDbContext _context;

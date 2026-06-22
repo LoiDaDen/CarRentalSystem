@@ -95,24 +95,15 @@
 }
 
 @section Scripts {
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE"></script>
     <script>
         let map;
         let markers = {};
         
         function initMap() {
-            const hcm = { lat: 10.762622, lng: 106.660172 };
-            map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 13,
-                center: hcm,
-                disableDefaultUI: true,
-                styles: [
-                    { "featureType": "all", "elementType": "labels.text.fill", "stylers": [{"color": "#ffffff"}, {"weight": "0.20"}, {"lightness": "-26"}] },
-                    { "featureType": "all", "elementType": "labels.text.stroke", "stylers": [{"visibility": "on"}, {"color": "#31364d"}, {"weight": "2"}] },
-                    { "featureType": "landscape", "elementType": "all", "stylers": [{"color": "#2c314a"}] },
-                    { "featureType": "water", "elementType": "all", "stylers": [{"color": "#191d30"}] }
-                ]
-            });
+            const baseMap = SmartMap.createMap('map', 10.762622, 106.660172, 13, { zoomControl: false });
+            if (!baseMap) return;
+            map = baseMap.map;
+            L.control.zoom({ position: 'topright' }).addTo(map);
             updateLocations();
             setInterval(updateLocations, 5000);
         }
@@ -123,23 +114,18 @@
                 const data = await response.json();
                 
                 data.forEach(car => {
-                    const pos = { lat: car.lat, lng: car.lng };
+                    const pos = [car.lat, car.lng];
                     if (markers[car.name]) {
-                        markers[car.name].setPosition(pos);
+                        markers[car.name].setLatLng(pos);
                     } else {
-                        const marker = new google.maps.Marker({
-                            position: pos,
-                            map: map,
-                            title: car.name,
-                            icon: {
-                                path: google.maps.SymbolPath.CIRCLE,
-                                fillColor: car.status === 'Moving' ? '#2563eb' : '#f59e0b',
-                                fillOpacity: 0.9,
-                                strokeWeight: 2,
-                                strokeColor: '#fff',
-                                scale: 8
-                            }
-                        });
+                        const color = car.status === 'Moving' ? '#2563eb' : '#f59e0b';
+                        const marker = L.circleMarker(pos, {
+                            radius: 9,
+                            color: '#fff',
+                            weight: 3,
+                            fillColor: color,
+                            fillOpacity: .95
+                        }).addTo(map).bindPopup(`<strong>${car.name}</strong><br>${car.status}`);
                         markers[car.name] = marker;
                     }
                 });
@@ -148,14 +134,10 @@
 
         document.getElementById('btnSimulate').addEventListener('click', () => {
              updateLocations();
-             alert("Luồng dữ liệu hành trình theo thời gian thực đã được kích hoạt.");
+            alert("Luồng dữ liệu hành trình theo thời gian thực đã được kích hoạt.");
         });
 
-        if (typeof google === 'object') {
-            initMap();
-        } else {
-            document.getElementById('map').innerHTML = '<div class="h-100 d-flex align-items-center justify-content-center flex-column text-muted py-5 text-center"><i class="bi bi-map display-1 mb-4 opacity-10"></i><h4 class="fw-800 text-dark">Lớp bản đồ Tương tác</h4><p class="px-5">Đang chạy chế độ mô phỏng - Yêu cầu Google Maps API Key để hiển thị bản đồ địa hình thực.</p></div>';
-        }
+        initMap();
     </script>
 }
 </div>

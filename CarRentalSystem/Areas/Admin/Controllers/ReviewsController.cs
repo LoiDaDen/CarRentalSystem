@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class ReviewsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -37,7 +38,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             {
                 review.IsApproved = !review.IsApproved;
                 await _context.SaveChangesAsync();
-                TempData["Success"] = review.IsApproved ? "Đã duyệt đánh giá." : "Đã gỡ duyệt đánh giá.";
+                TempData["Success"] = review.IsApproved ? "Đã hiển thị lại đánh giá." : "Đã ẩn đánh giá khỏi trang xe.";
             }
             return RedirectToAction(nameof(Index));
         }

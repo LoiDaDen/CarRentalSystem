@@ -9,6 +9,7 @@ namespace CarRentalSystem.Services
     public interface IBookingTransitionService
     {
         Task<BookingTransitionResult> TransitionAsync(int bookingId, string targetStatus, int? actorUserId, string actorRole, string? reason = null);
+        Task<BookingTransitionResult> RejectAsync(int bookingId, int actorUserId, string actorRole, string? reason);
         Task<BookingTransitionResult> CancelAsync(int bookingId, int? actorUserId, string actorRole, string? reason);
     }
 
@@ -150,6 +151,67 @@ namespace CarRentalSystem.Services
 
             await transaction.CommitAsync();
 
+            return new BookingTransitionResult(true, null);
+        }
+
+        public async Task<BookingTransitionResult> RejectAsync(int bookingId, int actorUserId, string actorRole, string? reason)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var booking = await _context.Bookings
+                .Include(b => b.BookingStatus)
+                .Include(b => b.Payment)
+                .Include(b => b.Car)
+                .FirstOrDefaultAsync(b => b.BookingID == bookingId);
+
+            if (booking == null)
+                return new BookingTransitionResult(false, "Không tìm thấy đơn thuê.");
+
+            var current = booking.BookingStatus?.Name ?? BookingStatusConstants.Draft;
+            if (current != BookingStatusConstants.Pending)
+            {
+                await transaction.RollbackAsync();
+                return new BookingTransitionResult(false, "Chỉ đơn đang chờ chủ xe duyệt mới có thể bị từ chối.");
+            }
+
+            var rejected = await GetRequiredStatusAsync(BookingStatusConstants.Rejected);
+            if (rejected == null)
+            {
+                await transaction.RollbackAsync();
+                return new BookingTransitionResult(false, $"Thiếu lookup trạng thái đặt xe: {BookingStatusConstants.Rejected}.");
+            }
+
+            var normalizedReason = string.IsNullOrWhiteSpace(reason)
+                ? "Chủ xe từ chối đơn thuê."
+                : reason.Trim();
+
+            booking.BookingStatusID = rejected.BookingStatusID;
+            booking.BookingStatus = rejected;
+            booking.CancelReason = normalizedReason;
+
+            if (booking.Payment != null && booking.Payment.PaymentStatus == PaymentStatusConstants.Paid)
+            {
+                booking.DepositStatus = DepositStatusConstants.PendingRefund;
+                await _ledger.CreateRefundRequestAsync(booking.BookingID, booking.DepositAmount, normalizedReason);
+            }
+            else
+            {
+                booking.DepositStatus = DepositStatusConstants.Unpaid;
+            }
+
+            await SetCarStatusAsync(booking.Car, CarStatusConstants.Available);
+
+            await _auditTrail.RecordAsync(new AuditLog
+            {
+                Action = "BookingRejectByOwner",
+                EntityType = "Booking",
+                EntityId = booking.BookingID,
+                UserId = actorUserId,
+                UserName = actorRole,
+                Description = $"{current} -> Rejected. {normalizedReason}".Trim()
+            });
+
+            await transaction.CommitAsync();
             return new BookingTransitionResult(true, null);
         }
 

@@ -1,29 +1,24 @@
-@model dynamic
+@model HandoverCaptureViewModel
+@using CarRentalSystem.Models
 @{
-    var typeText = ViewBag.Type == "CheckIn" ? "Nhận xe (Check-in)" : "Trả xe (Check-out)";
-    ViewData["Title"] = "Biên Bản: " + typeText;
-    var booking = ViewBag.Booking as CarRentalSystem.Models.Booking;
+    var isCheckIn = Model.Type == "CheckIn";
+    var typeText = isCheckIn ? "Giao xe" : "Trả xe";
+    ViewData["Title"] = "Biên bản " + typeText;
 }
 
 <style>
     .capture-box {
-        border: 2px dashed #ddd;
-        border-radius: 12px;
-        padding: 20px;
+        border: 2px dashed #d6dbe3;
+        border-radius: 8px;
+        padding: 18px;
         text-align: center;
-        background: #fafafa;
+        background: #fafbfc;
         cursor: pointer;
         transition: all 0.2s;
+        min-height: 150px;
     }
-    .capture-box:hover {
-        border-color: #0d6efd;
-        background: #f0f7ff;
-    }
-    .capture-box i {
-        font-size: 2rem;
-        color: #adb5bd;
-        margin-bottom: 10px;
-    }
+    .capture-box:hover { border-color: #0d6efd; background: #f0f7ff; }
+    .capture-box i { font-size: 2rem; color: #9aa4b2; margin-bottom: 8px; }
     .img-preview {
         max-width: 100%;
         max-height: 150px;
@@ -31,50 +26,66 @@
         display: none;
         margin-top: 10px;
     }
+    .inventory-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+    }
+    .inventory-status label {
+        border: 1px solid #d9e2ec;
+        border-radius: 999px;
+        padding: 6px 10px;
+        cursor: pointer;
+        background: #fff;
+        white-space: nowrap;
+    }
+    .inventory-status input { margin-right: 4px; }
 </style>
 
-<div class="container py-5 max-w-700" style="max-width: 700px; margin: 0 auto;">
+<div class="container py-5" style="max-width: 980px; margin: 0 auto;">
     <div class="d-flex align-items-center mb-4">
         <a href="javascript:history.back()" class="text-dark me-3"><i class="bi bi-arrow-left fs-4"></i></a>
-        <h3 class="fw-bold mb-0">Biên bản @typeText</h3>
+        <div>
+            <h3 class="fw-bold mb-1">Biên bản @typeText</h3>
+            <div class="text-muted small">Ghi nhận tình trạng xe, nhiên liệu, quãng đường, phụ kiện và chữ ký xác nhận.</div>
+        </div>
     </div>
 
-    @if (booking != null)
+    @if (Model.Booking != null)
     {
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4 d-flex align-items-center">
                 <div class="bg-primary text-white rounded p-3 me-3"><i class="bi bi-car-front-fill fs-3"></i></div>
                 <div>
-                    <h5 class="fw-bold mb-1">Mã chuyến: #@booking.BookingID - @booking.Car?.CarBrand?.Name @booking.Car?.CarName</h5>
-                    <p class="text-muted mb-0 small"><i class="bi bi-calendar-event me-1"></i> @booking.StartDate.ToString("dd/MM/yyyy HH:mm") → @booking.EndDate.ToString("dd/MM/yyyy HH:mm")</p>
+                    <h5 class="fw-bold mb-1">Mã đơn #@Model.Booking.BookingID - @Model.Booking.Car?.CarBrand?.Name @Model.Booking.Car?.CarName</h5>
+                    <p class="text-muted mb-0 small">
+                        <i class="bi bi-calendar-event me-1"></i>
+                        @Model.Booking.StartDate.ToString("dd/MM/yyyy HH:mm") - @Model.Booking.EndDate.ToString("dd/MM/yyyy HH:mm")
+                    </p>
                 </div>
             </div>
         </div>
     }
 
-    <div class="alert alert-warning border-0 shadow-sm rounded-3 mb-4">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Lưu ý quan trọng:</strong> 
-        Vui lòng chụp rõ các góc của xe. Hình ảnh này là cơ sở duy nhất để giải quyết tranh chấp về tình trạng trầy xước, hư hỏng xe.
-    </div>
-
     <form asp-controller="Handover" asp-action="Submit" method="post" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
-        <input type="hidden" name="BookingID" value="@booking?.BookingID" />
-        <input type="hidden" name="Type" value="@ViewBag.Type" />
-        <input type="hidden" name="GeoLatitude" id="geoLatitude" />
-        <input type="hidden" name="GeoLongitude" id="geoLongitude" />
+        <input asp-for="BookingID" type="hidden" />
+        <input asp-for="Type" type="hidden" />
+        <input asp-for="GeoLatitude" type="hidden" id="geoLatitude" />
+        <input asp-for="GeoLongitude" type="hidden" id="geoLongitude" />
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4">
                 <h5 class="fw-bold mb-4">Thông số cơ bản</h5>
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-bold">Số Km hiện tại (ODO) <span class="text-danger">*</span></label>
-                        <input type="number" name="Odo" class="form-control form-control-lg bg-light" placeholder="Ví dụ: 54000" required>
+                        <label asp-for="Odo" class="form-label fw-bold">Số km hiện tại (ODO) <span class="text-danger">*</span></label>
+                        <input asp-for="Odo" type="number" class="form-control form-control-lg bg-light" min="0" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-bold">Mức nhiên liệu <span class="text-danger">*</span></label>
-                        <select name="FuelLevel" class="form-select form-select-lg bg-light" required>
+                        <label asp-for="FuelLevel" class="form-label fw-bold">Mức nhiên liệu <span class="text-danger">*</span></label>
+                        <select asp-for="FuelLevel" class="form-select form-select-lg bg-light" required>
                             <option value="F">Đầy bình (F)</option>
                             <option value="3/4">3/4 bình</option>
                             <option value="1/2">Nửa bình (1/2)</option>
@@ -88,80 +99,145 @@
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-body p-4">
-                <h5 class="fw-bold mb-4">Chụp ảnh hiện trạng xe</h5>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">Mặt trước xe</label>
-                        <div class="capture-box" onclick="document.getElementById('imgFront').click()">
-                            <i class="bi bi-camera"></i>
-                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
-                            <img id="preview_imgFront" class="img-preview" />
-                        </div>
-                        <input type="file" id="imgFront" name="imgFront" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgFront')" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">Mặt sau xe</label>
-                        <div class="capture-box" onclick="document.getElementById('imgBack').click()">
-                            <i class="bi bi-camera"></i>
-                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
-                            <img id="preview_imgBack" class="img-preview" />
-                        </div>
-                        <input type="file" id="imgBack" name="imgBack" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgBack')" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">Hông xe trái</label>
-                        <div class="capture-box" onclick="document.getElementById('imgLeft').click()">
-                            <i class="bi bi-camera"></i>
-                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
-                            <img id="preview_imgLeft" class="img-preview" />
-                        </div>
-                        <input type="file" id="imgLeft" name="imgLeft" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgLeft')" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small">Hông xe phải</label>
-                        <div class="capture-box" onclick="document.getElementById('imgRight').click()">
-                            <i class="bi bi-camera"></i>
-                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
-                            <img id="preview_imgRight" class="img-preview" />
-                        </div>
-                        <input type="file" id="imgRight" name="imgRight" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgRight')" required>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-bold small">Nội thất xe (hàng ghế trước)</label>
-                        <div class="capture-box" onclick="document.getElementById('imgInside').click()">
-                            <i class="bi bi-camera"></i>
-                            <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
-                            <img id="preview_imgInside" class="img-preview" />
-                        </div>
-                        <input type="file" id="imgInside" name="imgInside" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_imgInside')" required>
-                    </div>
-                    
-                    <div class="col-12 mt-4 pt-4 border-top">
-                        <label class="form-label fw-bold d-block mb-3"><i class="bi bi-pen me-2 text-primary"></i>Chữ ký Điện tử Khách Hàng <span class="text-danger">*</span></label>
-                        <p class="small text-muted mb-2">Vui lòng ký ngón tay của bạn vào vùng trống bên dưới (dùng màn hình cảm ứng hoặc chuột).</p>
-                        <div class="border rounded-4 bg-white overflow-hidden shadow-sm" style="touch-action: none; position: relative;">
-                            <canvas id="signatureCanvas" style="width:100%; height: 200px; cursor: crosshair; display: block;"></canvas>
-                        </div>
-                        <div class="d-flex justify-content-between mt-2 align-items-center">
-                            <span class="small text-danger" id="signatureWarning" style="display:none;"><i class="bi bi-exclamation-circle me-1"></i>Bạn chưa ký tên</span>
-                            <div class="ms-auto">
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearCanvas()"><i class="bi bi-eraser-fill me-1"></i>Xóa làm lại</button>
-                            </div>
-                        </div>
-                        <input type="hidden" name="SignatureBase64" id="signatureBase64" required />
-                    </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">Linh kiện, phụ kiện và trang bị xe</h5>
+                    <span class="badge @(isCheckIn ? "bg-success" : "bg-warning text-dark")">@typeText</span>
+                </div>
+                <p class="small text-muted">
+                    @(isCheckIn
+                        ? "Bước giao xe chỉ ghi nhận trạng thái ban đầu, không phát sinh phí."
+                        : "Bước trả xe đối chiếu với lúc giao xe; chỉ thiếu hoặc hư hỏng mới phát sinh phí bồi thường.")
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Trang bị</th>
+                                <th class="text-center">Số lượng chuẩn</th>
+                                <th class="text-center">Trạng thái</th>
+                                <th class="text-end">Giá trị bồi thường</th>
+                                <th class="text-end">Phí phát sinh</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @for (var i = 0; i < Model.InventoryItems.Count; i++)
+                        {
+                            var item = Model.InventoryItems[i];
+                            var itemKey = $"InventoryItems_{i}_ConditionStatus";
+                            var baselineAbsent = !isCheckIn && item.ExpectedQuantity <= 0;
+                            <tr>
+                                <td>
+                                    <input asp-for="InventoryItems[i].CarInventoryItemID" type="hidden" />
+                                    <input asp-for="InventoryItems[i].ItemName" type="hidden" />
+                                    <input asp-for="InventoryItems[i].ExpectedQuantity" type="hidden" class="expected-qty" />
+                                    <input asp-for="InventoryItems[i].ActualQuantity" type="hidden" />
+                                    <div class="fw-bold">@item.ItemName</div>
+                                    <input asp-for="InventoryItems[i].Notes" class="form-control form-control-sm mt-1" placeholder="Ghi chú nếu cần" />
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark border">@item.ExpectedQuantity</span>
+                                </td>
+                                <td class="text-center">
+                                    @if (baselineAbsent)
+                                    {
+                                        <input asp-for="InventoryItems[i].ConditionStatus" type="hidden" value="@HandoverInventoryConditionStatusConstants.Absent" />
+                                        <span class="badge bg-secondary">Không có lúc giao xe</span>
+                                    }
+                                    else if (isCheckIn)
+                                    {
+                                        <div class="inventory-status">
+                                            <label>
+                                                <input type="radio" name="InventoryItems[@i].ConditionStatus" value="@HandoverInventoryConditionStatusConstants.Present" checked />
+                                                Có
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="InventoryItems[@i].ConditionStatus" value="@HandoverInventoryConditionStatusConstants.Absent" />
+                                                Không có
+                                            </label>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="inventory-status">
+                                            <label>
+                                                <input type="radio" name="InventoryItems[@i].ConditionStatus" value="@HandoverInventoryConditionStatusConstants.Intact" checked data-charge-status />
+                                                Còn đủ
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="InventoryItems[@i].ConditionStatus" value="@HandoverInventoryConditionStatusConstants.Missing" data-charge-status />
+                                                Thiếu
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="InventoryItems[@i].ConditionStatus" value="@HandoverInventoryConditionStatusConstants.Damaged" data-charge-status />
+                                                Hư hỏng
+                                            </label>
+                                        </div>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <input asp-for="InventoryItems[i].UnitReplacementCost" type="number" min="0" step="1000" class="form-control form-control-sm text-end unit-cost" required />
+                                </td>
+                                <td class="text-end fw-bold text-danger item-charge">0</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-4">Ảnh hiện trạng xe</h5>
+                <div class="row g-3">
+                    @foreach (var photo in new[] {
+                        ("ImgFront", "Mặt trước xe"),
+                        ("ImgBack", "Mặt sau xe"),
+                        ("ImgLeft", "Hông xe trái"),
+                        ("ImgRight", "Hông xe phải"),
+                        ("ImgInside", "Nội thất xe")
+                    })
+                    {
+                        <div class="@(photo.Item1 == "ImgInside" ? "col-12" : "col-md-6")">
+                            <label class="form-label fw-bold small">@photo.Item2</label>
+                            <div class="capture-box" onclick="document.getElementById('@photo.Item1').click()">
+                                <i class="bi bi-camera"></i>
+                                <div class="text-muted small fw-bold">Chạm để chụp ảnh</div>
+                                <img id="preview_@photo.Item1" class="img-preview" />
+                            </div>
+                            <input id="@photo.Item1" name="@photo.Item1" type="file" accept="image/*" class="d-none" onchange="previewImage(this, 'preview_@photo.Item1')" required>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <label class="form-label fw-bold d-block mb-3"><i class="bi bi-pen me-2 text-primary"></i>Chữ ký xác nhận <span class="text-danger">*</span></label>
+                <div class="border rounded-4 bg-white overflow-hidden shadow-sm" style="touch-action: none; position: relative;">
+                    <canvas id="signatureCanvas" style="width:100%; height: 200px; cursor: crosshair; display: block;"></canvas>
+                </div>
+                <div class="d-flex justify-content-between mt-2 align-items-center">
+                    <span class="small text-danger" id="signatureWarning" style="display:none;"><i class="bi bi-exclamation-circle me-1"></i>Vui lòng ký xác nhận</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill ms-auto" onclick="clearCanvas()">
+                        <i class="bi bi-eraser-fill me-1"></i>Xóa và ký lại
+                    </button>
+                </div>
+                <input asp-for="SignatureBase64" type="hidden" id="signatureBase64" required />
+            </div>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm mb-5">
-            XÁC NHẬN VÀ GỬI BIÊN BẢN
+            Xác nhận và gửi biên bản
         </button>
     </form>
 </div>
 
 @section Scripts {
     <script>
+        const isCheckIn = @isCheckIn.ToString().ToLowerInvariant();
+
         function previewImage(input, imgId) {
             const imgEl = document.getElementById(imgId);
             if (input.files && input.files[0]) {
@@ -169,33 +245,47 @@
                 reader.onload = function(e) {
                     imgEl.src = e.target.result;
                     imgEl.style.display = 'block';
-                    input.parentElement.querySelector('i').style.display = 'none';
-                    input.parentElement.querySelector('.text-muted').style.display = 'none';
-                }
+                    const box = input.previousElementSibling;
+                    box?.querySelector('i')?.style.setProperty('display', 'none');
+                    box?.querySelector('.text-muted')?.style.setProperty('display', 'none');
+                };
                 reader.readAsDataURL(input.files[0]);
             }
         }
-        
-        // E-Signature Logic
+
+        function updateInventoryCharges() {
+            document.querySelectorAll('.inventory-table tbody tr').forEach(function(row) {
+                const expected = Number(row.querySelector('.expected-qty')?.value || 0);
+                const unit = Number(row.querySelector('.unit-cost')?.value || 0);
+                const checked = row.querySelector('input[type="radio"][data-charge-status]:checked');
+                const status = checked?.value || '';
+                const charge = !isCheckIn && (status === 'Missing' || status === 'Damaged') ? expected * unit : 0;
+                row.querySelector('.item-charge').textContent = charge.toLocaleString('vi-VN');
+            });
+        }
+        document.querySelectorAll('[data-charge-status],.unit-cost').forEach(function(input) {
+            input.addEventListener('input', updateInventoryCharges);
+            input.addEventListener('change', updateInventoryCharges);
+        });
+        updateInventoryCharges();
+
         var canvas = document.getElementById('signatureCanvas');
         var ctx = canvas.getContext('2d');
         var isDrawing = false;
         var hasDrawn = false;
-        
-        // Match actual size to style size to avoid blurry lines
+
         function resizeCanvas() {
             var rect = canvas.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height || 200;
+            ctx.lineWidth = 3;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000';
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-        
-        ctx.lineWidth = 3;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#000000';
-        
+
         function getPos(e) {
             var rect = canvas.getBoundingClientRect();
             var clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -203,26 +293,37 @@
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        function strokeStart(e) { e.preventDefault(); isDrawing = true; hasDrawn = true; var pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); document.getElementById('signatureWarning').style.display = 'none'; }
-        function strokeMove(e) { e.preventDefault(); if(isDrawing) { var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); updateBlob(); } }
-        function strokeEnd(e) { isDrawing = false; }
-        
+        function strokeStart(e) {
+            e.preventDefault();
+            isDrawing = true;
+            hasDrawn = true;
+            var pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            document.getElementById('signatureWarning').style.display = 'none';
+        }
+        function strokeMove(e) {
+            e.preventDefault();
+            if (isDrawing) {
+                var pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                document.getElementById('signatureBase64').value = canvas.toDataURL('image/png');
+            }
+        }
+        function strokeEnd() { isDrawing = false; }
+
         canvas.addEventListener('mousedown', strokeStart);
         canvas.addEventListener('mousemove', strokeMove);
         window.addEventListener('mouseup', strokeEnd);
-        
-        canvas.addEventListener('touchstart', strokeStart, {passive: false});
-        canvas.addEventListener('touchmove', strokeMove, {passive: false});
+        canvas.addEventListener('touchstart', strokeStart, { passive: false });
+        canvas.addEventListener('touchmove', strokeMove, { passive: false });
         window.addEventListener('touchend', strokeEnd);
 
-        function clearCanvas() { 
-            ctx.clearRect(0,0,canvas.width, canvas.height); 
-            document.getElementById('signatureBase64').value = ''; 
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('signatureBase64').value = '';
             hasDrawn = false;
-        }
-        
-        function updateBlob() { 
-            document.getElementById('signatureBase64').value = canvas.toDataURL('image/png'); 
         }
 
         if (navigator.geolocation) {
@@ -231,9 +332,9 @@
                 document.getElementById('geoLongitude').value = position.coords.longitude.toFixed(6);
             }, function() {}, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
         }
-        
+
         document.querySelector('form').addEventListener('submit', function(e) {
-            if(!hasDrawn) {
+            if (!hasDrawn) {
                 e.preventDefault();
                 document.getElementById('signatureWarning').style.display = 'inline-block';
                 canvas.parentElement.style.border = '2px solid red';

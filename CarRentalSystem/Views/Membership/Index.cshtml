@@ -108,7 +108,7 @@
                             <h4 class="fw-bold mb-0" style="color: @(currentTier?.Color ?? "#cd7f32");">@(currentTier?.Name ?? "Bronze")</h4>
                         </div>
                     </div>
-                    <p class="text-white-50 small mb-0">Giảm <strong class="text-success">@(currentTier?.DiscountPercent ?? 0)%</strong> cho mọi chuyến thuê • Free ship <strong>@(currentTier?.FreeDeliveryKm ?? 0)km</strong></p>
+                    <p class="text-white-50 small mb-0">Giảm <strong class="text-success">@(currentTier?.DiscountPercent ?? 0)%</strong> cho mọi chuyến thuê • Miễn phí giao xe <strong>@(currentTier?.FreeDeliveryKm ?? 0)km</strong></p>
                 </div>
                 <div class="col-md-6">
                     <small class="text-white-50 d-block mb-2">Tổng chi tiêu tích lũy</small>
@@ -179,7 +179,7 @@
                         </li>
                         <li>
                             <i class="bi bi-truck text-primary me-2 fs-6"></i>
-                            <div class="flex-grow-1">Free ship</div>
+                            <div class="flex-grow-1">Miễn phí giao xe</div>
                             <span class="benefit-value text-dark">@tier.FreeDeliveryKm km</span>
                         </li>
                         <li>

@@ -186,6 +186,8 @@ namespace CarRentalSystem.Services
             var bookings = await _context.Bookings.AsNoTracking().CountAsync(b => b.UserID == userId);
             var payments = await _context.Payments.AsNoTracking().CountAsync(p => p.Booking != null && p.Booking.UserID == userId);
             var handovers = await _context.HandoverRecords.AsNoTracking().CountAsync(h => h.Booking != null && h.Booking.UserID == userId);
+            var handoverInventory = await _context.HandoverInventoryItems.AsNoTracking().CountAsync(i => i.HandoverRecord != null && i.HandoverRecord.Booking != null && i.HandoverRecord.Booking.UserID == userId);
+            var lostFound = await _context.LostFoundItems.AsNoTracking().CountAsync(i => i.Booking != null && i.Booking.UserID == userId);
             var privacyRequests = await _context.PrivacyRequests.AsNoTracking().CountAsync(r => r.UserID == userId);
 
             return new
@@ -197,6 +199,8 @@ namespace CarRentalSystem.Services
                     new { Name = "Bookings", Count = bookings },
                     new { Name = "Payments", Count = payments },
                     new { Name = "Handovers", Count = handovers },
+                    new { Name = "HandoverInventory", Count = handoverInventory },
+                    new { Name = "LostFound", Count = lostFound },
                     new { Name = "PrivacyRequests", Count = privacyRequests }
                 },
                 Note = "Manifest only. Raw PII export requires secure delivery approved by Admin/Manager."
@@ -207,6 +211,7 @@ namespace CarRentalSystem.Services
         {
             var bookings = await _context.Bookings.AsNoTracking().CountAsync(b => b.UserID == userId);
             var payments = await _context.Payments.AsNoTracking().CountAsync(p => p.Booking != null && p.Booking.UserID == userId);
+            var lostFound = await _context.LostFoundItems.AsNoTracking().CountAsync(i => i.Booking != null && i.Booking.UserID == userId);
             var openBookings = await _context.Bookings.AsNoTracking().CountAsync(b =>
                 b.UserID == userId &&
                 b.BookingStatus != null &&
@@ -223,6 +228,7 @@ namespace CarRentalSystem.Services
                 {
                     new { Name = "Bookings", Count = bookings },
                     new { Name = "Payments", Count = payments },
+                    new { Name = "LostFound", Count = lostFound },
                     new { Name = "OpenBookings", Count = openBookings }
                 },
                 Note = "Deletion requires legal-retention review before anonymization because bookings, payments, tax invoices, disputes, and safety logs may need retention."

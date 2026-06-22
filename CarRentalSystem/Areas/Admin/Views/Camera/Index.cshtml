@@ -17,7 +17,7 @@
             <p class="text-muted mb-0">Quản lý camera đọc biển số theo khu vực/địa điểm, secret webhook và link live NVR.</p>
         </div>
         <a asp-area="Admin" asp-controller="Camera" asp-action="Monitor" class="btn btn-primary rounded-3 fw-bold">
-            <i class="bi bi-activity me-1"></i> Gate Monitor
+            <i class="bi bi-activity me-1"></i> Giám sát cổng
         </a>
     </div>
 
@@ -63,8 +63,8 @@
             <label class="form-label small fw-bold text-muted">Trạng thái</label>
             <select name="status" class="form-select rounded-3">
                 <option value="">Tất cả</option>
-                <option value="@CameraDeviceStatusConstants.Active" selected="@(ViewBag.CurrentStatus == CameraDeviceStatusConstants.Active)">Active</option>
-                <option value="@CameraDeviceStatusConstants.Inactive" selected="@(ViewBag.CurrentStatus == CameraDeviceStatusConstants.Inactive)">Inactive</option>
+                <option value="@CameraDeviceStatusConstants.Active" selected="@(ViewBag.CurrentStatus == CameraDeviceStatusConstants.Active)">Đang hoạt động</option>
+                <option value="@CameraDeviceStatusConstants.Inactive" selected="@(ViewBag.CurrentStatus == CameraDeviceStatusConstants.Inactive)">Tạm ngưng</option>
             </select>
         </div>
         <div class="col-md-2">
@@ -88,7 +88,7 @@
                     <input name="Name" class="form-control rounded-3" placeholder="Cổng vào depot" required />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold text-muted">Provider</label>
+                    <label class="form-label small fw-bold text-muted">Nhà cung cấp</label>
                     <input name="Provider" class="form-control rounded-3" placeholder="Hikvision/NVR/AI" />
                 </div>
                 <div class="col-md-2">
@@ -121,14 +121,14 @@
                     </select>
                 </div>
                 <div class="col-md-8">
-                    <label class="form-label small fw-bold text-muted">Live NVR URL</label>
+                    <label class="form-label small fw-bold text-muted">URL NVR trực tiếp</label>
                     <input name="LiveViewUrl" class="form-control rounded-3" placeholder="https://nvr.example.com/live/cam-01" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small fw-bold text-muted">Trạng thái</label>
                     <select name="Status" class="form-select rounded-3">
-                        <option value="@CameraDeviceStatusConstants.Active">Active</option>
-                        <option value="@CameraDeviceStatusConstants.Inactive">Inactive</option>
+                        <option value="@CameraDeviceStatusConstants.Active">Đang hoạt động</option>
+                        <option value="@CameraDeviceStatusConstants.Inactive">Tạm ngưng</option>
                     </select>
                 </div>
                 <div class="col-12">
@@ -164,7 +164,7 @@
                                 <input name="Name" value="@camera.Name" class="form-control rounded-3" required />
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted">Provider</label>
+                                <label class="form-label small fw-bold text-muted">Nhà cung cấp</label>
                                 <input name="Provider" value="@camera.Provider" class="form-control rounded-3" />
                             </div>
                             <div class="col-md-2">
@@ -197,14 +197,14 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-muted">Live NVR URL</label>
+                                <label class="form-label small fw-bold text-muted">URL NVR trực tiếp</label>
                                 <input name="LiveViewUrl" value="@camera.LiveViewUrl" class="form-control rounded-3" />
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label small fw-bold text-muted">Trạng thái</label>
                                 <select name="Status" class="form-select rounded-3">
-                                    <option value="@CameraDeviceStatusConstants.Active" selected="@(camera.Status == CameraDeviceStatusConstants.Active)">Active</option>
-                                    <option value="@CameraDeviceStatusConstants.Inactive" selected="@(camera.Status == CameraDeviceStatusConstants.Inactive)">Inactive</option>
+                                    <option value="@CameraDeviceStatusConstants.Active" selected="@(camera.Status == CameraDeviceStatusConstants.Active)">Đang hoạt động</option>
+                                    <option value="@CameraDeviceStatusConstants.Inactive" selected="@(camera.Status == CameraDeviceStatusConstants.Inactive)">Tạm ngưng</option>
                                 </select>
                             </div>
                             <div class="col-md-2 d-grid">
@@ -221,13 +221,13 @@
                                 @if (!string.IsNullOrWhiteSpace(camera.LiveViewUrl))
                                 {
                                     <a href="@camera.LiveViewUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success rounded-3">
-                                        <i class="bi bi-box-arrow-up-right me-1"></i>Live NVR
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>NVR trực tiếp
                                     </a>
                                 }
                                 <form asp-area="Admin" asp-controller="Camera" asp-action="RegenerateSecret" method="post">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@camera.CameraDeviceID" />
-                                    <button type="submit" class="btn btn-sm btn-outline-warning rounded-3">Regenerate secret</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-warning rounded-3">Tạo lại secret</button>
                                 </form>
                                 <form asp-area="Admin" asp-controller="Camera" asp-action="Delete" method="post" onsubmit="return confirm('Xóa camera này?');">
                                     @Html.AntiForgeryToken()

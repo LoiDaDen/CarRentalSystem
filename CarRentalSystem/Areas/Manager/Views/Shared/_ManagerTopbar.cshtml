@@ -1,0 +1,22 @@
+<header class="portal-topbar">
+    <button type="button" class="portal-menu-button" data-portal-menu aria-label="Mở menu"><i class="bi bi-list"></i></button>
+    <div>
+        <strong>Manager Portal</strong>
+        <span class="portal-topbar-subtitle">KPI và vận hành khu vực</span>
+    </div>
+    <div class="manager-shortcuts ms-auto d-none d-lg-flex">
+        <a asp-area="Manager" asp-controller="Booking" asp-action="Index">Booking</a>
+        <a asp-area="Manager" asp-controller="Operation" asp-action="Index">Cảnh báo</a>
+        <a asp-area="Manager" asp-controller="Revenue" asp-action="Index">GMV khu vực</a>
+    </div>
+    <button type="button" class="btn btn-light" data-tutorial-replay data-panel="Manager" title="Xem lại hướng dẫn" aria-label="Xem lại hướng dẫn"><i class="bi bi-question-circle"></i></button>
+    <div class="dropdown">
+        <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">@User.Identity?.Name</button>
+        <div class="dropdown-menu dropdown-menu-end">
+            <a class="dropdown-item" asp-area="Manager" asp-controller="Profile" asp-action="Index">Hồ sơ</a>
+            <form asp-area="" asp-controller="Auth" asp-action="Logout" method="post">
+                <button class="dropdown-item text-danger" type="submit">Đăng xuất</button>
+            </form>
+        </div>
+    </div>
+</header>

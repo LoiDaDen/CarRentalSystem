@@ -58,6 +58,9 @@ namespace CarRentalSystem.Models
         [ForeignKey("RecordedByUserId")]
         public User? RecordedByUser { get; set; }
 
+        public ICollection<HandoverInventoryItem> InventoryItems { get; set; } = new List<HandoverInventoryItem>();
+        public ICollection<LostFoundItem> LostFoundItems { get; set; } = new List<LostFoundItem>();
+
         // Phase 10: Soft Delete
         public bool IsDeleted { get; set; } = false;
     }

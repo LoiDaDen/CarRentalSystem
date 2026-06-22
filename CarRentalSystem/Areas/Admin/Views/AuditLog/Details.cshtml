@@ -46,7 +46,7 @@
                             </td>
                         </tr>
                         <tr><th class="text-muted">Module:</th><td><strong>@Model.EntityType</strong></td></tr>
-                        <tr><th class="text-muted">Entity ID:</th><td>@(Model.EntityId?.ToString() ?? "N/A")</td></tr>
+                        <tr><th class="text-muted">Mã thực thể:</th><td>@(Model.EntityId?.ToString() ?? "N/A")</td></tr>
                         <tr><th class="text-muted">Thời gian:</th><td>@Model.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
                         <tr><th class="text-muted">Mô tả:</th><td>@Model.Description</td></tr>
                     </table>
@@ -61,10 +61,10 @@
                 </div>
                 <div class="card-body">
                     <table class="table table-borderless mb-0">
-                        <tr><th width="140" class="text-muted">User:</th><td><strong>@(Model.UserName ?? "Anonymous")</strong></td></tr>
-                        <tr><th class="text-muted">User ID:</th><td>@(Model.UserId?.ToString() ?? "N/A")</td></tr>
-                        <tr><th class="text-muted">IP Address:</th><td><code>@Model.IpAddress</code></td></tr>
-                        <tr><th class="text-muted">Request:</th><td><code>@Model.RequestUrl</code></td></tr>
+                        <tr><th width="140" class="text-muted">Người dùng:</th><td><strong>@(Model.UserName ?? "Anonymous")</strong></td></tr>
+                        <tr><th class="text-muted">Mã người dùng:</th><td>@(Model.UserId?.ToString() ?? "N/A")</td></tr>
+                        <tr><th class="text-muted">Địa chỉ IP:</th><td><code>@Model.IpAddress</code></td></tr>
+                        <tr><th class="text-muted">Yêu cầu:</th><td><code>@Model.RequestUrl</code></td></tr>
                         <tr><th class="text-muted">User-Agent:</th><td class="small">@(Model.UserAgent ?? "N/A")</td></tr>
                     </table>
                 </div>

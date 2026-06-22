@@ -162,8 +162,9 @@
         var price24h = pricePerDay;
 
         function initMap() {
-            map = L.map('map').setView([21.0285, 105.8542], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            const baseMap = SmartMap.createMap('map', 21.0285, 105.8542, 13);
+            if (!baseMap) return;
+            map = baseMap.map;
 
             map.on('click', function(e) {
                 setMarker(e.latlng);

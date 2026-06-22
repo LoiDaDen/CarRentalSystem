@@ -1,12 +1,12 @@
 @model IEnumerable<CarRentalSystem.Models.Car>
 @{ 
-    ViewData["Title"] = "Manage Cars"; 
+    ViewData["Title"] = "Quản lý xe"; 
     Layout = "_AdminLayout"; 
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Car Management</h2>
-    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add New Car</a>
+    <h2>Quản lý xe</h2>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm xe mới</a>
 </div>
 
 @if (!Model.Any())
@@ -14,9 +14,9 @@
     <partial name="_EmptyState" model="@(new EmptyStateViewModel
     {
         Icon = "bi-car-front",
-        Title = "No cars yet",
-        Message = "Create the first car profile before opening bookings.",
-        ActionText = "Add New Car",
+        Title = "Chưa có xe",
+        Message = "Tạo hồ sơ xe đầu tiên trước khi mở đơn thuê.",
+        ActionText = "Thêm xe mới",
         ActionController = "Car",
         ActionName = "Create"
     })" />
@@ -28,11 +28,11 @@ else
         <thead class="table-light">
             <tr>
                 <th>ID</th>
-                <th>Car Details</th>
-                <th>License Plate</th>
-                <th>Price/Day</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>Thông tin xe</th>
+                <th>Biển số</th>
+                <th>Giá/ngày</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
             </tr>
         </thead>
         <tbody>
@@ -42,18 +42,18 @@ else
                     <td>@car.CarID</td>
                     <td>
                         <div class="fw-bold">@car.CarBrand?.Name @car.CarName</div>
-                        <small class="text-muted">@car.Seats Seats</small>
+                        <small class="text-muted">@car.Seats chỗ</small>
                     </td>
                     <td><span class="badge bg-secondary border">@car.LicensePlate</span></td>
                     <td>@car.PricePerDay.ToString("N0") đ</td>
                     <td>
                         <span class="badge @(car.CarStatus?.Name == "Available" ? "bg-success" : car.CarStatus?.Name == "Rented" ? "bg-warning text-dark" : "bg-danger")">
-                            @car.CarStatus?.Name
+                            @UiLabels.CarStatus(car.CarStatus?.Name)
                         </span>
                     </td>
                     <td>
-                        <a href="#" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
-                        <a href="#" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                        <a href="#" class="btn btn-sm btn-outline-primary" title="Sửa"><i class="bi bi-pencil"></i></a>
+                        <a href="#" class="btn btn-sm btn-outline-danger" title="Xóa"><i class="bi bi-trash"></i></a>
                     </td>
                 </tr>
             }

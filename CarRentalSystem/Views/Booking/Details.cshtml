@@ -70,7 +70,7 @@
                 "Pending" => "bg-warning text-dark",
                 _ => "bg-secondary"
             }) fs-6">
-                @Model.BookingStatus?.Name
+                @UiLabels.BookingStatus(Model.BookingStatus?.Name)
             </span>
         </div>
         <div class="card-body">
@@ -229,7 +229,7 @@
                         </tr>
                         <tr>
                             <th>Tiền cọc:</th>
-                            <td>@Model.DepositAmount.ToString("N0") VNĐ <span class="badge bg-secondary">@Model.DepositStatus</span></td>
+                            <td>@Model.DepositAmount.ToString("N0") VNĐ <span class="badge bg-secondary">@UiLabels.DepositStatus(Model.DepositStatus)</span></td>
                         </tr>
                         @if (Model.ActualPickupDate.HasValue)
                         {
@@ -328,7 +328,7 @@
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0">
                             <thead>
-                                <tr><th>Loại</th><th>Ngày</th><th>ODO</th><th>Xăng</th></tr>
+                                <tr><th>Loại</th><th>Ngày</th><th>ODO</th><th>Xăng</th><th class="text-end">Bồi thường phụ kiện</th><th class="text-end">Thao tác</th></tr>
                             </thead>
                             <tbody>
                                 @foreach (var hr in Model.HandoverRecords)
@@ -338,6 +338,10 @@
                                         <td>@hr.RecordDate.ToString("HH:mm dd/MM")</td>
                                         <td>@hr.Odo km</td>
                                         <td>@hr.FuelLevel</td>
+                                        <td class="text-end">@hr.InventoryItems.Sum(i => i.MissingCharge).ToString("N0")</td>
+                                        <td class="text-end">
+                                            <a asp-controller="Handover" asp-action="ViewRecord" asp-route-id="@hr.HandoverID" class="btn btn-sm btn-outline-primary">Xem</a>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>

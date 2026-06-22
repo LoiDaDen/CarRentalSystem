@@ -1,0 +1,27 @@
+@using System.Security.Claims
+@inject IAreaService AreaService
+@{
+    var userId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : 0;
+    var areas = userId > 0 ? await AreaService.GetAreasForUserAsync(userId) : new List<Area>();
+    var current = Context.Request.Cookies["CurrentAreaId"];
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+@if (areas.Count > 0)
+{
+    <form asp-area="Manager" asp-controller="Area" asp-action="SetCurrent" method="post" class="px-2 mb-3">
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <select class="form-select form-select-sm" name="areaId" onchange="this.form.submit()" aria-label="Khu vực quản lý">
+            @foreach (var area in areas)
+            {
+                if (current == area.AreaID.ToString())
+                {
+                    <option value="@area.AreaID" selected>@area.Name</option>
+                }
+                else
+                {
+                    <option value="@area.AreaID">@area.Name</option>
+                }
+            }
+        </select>
+    </form>
+}

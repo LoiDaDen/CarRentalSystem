@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 // CarRentalSystem/Areas/Admin/Controllers/AreaApiController.cs
 using CarRentalSystem.Data;
 using CarRentalSystem.ViewModels.Areas;
@@ -16,7 +17,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
     /// </summary>
     [Route("admin/api")]
     [ApiController]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class AreaApiController : ControllerBase
     {
         private readonly ApplicationDbContext _context;

@@ -184,6 +184,72 @@ namespace CarRentalSystem.Tests.UnitTests
         }
 
         [Fact]
+        [Trait("Module", "Booking")]
+        [Trait("Type", "LifecycleEvidence")]
+        public async Task FullLifecycle_PersistsPaymentContractHandoversSettlementAndAvailableCar()
+        {
+            var service = CreateTransitionService();
+            var booking = SeedBooking(BookingStatusConstants.Confirmed, PaymentStatusConstants.Paid);
+            var payment = await _context.Payments.FirstAsync(p => p.BookingID == booking.BookingID);
+
+            _context.PaymentLedgerEntries.Add(new PaymentLedgerEntry
+            {
+                BookingID = booking.BookingID,
+                PaymentID = payment.PaymentID,
+                Provider = "MockPayOS",
+                OrderCode = 990000 + booking.BookingID,
+                EntryType = PaymentLedgerEntryTypeConstants.DepositCharge,
+                Amount = payment.Amount,
+                Status = PaymentStatusConstants.Paid,
+                IdempotencyKey = $"lifecycle-{booking.BookingID}-deposit"
+            });
+            _context.DigitalContracts.Add(new DigitalContract
+            {
+                BookingID = booking.BookingID,
+                ContractNo = $"LIFECYCLE-{booking.BookingID}",
+                CustomerName = "Lifecycle Customer",
+                CustomerIdentityCard = "MASKED",
+                CustomerPhone = "MASKED",
+                CustomerAddress = "MASKED",
+                CarLicensePlate = "TEST-LIFECYCLE",
+                CarModel = "Lifecycle Car",
+                RentalStartDate = booking.StartDate,
+                RentalEndDate = booking.EndDate,
+                TotalContractValue = booking.TotalPrice,
+                DepositAmount = booking.DepositAmount,
+                TermsAndConditions = "Lifecycle test terms",
+                IsSignedByCustomer = true,
+                CustomerSignDate = DateTime.UtcNow
+            });
+            AddHandover(booking.BookingID, "CheckIn");
+            await _context.SaveChangesAsync();
+
+            (await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Active, 1, "Staff")).IsSuccess.Should().BeTrue();
+
+            AddHandover(booking.BookingID, "CheckOut");
+            _context.SettlementReviews.Add(new SettlementReview
+            {
+                BookingID = booking.BookingID,
+                ReviewType = SettlementReviewTypeConstants.Cleaning,
+                Amount = 0,
+                Reason = "Lifecycle return accepted",
+                RequestedByUserID = 1
+            });
+            await _context.SaveChangesAsync();
+
+            (await service.TransitionAsync(booking.BookingID, BookingStatusConstants.Completed, 1, "Staff")).IsSuccess.Should().BeTrue();
+
+            var completed = await _context.Bookings.Include(b => b.BookingStatus).FirstAsync(b => b.BookingID == booking.BookingID);
+            completed.BookingStatus!.Name.Should().Be(BookingStatusConstants.Completed);
+            completed.DepositStatus.Should().Be(DepositStatusConstants.Refunded);
+            (await _context.Cars.FindAsync(booking.CarID))!.CarStatusID.Should().Be(1);
+            _context.PaymentLedgerEntries.Should().ContainSingle(e => e.BookingID == booking.BookingID && e.Status == PaymentStatusConstants.Paid);
+            _context.DigitalContracts.Should().ContainSingle(c => c.BookingID == booking.BookingID && c.IsSignedByCustomer);
+            _context.HandoverRecords.Count(h => h.BookingID == booking.BookingID).Should().Be(2);
+            _context.SettlementReviews.Should().ContainSingle(s => s.BookingID == booking.BookingID);
+        }
+
+        [Fact]
         public async Task Transition_PendingToExpired_Succeeds()
         {
             var service = CreateTransitionService();
@@ -366,7 +432,7 @@ namespace CarRentalSystem.Tests.UnitTests
         {
             var env = new Mock<IWebHostEnvironment>();
             env.Setup(e => e.ContentRootPath).Returns(Path.GetTempPath());
-            var controller = new SecureFileController(env.Object, _context, CreateAuditTrailService());
+            var controller = new SecureFileController(env.Object, _context, CreateAuditTrailService(), Mock.Of<IAreaService>(), Mock.Of<IPiiAccessService>());
             AttachHttpContext(controller, 2);
             return controller;
         }

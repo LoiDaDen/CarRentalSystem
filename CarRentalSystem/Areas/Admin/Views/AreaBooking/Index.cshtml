@@ -50,7 +50,7 @@
                     <option value="">Tất cả</option>
                     @foreach (var s in statuses)
                     {
-                        <option value="@s.Name" selected="@(ViewBag.Status?.ToString() == s.Name ? "selected" : null)">@s.Name</option>
+                        <option value="@s.Name" selected="@(ViewBag.Status?.ToString() == s.Name ? "selected" : null)">@UiLabels.BookingStatus(s.Name)</option>
                     }
                 </select>
             </div>
@@ -141,7 +141,7 @@ else
                             </td>
                             <td class="text-center">
                                 <span class="badge @statusBadge rounded-pill px-3 py-2">
-                                    @b.BookingStatus?.Name
+                                    @UiLabels.BookingStatus(b.BookingStatus?.Name)
                                 </span>
                             </td>
                             <td class="text-center">

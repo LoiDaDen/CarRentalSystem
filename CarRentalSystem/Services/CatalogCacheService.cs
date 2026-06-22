@@ -12,7 +12,7 @@ namespace CarRentalSystem.Services
         Task InvalidateAsync();
     }
 
-    public record CatalogCarModel(int Id, string Name, int? SeatCount, string? FuelType, string? Transmission);
+    public record CatalogCarModel(int Id, string Name, int? SeatCount, string? FuelType, string? Transmission, int? FromYear, int? ToYear);
     public sealed class CatalogLocation
     {
         public int LocationID { get; set; }
@@ -36,7 +36,7 @@ namespace CarRentalSystem.Services
 
     public class CatalogCacheService : ICatalogCacheService
     {
-        private const string Prefix = "catalog:v1";
+        private const string Prefix = "catalog:v2";
         private readonly ApplicationDbContext _context;
         private readonly ICacheService _cache;
         private readonly IConfiguration _configuration;
@@ -59,7 +59,7 @@ namespace CarRentalSystem.Services
                 .AsNoTracking()
                 .Where(m => m.BrandID == brandId && m.IsActive)
                 .OrderBy(m => m.Name)
-                .Select(m => new CatalogCarModel(m.CarModelID, m.Name, m.SeatCount, m.FuelType, m.Transmission))
+                .Select(m => new CatalogCarModel(m.CarModelID, m.Name, m.SeatCount, m.FuelType, m.Transmission, m.FromYear, m.ToYear))
                 .ToListAsync();
 
             await _cache.SetAsync(key, models, TimeSpan.FromMinutes(_configuration.GetValue("Cache:CatalogTtlMinutes", 15)));

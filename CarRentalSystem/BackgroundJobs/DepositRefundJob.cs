@@ -38,12 +38,33 @@ namespace CarRentalSystem.BackgroundJobs
                 .ToListAsync();
 
             var createdCount = 0;
+            var updatedCount = 0;
             foreach (var booking in eligibleBookings)
             {
+                var approvedDeductions = await _db.SettlementReviews
+                    .Where(r => r.BookingID == booking.BookingID && r.Status == SettlementReviewStatusConstants.Approved)
+                    .SumAsync(r => r.Amount);
+                var refundableAmount = Math.Max(0, booking.DepositAmount - approvedDeductions);
+
+                if (refundableAmount <= 0)
+                {
+                    booking.DepositStatus = DepositStatusConstants.Deducted;
+                    _db.AuditLogs.Add(new AuditLog
+                    {
+                        Action = "DepositRefundSkipped",
+                        EntityType = "Booking",
+                        EntityId = booking.BookingID,
+                        Description = $"No remaining deposit to refund after approved deductions {approvedDeductions:N0}. Car: {booking.Car?.LicensePlate}",
+                        UserName = "System (Hangfire)"
+                    });
+                    updatedCount++;
+                    continue;
+                }
+
                 var request = await _ledger.CreateRefundRequestAsync(
                     booking.BookingID,
-                    booking.DepositAmount,
-                    "Eligible for deposit refund after 15-day holding period.");
+                    refundableAmount,
+                    $"Eligible for deposit refund after 15-day holding period. Approved deductions: {approvedDeductions:N0}.");
 
                 booking.DepositStatus = DepositStatusConstants.PendingRefund;
                 createdCount++;
@@ -53,15 +74,15 @@ namespace CarRentalSystem.BackgroundJobs
                     Action = "DepositRefundRequest",
                     EntityType = "Booking",
                     EntityId = booking.BookingID,
-                    Description = $"Created refund request #{request.RefundRequestID} for {booking.DepositAmount:N0}. Car: {booking.Car?.LicensePlate}",
+                    Description = $"Created refund request #{request.RefundRequestID} for {refundableAmount:N0}. Approved deductions: {approvedDeductions:N0}. Car: {booking.Car?.LicensePlate}",
                     UserName = "System (Hangfire)"
                 });
             }
 
-            if (createdCount > 0)
+            if (createdCount > 0 || updatedCount > 0)
             {
                 await _db.SaveChangesAsync();
-                _logger.LogInformation("Created {Count} deposit refund requests.", createdCount);
+                _logger.LogInformation("Created {Count} deposit refund requests and updated {UpdatedCount} deposit statuses.", createdCount, updatedCount);
             }
         }
     }

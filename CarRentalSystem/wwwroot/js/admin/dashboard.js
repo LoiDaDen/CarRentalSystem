@@ -1,24 +1,32 @@
-// Admin Dashboard Charts
-document.addEventListener('DOMContentLoaded', function () {
-    // Revenue Chart
-    const ctxRev = document.getElementById('revenueChart');
-    if (ctxRev) {
-        new Chart(ctxRev, {
-            type: 'line',
+document.addEventListener("DOMContentLoaded", () => {
+    if (typeof Chart === "undefined") return;
+
+    const data = window.dashboardData || {};
+    const styles = getComputedStyle(document.documentElement);
+    const textColor = styles.getPropertyValue("--admin-muted").trim() || "#6b7280";
+    const borderColor = styles.getPropertyValue("--admin-border").trim() || "#e5e7eb";
+    const primary = styles.getPropertyValue("--admin-primary").trim() || "#2563eb";
+    const palette = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#0284c7", "#7c3aed", "#64748b"];
+
+    Chart.defaults.color = textColor;
+    Chart.defaults.borderColor = borderColor;
+
+    const revenueCanvas = document.getElementById("revenueChart");
+    if (revenueCanvas) {
+        new Chart(revenueCanvas, {
+            type: "line",
             data: {
-                labels: window.dashboardData?.revenueLabels || [],
+                labels: data.depositLabels || [],
                 datasets: [{
-                    label: 'Doanh thu (Triệu VNĐ)',
-                    data: window.dashboardData?.revenueData || [],
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 3,
+                    label: "Tiền cọc",
+                    data: data.depositData || [],
+                    borderColor: primary,
+                    backgroundColor: "rgba(37, 99, 235, .10)",
                     fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#3b82f6',
-                    pointBorderWidth: 2,
-                    pointRadius: 4
+                    tension: .35,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
                 }]
             },
             options: {
@@ -27,60 +35,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 plugins: { legend: { display: false } },
                 scales: {
                     x: { grid: { display: false } },
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.05)' }
-                    }
+                    y: { beginAtZero: true, ticks: { callback: (value) => `${value} tr` } }
                 }
             }
         });
     }
 
-    // Bookings Chart
-    const ctxBook = document.getElementById('bookingsChart');
-    if (ctxBook) {
-        new Chart(ctxBook, {
-            type: 'doughnut',
+    const bookingCanvas = document.getElementById("bookingsChart");
+    if (bookingCanvas) {
+        new Chart(bookingCanvas, {
+            type: "doughnut",
             data: {
-                labels: window.dashboardData?.bookingLabels || [],
-                datasets: [{
-                    data: window.dashboardData?.bookingData || [],
-                    backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'],
-                    borderWidth: 0
-                }]
+                labels: data.bookingLabels || [],
+                datasets: [{ data: data.bookingData || [], backgroundColor: palette, borderWidth: 0 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '70%',
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
+                cutout: "68%",
+                plugins: { legend: { position: "bottom", labels: { boxWidth: 9, usePointStyle: true } } }
             }
         });
     }
 
-    // Cars Chart
-    const ctxCars = document.getElementById('carsChart');
-    if (ctxCars) {
-        new Chart(ctxCars, {
-            type: 'bar',
+    const carCanvas = document.getElementById("carsChart");
+    if (carCanvas) {
+        new Chart(carCanvas, {
+            type: "bar",
             data: {
-                labels: window.dashboardData?.carLabels || [],
-                datasets: [{
-                    label: 'Số lượng',
-                    data: window.dashboardData?.carData || [],
-                    backgroundColor: '#3b82f6',
-                    borderRadius: 6
-                }]
+                labels: data.carLabels || [],
+                datasets: [{ data: data.carData || [], backgroundColor: palette, borderRadius: 6 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                }
+                scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } }
             }
         });
     }

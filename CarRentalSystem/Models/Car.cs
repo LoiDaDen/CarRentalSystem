@@ -98,6 +98,13 @@ namespace CarRentalSystem.Models
         public bool IsApproved { get; set; } = true;
 
         [Required]
+        [MaxLength(20)]
+        public string ApprovalStatus { get; set; } = CarApprovalStatusConstants.Approved;
+
+        [MaxLength(500)]
+        public string? ApprovalRejectionReason { get; set; }
+
+        [Required]
         [ForeignKey("Location")]
         public int LocationID { get; set; }
         public Location? Location { get; set; }
@@ -134,6 +141,8 @@ namespace CarRentalSystem.Models
         public ICollection<Alert>? Alerts { get; set; } = new List<Alert>();
         public ICollection<Review>? Reviews { get; set; } = new List<Review>();
         public ICollection<MaintenanceLog>? MaintenanceLogs { get; set; } = new List<MaintenanceLog>();
+        public ICollection<CarInventoryItem>? InventoryItems { get; set; } = new List<CarInventoryItem>();
+        public ICollection<CarChangeRequest>? ChangeRequests { get; set; } = new List<CarChangeRequest>();
 
         // Phase 2: Business Fees
         [Range(0, double.MaxValue)]
@@ -159,7 +168,7 @@ namespace CarRentalSystem.Models
 
         [Range(0, 100)]
         [Column(TypeName = "decimal(5,2)")]
-        public decimal CommissionRate { get; set; } = 20.00m; // Platform charges 20% commission by default
+        public decimal CommissionRate { get; set; } = 20.00m; // Legacy compatibility field; not used for new deposit-based settlement.
 
         // Phase 5: Electric Vehicle Support
         public bool IsElectric { get; set; } = false;
@@ -206,6 +215,7 @@ namespace CarRentalSystem.Models
         public string ContractSigningMode { get; set; } = CarContractSigningModes.PhysicalSelfManaged;
 
         // Phase 10: Soft Delete
+        public bool IsPendingDeletion { get; set; } = false;
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

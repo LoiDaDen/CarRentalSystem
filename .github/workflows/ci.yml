@@ -40,6 +40,8 @@ jobs:
         run: dotnet tool restore --tool-manifest CarRentalSystem/dotnet-tools.json
       - name: Check idempotent migration script
         run: dotnet tool run dotnet-ef --tool-manifest CarRentalSystem/dotnet-tools.json -- migrations script --idempotent --project CarRentalSystem/CarRentalSystem.csproj --startup-project CarRentalSystem/CarRentalSystem.csproj --no-build --configuration Release --output migration-check.sql
+      - name: Check pending EF model changes
+        run: dotnet tool run dotnet-ef --tool-manifest CarRentalSystem/dotnet-tools.json -- migrations has-pending-model-changes --project CarRentalSystem/CarRentalSystem.csproj --startup-project CarRentalSystem/CarRentalSystem.csproj --no-build --configuration Release
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -63,3 +65,28 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+
+  legacy-e2e-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject legacy E2E runtime remnants
+        shell: bash
+        run: |
+          set -euo pipefail
+          token_a='c''ypress'
+          token_b='C''ypress'
+          token_c='cy''\.'
+          token_d='c''ypress\.config'
+          token_e='Run-''Cypress'
+          pattern="${token_a}|${token_b}|${token_c}|${token_d}|${token_e}"
+          if git grep -n -I -E "$pattern" -- \
+            ':!node_modules/**' \
+            ':!**/bin/**' \
+            ':!**/obj/**' \
+            ':!playwright/reports/**' \
+            ':!test-results/**'
+          then
+            echo "Legacy E2E runtime remnants found. Use Playwright only."
+            exit 1
+          fi

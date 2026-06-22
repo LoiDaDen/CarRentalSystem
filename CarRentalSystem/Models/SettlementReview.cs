@@ -51,6 +51,7 @@ namespace CarRentalSystem.Models
         public const string Fuel = "Fuel";
         public const string Cleaning = "Cleaning";
         public const string Damage = "Damage";
+        public const string LostItem = "LostItem";
         public const string Toll = "Toll";
         public const string Violation = "Violation";
         public const string Other = "Other";

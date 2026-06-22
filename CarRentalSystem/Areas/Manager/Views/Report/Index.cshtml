@@ -1,0 +1,7 @@
+@model ManagerReportViewModel
+@{
+    ViewData["Title"] = "Báo cáo";
+}
+<h1 class="portal-page-title h3 mb-4">Báo cáo vận hành</h1>
+<div class="row g-3 mb-4">@foreach(var status in Model.BookingStatuses){<div class="col-6 col-md-3"><div class="portal-card portal-kpi"><div class="label">@status.Key</div><div class="value">@status.Value</div></div></div>}</div>
+<div class="portal-card">@await Html.PartialAsync("_PortalBookingTable", Model.RecentBookings)</div>

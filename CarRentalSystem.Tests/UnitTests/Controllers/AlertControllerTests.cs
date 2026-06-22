@@ -16,12 +16,18 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
     public class AlertControllerTests
     {
         private readonly Mock<ITrackingService> _mockService;
+        private readonly Mock<ICarService> _mockCarService;
         private readonly AlertController _controller;
 
         public AlertControllerTests()
         {
             _mockService = new Mock<ITrackingService>();
-            _controller = new AlertController(_mockService.Object);
+            _mockCarService = new Mock<ICarService>();
+            _mockService
+                .Setup(s => s.GetAlertsAsync(null, null, null, null, null))
+                .ReturnsAsync(new List<Alert>());
+            _mockCarService.Setup(s => s.GetAllCarsAsync()).ReturnsAsync(new List<Car>());
+            _controller = new AlertController(_mockService.Object, _mockCarService.Object);
         }
 
         // =============================================
@@ -38,10 +44,10 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             {
                 new Alert { AlertID = 1, Status = "Active" }
             };
-            _mockService.Setup(s => s.GetActiveAlertsAsync()).ReturnsAsync(activeAlerts);
+            _mockService.Setup(s => s.GetAlertsAsync(null, null, null, null, null)).ReturnsAsync(activeAlerts);
 
             // Act
-            var result = await _controller.Index() as ViewResult;
+            var result = await _controller.Index(null, null, null, null, null) as ViewResult;
 
             // Assert
             result.Should().NotBeNull();

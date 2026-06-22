@@ -1,0 +1,20 @@
+<header class="portal-topbar">
+    <button type="button" class="portal-menu-button" data-portal-menu aria-label="Mở menu"><i class="bi bi-list"></i></button>
+    <div>
+        <strong>Staff Portal</strong>
+        <span class="portal-topbar-subtitle">Trung tâm xử lý tác vụ</span>
+    </div>
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-light" data-tutorial-replay data-panel="Staff" title="Xem lại hướng dẫn" aria-label="Xem lại hướng dẫn"><i class="bi bi-question-circle"></i></button>
+        <span class="portal-notification"><i class="bi bi-bell"></i><b>0</b></span>
+        <div class="dropdown">
+            <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">@User.Identity?.Name</button>
+            <div class="dropdown-menu dropdown-menu-end">
+                <a class="dropdown-item" asp-area="Staff" asp-controller="Profile" asp-action="Index">Hồ sơ</a>
+                <form asp-area="" asp-controller="Auth" asp-action="Logout" method="post">
+                    <button class="dropdown-item text-danger" type="submit">Đăng xuất</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>

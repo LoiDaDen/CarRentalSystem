@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class PaymentController : Controller
     {
         private readonly ApplicationDbContext _context;

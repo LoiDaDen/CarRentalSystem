@@ -71,7 +71,7 @@
                         <option value="">Tất cả</option>
                         @foreach (var item in statuses)
                         {
-                            <option value="@item" selected="@(selectedStatus == item)">@item</option>
+                            <option value="@item" selected="@(selectedStatus == item)">@UiLabels.GenericStatus(item)</option>
                         }
                     </select>
                 </div>
@@ -80,15 +80,15 @@
                     <select name="fileKind" class="form-select">
                         <option value="">Tất cả</option>
                         <option value="Pdf" selected="@(selectedFileKind == "Pdf")">PDF</option>
-                        <option value="Image" selected="@(selectedFileKind == "Image")">Image</option>
+                        <option value="Image" selected="@(selectedFileKind == "Image")">Ảnh</option>
                     </select>
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Car ID</label>
+                    <label class="form-label small fw-bold">Mã xe</label>
                     <input name="carId" type="number" value="@ViewBag.CarId" class="form-control" />
                 </div>
                 <div class="col-md-4 col-xl-2">
-                    <label class="form-label small fw-bold">Booking ID</label>
+                    <label class="form-label small fw-bold">Mã đơn</label>
                     <input name="bookingId" type="number" value="@ViewBag.BookingId" class="form-control" />
                 </div>
                 <div class="col-md-4 col-xl-2">
@@ -118,7 +118,7 @@
                         <th>Gắn với</th>
                         <th>Phân loại cũ</th>
                         <th>Trạng thái</th>
-                        <th class="text-end">File</th>
+                        <th class="text-end">Tệp</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -134,7 +134,7 @@
                         <tr>
                             <td>
                                 <div class="fw-bold">@(item.Title ?? $"Tài liệu #{item.PhysicalContractID}")</div>
-                                <div class="small text-muted">#@item.PhysicalContractID · @item.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @item.FileKind</div>
+                                <div class="small text-muted">#@item.PhysicalContractID · @item.UploadedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @(item.FileKind == "Image" ? "Ảnh" : item.FileKind == "Pdf" ? "PDF" : item.FileKind)</div>
                                 @if (!string.IsNullOrWhiteSpace(item.Note))
                                 {
                                     <div class="small text-muted text-truncate" style="max-width: 320px;">@item.Note</div>
@@ -147,7 +147,7 @@
                                 }
                                 @if (item.BookingID.HasValue)
                                 {
-                                    <div class="small"><i class="bi bi-calendar2-check me-1"></i>Booking #@item.BookingID</div>
+                                    <div class="small"><i class="bi bi-calendar2-check me-1"></i>Đơn #@item.BookingID</div>
                                 }
                             </td>
                             <td style="min-width: 220px;">
@@ -155,11 +155,11 @@
                                 <div class="small text-muted">AI cũ: @(item.AiConfidence?.ToString("0") ?? "0")%</div>
                             </td>
                             <td>
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary">@item.Status</span>
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary">@UiLabels.GenericStatus(item.Status)</span>
                             </td>
                             <td class="text-end">
                                 <a href="@item.FileUrl" target="_blank" class="btn btn-outline-secondary btn-sm">
-                                    <i class="bi bi-box-arrow-up-right me-1"></i>Xem file cũ
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Xem tệp cũ
                                 </a>
                             </td>
                         </tr>

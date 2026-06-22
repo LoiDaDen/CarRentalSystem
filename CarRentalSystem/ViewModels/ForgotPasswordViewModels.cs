@@ -21,7 +21,9 @@ namespace CarRentalSystem.ViewModels
         public string Otp { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Vui lòng nhập mật khẩu mới.")]
-        [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự.")]
+        [MinLength(8, ErrorMessage = "Mật khẩu phải có ít nhất 8 ký tự.")]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$",
+            ErrorMessage = "Password must include uppercase, lowercase, number, and special character.")]
         public string NewPassword { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Vui lòng xác nhận mật khẩu mới.")]

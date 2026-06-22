@@ -41,7 +41,18 @@ namespace CarRentalSystem.Services
                     (r.Status == RefundRequestStatusConstants.PendingReview ||
                      r.Status == RefundRequestStatusConstants.Approved));
 
-            if (existing != null) return existing;
+            if (existing != null)
+            {
+                if (existing.Status == RefundRequestStatusConstants.PendingReview &&
+                    (existing.Amount != amount || existing.Reason != reason))
+                {
+                    existing.Amount = amount;
+                    existing.Reason = reason;
+                    await _context.SaveChangesAsync();
+                }
+
+                return existing;
+            }
 
             var request = new RefundRequest
             {

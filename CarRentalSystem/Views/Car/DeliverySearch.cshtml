@@ -389,8 +389,7 @@
 
                     // Reverse geocode
                     try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                        const data = await res.json();
+                        const data = await SmartMap.reverseGeocode(lat, lng);
                         if (data && data.display_name) {
                             document.getElementById('customerAddress').value = data.display_name;
                         }

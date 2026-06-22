@@ -1,0 +1,121 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    string Active(string name, string? actionName = null) =>
+        controller.Equals(name, StringComparison.OrdinalIgnoreCase) &&
+        (actionName == null || action.Equals(actionName, StringComparison.OrdinalIgnoreCase))
+            ? "active"
+            : "";
+    string Expanded(params string[] controllers) =>
+        controllers.Contains(controller, StringComparer.OrdinalIgnoreCase) ? "show" : "";
+}
+
+<aside class="admin-sidebar" id="adminSidebar" aria-label="Điều hướng quản trị">
+    <div class="admin-sidebar-header">
+        <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index" class="admin-brand">
+            <img src="~/images/car_rental_logo.png" alt="" />
+            <span class="admin-brand-copy">
+                <strong>CarRental</strong>
+                <small>Admin Portal</small>
+            </span>
+        </a>
+        <button type="button" class="admin-icon-button admin-sidebar-close d-lg-none" data-admin-sidebar-close aria-label="Đóng menu">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <div class="admin-sidebar-scroll">
+        @await Component.InvokeAsync("AreaSelector")
+
+        <nav class="admin-nav">
+            <div class="admin-nav-group">
+                <div class="admin-nav-heading">Tổng quan</div>
+                <a class="admin-nav-link @Active("Dashboard")" data-tutorial-target="admin-dashboard" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                    <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+                </a>
+                <a class="admin-nav-link @Active("Enterprise")" asp-area="Admin" asp-controller="Enterprise" asp-action="Index">
+                    <i class="bi bi-command"></i><span>Trung tâm doanh nghiệp</span>
+                </a>
+                <a class="admin-nav-link @Active("AreaDashboard")" asp-area="Admin" asp-controller="AreaDashboard" asp-action="Index">
+                    <i class="bi bi-buildings"></i><span>Tổng quan khu vực</span>
+                </a>
+            </div>
+
+            <div class="admin-nav-group">
+                <div class="admin-nav-heading">Người dùng</div>
+                <a class="admin-nav-link @Active("User", "Index")" data-tutorial-target="admin-users" asp-area="Admin" asp-controller="User" asp-action="Index">
+                    <i class="bi bi-people-fill"></i><span>Tài khoản người dùng</span>
+                </a>
+                <a class="admin-nav-link @Active("User", "PartnerRequests")" asp-area="Admin" asp-controller="User" asp-action="PartnerRequests">
+                    <i class="bi bi-person-check-fill"></i><span>Duyệt đối tác & eKYC</span>
+                </a>
+                <a class="admin-nav-link @Active("Membership")" asp-area="Admin" asp-controller="Membership" asp-action="Index">
+                    <i class="bi bi-gem"></i><span>Thành viên</span>
+                </a>
+                <a class="admin-nav-link @Active("AreaStaff")" asp-area="Admin" asp-controller="AreaStaff" asp-action="Index">
+                    <i class="bi bi-person-workspace"></i><span>Nhân sự khu vực</span>
+                </a>
+            </div>
+
+            <div class="admin-nav-group">
+                <button class="admin-nav-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#adminFleetNav" aria-expanded="@(Expanded("Car", "CarApproval", "Maintenance", "Lookups") == "show" ? "true" : "false")">
+                    <span><i class="bi bi-car-front-fill"></i>Quản lý xe</span><i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse @Expanded("Car", "CarApproval", "Maintenance", "Lookups")" id="adminFleetNav">
+                    <a class="admin-nav-link admin-nav-sub @Active("Car", "Manage") @Active("Car", "Index")" data-tutorial-target="admin-cars" asp-area="Admin" asp-controller="Car" asp-action="Manage"><i class="bi bi-list-check"></i><span>Danh sách xe</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("CarApproval")" data-tutorial-target="admin-car-approval" asp-area="Admin" asp-controller="CarApproval" asp-action="Index"><i class="bi bi-check2-square"></i><span>Duyệt xe</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("Maintenance")" asp-area="Admin" asp-controller="Maintenance" asp-action="Index"><i class="bi bi-tools"></i><span>Bảo trì</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("Lookups")" asp-area="Admin" asp-controller="Lookups" asp-action="Index"><i class="bi bi-tags-fill"></i><span>Hãng, loại & trạng thái</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("Car", "Trash")" asp-area="Admin" asp-controller="Car" asp-action="Trash"><i class="bi bi-trash3"></i><span>Thùng rác xe</span></a>
+                </div>
+            </div>
+
+            <div class="admin-nav-group">
+                <button class="admin-nav-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#adminOpsNav" aria-expanded="@(Expanded("Booking", "Payment", "PhysicalContracts", "Tracking", "LostFound", "Settlement") == "show" ? "true" : "false")">
+                    <span><i class="bi bi-kanban-fill"></i>Booking & vận hành</span><i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="collapse @Expanded("Booking", "Payment", "PhysicalContracts", "Tracking", "LostFound", "Settlement")" id="adminOpsNav">
+                    <a class="admin-nav-link admin-nav-sub @Active("Booking")" data-tutorial-target="admin-bookings" asp-area="Admin" asp-controller="Booking" asp-action="Index"><i class="bi bi-calendar2-check-fill"></i><span>Bookings</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("Payment")" data-tutorial-target="admin-payments" asp-area="Admin" asp-controller="Payment" asp-action="Index"><i class="bi bi-credit-card-fill"></i><span>Thanh toán</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("PhysicalContracts")" data-tutorial-target="admin-contracts" asp-area="Admin" asp-controller="PhysicalContracts" asp-action="Index"><i class="bi bi-file-earmark-text-fill"></i><span>Hợp đồng</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("Tracking")" asp-area="Admin" asp-controller="Tracking" asp-action="Index"><i class="bi bi-radar"></i><span>Theo dõi xe</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("LostFound")" asp-area="Admin" asp-controller="LostFound" asp-action="Index"><i class="bi bi-box2-heart-fill"></i><span>Thất lạc</span></a>
+                    <a class="admin-nav-link admin-nav-sub @Active("Settlement")" asp-area="Admin" asp-controller="Settlement" asp-action="Index"><i class="bi bi-cash-stack"></i><span>Đối soát</span></a>
+                </div>
+            </div>
+
+            <div class="admin-nav-group">
+                <div class="admin-nav-heading">Kinh doanh</div>
+                <a class="admin-nav-link @Active("Promotions")" data-tutorial-target="admin-promotions" asp-area="Admin" asp-controller="Promotions" asp-action="Index"><i class="bi bi-ticket-perforated-fill"></i><span>Khuyến mãi</span></a>
+                <a class="admin-nav-link @Active("Reviews")" asp-area="Admin" asp-controller="Reviews" asp-action="Index"><i class="bi bi-star-fill"></i><span>Đánh giá</span></a>
+                <a class="admin-nav-link @Active("StartupKpi")" asp-area="Admin" asp-controller="StartupKpi" asp-action="Index"><i class="bi bi-bullseye"></i><span>KPI startup 6 tháng</span></a>
+                <a class="admin-nav-link @Active("Reports")" data-tutorial-target="admin-reports" asp-area="Admin" asp-controller="Reports" asp-action="Index"><i class="bi bi-bar-chart-fill"></i><span>Báo cáo</span></a>
+                <a class="admin-nav-link @Active("HolidayPricing")" asp-area="Admin" asp-controller="HolidayPricing" asp-action="Index"><i class="bi bi-calendar-event-fill"></i><span>Giá ngày lễ</span></a>
+                <a class="admin-nav-link @Active("Blog")" asp-area="Admin" asp-controller="Blog" asp-action="Index"><i class="bi bi-journal-richtext"></i><span>Nội dung Blog</span></a>
+            </div>
+
+            <div class="admin-nav-group">
+                <div class="admin-nav-heading">Hỗ trợ</div>
+                <a class="admin-nav-link @Active("Support")" asp-area="Admin" asp-controller="Support" asp-action="Index"><i class="bi bi-headset"></i><span>Support tickets</span></a>
+                <a class="admin-nav-link @Active("Contacts")" asp-area="Admin" asp-controller="Contacts" asp-action="Index"><i class="bi bi-envelope-paper-fill"></i><span>Hộp thư liên hệ</span></a>
+                <a class="admin-nav-link @Active("Privacy")" asp-area="Admin" asp-controller="Privacy" asp-action="Index"><i class="bi bi-person-lock"></i><span>Yêu cầu quyền riêng tư</span></a>
+            </div>
+
+            <div class="admin-nav-group">
+                <div class="admin-nav-heading">Hệ thống</div>
+                <a class="admin-nav-link @Active("Area")" data-tutorial-target="admin-system" asp-area="Admin" asp-controller="Area" asp-action="Index"><i class="bi bi-geo-alt-fill"></i><span>Khu vực</span></a>
+                <a class="admin-nav-link @Active("Alert")" asp-area="Admin" asp-controller="Alert" asp-action="Index"><i class="bi bi-shield-exclamation"></i><span>Bảo mật & cảnh báo</span></a>
+                <a class="admin-nav-link @Active("AuditLog")" asp-area="Admin" asp-controller="AuditLog" asp-action="Index"><i class="bi bi-clipboard-data-fill"></i><span>Audit logs</span></a>
+                <a class="admin-nav-link @Active("Snapshot")" asp-area="Admin" asp-controller="Snapshot" asp-action="Index"><i class="bi bi-database-fill-gear"></i><span>Sao lưu & phục hồi</span></a>
+                <a class="admin-nav-link @Active("Sre")" asp-area="Admin" asp-controller="Sre" asp-action="Slo"><i class="bi bi-activity"></i><span>Health & SRE</span></a>
+            </div>
+        </nav>
+    </div>
+
+    <div class="admin-sidebar-footer">
+        <a class="admin-nav-link" asp-area="" asp-controller="Home" asp-action="Index"><i class="bi bi-box-arrow-up-right"></i><span>Xem website</span></a>
+        <form asp-area="" asp-controller="Auth" asp-action="Logout" method="post">
+            <button type="submit" class="admin-nav-link admin-logout-button"><i class="bi bi-box-arrow-right"></i><span>Đăng xuất</span></button>
+        </form>
+    </div>
+</aside>

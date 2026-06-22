@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = process.cwd();
-const matrixPath = path.join(repoRoot, "cypress", "fixtures", "testcase-matrix.json");
-const addendumPath = path.join(repoRoot, "cypress", "fixtures", "testcase-addendum.json");
+const matrixPath = path.join(repoRoot, "playwright", "fixtures", "testcase-matrix.json");
+const addendumPath = path.join(repoRoot, "playwright", "fixtures", "testcase-addendum.json");
 const defaultOutputPath = path.join(
   repoRoot,
   "CarRentalSystem",
@@ -190,16 +190,16 @@ function makeGuideSheet(workbook) {
     { width: 24 },
     { width: 118 },
   ];
-  setTitle(ws, "HUONG DAN TEST WEB THAT A-Z", "Checklist thu cong cho website that/staging/production; Cypress chi la du lieu tham khao local.", 2);
+  setTitle(ws, "HUONG DAN TEST WEB THAT A-Z", "Checklist thu cong cho website that/staging/production; Playwright chi la du lieu tham khao local.", 2);
 
   const rows = [
     ["Muc dich", "Dung workbook nay de test thu cong tren web that hoac staging/production-like: public UI, customer flow, owner flow, admin/area ops, security, NFR va legal compliance."],
     ["URL web that", "Dien URL can test vao cot ghi chu/evidence cua moi case, vi du https://your-domain.vn. Neu test staging, ghi ro staging; neu test production, chi dung tai khoan va du lieu duoc phep test."],
-    ["Tai khoan web that", "Dung cac tai khoan test that do admin tao san: Admin, Manager, Staff, Viewer, Customer verified, Customer unverified va Owner/Partner. Khong mac dinh dung tai khoan @cypress.local tren web that."],
+    ["Tai khoan web that", "Dung cac tai khoan test that do admin tao san: Admin, Manager, Staff, Viewer, Customer verified, Customer unverified va Owner/Partner. Khong mac dinh dung tai khoan @playwright.local tren web that."],
     ["Du lieu nghiep vu that", "Chuan bi xe test, khu vuc test, booking test, voucher test va payment amount nho neu can thanh toan that. Moi du lieu phai co ten/ma de truy vet trong cot Evidence."],
     ["Khong reset production", "Khong goi /__test/reset, khong dung reset secret, khong xoa/sua du lieu that ngoai pham vi test da duoc phe duyet. Cac case destructive nen danh Blocked neu chua co moi truong staging."],
-    ["Chay local neu can", "Neu muon doi chieu local: dotnet restore CarRentalSystem/CarRentalSystem.csproj; dotnet run --project CarRentalSystem/CarRentalSystem.csproj. Mac dinh local/Cypress base URL thuong la http://localhost:5168."],
-    ["Seed Cypress local", "Chi khi test local/Cypress moi dung script CarRentalSystem/scripts/Run-CypressA2Z.ps1 hoac endpoint __test/reset voi reset secret local-cypress-reset. Khong dung cach nay tren web that."],
+    ["Chay local neu can", "Neu muon doi chieu local: dotnet restore CarRentalSystem/CarRentalSystem.csproj; dotnet run --project CarRentalSystem/CarRentalSystem.csproj. Mac dinh local/Playwright base URL thuong la http://localhost:5168."],
+    ["Seed Playwright local", "Chi khi test local/Playwright moi dung script CarRentalSystem/scripts/Run-PlaywrightA2Z.ps1 hoac endpoint __test/reset voi reset secret local-playwright-reset. Khong dung cach nay tren web that."],
     ["Cach ghi ket qua", "Moi dong test case dien Ngay test, Tester, Ket qua, Bug/Issue, Evidence va Ghi chu. Ket qua nen dung Pass, Fail, Blocked hoac N/A."],
     ["Quy tac Fail", "Danh Fail khi co loi 500, loi JavaScript nghiem trong, sai workflow, sai phan quyen, lo PII/secret, layout che CTA, hoac ket qua khong dung Expected."],
     ["Payment/eKYC that", "Neu test PayOS/FPT that, dung so tien nho va tai khoan sandbox/production duoc phe duyet. Ghi lai order code, transaction id, booking id va anh chup man hinh vao Evidence."],
@@ -227,7 +227,7 @@ function makeDataSheet(workbook) {
     { width: 44 },
     { width: 78 },
   ];
-  setTitle(ws, "DU LIEU TEST WEB THAT", "Dien du lieu web that/staging truoc khi test; Cypress chi la tham khao local.", 4);
+  setTitle(ws, "DU LIEU TEST WEB THAT", "Dien du lieu web that/staging truoc khi test; Playwright chi la tham khao local.", 4);
   const header = ws.getRow(4);
   header.values = ["Nhom", "Ten du lieu", "Gia tri", "Ghi chu"];
   styleHeader(header);
@@ -247,15 +247,15 @@ function makeDataSheet(workbook) {
     ["Web that - du lieu", "Booking test", "[Dien booking id]", "Booking dung de test payment, contract, handover, tracking, refund."],
     ["Web that - du lieu", "Voucher/payment amount", "[Dien voucher / so tien test nho]", "Dung so tien that nho neu phai thanh toan qua PayOS/FPT production/sandbox."],
     ["Canh bao production", "Reset DB", "KHONG DUNG /__test/reset", "Khong reset, xoa, restore snapshot hay thao tac destructive tren production neu chua duoc phe duyet."],
-    ["Local/Cypress tham khao", "Admin", "admin@admin.com / Cypress@123", "Chi dung local/Cypress, khong mac dinh dung cho web that."],
-    ["Local/Cypress tham khao", "Manager", "manager@cypress.local / Cypress@123", "Chi dung local/Cypress."],
-    ["Local/Cypress tham khao", "Staff", "staff@cypress.local / Cypress@123", "Chi dung local/Cypress."],
-    ["Local/Cypress tham khao", "Viewer", "viewer@cypress.local / Cypress@123", "Chi dung local/Cypress."],
-    ["Local/Cypress tham khao", "Customer verified", "customer@cypress.local / Cypress@123", "Chi dung local/Cypress."],
-    ["Local/Cypress tham khao", "Customer unverified", "customer-unverified@cypress.local / Cypress@123", "Chi dung local/Cypress."],
-    ["Local/Cypress tham khao", "Owner/Partner approved", "owner@cypress.local / Cypress@123", "Chi dung local/Cypress."],
-    ["Local/Cypress tham khao", "First available car", "seed.firstAvailableCarId / CYP-READY", "Fixture local/Cypress cho booking/catalog/detail."],
-    ["Local/Cypress tham khao", "Reset endpoint", "POST /__test/reset", "Chi dung trong moi truong Cypress voi X-Cypress-Reset-Secret."],
+    ["Local/Playwright tham khao", "Admin", "admin@admin.com / Playwright@123", "Chi dung local/Playwright, khong mac dinh dung cho web that."],
+    ["Local/Playwright tham khao", "Manager", "manager@playwright.local / Playwright@123", "Chi dung local/Playwright."],
+    ["Local/Playwright tham khao", "Staff", "staff@playwright.local / Playwright@123", "Chi dung local/Playwright."],
+    ["Local/Playwright tham khao", "Viewer", "viewer@playwright.local / Playwright@123", "Chi dung local/Playwright."],
+    ["Local/Playwright tham khao", "Customer verified", "customer@playwright.local / Playwright@123", "Chi dung local/Playwright."],
+    ["Local/Playwright tham khao", "Customer unverified", "customer-unverified@playwright.local / Playwright@123", "Chi dung local/Playwright."],
+    ["Local/Playwright tham khao", "Owner/Partner approved", "owner@playwright.local / Playwright@123", "Chi dung local/Playwright."],
+    ["Local/Playwright tham khao", "First available car", "seed.firstAvailableCarId / PW-READY", "Fixture local/Playwright cho booking/catalog/detail."],
+    ["Local/Playwright tham khao", "Reset endpoint", "POST /__test/reset", "Chi dung trong moi truong Playwright voi X-Playwright-Reset-Secret."],
   ];
 
   rows.forEach((item, index) => {

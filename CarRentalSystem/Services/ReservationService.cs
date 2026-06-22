@@ -37,6 +37,16 @@ namespace CarRentalSystem.Services
                 return new ReservationCheckResult(false, "End date must be after start date.");
 
             var now = DateTime.UtcNow;
+            if (startDate < now.AddMinutes(-5))
+                return new ReservationCheckResult(false, "Cannot reserve a car in the past.");
+
+            var car = await _context.Cars
+                .AsNoTracking()
+                .Include(item => item.CarStatus)
+                .FirstOrDefaultAsync(item => item.CarID == carId);
+            if (!CarRentabilityPolicy.IsSelfDriveRentable(car))
+                return new ReservationCheckResult(false, CarRentabilityPolicy.GetUnavailableReason(car));
+
             var blockingStatuses = BookingStatusConstants.AvailabilityBlocking;
 
             var hasBookingOverlap = await _context.Bookings

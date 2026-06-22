@@ -8,6 +8,7 @@ public sealed class AiChatRequest
     public string Message { get; set; } = "";
     public string? SessionId { get; set; }
     public string? ConfirmationId { get; set; }
+    public string? Mode { get; set; }
 }
 
 public sealed class AiChatResponse
@@ -49,6 +50,10 @@ public sealed class AiUserContext
     public string Role { get; init; } = "Guest";
     public string? UserName { get; init; }
     public bool IsAuthenticated => UserId.HasValue;
+    public bool IsInternalStaff =>
+        string.Equals(Role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Role, "Manager", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Role, "Staff", StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed class AiProviderOptions
@@ -101,7 +106,7 @@ public sealed class AiPriceQuote
     public string CarName { get; set; } = "";
     public decimal RentalAmount { get; set; }
     public decimal DriverFee { get; set; }
-    public decimal PlatformFee { get; set; }
+    public decimal ServiceFee { get; set; }
     public decimal Deposit { get; set; }
     public decimal EstimatedTotal { get; set; }
     public int TotalHours { get; set; }

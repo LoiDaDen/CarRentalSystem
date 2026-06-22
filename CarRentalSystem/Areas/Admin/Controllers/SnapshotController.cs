@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 // CarRentalSystem/Areas/Admin/Controllers/SnapshotController.cs
 using CarRentalSystem.Filters;
 using CarRentalSystem.Models;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class SnapshotController : Controller
     {
         private readonly ISnapshotService _snapshotService;

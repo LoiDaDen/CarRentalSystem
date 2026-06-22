@@ -1,8 +1,11 @@
 @model CarRentalSystem.Models.Booking
 @{
     ViewData["Title"] = "Thanh toán Đặt cọc";
-    var depositAmount = Model.TotalPrice * 0.2m;
-    var finalAmount = Model.TotalPrice + 150000m;
+    var depositAmount = Model.ReservationFee > 0
+        ? Model.ReservationFee
+        : CarRentalSystem.Services.DepositPolicy.Calculate(Model.TotalPrice);
+    var remainingAmount = Math.Max(0m, Model.TotalPrice - depositAmount);
+    var finalAmount = Model.TotalPrice;
 }
 
 <style>
@@ -138,7 +141,7 @@
                             <span class="fw-bold">Thanh toán giữ chỗ qua CarRental</span>
                             <span class="fw-bold text-dark">@depositAmount.ToString("N0")đ</span>
                         </div>
-                        <p class="small text-muted mb-0">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào tiền thế chấp khi nhận xe.</p>
+                        <p class="small text-muted mb-0">Tiền này để xác nhận đơn thuê và giữ xe, sẽ được trừ vào tổng tiền thuê khi nhận xe.</p>
                     </div>
                 </div>
                 
@@ -149,15 +152,15 @@
                     <div class="w-100">
                         <div class="d-flex justify-content-between">
                             <span class="fw-bold">Thanh toán khi nhận xe</span>
-                            <span class="fw-bold text-dark">@((Model.TotalPrice * 0.8m + Model.DepositAmount).ToString("N0"))đ</span>
+                            <span class="fw-bold text-dark">@remainingAmount.ToString("N0")đ</span>
                         </div>
                         <div class="d-flex justify-content-between small text-muted mt-1">
-                            <span>Tiền thuê</span>
-                            <span>@((Model.TotalPrice * 0.8m).ToString("N0"))đ</span>
+                            <span>Tiền thuê còn lại</span>
+                            <span>@remainingAmount.ToString("N0")đ</span>
                         </div>
                         <div class="d-flex justify-content-between small text-muted">
-                            <span>Tiền thế chấp chờ thu hồi khoản phạt</span>
-                            <span>@Model.DepositAmount.ToString("N0")đ</span>
+                            <span>Cọc hệ thống giữ (20%)</span>
+                            <span>@depositAmount.ToString("N0")đ</span>
                         </div>
                         <div class="small text-muted fst-italic mt-1 text-warning"><i class="bi bi-shield-lock me-1"></i>Sẽ hoàn lại sau 15 ngày qua ví điện tử.</div>
                     </div>

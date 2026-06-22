@@ -1,0 +1,9 @@
+@model IReadOnlyList<PortalBookingRowViewModel>
+@{
+    ViewData["Title"] = "Quản lý đặt xe";
+}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div><h1 class="portal-page-title h3">Quản lý đặt xe</h1><p class="text-muted">Booking trong khu vực được phân công.</p></div>
+    <div class="btn-group"><a class="btn btn-outline-secondary" asp-route-status="Confirmed">Đã xác nhận</a><a class="btn btn-outline-secondary" asp-route-status="Active">Đang thuê</a></div>
+</div>
+<div class="portal-card">@await Html.PartialAsync("_PortalBookingTable", Model)</div>

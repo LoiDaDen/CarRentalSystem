@@ -1,32 +1,54 @@
 @model CarRentalSystem.Services.SloDashboard
 @{
-    ViewData["Title"] = "SLO Dashboard";
+    ViewData["Title"] = "SLO & độ tin cậy";
+    var healthyCount = Model.Metrics.Count(metric => metric.Status.Equals("Healthy", StringComparison.OrdinalIgnoreCase) || metric.Status.Equals("Active", StringComparison.OrdinalIgnoreCase));
+    string Tone(string? status) => status?.ToLowerInvariant() switch
+    {
+        "healthy" or "active" or "ready" => "admin-status-success",
+        "warning" or "degraded" => "admin-status-warning",
+        "critical" or "failed" => "admin-status-danger",
+        _ => "admin-status-neutral"
+    };
 }
 
-<h2>SLO Dashboard</h2>
-<p class="text-muted">Window: @Model.WindowStartUtc.ToString("u") - @Model.WindowEndUtc.ToString("u")</p>
-<p><strong>Error budget remaining:</strong> @Model.ErrorBudgetRemainingPercent.ToString("N2")%</p>
+<div class="page-header">
+    <div>
+        <h2>SLO & độ tin cậy hệ thống</h2>
+        <p>Theo dõi mục tiêu dịch vụ, error budget và các chỉ số vận hành quan trọng.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Alert" asp-action="Index"><i class="bi bi-bell"></i> Xem cảnh báo</a>
+</div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Metric</th>
-            <th>Value</th>
-            <th>Target</th>
-            <th>Status</th>
-            <th>Description</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var metric in Model.Metrics)
-    {
-        <tr>
-            <td>@metric.Name</td>
-            <td>@(metric.Value.HasValue ? $"{metric.Value:N2} {metric.Unit}" : "Unknown")</td>
-            <td>@metric.Target.ToString("N2") @metric.Unit</td>
-            <td>@metric.Status</td>
-            <td>@metric.Description</td>
-        </tr>
-    }
-    </tbody>
-</table>
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-bullseye"></i></span><div class="admin-kpi-value">@Model.Metrics.Count</div><div class="admin-kpi-label">Chỉ số SLO</div></div></div>
+    <div class="col-md-4"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-shield-check"></i></span><div class="admin-kpi-value">@healthyCount</div><div class="admin-kpi-label">Đang khỏe</div></div></div>
+    <div class="col-md-4"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-speedometer2"></i></span><div class="admin-kpi-value">@Model.ErrorBudgetRemainingPercent.ToString("N2")%</div><div class="admin-kpi-label">Error budget còn lại</div><div class="admin-kpi-note">@Model.WindowStartUtc.ToString("dd/MM HH:mm") - @Model.WindowEndUtc.ToString("dd/MM HH:mm") UTC</div></div></div>
+</div>
+
+@if (Model.Metrics.Count == 0)
+{
+    <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel { Icon = "bi-activity", Title = "Chưa có dữ liệu SLO", Message = "Các chỉ số độ tin cậy sẽ xuất hiện khi hệ thống ghi nhận telemetry." })" />
+}
+else
+{
+    <div class="card">
+        <div class="card-header"><h5 class="mb-0 fw-bold">Chỉ số dịch vụ</h5></div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Chỉ số</th><th>Giá trị</th><th>Mục tiêu</th><th>Trạng thái</th><th>Mô tả</th></tr></thead>
+                <tbody>
+                @foreach (var metric in Model.Metrics)
+                {
+                    <tr>
+                        <td><strong>@metric.Name</strong></td>
+                        <td>@(metric.Value.HasValue ? $"{metric.Value:N2} {metric.Unit}" : "Chưa có dữ liệu")</td>
+                        <td>@metric.Target.ToString("N2") @metric.Unit</td>
+                        <td><span class="admin-status-badge @Tone(metric.Status)">@UiLabels.GenericStatus(metric.Status)</span></td>
+                        <td><div class="admin-table-description">@metric.Description</div></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

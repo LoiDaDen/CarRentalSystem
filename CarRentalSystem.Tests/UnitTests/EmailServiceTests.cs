@@ -39,7 +39,7 @@ namespace CarRentalSystem.Tests.UnitTests
         [Fact]
         [Trait("Module", "Email")]
         [Trait("Type", "Unit")]
-        public async Task SendVerificationEmail_NoSmtpConfig_DoesNotThrow()
+        public async Task SendVerificationEmail_NoSmtpConfig_Throws()
         {
             // Arrange — không cấu hình SMTP (giả lập môi trường Dev)
             var config = CreateConfiguration(new Dictionary<string, string?>
@@ -58,7 +58,7 @@ namespace CarRentalSystem.Tests.UnitTests
             );
 
             // Assert
-            await act.Should().NotThrowAsync("vì khi thiếu SMTP config, service phải fallback log mà không crash");
+            await act.Should().ThrowAsync<InvalidOperationException>();
         }
 
         [Fact]
@@ -77,7 +77,8 @@ namespace CarRentalSystem.Tests.UnitTests
             var emailService = new EmailService(_loggerMock.Object, config);
 
             // Act
-            await emailService.SendVerificationEmailAsync("user@test.com", "https://localhost/verify?token=xyz");
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                emailService.SendVerificationEmailAsync("user@test.com", "https://localhost/verify?token=xyz"));
 
             // Assert — Verify logger được gọi (LogWarning hoặc LogInformation)
             _loggerMock.Verify(
@@ -96,7 +97,7 @@ namespace CarRentalSystem.Tests.UnitTests
         [Fact]
         [Trait("Module", "Email")]
         [Trait("Type", "Unit")]
-        public async Task SendVerificationEmail_InvalidSmtpHost_DoesNotThrow()
+        public async Task SendVerificationEmail_InvalidSmtpHost_Throws()
         {
             // Arrange — cấu hình SMTP với host không hợp lệ
             var config = CreateConfiguration(new Dictionary<string, string?>
@@ -115,8 +116,7 @@ namespace CarRentalSystem.Tests.UnitTests
             );
 
             // Assert
-            await act.Should().NotThrowAsync(
-                "vì khi SMTP host không hợp lệ, service phải catch exception và log lỗi thay vì crash");
+            await act.Should().ThrowAsync<Exception>();
         }
 
         [Fact]
@@ -139,6 +139,27 @@ namespace CarRentalSystem.Tests.UnitTests
                 "https://localhost/verify?token=xyz");
 
             await act.Should().ThrowAsync<InvalidOperationException>();
+        }
+
+        [Fact]
+        [Trait("Module", "Email")]
+        [Trait("Type", "Unit")]
+        public async Task LocalEmailSink_AcceptsOtpWithoutContactingSmtp()
+        {
+            var logger = new Mock<ILogger<LocalEmailSinkService>>();
+            var sink = new LocalEmailSinkService(logger.Object);
+
+            await sink.SendOtpEmailAsync("customer@example.test", "123456");
+
+            logger.Verify(
+                x => x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((value, _) =>
+                        value.ToString()!.Contains("without contacting SMTP", StringComparison.Ordinal)),
+                    null,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
         }
     }
 }

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class FleetOpsController : Controller
     {
         private readonly ApplicationDbContext _context;

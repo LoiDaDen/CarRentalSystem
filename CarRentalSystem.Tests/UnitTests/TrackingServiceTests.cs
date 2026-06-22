@@ -77,7 +77,10 @@ namespace CarRentalSystem.Tests.UnitTests
             alertRepo.Setup(r => r.GetByIdAsync(999))
                 .ReturnsAsync((Alert?)null);
 
-            _trackingService = new TrackingService(trackingRepo.Object, alertRepo.Object);
+            _trackingService = new TrackingService(
+                trackingRepo.Object,
+                alertRepo.Object,
+                MockRepositoryHelper.CreateSeededDbContext());
         }
 
         // =============================================

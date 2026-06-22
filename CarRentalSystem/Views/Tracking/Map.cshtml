@@ -1,267 +1,406 @@
 @model IEnumerable<CarRentalSystem.Models.Car>
 @{
-    ViewData["Title"] = "Bản Đồ Định Vị Xe";
+    ViewData["Title"] = "Bản đồ định vị xe";
     Layout = "_AdminLayout";
 }
 
 <style>
-    :root {
-        --glass-bg: rgba(15, 23, 42, 0.8);
-        --accent-blue: #3b82f6;
-    }
-    
     .tracking-container {
         position: relative;
         height: calc(100vh - 120px);
-        border-radius: 24px;
+        min-height: 620px;
+        border-radius: 22px;
         overflow: hidden;
-        background: #000;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        background: #0f172a;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, .35);
     }
-    
+
     #map {
         height: 100%;
         width: 100%;
     }
-    
-    .overlay-panel {
+
+    .tracking-panel {
         position: absolute;
-        top: 24px;
-        left: 24px;
-        width: 350px;
         z-index: 1000;
-        background: var(--glass-bg);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
+        background: rgba(15, 23, 42, .88);
+        backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, .11);
         color: #fff;
-        padding: 24px;
+        border-radius: 18px;
+        box-shadow: 0 18px 46px rgba(15, 23, 42, .28);
     }
 
-    .log-panel {
-        position: absolute;
-        bottom: 24px;
-        right: 24px;
-        width: 400px;
-        max-height: 250px;
-        z-index: 1000;
-        background: var(--glass-bg);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
+    .tracking-control {
+        top: 20px;
+        left: 20px;
+        width: min(390px, calc(100% - 40px));
+        padding: 18px;
+    }
+
+    .tracking-log {
+        right: 20px;
+        bottom: 20px;
+        width: min(430px, calc(100% - 40px));
+        max-height: 235px;
+        overflow: auto;
+    }
+
+    .tracking-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+    }
+
+    .tracking-stat {
+        min-height: 70px;
+        border: 1px solid rgba(255, 255, 255, .1);
+        border-radius: 13px;
+        background: rgba(255, 255, 255, .07);
+        padding: 10px;
+    }
+
+    .tracking-stat span {
+        display: block;
+        color: #94a3b8;
+        font-size: .73rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .tracking-stat strong {
+        display: block;
         color: #fff;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
+        font-size: .98rem;
+        word-break: break-word;
+    }
+
+    .tracking-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        display: inline-block;
+        margin-right: 7px;
+        box-shadow: 0 0 0 5px rgba(148, 163, 184, .18);
+        background: #94a3b8;
+    }
+
+    .tracking-dot.live {
+        background: #22c55e;
+        box-shadow: 0 0 0 5px rgba(34, 197, 94, .18);
+    }
+
+    .tracking-dot.stale {
+        background: #f59e0b;
+        box-shadow: 0 0 0 5px rgba(245, 158, 11, .18);
+    }
+
+    .tracking-dot.lost {
+        background: #ef4444;
+        box-shadow: 0 0 0 5px rgba(239, 68, 68, .18);
+    }
+
+    .tracking-log-row {
+        padding: 11px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, .08);
+        color: #cbd5e1;
+        font-size: .82rem;
+    }
+
+    .tracking-log-row:last-child {
+        border-bottom: 0;
     }
 
     .car-marker-icon {
-        background: var(--accent-blue);
+        background: #2563eb;
+        color: #fff;
         border: 3px solid #fff;
         border-radius: 50%;
-        box-shadow: 0 0 15px 5px rgba(59, 130, 246, 0.6);
-        animation: pulseMarker 2s infinite;
+        box-shadow: 0 0 0 8px rgba(37, 99, 235, .18), 0 14px 34px rgba(37, 99, 235, .36);
+        display: grid;
+        place-items: center;
     }
 
-    @@keyframes pulseMarker {
-        0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-        70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-    }
+    @@media (max-width: 768px) {
+        .tracking-container {
+            height: 82vh;
+            min-height: 720px;
+            border-radius: 16px;
+        }
 
-    .status-badge {
-        font-size: 0.65rem;
-        padding: 4px 8px;
-        border-radius: 6px;
-        text-transform: uppercase;
-        font-weight: 700;
+        .tracking-control {
+            top: 12px;
+            left: 12px;
+            width: calc(100% - 24px);
+        }
+
+        .tracking-log {
+            right: 12px;
+            bottom: 12px;
+            width: calc(100% - 24px);
+            max-height: 180px;
+        }
     }
 </style>
 
 <div class="tracking-container">
     <div id="map"></div>
-    
-    <!-- Sidebar Overlay -->
-    <div class="overlay-panel animate__animated animate__fadeInLeft">
-        <h4 class="fw-800 mb-4 d-flex align-items-center">
-            <i class="bi bi-radar me-2 text-primary"></i> Live Radar
-        </h4>
-        
-        <div class="mb-4">
-            <label class="form-label small fw-bold text-white-50">LỰA CHỌN PHƯƠNG TIỆN</label>
-            <div class="input-group border border-primary border-opacity-25 rounded-3">
-                <select id="carIdSelect" class="form-select bg-dark text-white border-0 shadow-none" style="border-radius: 12px 0 0 12px;">
-                    <option value="" class="bg-dark text-white-50">-- Chọn xe để theo dõi --</option>
-                    @if (Model != null)
+
+    <div class="tracking-panel tracking-control">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h4 class="fw-800 mb-1"><i class="bi bi-radar me-2 text-primary"></i>Radar trực tiếp</h4>
+                <div class="small text-white-50">Theo dõi GPS điện thoại theo thời gian thực</div>
+            </div>
+            <span id="connectionText" class="badge bg-secondary rounded-pill">Polling</span>
+        </div>
+
+        <div class="input-group mb-3">
+            <select id="carIdSelect" class="form-select bg-dark text-white border-secondary">
+                <option value="">Chọn xe để theo dõi</option>
+                @if (Model != null)
+                {
+                    foreach (var car in Model)
                     {
-                        foreach (var car in Model)
-                        {
-                            <option value="@car.CarID" class="bg-dark text-white">@car.CarBrand?.Name @car.CarName (@car.LicensePlate)</option>
-                        }
+                        <option value="@car.CarID">@car.CarBrand?.Name @car.CarName (@car.LicensePlate)</option>
                     }
-                </select>
-                <button id="trackBtn" class="btn btn-primary px-3 border-0" style="border-radius: 0 12px 12px 0;">
-                    <i class="bi bi-radar"></i>
-                </button>
+                }
+            </select>
+            <button id="trackBtn" type="button" class="btn btn-primary">
+                <i class="bi bi-crosshair"></i>
+            </button>
+        </div>
+
+        <div class="tracking-stat-grid">
+            <div class="tracking-stat">
+                <span>Trạng thái</span>
+                <strong id="displayStatus"><span class="tracking-dot"></span>Chưa chọn xe</strong>
+            </div>
+            <div class="tracking-stat">
+                <span>Tốc độ</span>
+                <strong id="displaySpeed">-</strong>
+            </div>
+            <div class="tracking-stat">
+                <span>Thiết bị tracker</span>
+                <strong id="displayBattery">-</strong>
+            </div>
+            <div class="tracking-stat">
+                <span>Độ chính xác</span>
+                <strong id="displayAccuracy">-</strong>
+            </div>
+            <div class="tracking-stat">
+                <span>Cập nhật cuối</span>
+                <strong id="displayTime">-</strong>
+            </div>
+            <div class="tracking-stat">
+                <span>Nguồn</span>
+                <strong id="displaySource">-</strong>
             </div>
         </div>
 
-        <div id="carInfo" class="d-none">
-            <div class="p-3 rounded-4 bg-white bg-opacity-5 mb-3 border border-white border-opacity-10">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="small text-white-50 fw-bold">Thông tin phương tiện</span>
-                    <span class="status-badge bg-success">Đang kết nối</span>
-                </div>
-                <h5 id="displayCarName" class="fw-bold mb-0 text-primary">Xe #<span id="displayCarId">-</span></h5>
-                <div class="row g-2 mt-2">
-                    <div class="col-4">
-                        <small class="text-white-50 d-block">Tốc độ</small>
-                        <span id="displaySpeed" class="fw-800 fs-5">-</span> <small>km/h</small>
-                    </div>
-                    <div class="col-4">
-                        <small class="text-white-50 d-block">Thời gian</small>
-                        <span id="displayTime" class="small">-</span>
-                    </div>
-                    <div class="col-4 text-end">
-                        <small class="text-white-50 d-block mb-1">Bám theo xe</small>
-                        <div class="form-check form-switch d-inline-block">
-                            <input class="form-check-input" type="checkbox" id="autoPanToggle" checked style="cursor: pointer;">
-                        </div>
-                    </div>
-                </div>
+        <div class="d-flex align-items-center justify-content-between mt-3">
+            <label class="form-check-label small text-white-50" for="autoPanToggle">Bám theo xe</label>
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="autoPanToggle" checked>
             </div>
         </div>
     </div>
 
-    <!-- Log Panel -->
-    <div class="log-panel shadow-lg">
-        <div class="w-100">
-            <div class="p-3 border-bottom border-white border-opacity-10 d-flex justify-content-between align-items-center">
-                <span class="small fw-bold">NHẬT KÝ HÀNH TRÌNH</span>
-                <i class="bi bi-list-task text-primary"></i>
-            </div>
-            <div id="statusLog" class="p-3 overflow-auto" style="height: 180px;">
-                <div class="small text-white-50 text-center py-4">Chưa có dữ liệu theo dõi...</div>
-            </div>
-        </div>
+    <div class="tracking-panel tracking-log" id="statusLog">
+        <div class="tracking-log-row text-center text-white-50">Chưa có dữ liệu theo dõi.</div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
     <script>
-        var map, marker, pathLine;
-        var carId = 0;
-        var pathCoords = [];
-        var isAutoPan = true;
-        var lastDbTimestamp = null; // To prevent duplicate updates when disconnected
+        let map, marker, pathLine;
+        let selectedCarId = null;
+        let pathCoords = [];
+        let isAutoPan = true;
+        let connection = null;
+
+        const carSelect = document.getElementById('carIdSelect');
+        const statusLog = document.getElementById('statusLog');
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([21.0285, 105.8542], 13);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 20
-            }).addTo(map);
+            const baseMap = SmartMap.createMap('map', 10.7769, 106.7009, 13, { zoomControl: false });
+            if (!baseMap) return;
+            map = baseMap.map;
             L.control.zoom({ position: 'topright' }).addTo(map);
 
-            // Initialize polyline for path tracing
             pathLine = L.polyline([], {
-                color: '#3b82f6', 
-                weight: 4, 
-                opacity: 0.8, 
-                dashArray: '10, 10', 
+                color: '#22c55e',
+                weight: 5,
+                opacity: .85,
                 lineJoin: 'round'
             }).addTo(map);
         }
 
-        $('#autoPanToggle').change(function() {
-            isAutoPan = $(this).is(':checked');
-            if(isAutoPan && pathCoords.length > 0) {
-                map.flyTo(pathCoords[pathCoords.length-1], 16, { animate: true, duration: 1 });
+        function log(message, isError) {
+            const row = document.createElement('div');
+            row.className = `tracking-log-row${isError ? ' text-danger' : ''}`;
+            row.textContent = `[${new Date().toLocaleTimeString('vi-VN')}] ${message}`;
+            if (statusLog.children.length === 1 && statusLog.children[0].textContent.includes('Chưa có')) {
+                statusLog.innerHTML = '';
             }
-        });
-
-        $('#carIdSelect').change(function() {
-            var selectedVal = $(this).val();
-            if (selectedVal != carId && selectedVal) {
-                if (marker) {
-                    map.removeLayer(marker);
-                    marker = null;
-                }
-                pathCoords = [];
-                pathLine.setLatLngs([]);
-                $('#statusLog').empty();
-                $('#carInfo').addClass('d-none');
+            statusLog.prepend(row);
+            while (statusLog.children.length > 18) {
+                statusLog.removeChild(statusLog.lastChild);
             }
-        });
-
-        function updateLocation() {
-            carId = $('#carIdSelect').val();
-            if (!carId) return;
-
-            $.get('/Tracking/GetCarLocation?carId=' + carId, function(data) {
-                if (data) {
-                    // Prevent duplicate logs if the car hasn't updated its location (disconnected)
-                    if (data.timestamp === lastDbTimestamp) {
-                        return;
-                    }
-                    lastDbTimestamp = data.timestamp;
-
-                    var pos = [data.latitude, data.longitude];
-                    
-                    // Add new pos to path and update line
-                    pathCoords.push(pos);
-                    pathLine.setLatLngs(pathCoords);
-
-                    $('#carInfo').removeClass('d-none');
-                    $('#displayCarId').text(carId);
-                    $('#displaySpeed').text(data.speed.toFixed(1));
-                    $('#displayTime').text(new Date(data.timestamp).toLocaleTimeString()); // Now using actual timestamp from IoT
-
-                    if (!marker) {
-                        var pulseIcon = L.divIcon({
-                            className: 'car-marker-icon',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10],
-                            popupAnchor: [0, -10]
-                        });
-                        marker = L.marker(pos, {icon: pulseIcon}).addTo(map)
-                            .bindPopup('<b class="text-dark">Xe #' + carId + ' (' + data.speed.toFixed(1) + ' km/h)</b>').openPopup();
-                        
-                        // First load, fly to car closely
-                        map.flyTo(pos, 16, { animate: true, duration: 1.5 });
-                    } else {
-                        marker.setLatLng(pos);
-                        marker.getPopup().setContent('<b class="text-dark">Xe #' + carId + ' (' + data.speed.toFixed(1) + ' km/h)</b>');
-                        
-                        if (isAutoPan) {
-                            map.panTo(pos, { animate: true });
-                        }
-                    }
-                    
-                    var logContent = '<div class="mb-3 animate__animated animate__fadeInUp">' +
-                        '<div class="d-flex justify-content-between mb-1">' +
-                        '<span class="text-primary fw-bold" style="font-size: 0.7rem;">' + new Date(data.timestamp).toLocaleTimeString() + '</span>' +
-                        '<span class="small text-white-50">' + data.speed.toFixed(1) + ' km/h</span>' +
-                        '</div>' +
-                        '<div class="small ps-2 border-start border-primary border-opacity-50">Vị trí: ' + data.latitude.toFixed(4) + ', ' + data.longitude.toFixed(4) + '</div>' +
-                        '</div>';
-                        
-                    if ($('#statusLog .text-center').length) $('#statusLog').empty();
-                    $('#statusLog').prepend(logContent);
-                }
-            });
         }
 
-        $(document).ready(function() {
-            initMap();
-            $('#trackBtn').click(function() {
-                $('#carIdSelect').trigger('change');
-                updateLocation();
+        function statusLabel(status) {
+            if (status === 'live') return 'Đang cập nhật';
+            if (status === 'stale') return 'GPS cũ';
+            if (status === 'lost') return 'Mất tín hiệu';
+            return 'Chưa có GPS';
+        }
+
+        function renderStatus(status) {
+            const safeStatus = status || 'none';
+            document.getElementById('displayStatus').innerHTML =
+                `<span class="tracking-dot ${safeStatus}"></span>${statusLabel(status)}`;
+        }
+
+        function renderLocation(data, appendPath) {
+            if (!data || !data.latitude || !data.longitude) return;
+            if (selectedCarId && Number(data.carId) !== Number(selectedCarId)) return;
+
+            const pos = [data.latitude, data.longitude];
+            if (appendPath) {
+                const last = pathCoords[pathCoords.length - 1];
+                if (!last || last[0] !== pos[0] || last[1] !== pos[1]) {
+                    pathCoords.push(pos);
+                    if (pathCoords.length > 500) pathCoords = pathCoords.slice(-500);
+                    pathLine.setLatLngs(pathCoords);
+                }
+            }
+
+            const carIcon = L.divIcon({
+                className: '',
+                html: '<div class="car-marker-icon" style="width:36px;height:36px;"><i class="bi bi-car-front-fill"></i></div>',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
             });
-            setInterval(function() {
-                if (carId && $('#carIdSelect').val()) updateLocation();
-            }, 5000);
+
+            if (!marker) {
+                marker = L.marker(pos, { icon: carIcon }).addTo(map);
+            } else {
+                marker.setLatLng(pos);
+            }
+
+            marker.bindPopup(`<b class="text-dark">Xe #${data.carId}</b><br><span class="text-dark">${Number(data.speed || 0).toFixed(1)} km/h</span>`);
+
+            if (isAutoPan) {
+                map.panTo(pos, { animate: true });
+            }
+
+            renderStatus(data.status);
+            document.getElementById('displaySpeed').textContent = `${Number(data.speed || 0).toFixed(1)} km/h`;
+            document.getElementById('displayBattery').textContent =
+                data.batteryLevel == null ? '-' : `${Number(data.batteryLevel).toFixed(0)}%${data.isCharging ? ' - sạc' : ''}`;
+            document.getElementById('displayAccuracy').textContent =
+                data.accuracyMeters == null ? '-' : `${Math.round(data.accuracyMeters)} m`;
+            document.getElementById('displayTime').textContent =
+                data.timestamp ? new Date(data.timestamp).toLocaleTimeString('vi-VN') : '-';
+            document.getElementById('displaySource').textContent = data.source || '-';
+        }
+
+        async function loadHistory(carId) {
+            const response = await fetch(`/Tracking/GetCarHistory?carId=${carId}&take=200`);
+            if (!response.ok) throw new Error('Không tải được lịch sử GPS');
+
+            const history = await response.json();
+            pathCoords = history.map(point => [point.latitude, point.longitude]);
+            pathLine.setLatLngs(pathCoords);
+
+            if (pathCoords.length) {
+                map.fitBounds(L.latLngBounds(pathCoords).pad(.18), { maxZoom: 16 });
+                renderLocation(history[history.length - 1], false);
+                log(`Đã tải ${history.length} điểm lịch sử cho xe #${carId}`);
+            } else {
+                renderStatus(null);
+                log(`Xe #${carId} chưa có dữ liệu GPS`, true);
+            }
+        }
+
+        async function loadLatest(carId) {
+            const response = await fetch(`/Tracking/GetCarLocation?carId=${carId}`);
+            if (!response.ok) return;
+            const data = await response.json();
+            if (data) renderLocation(data, true);
+        }
+
+        async function selectCar() {
+            const carId = carSelect.value;
+            if (!carId) return;
+
+            if (selectedCarId && connection) {
+                connection.invoke('LeaveCar', Number(selectedCarId)).catch(() => {});
+            }
+
+            selectedCarId = carId;
+            pathCoords = [];
+            pathLine.setLatLngs([]);
+            if (marker) {
+                map.removeLayer(marker);
+                marker = null;
+            }
+
+            log(`Đang theo dõi xe #${carId}`);
+            await loadHistory(carId);
+
+            if (connection && connection.state === signalR.HubConnectionState.Connected) {
+                connection.invoke('JoinCar', Number(carId)).catch(() => {});
+            }
+        }
+
+        async function initSignalR() {
+            if (!window.signalR) return;
+
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/tracking')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('carLocation', data => {
+                renderLocation(data, true);
+                log(`Realtime xe #${data.carId}: ${Number(data.speed || 0).toFixed(1)} km/h`);
+            });
+
+            connection.onreconnected(() => {
+                document.getElementById('connectionText').textContent = 'Realtime';
+                document.getElementById('connectionText').className = 'badge bg-success rounded-pill';
+                if (selectedCarId) connection.invoke('JoinCar', Number(selectedCarId)).catch(() => {});
+            });
+
+            try {
+                await connection.start();
+                document.getElementById('connectionText').textContent = 'Realtime';
+                document.getElementById('connectionText').className = 'badge bg-success rounded-pill';
+            } catch {
+                document.getElementById('connectionText').textContent = 'Polling';
+                document.getElementById('connectionText').className = 'badge bg-secondary rounded-pill';
+            }
+        }
+
+        document.getElementById('trackBtn').addEventListener('click', () => {
+            selectCar().catch(error => log(error.message, true));
         });
+
+        carSelect.addEventListener('change', () => {
+            if (carSelect.value) selectCar().catch(error => log(error.message, true));
+        });
+
+        document.getElementById('autoPanToggle').addEventListener('change', event => {
+            isAutoPan = event.target.checked;
+        });
+
+        initMap();
+        initSignalR();
+        setInterval(() => {
+            if (selectedCarId) loadLatest(selectedCarId);
+        }, 5000);
     </script>
 }

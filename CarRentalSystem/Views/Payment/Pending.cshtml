@@ -110,7 +110,7 @@
                 </div>
                 <div class="detail-row">
                     <span>Trạng thái</span>
-                    <strong>@Model.Status</strong>
+                    <strong>@UiLabels.PaymentStatus(Model.Status)</strong>
                 </div>
                 @if (!string.IsNullOrWhiteSpace(Model.Bin))
                 {

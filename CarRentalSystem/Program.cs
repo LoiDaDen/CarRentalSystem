@@ -1,5 +1,6 @@
 using CarRentalSystem.Authorization.Handlers;
 using CarRentalSystem.Authorization.Requirements;
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Repositories;
 using CarRentalSystem.Services;
@@ -26,18 +27,19 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Globalization;
 using System.IO.Compression;
+using System.Net;
 using System.Text.Json;
 
 var earlyEnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
     ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
-var shouldLoadEnvFile = !string.Equals(earlyEnvironmentName, "Cypress", StringComparison.OrdinalIgnoreCase)
+var shouldLoadEnvFile = !string.Equals(earlyEnvironmentName, "Playwright", StringComparison.OrdinalIgnoreCase)
     && !string.Equals(earlyEnvironmentName, "Testing", StringComparison.OrdinalIgnoreCase);
 var envFilePath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
 if (shouldLoadEnvFile && File.Exists(envFilePath))
 {
     try
     {
-        DotNetEnv.Env.Load(envFilePath);
+        DotNetEnv.Env.NoClobber().Load(envFilePath);
     }
     catch (Exception ex)
     {
@@ -47,8 +49,8 @@ if (shouldLoadEnvFile && File.Exists(envFilePath))
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
-var isCypressEnvironment = builder.Environment.IsEnvironment("Cypress");
-var isAutomatedTestEnvironment = builder.Environment.IsEnvironment("Testing") || isCypressEnvironment;
+var isPlaywrightEnvironment = builder.Environment.IsEnvironment("Playwright");
+var isAutomatedTestEnvironment = builder.Environment.IsEnvironment("Testing") || isPlaywrightEnvironment;
 var allowLocalHttpCookies = builder.Environment.IsDevelopment() || isAutomatedTestEnvironment;
 
 ConfigurationGuard.ValidateProductionConfiguration(builder.Configuration, builder.Environment);
@@ -133,11 +135,21 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<ICarService, CarService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IIdentityHashService, IdentityHashService>();
+builder.Services.AddSingleton<IPasswordHashService, PasswordHashService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IBookingFactory, BookingFactory>();
 builder.Services.AddScoped<ITrackingService, TrackingService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
-if (isCypressEnvironment && !builder.Configuration.GetValue<bool>("Cypress:UsePayOSSandbox"))
-    builder.Services.AddSingleton<IPayOSGateway, CypressPayOSGateway>();
+var useLocalEmailSink = EmailDeliveryConfiguration.ShouldUseLocalSink(
+    builder.Configuration,
+    builder.Environment,
+    isAutomatedTestEnvironment);
+if (useLocalEmailSink)
+    builder.Services.AddScoped<IEmailService, LocalEmailSinkService>();
+else
+    builder.Services.AddScoped<IEmailService, EmailService>();
+if (isPlaywrightEnvironment && !builder.Configuration.GetValue<bool>("Playwright:UsePayOSSandbox"))
+    builder.Services.AddSingleton<IPayOSGateway, PlaywrightPayOSGateway>();
 else
     builder.Services.AddSingleton<IPayOSGateway, PayOSGateway>();
 builder.Services.AddScoped<IPayOSPaymentService, PayOSPaymentService>();
@@ -147,6 +159,7 @@ builder.Services.AddScoped<ISelfDrivePricingService, SelfDrivePricingService>();
 builder.Services.AddScoped<IWithDriverPricingService, WithDriverPricingService>();
 builder.Services.AddScoped<IBookingBusinessRuleService, BookingBusinessRuleService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
+builder.Services.AddScoped<ICustomerDrivingLicenseSyncService, CustomerDrivingLicenseSyncService>();
 builder.Services.AddScoped<IEligibilityService, EligibilityService>();
 builder.Services.AddScoped<IPaymentLedgerService, PaymentLedgerService>();
 builder.Services.AddScoped<IPaymentTransitionService, PaymentTransitionService>();
@@ -164,10 +177,16 @@ builder.Services.AddScoped<IContractClassificationService, ContractClassificatio
 builder.Services.AddScoped<IDigitalContractService, DigitalContractService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IAreaService, AreaService>();
+builder.Services.AddScoped<ICarChangeRequestService, CarChangeRequestService>();
+builder.Services.AddScoped<IInternalPortalScopeService, InternalPortalScopeService>();
+builder.Services.AddScoped<IBookingAssignmentService, BookingAssignmentService>();
+builder.Services.AddScoped<IHandoverWorkflowService, HandoverWorkflowService>();
+builder.Services.AddScoped<IManagerReportService, ManagerReportService>();
 builder.Services.AddScoped<ILongTermRentalService, LongTermRentalService>(); // Long-term rental business logic
 builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.AddScoped<ISnapshotService, SnapshotService>(); // Database snapshot & backup
 builder.Services.AddScoped<IAuditTrailService, AuditTrailService>();
+builder.Services.AddScoped<IPiiAccessService, PiiAccessService>();
 builder.Services.AddSingleton<IAuditLogQueue, BoundedAuditLogQueue>();
 if (!isAutomatedTestEnvironment)
     builder.Services.AddHostedService<AuditLogBackgroundWriter>();
@@ -177,8 +196,15 @@ builder.Services.AddScoped<ISettlementReviewService, SettlementReviewService>();
 builder.Services.AddScoped<ISloMetricsService, SloMetricsService>();
 builder.Services.AddSingleton<IEnterpriseTelemetryService, EnterpriseTelemetryService>();
 builder.Services.AddScoped<IEnterpriseOperationsService, EnterpriseOperationsService>();
+builder.Services.AddScoped<IOperationsCopilotService, OperationsCopilotService>();
+builder.Services.AddScoped<ICustomerRiskScoringService, CustomerRiskScoringService>();
+builder.Services.AddScoped<IRevenueMetricsService, RevenueMetricsService>();
+builder.Services.Configure<StartupKpiOptions>(builder.Configuration.GetSection("StartupKpi"));
+builder.Services.AddScoped<IStartupKpiService, StartupKpiService>();
+builder.Services.AddScoped<IPartnerSettlementService, PartnerSettlementService>();
 builder.Services.AddScoped<IProductAnalyticsService, NoopProductAnalyticsService>();
 builder.Services.AddScoped<ILocaleFormatService, LocaleFormatService>();
+builder.Services.AddScoped<ITutorialService, TutorialService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient<IDeliveryService, DeliveryService>();
 builder.Services.AddHttpClient<IPayOSPayoutService, PayOSPayoutService>();
@@ -204,6 +230,7 @@ else
 }
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ICatalogCacheService, CatalogCacheService>();
+builder.Services.AddSingleton<IDistributedRateLimitStore, DistributedRateLimitStore>();
 
 // ═══════════════════════════════════════════════════
 // 📅 HOLIDAY PRICING — Tăng giá ngày lễ/cuối tuần
@@ -226,10 +253,13 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 }
 builder.Services.AddScoped<IPiiEncryptionService, PiiEncryptionService>();
 
-if (isCypressEnvironment && !builder.Configuration.GetValue<bool>("Cypress:UseFptSandbox"))
-    builder.Services.AddScoped<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.CypressEkycService>();
+if (isPlaywrightEnvironment && !builder.Configuration.GetValue<bool>("Playwright:UseFptSandbox"))
+    builder.Services.AddScoped<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.PlaywrightEkycService>();
 else
-    builder.Services.AddHttpClient<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>();
+    builder.Services.AddHttpClient<CarRentalSystem.Services.IEkycService, CarRentalSystem.Services.FptEkycService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
 
 // ═══════════════════════════════════════════════════
 // 🤖 GROQ AI CHAT (Miễn phí, không giới hạn)
@@ -308,15 +338,34 @@ if (builder.Configuration.GetValue("Observability:OpenTelemetry:Enabled", false)
         });
 }
 
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
+var forwardedHeadersSecurity = builder.Configuration
+    .GetSection("ForwardedHeaders")
+    .Get<ForwardedHeadersSecurityOptions>() ?? new ForwardedHeadersSecurityOptions();
+var testHooks = builder.Configuration
+    .GetSection("TestHooks")
+    .Get<TestHooksOptions>() ?? new TestHooksOptions();
+if (forwardedHeadersSecurity.Enabled)
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    if (builder.Configuration.GetValue<bool>("Security:TrustForwardedHeaders"))
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = Math.Max(1, forwardedHeadersSecurity.ForwardLimit);
         options.KnownIPNetworks.Clear();
         options.KnownProxies.Clear();
-    }
-});
+
+        foreach (var proxy in forwardedHeadersSecurity.KnownProxies)
+        {
+            if (IPAddress.TryParse(proxy, out var address))
+                options.KnownProxies.Add(address);
+        }
+
+        foreach (var network in forwardedHeadersSecurity.KnownNetworks)
+        {
+            if (System.Net.IPNetwork.TryParse(network, out var parsedNetwork))
+                options.KnownIPNetworks.Add(parsedNetwork);
+        }
+    });
+}
 
 // ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE — Background Job Processing
@@ -414,6 +463,12 @@ if (!string.IsNullOrWhiteSpace(microsoftClientId) && !string.IsNullOrWhiteSpace(
 builder.Services.AddScoped<IAuthorizationHandler, AreaAuthorizationHandler>();
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy(PortalPolicyNames.RequireAdmin, policy =>
+        policy.RequireRole(UserRoleConstants.Admin));
+    options.AddPolicy(PortalPolicyNames.RequireManager, policy =>
+        policy.RequireRole(UserRoleConstants.Manager));
+    options.AddPolicy(PortalPolicyNames.RequireStaff, policy =>
+        policy.RequireRole(UserRoleConstants.Staff));
     options.AddPolicy("AreaView", policy =>
         policy.Requirements.Add(new AreaViewRequirement()));
     options.AddPolicy("AreaCreate", policy =>
@@ -476,7 +531,8 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedUICultures = supportedCultures
 });
 
-app.UseForwardedHeaders();
+if (forwardedHeadersSecurity.Enabled)
+    app.UseForwardedHeaders();
 app.UseResponseCompression();
 
 // ═══════════════════════════════════════════════════
@@ -502,6 +558,13 @@ if (!app.Environment.IsEnvironment("Testing") &&
                 DbSeeder.Seed(context);
             else
                 BlogMockDataSeeder.Seed(context);
+
+            await QaAdminSeeder.SeedFromEnvironmentAsync(context, app.Environment);
+            await BusinessReferenceDataSeeder.SeedAsync(context);
+            await OwnerCarReferenceDataSeeder.SeedAsync(context);
+            await InternalPortalDemoSeeder.SeedAsync(
+                context,
+                services.GetRequiredService<IPasswordHashService>());
         }
     }
 }
@@ -515,7 +578,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Cypress"))
+if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Playwright"))
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
@@ -532,7 +595,7 @@ app.Use(async (context, next) =>
     context.Response.Headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=(self)";
     var scriptSrc = app.Environment.IsProduction()
         ? "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com https://www.google.com https://www.gstatic.com; "
-        : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com https://www.google.com https://www.gstatic.com; ";
+        : "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://code.jquery.com https://www.google.com https://www.gstatic.com; ";
     context.Response.Headers["Content-Security-Policy"] =
         "default-src 'self'; " +
         scriptSrc +
@@ -558,7 +621,7 @@ app.Use(async (context, next) =>
 });
 
 // Bật HTTPS redirection trong Production
-if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Cypress"))
+if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Playwright"))
 {
     app.UseHttpsRedirection();
 }
@@ -607,17 +670,17 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseCors();
 
-var cypressResetCoordinator = new CypressResetCoordinator();
-if (app.Environment.IsEnvironment("Cypress"))
+var playwrightResetCoordinator = new PlaywrightResetCoordinator();
+if (app.Environment.IsEnvironment("Playwright"))
 {
     app.Use(async (context, next) =>
     {
         var path = context.Request.Path;
-        if (cypressResetCoordinator.IsActive &&
+        if (playwrightResetCoordinator.IsActive &&
             !path.StartsWithSegments("/__test/reset") &&
             !path.StartsWithSegments("/live"))
         {
-            while (cypressResetCoordinator.IsActive && !context.RequestAborted.IsCancellationRequested)
+            while (playwrightResetCoordinator.IsActive && !context.RequestAborted.IsCancellationRequested)
                 await Task.Delay(TimeSpan.FromMilliseconds(100), context.RequestAborted);
         }
 
@@ -694,25 +757,25 @@ app.UseAccountLockChecker();
 // ═══════════════════════════════════════════════
 app.UseAuditLog();
 
-if (app.Environment.IsEnvironment("Cypress"))
+if (app.Environment.IsEnvironment("Playwright"))
 {
-    bool HasCypressSecret(HttpContext httpContext, IConfiguration configuration)
+    bool HasPlaywrightSecret(HttpContext httpContext, IConfiguration configuration)
     {
-        var expectedSecret = configuration["Cypress:ResetSecret"] ?? "local-cypress-reset";
-        var providedSecret = httpContext.Request.Headers["X-Cypress-Reset-Secret"].ToString();
+        var expectedSecret = configuration["Playwright:ResetSecret"] ?? "local-playwright-reset";
+        var providedSecret = httpContext.Request.Headers["X-Playwright-Reset-Secret"].ToString();
         return string.Equals(expectedSecret, providedSecret, StringComparison.Ordinal);
     }
 
-    async Task<(ApplicationDbContext? Db, IResult? Error)> OpenCypressDbAsync(IServiceProvider services)
+    async Task<(ApplicationDbContext? Db, IResult? Error)> OpenPlaywrightDbAsync(IServiceProvider services)
     {
         var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var connectionString = db.Database.GetDbConnection().ConnectionString;
-        if (!connectionString.Contains("CarRentalSystem_Cypress", StringComparison.OrdinalIgnoreCase))
+        if (!connectionString.Contains("CarRentalSystem_Playwright", StringComparison.OrdinalIgnoreCase))
         {
             await scope.DisposeAsync();
             return (null, Results.Problem(
-                "Refusing to use a non-Cypress database. The connection string must target CarRentalSystem_Cypress.",
+                "Refusing to use a non-Playwright database. The connection string must target CarRentalSystem_Playwright.",
                 statusCode: StatusCodes.Status409Conflict));
         }
 
@@ -722,14 +785,14 @@ if (app.Environment.IsEnvironment("Cypress"))
     object BuildSandboxStatus(IConfiguration configuration, ApplicationDbContext db)
     {
         var missing = new List<string>();
-        var usePayOS = configuration.GetValue<bool>("Cypress:UsePayOSSandbox");
-        var useFpt = configuration.GetValue<bool>("Cypress:UseFptSandbox");
+        var usePayOS = configuration.GetValue<bool>("Playwright:UsePayOSSandbox");
+        var useFpt = configuration.GetValue<bool>("Playwright:UseFptSandbox");
         var publicBaseUrl = configuration["App:PublicBaseUrl"] ?? "";
         var connectionString = db.Database.GetDbConnection().ConnectionString;
-        var isCypressDatabase = connectionString.Contains("CarRentalSystem_Cypress", StringComparison.OrdinalIgnoreCase);
+        var isPlaywrightDatabase = connectionString.Contains("CarRentalSystem_Playwright", StringComparison.OrdinalIgnoreCase);
 
-        if (!isCypressDatabase)
-            missing.Add("ConnectionStrings__DefaultConnection must target CarRentalSystem_Cypress");
+        if (!isPlaywrightDatabase)
+            missing.Add("ConnectionStrings__DefaultConnection must target CarRentalSystem_Playwright");
 
         if (usePayOS)
         {
@@ -747,7 +810,7 @@ if (app.Environment.IsEnvironment("Cypress"))
         {
             ready = missing.Count == 0,
             environment = app.Environment.EnvironmentName,
-            isCypressDatabase,
+            isPlaywrightDatabase,
             usePayOSSandbox = usePayOS,
             useFptSandbox = useFpt,
             publicBaseUrl,
@@ -770,7 +833,7 @@ if (app.Environment.IsEnvironment("Cypress"))
         };
     }
 
-    async Task<CypressScenarioSummary> CreatePayOSVendorCheckoutAsync(IServiceProvider services, IConfiguration configuration, CypressScenarioSummary scenario)
+    async Task<PlaywrightScenarioSummary> CreatePayOSVendorCheckoutAsync(IServiceProvider services, IConfiguration configuration, PlaywrightScenarioSummary scenario)
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -784,7 +847,7 @@ if (app.Environment.IsEnvironment("Cypress"))
             .Include(c => c.CarBrand)
             .Include(c => c.ServiceType)
             .FirstAsync(c => c.CarID == scenario.CarId);
-        var customer = await db.Users.FirstAsync(u => u.Email == "customer@cypress.local");
+        var customer = await db.Users.FirstAsync(u => u.Email == "customer@playwright.local");
         var location = await db.Locations.FirstAsync();
         var serviceTypeId = car.ServiceTypeID ?? await db.ServiceTypes
             .Where(s => s.Code == ServiceTypeConstants.SelfDrive)
@@ -813,7 +876,7 @@ if (app.Environment.IsEnvironment("Cypress"))
             ServiceTypeCode = ServiceTypeConstants.SelfDrive,
             CustomerDrivingLicenseID = licenseId,
             CarName = car.CarName,
-            CarBrand = car.CarBrand?.Name ?? "Cypress",
+            CarBrand = car.CarBrand?.Name ?? "Playwright",
             LicensePlate = car.LicensePlate,
             CustomerName = customer.Name,
             CustomerEmail = customer.Email,
@@ -828,7 +891,7 @@ if (app.Environment.IsEnvironment("Cypress"))
             BaseRentalAmount = 1600000m,
             ServiceFee = 0m,
             DeliveryFee = scenario.DeliveryFee,
-            DeliveryAddress = "Cypress Customer Dropoff, Nguyen Hue, Quan 1, TP Ho Chi Minh",
+            DeliveryAddress = "Playwright Customer Dropoff, Nguyen Hue, Quan 1, TP Ho Chi Minh",
             DeliveryMode = DeliveryModeConstants.OwnerDelivery,
             DeliveryLatitude = scenario.DeliveryLatitude,
             DeliveryLongitude = scenario.DeliveryLongitude,
@@ -846,12 +909,12 @@ if (app.Environment.IsEnvironment("Cypress"))
             PrivacyNoticeVersionID = privacyId,
             SelfDriveAgreementAcceptedAt = DateTime.UtcNow,
             SelfDriveAgreementIpAddress = "127.0.0.1",
-            SelfDriveAgreementUserAgent = "Cypress vendor sandbox"
+            SelfDriveAgreementUserAgent = "Playwright vendor sandbox"
         };
 
         var holdResult = await reservationService.CreateHoldAsync(customer.UserID, car.CarID, startDate, endDate, quote);
         if (!holdResult.IsSuccess || holdResult.Hold == null)
-            throw new InvalidOperationException(holdResult.ErrorMessage ?? "Could not create Cypress PayOS hold.");
+            throw new InvalidOperationException(holdResult.ErrorMessage ?? "Could not create Playwright PayOS hold.");
 
         var payOSResult = await payOSPaymentService.CreateHoldPaymentAsync(holdResult.Hold, quote, baseUrl);
         if (!payOSResult.IsSuccess || payOSResult.Transaction == null)
@@ -863,7 +926,7 @@ if (app.Environment.IsEnvironment("Cypress"))
         return scenario;
     }
 
-    async Task ClearCypressDataAsync(ApplicationDbContext db, CancellationToken cancellationToken)
+    async Task ClearPlaywrightDataAsync(ApplicationDbContext db, CancellationToken cancellationToken)
     {
         const string sql = """
 DECLARE @sql nvarchar(max);
@@ -896,7 +959,7 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
         await db.Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
 
-    async Task<CypressSeedSummary> ResetCypressDatabaseAsync(
+    async Task<PlaywrightSeedSummary> ResetPlaywrightDatabaseAsync(
         ApplicationDbContext db,
         ILogger logger,
         CancellationToken cancellationToken)
@@ -924,21 +987,21 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
         {
             try
             {
-                await ClearCypressDataAsync(db, cancellationToken);
+                await ClearPlaywrightDataAsync(db, cancellationToken);
             }
             catch (Exception clearEx)
             {
-                logger.LogWarning(clearEx, "Fast Cypress data clear failed; retrying once before recreating the database.");
+                logger.LogWarning(clearEx, "Fast Playwright data clear failed; retrying once before recreating the database.");
                 SqlConnection.ClearAllPools();
                 await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
 
                 try
                 {
-                    await ClearCypressDataAsync(db, cancellationToken);
+                    await ClearPlaywrightDataAsync(db, cancellationToken);
                 }
                 catch (Exception retryEx)
                 {
-                    logger.LogWarning(retryEx, "Fast Cypress data clear retry failed; recreating the database.");
+                    logger.LogWarning(retryEx, "Fast Playwright data clear retry failed; recreating the database.");
                     SqlConnection.ClearAllPools();
                     await db.Database.EnsureDeletedAsync(cancellationToken);
                     await db.Database.MigrateAsync(cancellationToken);
@@ -946,7 +1009,7 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
             }
         }
 
-        return await CypressTestDataSeeder.SeedAsync(db);
+        return await PlaywrightTestDataSeeder.SeedAsync(db);
     }
 
     app.MapPost("/__test/reset", async Task<IResult> (
@@ -955,26 +1018,26 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
         IConfiguration configuration,
         ILoggerFactory loggerFactory) =>
     {
-        if (!HasCypressSecret(httpContext, configuration))
+        if (!HasPlaywrightSecret(httpContext, configuration))
             return Results.Unauthorized();
 
-        var logger = loggerFactory.CreateLogger("CypressReset");
-        cypressResetCoordinator.MarkActive();
-        await cypressResetCoordinator.Lock.WaitAsync(httpContext.RequestAborted);
+        var logger = loggerFactory.CreateLogger("PlaywrightReset");
+        playwrightResetCoordinator.MarkActive();
+        await playwrightResetCoordinator.Lock.WaitAsync(httpContext.RequestAborted);
         try
         {
             await using var scope = services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var connectionString = db.Database.GetDbConnection().ConnectionString;
-            if (!connectionString.Contains("CarRentalSystem_Cypress", StringComparison.OrdinalIgnoreCase))
+            if (!connectionString.Contains("CarRentalSystem_Playwright", StringComparison.OrdinalIgnoreCase))
             {
                 return Results.Problem(
-                    "Refusing to reset a non-Cypress database. The connection string must target CarRentalSystem_Cypress.",
+                    "Refusing to reset a non-Playwright database. The connection string must target CarRentalSystem_Playwright.",
                     statusCode: StatusCodes.Status409Conflict);
             }
 
             SqlConnection.ClearAllPools();
-            var summary = await ResetCypressDatabaseAsync(db, logger, httpContext.RequestAborted);
+            var summary = await ResetPlaywrightDatabaseAsync(db, logger, httpContext.RequestAborted);
             SqlConnection.ClearAllPools();
             return Results.Json(summary);
         }
@@ -984,16 +1047,16 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Cypress database reset failed.");
+            logger.LogError(ex, "Playwright database reset failed.");
             return Results.Problem(
-                $"Cypress database reset failed: {ex.Message}",
+                $"Playwright database reset failed: {ex.Message}",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
         finally
         {
             SqlConnection.ClearAllPools();
-            cypressResetCoordinator.Lock.Release();
-            cypressResetCoordinator.MarkInactive();
+            playwrightResetCoordinator.Lock.Release();
+            playwrightResetCoordinator.MarkInactive();
         }
     }).AllowAnonymous();
 
@@ -1002,31 +1065,31 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
         IServiceProvider services,
         IConfiguration configuration) =>
     {
-        if (!HasCypressSecret(httpContext, configuration))
+        if (!HasPlaywrightSecret(httpContext, configuration))
             return Results.Unauthorized();
 
-        var opened = await OpenCypressDbAsync(services);
+        var opened = await OpenPlaywrightDbAsync(services);
         if (opened.Error != null) return opened.Error;
         await using var db = opened.Db!;
         return Results.Json(BuildSandboxStatus(configuration, db));
     }).AllowAnonymous();
 
     app.MapPost("/__test/seed/scenario", async Task<IResult> (
-        CypressScenarioRequest request,
+        PlaywrightScenarioRequest request,
         HttpContext httpContext,
         IServiceProvider services,
         IConfiguration configuration) =>
     {
-        if (!HasCypressSecret(httpContext, configuration))
+        if (!HasPlaywrightSecret(httpContext, configuration))
             return Results.Unauthorized();
 
-        var opened = await OpenCypressDbAsync(services);
+        var opened = await OpenPlaywrightDbAsync(services);
         if (opened.Error != null) return opened.Error;
         await using var db = opened.Db!;
 
         try
         {
-            var scenario = await CypressTestDataSeeder.SeedScenarioAsync(db, request.Name);
+            var scenario = await PlaywrightTestDataSeeder.SeedScenarioAsync(db, request.Name);
             if (string.Equals(request.Name, "payos-vendor-checkout", StringComparison.OrdinalIgnoreCase))
                 scenario = await CreatePayOSVendorCheckoutAsync(services, configuration, scenario);
 
@@ -1045,13 +1108,13 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
         IServiceProvider services,
         IConfiguration configuration) =>
     {
-        if (!HasCypressSecret(httpContext, configuration))
+        if (!HasPlaywrightSecret(httpContext, configuration))
             return Results.Unauthorized();
 
         if (orderCode <= 0)
             return Results.BadRequest(new { message = "orderCode is required." });
 
-        var opened = await OpenCypressDbAsync(services);
+        var opened = await OpenPlaywrightDbAsync(services);
         if (opened.Error != null) return opened.Error;
         await using var db = opened.Db!;
 
@@ -1099,10 +1162,57 @@ IF LEN(@sql) > 0 EXEC sp_executesql @sql;
     }).AllowAnonymous();
 }
 
+if ((app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Playwright")) && testHooks.Enabled)
+{
+    app.MapPost("/__test/otp/email", async Task<IResult> (
+        TestOtpRequest request,
+        HttpContext httpContext,
+        ApplicationDbContext db) =>
+    {
+        httpContext.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate, max-age=0";
+        httpContext.Response.Headers.Pragma = "no-cache";
+
+        var providedSecret = httpContext.Request.Headers["X-Test-Hook-Secret"].ToString();
+        if (string.IsNullOrWhiteSpace(testHooks.Secret) ||
+            !string.Equals(testHooks.Secret, providedSecret, StringComparison.Ordinal))
+            return Results.Unauthorized();
+
+        var connectionString = db.Database.GetDbConnection().ConnectionString;
+        var databaseName = new SqlConnectionStringBuilder(connectionString).InitialCatalog;
+        if (!testHooks.AllowedDatabases.Any(database =>
+                !string.IsNullOrWhiteSpace(database) &&
+                string.Equals(database, databaseName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Results.Problem(
+                "Refusing to expose test OTP from a database outside TestHooks:AllowedDatabases.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        var email = request.Email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email))
+            return Results.BadRequest(new { message = "email is required" });
+
+        var otp = await db.Users.AsNoTracking()
+            .Where(user => user.Email.ToLower() == email)
+            .Select(user => new { user.EmailVerificationToken, user.EmailVerificationTokenExpiry })
+            .FirstOrDefaultAsync();
+        if (otp == null || string.IsNullOrWhiteSpace(otp.EmailVerificationToken))
+            return Results.NotFound(new { message = "OTP not found" });
+        if (otp.EmailVerificationTokenExpiry <= DateTime.UtcNow)
+            return Results.Json(new { message = "OTP expired" }, statusCode: StatusCodes.Status410Gone);
+
+        return Results.Json(new
+        {
+            otp = otp.EmailVerificationToken,
+            expiresAtUtc = otp.EmailVerificationTokenExpiry
+        });
+    }).AllowAnonymous();
+}
+
 // ═══════════════════════════════════════════════════
 // 🟡 HANGFIRE DASHBOARD — chỉ Admin mới truy cập được
 // ═══════════════════════════════════════════════════
-if (!app.Environment.IsEnvironment("Testing") && !app.Environment.IsEnvironment("Cypress"))
+if (!app.Environment.IsEnvironment("Testing") && !app.Environment.IsEnvironment("Playwright"))
 {
     app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
     {
@@ -1117,7 +1227,7 @@ if (!app.Environment.IsEnvironment("Testing") && !app.Environment.IsEnvironment(
 // Chỉ đăng ký recurring jobs khi KHÔNG phải môi trường Testing
 // (Testing dùng InMemory DB, không có SQL Server cho Hangfire)
 if (!app.Environment.IsEnvironment("Testing") &&
-    !app.Environment.IsEnvironment("Cypress") &&
+    !app.Environment.IsEnvironment("Playwright") &&
     app.Configuration.GetValue("Security:EnableRecurringJobs", true))
 {
     RecurringJob.AddOrUpdate<ContractExpirationJob>(
@@ -1311,7 +1421,7 @@ app.MapGet("/live", () => Results.Json(new
     timestampUtc = DateTime.UtcNow
 })).AllowAnonymous();
 
-app.MapGet("/ready", async (IServiceProvider services, IConfiguration configuration) =>
+app.MapGet("/ready", async (IServiceProvider services, IConfiguration configuration, IWebHostEnvironment environment) =>
 {
     var started = System.Diagnostics.Stopwatch.StartNew();
     var checks = new List<object>();
@@ -1338,15 +1448,33 @@ app.MapGet("/ready", async (IServiceProvider services, IConfiguration configurat
     healthy &= dataProtectionReady;
     checks.Add(new { name = "data_protection_keys", status = dataProtectionReady ? "Healthy" : "Unhealthy", description = dataProtectionReady ? "Keys path is available or not required." : "Configured keys path does not exist." });
 
-    var payosReady = !string.IsNullOrWhiteSpace(configuration["PayOS:ClientId"]) &&
+    var useMockPayOS = environment.IsEnvironment("Playwright") &&
+                       !configuration.GetValue<bool>("Playwright:UsePayOSSandbox");
+    var payosReady = useMockPayOS || (!string.IsNullOrWhiteSpace(configuration["PayOS:ClientId"]) &&
                      !string.IsNullOrWhiteSpace(configuration["PayOS:ApiKey"]) &&
-                     !string.IsNullOrWhiteSpace(configuration["PayOS:ChecksumKey"]);
+                     !string.IsNullOrWhiteSpace(configuration["PayOS:ChecksumKey"]));
     healthy &= payosReady;
-    checks.Add(new { name = "payos_config", status = payosReady ? "Healthy" : "Unhealthy", description = payosReady ? "PayOS config is present." : "PayOS config is incomplete." });
+    checks.Add(new
+    {
+        name = "payos_config",
+        status = payosReady ? "Healthy" : "Unhealthy",
+        description = useMockPayOS
+            ? "PayOS is intentionally replaced by the Playwright mock gateway."
+            : payosReady ? "PayOS config is present." : "PayOS config is incomplete."
+    });
 
-    var fptReady = !string.IsNullOrWhiteSpace(configuration["FptAi:ApiKey"]);
+    var useMockFpt = environment.IsEnvironment("Playwright") &&
+                     !configuration.GetValue<bool>("Playwright:UseFptSandbox");
+    var fptReady = useMockFpt || !string.IsNullOrWhiteSpace(configuration["FptAi:ApiKey"]);
     healthy &= fptReady;
-    checks.Add(new { name = "fpt_ekyc_config", status = fptReady ? "Healthy" : "Unhealthy", description = fptReady ? "FPT eKYC config is present." : "FPT eKYC config is missing." });
+    checks.Add(new
+    {
+        name = "fpt_ekyc_config",
+        status = fptReady ? "Healthy" : "Unhealthy",
+        description = useMockFpt
+            ? "FPT eKYC is intentionally replaced by the Playwright mock service."
+            : fptReady ? "FPT eKYC config is present." : "FPT eKYC config is missing."
+    });
 
     if (!string.IsNullOrWhiteSpace(configuration["Redis:ConnectionString"]))
         checks.Add(new { name = "redis_config", status = "Healthy", description = "Redis connection string is configured." });
@@ -1395,12 +1523,17 @@ public static class AppHost
 // 🔒 Hangfire Dashboard Authorization Filter
 // Chỉ cho phép user đã đăng nhập với quyền Admin
 // ═══════════════════════════════════════════════════
-public sealed class CypressScenarioRequest
+public sealed class PlaywrightScenarioRequest
 {
     public string Name { get; set; } = string.Empty;
 }
 
-public sealed class CypressResetCoordinator
+public sealed class TestOtpRequest
+{
+    public string? Email { get; set; }
+}
+
+public sealed class PlaywrightResetCoordinator
 {
     private int _active;
 

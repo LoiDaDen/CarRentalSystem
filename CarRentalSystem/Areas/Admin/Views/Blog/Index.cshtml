@@ -45,8 +45,8 @@
                     <label class="form-label small fw-bold text-muted">Trạng thái</label>
                     <select name="status" class="form-select">
                         <option value="">Tất cả</option>
-                        <option value="@BlogStatusConstants.Published" selected="@(ViewBag.Status == BlogStatusConstants.Published)">Published</option>
-                        <option value="@BlogStatusConstants.Draft" selected="@(ViewBag.Status == BlogStatusConstants.Draft)">Draft</option>
+                        <option value="@BlogStatusConstants.Published" selected="@(ViewBag.Status == BlogStatusConstants.Published)">Đã xuất bản</option>
+                        <option value="@BlogStatusConstants.Draft" selected="@(ViewBag.Status == BlogStatusConstants.Draft)">Bản nháp</option>
                     </select>
                 </div>
                 <div class="col-lg-2 d-grid">
@@ -91,7 +91,7 @@
                             <td>@blog.ViewCount</td>
                             <td>
                                 <span class="badge rounded-pill @(blog.Status == BlogStatusConstants.Published ? "bg-success-subtle text-success border border-success" : "bg-secondary-subtle text-secondary border")">
-                                    @blog.Status
+                                    @UiLabels.BlogStatus(blog.Status)
                                 </span>
                             </td>
                             <td class="text-end pe-4">

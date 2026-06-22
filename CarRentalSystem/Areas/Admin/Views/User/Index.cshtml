@@ -3,7 +3,9 @@
     ViewData["Title"] = "Quản lý Người dùng";
     Layout = "_AdminLayout";
     
-    var pinVerified = Context.Session.GetString("AdminPinVerified") == "true";
+    var pinVerified = ViewBag.PinVerified == true;
+    var latestRiskByUser = ViewBag.LatestRiskByUser as IDictionary<int, CarRentalSystem.Models.CustomerRiskAssessment>
+        ?? new Dictionary<int, CarRentalSystem.Models.CustomerRiskAssessment>();
 }
 
 <!-- PIN Verification Modal -->
@@ -19,7 +21,7 @@
                         </div>
                     </div>
                     <h5 class="fw-bold mb-2">Xác minh bảo mật</h5>
-                    <p class="text-muted small mb-4">Nhập mã PIN để truy cập dữ liệu nhạy cảm</p>
+                    <p class="text-muted small mb-4">Nhập mã PIN quản trị chung để truy cập danh sách khách hàng</p>
                     
                     @if (TempData["PinError"] != null)
                     {
@@ -27,13 +29,12 @@
                     }
                     
                     <form asp-action="VerifyAdminPin" method="post">
-                        <input type="password" name="pin" maxlength="6" class="form-control form-control-lg text-center fw-bold mb-3" 
+                        <input type="password" name="pin" minlength="6" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" class="form-control form-control-lg text-center fw-bold mb-3" 
                                placeholder="Nhập mã PIN" autocomplete="off" required style="letter-spacing: 4px; background: var(--admin-surface-2); border-color: var(--admin-border); color: var(--admin-text);" />
                         <button type="submit" class="btn btn-warning w-100 fw-bold rounded-3 py-2">
                             <i class="bi bi-unlock-fill me-2"></i>Xác minh
                         </button>
                     </form>
-                    <p class="text-muted small mt-3 mb-0">Mã PIN: 123456</p>
                 </div>
             </div>
         </div>
@@ -169,6 +170,20 @@
                                 }
                             </td>
                             <td class="text-center">
+                                @if (latestRiskByUser.TryGetValue(user.UserID, out var risk))
+                                {
+                                    var riskClass = risk.RiskLevel == "Critical" || risk.RiskLevel == "High"
+                                        ? "bg-danger"
+                                        : risk.RiskLevel == "Medium" ? "bg-warning text-dark" : "bg-success";
+                                    <span class="badge @riskClass rounded-pill px-3 py-1 mb-1 d-block">
+                                        <i class="bi bi-activity me-1"></i>Risk @risk.Score/100
+                                    </span>
+                                }
+                                <form asp-action="AssessRisk" asp-route-id="@user.UserID" method="post" class="mb-1">
+                                    <button type="submit" class="btn btn-sm btn-outline-info rounded-pill px-2 py-0" style="font-size:0.72rem;">
+                                        <i class="bi bi-clipboard-pulse me-1"></i>Danh gia risk
+                                    </button>
+                                </form>
                                 @if (user.IsBlacklisted)
                                 {
                                     <span class="badge bg-dark rounded-pill px-3 py-1 mb-1 d-block"><i class="bi bi-slash-circle me-1"></i>Blacklisted</span>

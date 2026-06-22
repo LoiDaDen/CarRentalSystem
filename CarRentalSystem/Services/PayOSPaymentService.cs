@@ -27,6 +27,7 @@ namespace CarRentalSystem.Services
         private readonly ILongTermRentalService _longTermRentalService;
         private readonly IAuditTrailService _auditTrail;
         private readonly IDigitalContractService _digitalContractService;
+        private readonly IBookingFactory _bookingFactory;
         private readonly IPayOSGateway _payOSGateway;
         private readonly ILogger<PayOSPaymentService> _logger;
 
@@ -43,6 +44,7 @@ namespace CarRentalSystem.Services
             ILongTermRentalService longTermRentalService,
             IAuditTrailService auditTrail,
             IDigitalContractService digitalContractService,
+            IBookingFactory bookingFactory,
             ILogger<PayOSPaymentService> logger)
         {
             _context = context;
@@ -55,6 +57,7 @@ namespace CarRentalSystem.Services
             _longTermRentalService = longTermRentalService;
             _auditTrail = auditTrail;
             _digitalContractService = digitalContractService;
+            _bookingFactory = bookingFactory;
             _logger = logger;
         }
 
@@ -223,6 +226,7 @@ namespace CarRentalSystem.Services
                 return new PayOSCreatePaymentResult(false, null, "Reservation fee is invalid.", null);
 
             bookingFromDb.ReservationFee = reservationFee;
+            bookingFromDb.DepositAmount = reservationFee;
             bookingFromDb.DepositStatus = DepositStatusConstants.Unpaid;
 
             var payment = bookingFromDb.Payment ?? await _context.Payments.FirstOrDefaultAsync(p => p.BookingID == bookingFromDb.BookingID);
@@ -654,42 +658,13 @@ namespace CarRentalSystem.Services
                 if (pendingStatus == null)
                     throw new InvalidOperationException("Pending booking status is missing.");
 
-                var booking = new Booking
-                {
-                    UserID = hold.UserID,
-                    CarID = hold.CarID,
-                    ServiceTypeID = quote.ServiceTypeID ?? await GetSelfDriveServiceTypeIdAsync(),
-                    CustomerDrivingLicenseID = quote.CustomerDrivingLicenseID,
-                    ContractTypeCode = "SELF_DRIVE_CONTRACT",
-                    StartDate = hold.StartDate,
-                    EndDate = hold.EndDate,
-                    PickupLocationID = quote.PickupLocationID,
-                    ReturnLocationID = quote.ReturnLocationID,
-                    TotalPrice = quote.TotalPrice,
-                    TotalHours = quote.TotalHours,
-                    BookingStatusID = pendingStatus.BookingStatusID,
-                    InsuranceTier = quote.InsuranceTier,
-                    DepositAmount = quote.CollateralAmount,
-                    ReservationFee = transaction.Amount,
-                    DepositStatus = DepositStatusConstants.Holding,
-                    PromotionID = quote.PromotionID,
-                    ContractTypeID = quote.ContractTypeID,
-                    DiscountAmount = quote.DiscountAmount,
-                    DeliveryAddress = quote.DeliveryAddress,
-                    DeliveryMode = quote.DeliveryMode,
-                    DeliveryLatitude = quote.DeliveryLatitude,
-                    DeliveryLongitude = quote.DeliveryLongitude,
-                    DeliveryDistanceKm = quote.DeliveryDistanceKm,
-                    DeliveryEtaMinutes = quote.DeliveryEtaMinutes,
-                    DeliveryQuotedAt = quote.DeliveryQuotedAt,
-                    DeliveryFee = quote.DeliveryFee,
-                    AddOnFee = quote.AddOnFee,
-                    TermsDocumentVersionID = quote.TermsDocumentVersionID,
-                    PrivacyNoticeVersionID = quote.PrivacyNoticeVersionID,
-                    SelfDriveAgreementAcceptedAt = quote.SelfDriveAgreementAcceptedAt,
-                    SelfDriveAgreementIpAddress = quote.SelfDriveAgreementIpAddress,
-                    SelfDriveAgreementUserAgent = quote.SelfDriveAgreementUserAgent
-                };
+                var serviceTypeId = quote.ServiceTypeID ?? await GetSelfDriveServiceTypeIdAsync();
+                var booking = _bookingFactory.CreateFromPaidHold(
+                    hold,
+                    quote,
+                    pendingStatus.BookingStatusID,
+                    reservationFeeOverride: transaction.Amount,
+                    serviceTypeIdOverride: serviceTypeId);
                 _context.Bookings.Add(booking);
                 await _context.SaveChangesAsync();
 
@@ -886,43 +861,13 @@ namespace CarRentalSystem.Services
                     if (!availability.IsAvailable)
                         throw new InvalidOperationException(availability.Reason ?? "A held car is no longer available.");
 
-                    var booking = new Booking
-                    {
-                        UserID = hold.UserID,
-                        CarID = hold.CarID,
-                        ServiceTypeID = quote.ServiceTypeID ?? await GetSelfDriveServiceTypeIdAsync(),
-                        CustomerDrivingLicenseID = quote.CustomerDrivingLicenseID,
-                        ContractTypeCode = "SELF_DRIVE_CONTRACT",
-                        TransactionID = bookingTransaction.TransactionID,
-                        StartDate = hold.StartDate,
-                        EndDate = hold.EndDate,
-                        PickupLocationID = quote.PickupLocationID,
-                        ReturnLocationID = quote.ReturnLocationID,
-                        TotalPrice = quote.TotalPrice,
-                        TotalHours = quote.TotalHours,
-                        BookingStatusID = pendingStatus.BookingStatusID,
-                        InsuranceTier = quote.InsuranceTier,
-                        DepositAmount = quote.CollateralAmount,
-                        ReservationFee = quote.HoldingFee,
-                        DepositStatus = DepositStatusConstants.Holding,
-                        PromotionID = quote.PromotionID,
-                        ContractTypeID = quote.ContractTypeID,
-                        DiscountAmount = quote.DiscountAmount,
-                        DeliveryAddress = quote.DeliveryAddress,
-                        DeliveryMode = quote.DeliveryMode,
-                        DeliveryLatitude = quote.DeliveryLatitude,
-                        DeliveryLongitude = quote.DeliveryLongitude,
-                        DeliveryDistanceKm = quote.DeliveryDistanceKm,
-                        DeliveryEtaMinutes = quote.DeliveryEtaMinutes,
-                        DeliveryQuotedAt = quote.DeliveryQuotedAt,
-                        DeliveryFee = quote.DeliveryFee,
-                        AddOnFee = quote.AddOnFee,
-                        TermsDocumentVersionID = quote.TermsDocumentVersionID,
-                        PrivacyNoticeVersionID = quote.PrivacyNoticeVersionID,
-                        SelfDriveAgreementAcceptedAt = quote.SelfDriveAgreementAcceptedAt,
-                        SelfDriveAgreementIpAddress = quote.SelfDriveAgreementIpAddress,
-                        SelfDriveAgreementUserAgent = quote.SelfDriveAgreementUserAgent
-                    };
+                    var serviceTypeId = quote.ServiceTypeID ?? await GetSelfDriveServiceTypeIdAsync();
+                    var booking = _bookingFactory.CreateFromPaidHold(
+                        hold,
+                        quote,
+                        pendingStatus.BookingStatusID,
+                        bookingTransaction.TransactionID,
+                        serviceTypeIdOverride: serviceTypeId);
                     _context.Bookings.Add(booking);
                     await _context.SaveChangesAsync();
 
@@ -1116,8 +1061,7 @@ namespace CarRentalSystem.Services
 
         private static decimal ResolveReservationFee(Booking booking)
         {
-            if (booking.ReservationFee > 0) return booking.ReservationFee;
-            return Math.Round(booking.TotalPrice * 0.2m, 0, MidpointRounding.AwayFromZero);
+            return DepositPolicy.Calculate(booking.TotalPrice);
         }
 
         private async Task MarkCreatePaymentFailedAsync(PayOSTransaction transaction, Exception exception, string logMessage, int entityId)

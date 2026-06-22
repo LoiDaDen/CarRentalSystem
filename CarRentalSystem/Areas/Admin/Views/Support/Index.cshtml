@@ -1,0 +1,128 @@
+@using CarRentalSystem.Models
+@model IReadOnlyList<SupportTicket>
+@{
+    ViewData["Title"] = "Support tickets";
+    var activeStatus = ViewBag.Status as string ?? "";
+    var openCount = Model.Count(ticket => ticket.Status == SupportTicketStatusConstants.Open);
+    var inProgressCount = Model.Count(ticket => ticket.Status == SupportTicketStatusConstants.InProgress);
+    var breachedCount = Model.Count(ticket =>
+        ticket.Status != SupportTicketStatusConstants.Resolved &&
+        ticket.Status != SupportTicketStatusConstants.Closed &&
+        ticket.FirstResponseDueAt.HasValue &&
+        ticket.FirstResponseDueAt.Value < DateTime.UtcNow);
+    string Tone(string status) => status switch
+    {
+        SupportTicketStatusConstants.Resolved or SupportTicketStatusConstants.Closed => "admin-status-success",
+        SupportTicketStatusConstants.InProgress => "admin-status-info",
+        SupportTicketStatusConstants.Open => "admin-status-warning",
+        _ => "admin-status-neutral"
+    };
+    string PriorityTone(string priority) => priority switch
+    {
+        SupportTicketPriorityConstants.P0 => "admin-status-danger",
+        SupportTicketPriorityConstants.P1 => "admin-status-warning",
+        SupportTicketPriorityConstants.P2 => "admin-status-info",
+        _ => "admin-status-neutral"
+    };
+}
+
+<div class="page-header">
+    <div>
+        <h2>Support ticket queue</h2>
+        <p>Phân loại, theo dõi SLA và xử lý các yêu cầu hỗ trợ của khách hàng.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Enterprise" asp-action="Index">
+        <i class="bi bi-command"></i> Command center
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-inboxes-fill"></i></span><div class="admin-kpi-value">@Model.Count</div><div class="admin-kpi-label">Tổng ticket</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-envelope-exclamation-fill"></i></span><div class="admin-kpi-value">@openCount</div><div class="admin-kpi-label">Đang mở</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-arrow-repeat"></i></span><div class="admin-kpi-value">@inProgressCount</div><div class="admin-kpi-label">Đang xử lý</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-alarm-fill"></i></span><div class="admin-kpi-value">@breachedCount</div><div class="admin-kpi-label">Quá SLA phản hồi</div></div></div>
+</div>
+
+<div class="filter-bar">
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-sm @(string.IsNullOrWhiteSpace(activeStatus) ? "btn-primary" : "btn-outline-secondary")" asp-action="Index">Tất cả</a>
+        @foreach (var status in SupportTicketStatusConstants.All)
+        {
+            <a class="btn btn-sm @(activeStatus == status ? "btn-primary" : "btn-outline-secondary")" asp-action="Index" asp-route-status="@status">@UiLabels.SupportTicketStatus(status)</a>
+        }
+    </div>
+</div>
+
+@if (Model.Count == 0)
+{
+    <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel
+    {
+        Icon = "bi-headset",
+        Title = "Chưa có support ticket",
+        Message = "Không có ticket nào khớp với bộ lọc hiện tại."
+    })" />
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Ticket</th><th>Khách hàng</th><th>Liên kết</th><th>Ưu tiên</th><th>SLA</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                <tbody>
+                @foreach (var ticket in Model)
+                {
+                    var slaBreached = ticket.FirstResponseDueAt.HasValue &&
+                        ticket.FirstResponseDueAt.Value < DateTime.UtcNow &&
+                        ticket.Status != SupportTicketStatusConstants.Resolved &&
+                        ticket.Status != SupportTicketStatusConstants.Closed;
+                    <tr>
+                        <td>
+                            <strong>#@ticket.SupportTicketID @ticket.Subject</strong>
+                            <small class="d-block text-muted">@ticket.TicketType · @ticket.CreatedAt.ToString("dd/MM/yyyy HH:mm")</small>
+                            <div class="admin-table-description">@ticket.Description</div>
+                        </td>
+                        <td><strong>@(ticket.User?.Name ?? "—")</strong><small class="d-block text-muted">@(ticket.User?.Email ?? "—")</small></td>
+                        <td>
+                            @if (ticket.BookingID.HasValue)
+                            {
+                                <a asp-area="Admin" asp-controller="Booking" asp-action="Details" asp-route-id="@ticket.BookingID" class="btn btn-sm btn-outline-primary">Booking #@ticket.BookingID</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td><span class="admin-status-badge @PriorityTone(ticket.Priority)">@ticket.Priority</span></td>
+                        <td>
+                            @if (ticket.FirstResponseDueAt.HasValue)
+                            {
+                                <span class="admin-status-badge @(slaBreached ? "admin-status-danger" : "admin-status-neutral")">
+                                    <i class="bi @(slaBreached ? "bi-alarm-fill" : "bi-clock")"></i>@ticket.FirstResponseDueAt.Value.ToString("dd/MM HH:mm")
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Chưa đặt SLA</span>
+                            }
+                        </td>
+                        <td><span class="admin-status-badge @Tone(ticket.Status)">@UiLabels.SupportTicketStatus(ticket.Status)</span></td>
+                        <td>
+                            <form asp-action="UpdateStatus" method="post" class="admin-support-action">
+                                <input type="hidden" name="id" value="@ticket.SupportTicketID" />
+                                <select name="status" class="form-select form-select-sm" aria-label="Trạng thái ticket">
+                                    @foreach (var status in SupportTicketStatusConstants.All)
+                                    {
+                                        <option value="@status" selected="@(ticket.Status == status)">@UiLabels.SupportTicketStatus(status)</option>
+                                    }
+                                </select>
+                                <input name="resolution" class="form-control form-control-sm" placeholder="Ghi chú xử lý" value="@ticket.Resolution" />
+                                <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-check2"></i> Cập nhật</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

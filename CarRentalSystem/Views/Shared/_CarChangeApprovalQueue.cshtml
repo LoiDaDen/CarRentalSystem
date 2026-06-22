@@ -1,0 +1,150 @@
+@model IEnumerable<CarRentalSystem.Models.CarChangeRequest>
+@{
+    var canApprove = ViewBag.CanApprove as bool? ?? true;
+    var status = ViewBag.Status as string ?? CarRentalSystem.Models.CarApprovalStatusConstants.Pending;
+
+    string ApprovalTarget(CarRentalSystem.Models.CarChangeRequest request) =>
+        request.AreaID.HasValue ? "Staff/Manager khu vực" : "Admin";
+
+    bool IsPending(CarRentalSystem.Models.CarChangeRequest request) =>
+        request.Status == CarRentalSystem.Models.CarChangeRequestStatusConstants.PendingStaff ||
+        request.Status == CarRentalSystem.Models.CarChangeRequestStatusConstants.PendingManager ||
+        request.Status == CarRentalSystem.Models.CarChangeRequestStatusConstants.PendingAdmin;
+
+    string StatusText(CarRentalSystem.Models.CarChangeRequest request) => request.Status switch
+    {
+        CarRentalSystem.Models.CarChangeRequestStatusConstants.Approved => "Đã duyệt",
+        CarRentalSystem.Models.CarChangeRequestStatusConstants.Rejected => "Bị từ chối",
+        CarRentalSystem.Models.CarChangeRequestStatusConstants.PendingStaff => "Chờ Staff duyệt",
+        CarRentalSystem.Models.CarChangeRequestStatusConstants.PendingManager => "Chờ Manager duyệt",
+        CarRentalSystem.Models.CarChangeRequestStatusConstants.PendingAdmin => "Chờ Admin duyệt",
+        _ => "Chờ duyệt"
+    };
+
+    string StatusBadge(CarRentalSystem.Models.CarChangeRequest request) => request.Status switch
+    {
+        CarRentalSystem.Models.CarChangeRequestStatusConstants.Approved => "bg-success",
+        CarRentalSystem.Models.CarChangeRequestStatusConstants.Rejected => "bg-danger",
+        _ => "bg-warning text-dark"
+    };
+
+    string OperationText(string operation) => operation switch
+    {
+        CarRentalSystem.Models.CarChangeOperationConstants.Create => "Xe mới",
+        CarRentalSystem.Models.CarChangeOperationConstants.Update => "Cập nhật",
+        CarRentalSystem.Models.CarChangeOperationConstants.Delete => "Xóa xe",
+        _ => operation
+    };
+}
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Yêu cầu duyệt xe</h4>
+        <p class="text-muted mb-0 small">Xe chỉ hiển thị cho khách sau khi được người có quyền duyệt.</p>
+    </div>
+    <div class="btn-group" role="group" aria-label="Bộ lọc trạng thái duyệt xe">
+        <a asp-action="Index"
+           asp-route-status="@CarRentalSystem.Models.CarApprovalStatusConstants.Pending"
+           class="btn btn-sm @(status == CarRentalSystem.Models.CarApprovalStatusConstants.Pending ? "btn-primary" : "btn-outline-primary")">
+            Chờ duyệt
+        </a>
+        <a asp-action="Index"
+           asp-route-status="@CarRentalSystem.Models.CarApprovalStatusConstants.Approved"
+           class="btn btn-sm @(status == CarRentalSystem.Models.CarApprovalStatusConstants.Approved ? "btn-primary" : "btn-outline-primary")">
+            Đã duyệt
+        </a>
+        <a asp-action="Index"
+           asp-route-status="@CarRentalSystem.Models.CarApprovalStatusConstants.Rejected"
+           class="btn btn-sm @(status == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected ? "btn-primary" : "btn-outline-primary")">
+            Bị từ chối
+        </a>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="card text-center p-5">
+        <div class="empty-state">
+            <i class="bi bi-check2-circle display-1 text-success"></i>
+            <h4 class="mt-3">Không có yêu cầu xe phù hợp</h4>
+            <p class="text-muted small mt-2">Danh sách này được lọc theo trạng thái và phạm vi khu vực/quyền của tài khoản hiện tại.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var request in Model)
+        {
+            var car = request.Car;
+            var imageUrl = car?.CarImages?.FirstOrDefault()?.ImageUrl ?? car?.ImageURL ?? "/images/default-car.png";
+            var pending = IsPending(request);
+            <div class="col-md-6 col-xl-4">
+                <div class="card h-100">
+                    <img src="@imageUrl" class="card-img-top" alt="@(car?.CarName ?? "Xe")" style="height: 200px; object-fit: cover;">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                            <h5 class="fw-bold mb-0 text-truncate" style="max-width: 220px;">@(car?.CarBrand?.Name) @(car?.CarName)</h5>
+                            <span class="badge bg-secondary rounded-pill">@OperationText(request.Operation)</span>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            <i class="bi bi-person me-1"></i>Chủ xe:
+                            <strong>@(request.Owner?.Name ?? "N/A")</strong>
+                        </p>
+                        <p class="text-muted small mb-3">
+                            <i class="bi bi-diagram-3 me-1"></i>Phạm vi duyệt:
+                            <strong>@ApprovalTarget(request)</strong>
+                            @if (request.Area != null)
+                            {
+                                <span> - @request.Area.Name</span>
+                            }
+                        </p>
+
+                        <ul class="list-unstyled small mb-4">
+                            <li class="mb-1"><i class="bi bi-hash me-2 text-muted"></i>Biển số: <code>@(car?.LicensePlate ?? "N/A")</code></li>
+                            <li class="mb-1"><i class="bi bi-cash me-2 text-muted"></i>Giá thuê: <strong class="text-success">@((car?.PricePerDay ?? 0).ToString("N0"))đ/ngày</strong></li>
+                            <li class="mb-1"><i class="bi bi-clock me-2 text-muted"></i>Tạo lúc: @request.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</li>
+                            <li class="mb-1"><i class="bi bi-info-circle me-2 text-muted"></i>Trạng thái: <span class="badge @StatusBadge(request)">@StatusText(request)</span></li>
+                        </ul>
+
+                        @if (request.Status == CarRentalSystem.Models.CarChangeRequestStatusConstants.Rejected && !string.IsNullOrWhiteSpace(request.RejectionReason))
+                        {
+                            <div class="alert alert-danger small py-2">
+                                <strong>Lý do từ chối:</strong> @request.RejectionReason
+                            </div>
+                        }
+
+                        <div class="approval-steps small mb-3 mt-auto">
+                            <span class="badge bg-light text-dark border">Một bước duyệt</span>
+                            <span class="badge bg-light text-dark border">@ApprovalTarget(request)</span>
+                        </div>
+
+                        @if (canApprove && pending)
+                        {
+                            <div class="d-flex gap-2 align-items-start">
+                                <form asp-action="Approve" asp-route-id="@request.CarChangeRequestID" method="post" class="flex-grow-1">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-success w-100 rounded-pill fw-bold">
+                                        <i class="bi bi-check-circle me-1"></i>Duyệt
+                                    </button>
+                                </form>
+                                <form asp-action="Reject" asp-route-id="@request.CarChangeRequestID" method="post" class="flex-grow-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="text"
+                                           name="reason"
+                                           class="form-control form-control-sm mb-2"
+                                           maxlength="500"
+                                           required
+                                           placeholder="Lý do từ chối" />
+                                    <button type="submit" class="btn btn-outline-danger w-100 rounded-pill fw-bold">
+                                        <i class="bi bi-x-circle me-1"></i>Từ chối
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -17,8 +17,9 @@ namespace CarRentalSystem.Tests.IntegrationTests
     /// </summary>
     public class TestWebAppFactory : WebApplicationFactory<Program>
     {
-        private static readonly string _dbName = "SmokeTestDb_Shared";
-        private static bool _seeded = false;
+        private readonly string _dbName = $"SmokeTestDb_{Guid.NewGuid():N}";
+        private readonly object _seedLock = new();
+        private bool _seeded;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -44,13 +45,16 @@ namespace CarRentalSystem.Tests.IntegrationTests
                 });
 
                 // Seed data ngay trong factory
-                if (!_seeded)
+                lock (_seedLock)
                 {
-                    var sp = services.BuildServiceProvider();
-                    using var scope = sp.CreateScope();
-                    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                    SeedData(db);
-                    _seeded = true;
+                    if (!_seeded)
+                    {
+                        var sp = services.BuildServiceProvider();
+                        using var scope = sp.CreateScope();
+                        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                        SeedData(db);
+                        _seeded = true;
+                    }
                 }
             });
         }

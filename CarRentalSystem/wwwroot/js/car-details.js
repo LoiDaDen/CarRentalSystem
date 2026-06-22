@@ -140,8 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             });
                         
                         // 2. Lấy tên địa chỉ (Bỏ chặn khu vực, cho phép khách hàng mọi nơi đều thuê được)
-                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
-                            .then(res => res.json())
+                        SmartMap.reverseGeocode(lat, lng)
                             .then(data => {
                                 if (data && data.address) {
                                     // San pham display_name de tranh XSS

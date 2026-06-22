@@ -1,0 +1,352 @@
+@model IEnumerable<CarRentalSystem.Models.Car>
+@{
+    ViewData["Title"] = "Lịch sử GPS theo ngày";
+    Layout = "_AdminLayout";
+    var selectedCarId = ViewBag.SelectedCarId as int?;
+    var selectedDate = ViewBag.SelectedDate as string ?? DateTime.Today.ToString("yyyy-MM-dd");
+    var minDate = ViewBag.MinDate as string ?? DateTime.Today.AddDays(-90).ToString("yyyy-MM-dd");
+    var maxDate = ViewBag.MaxDate as string ?? DateTime.Today.ToString("yyyy-MM-dd");
+    var retentionDays = ViewBag.HistoryRetentionDays ?? 90;
+}
+
+<style>
+    .history-shell {
+        display: grid;
+        grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+        gap: 16px;
+        min-height: calc(100vh - 130px);
+    }
+
+    .history-panel,
+    .history-map-panel,
+    .history-table-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+    }
+
+    .history-panel {
+        padding: 18px;
+    }
+
+    .history-map-panel {
+        overflow: hidden;
+        min-height: 560px;
+    }
+
+    #historyMap {
+        width: 100%;
+        height: 560px;
+    }
+
+    .history-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .history-stat {
+        min-height: 74px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 11px;
+        background: #f8fafc;
+    }
+
+    .history-stat span {
+        display: block;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .history-stat strong {
+        font-size: 1.2rem;
+        color: #0f172a;
+    }
+
+    .history-alert {
+        border: 1px solid #fee2e2;
+        border-radius: 8px;
+        background: #fff7ed;
+        padding: 10px 12px;
+        margin-top: 9px;
+    }
+
+    .history-table-panel {
+        margin-top: 16px;
+        overflow: hidden;
+    }
+
+    .history-table-wrap {
+        max-height: 320px;
+        overflow: auto;
+    }
+
+    .history-empty {
+        min-height: 220px;
+        display: grid;
+        place-items: center;
+        color: #64748b;
+        text-align: center;
+        padding: 24px;
+    }
+
+    @@media (max-width: 991.98px) {
+        .history-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .history-map-panel,
+        #historyMap {
+            min-height: 420px;
+            height: 420px;
+        }
+    }
+</style>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <div>
+        <div class="text-uppercase fw-bold text-primary mb-1" style="font-size:.72rem;letter-spacing:.08em;">Lịch sử GPS</div>
+        <h2 class="fw-800 mb-1">Lịch sử chuyến đi theo ngày</h2>
+        <p class="text-muted mb-0">Xem lai duong di, toc do, pin tracker va canh bao trong @retentionDays ngay gan nhat.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Tracking" asp-action="Map" class="btn btn-outline-secondary rounded-3">
+            <i class="bi bi-map me-1"></i> Bản đồ realtime
+        </a>
+        <a asp-controller="Alert" asp-action="Index" class="btn btn-outline-danger rounded-3">
+            <i class="bi bi-exclamation-triangle me-1"></i> Cảnh báo
+        </a>
+    </div>
+</div>
+
+<section class="history-shell">
+    <aside class="history-panel">
+        <form id="historyForm" class="vstack gap-3">
+            <div>
+                <label for="carIdSelect" class="form-label fw-bold">Phương tiện</label>
+                <select id="carIdSelect" class="form-select" required>
+                    <option value="">Chọn xe</option>
+                    @if (Model != null)
+                    {
+                        foreach (var car in Model)
+                        {
+                            <option value="@car.CarID" selected="@(selectedCarId == car.CarID)">
+                                @car.CarBrand?.Name @car.CarName (@car.LicensePlate)
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+            <div>
+                <label for="historyDate" class="form-label fw-bold">Ngày</label>
+                <input id="historyDate" type="date" class="form-control" value="@selectedDate" min="@minDate" max="@maxDate" required />
+            </div>
+            <button type="submit" class="btn btn-primary rounded-3">
+                <i class="bi bi-search me-1"></i> Xem lịch sử
+            </button>
+        </form>
+
+        <div class="history-stat-grid">
+            <div class="history-stat">
+                <span>Điểm GPS</span>
+                <strong id="pointCount">0</strong>
+            </div>
+            <div class="history-stat">
+                <span>Quãng đường</span>
+                <strong id="distanceKm">0 km</strong>
+            </div>
+            <div class="history-stat">
+                <span>Tốc độ cao nhất</span>
+                <strong id="maxSpeed">0 km/h</strong>
+            </div>
+            <div class="history-stat">
+                <span>Tốc độ TB</span>
+                <strong id="averageSpeed">0 km/h</strong>
+            </div>
+            <div class="history-stat">
+                <span>Bắt đầu</span>
+                <strong id="firstTime">-</strong>
+            </div>
+            <div class="history-stat">
+                <span>Kết thúc</span>
+                <strong id="lastTime">-</strong>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h6 class="fw-800 mb-2">Cảnh báo trong ngày</h6>
+            <div id="alertList" class="small text-muted">Chưa tải dữ liệu.</div>
+        </div>
+    </aside>
+
+    <main>
+        <div class="history-map-panel">
+            <div id="historyMap"></div>
+        </div>
+        <div class="history-table-panel">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                <strong>Danh sách điểm GPS</strong>
+                <span id="tableHint" class="small text-muted">-</span>
+            </div>
+            <div class="history-table-wrap">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light small text-uppercase">
+                        <tr>
+                            <th class="ps-3">Thời gian</th>
+                            <th>Tọa độ</th>
+                            <th>Tốc độ</th>
+                            <th>Độ chính xác</th>
+                            <th>Pin</th>
+                            <th class="pe-3">Nguồn</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pointsBody">
+                        <tr><td colspan="6" class="history-empty">Chọn xe và ngày để xem lịch sử.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</section>
+
+@section Scripts {
+    <script>
+        let map, routeLine, startMarker, endMarker;
+
+        const selectedCarId = '@(selectedCarId?.ToString() ?? "")';
+        const selectedDate = '@selectedDate';
+        const carSelect = document.getElementById('carIdSelect');
+        const dateInput = document.getElementById('historyDate');
+
+        function initMap() {
+            const baseMap = SmartMap.createMap('historyMap', 10.7769, 106.7009, 12);
+            if (!baseMap) return;
+            map = baseMap.map;
+
+            routeLine = L.polyline([], { color: '#2563eb', weight: 5, opacity: .85 }).addTo(map);
+        }
+
+        function formatTime(value) {
+            return value ? new Date(value).toLocaleTimeString('vi-VN') : '-';
+        }
+
+        function formatDateTime(value) {
+            return value ? new Date(value).toLocaleString('vi-VN') : '-';
+        }
+
+        function clearMarkers() {
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
+            startMarker = null;
+            endMarker = null;
+        }
+
+        function renderSummary(summary) {
+            document.getElementById('pointCount').textContent = summary.pointCount || 0;
+            document.getElementById('distanceKm').textContent = `${Number(summary.distanceKm || 0).toFixed(2)} km`;
+            document.getElementById('maxSpeed').textContent = `${Number(summary.maxSpeed || 0).toFixed(1)} km/h`;
+            document.getElementById('averageSpeed').textContent = `${Number(summary.averageSpeed || 0).toFixed(1)} km/h`;
+            document.getElementById('firstTime').textContent = formatTime(summary.firstTimestamp);
+            document.getElementById('lastTime').textContent = formatTime(summary.lastTimestamp);
+        }
+
+        function renderAlerts(alerts) {
+            const host = document.getElementById('alertList');
+            if (!alerts || alerts.length === 0) {
+                host.innerHTML = '<span>Không có cảnh báo trong ngày này.</span>';
+                return;
+            }
+
+            host.innerHTML = alerts.map(alert => `
+                <div class="history-alert">
+                    <div class="fw-bold text-danger">${alert.alertTypeLabel} - ${alert.statusLabel}</div>
+                    <div>${alert.alertTimeLocalText}</div>
+                    <div class="text-muted">${alert.description || ''}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderPoints(points) {
+            const body = document.getElementById('pointsBody');
+            document.getElementById('tableHint').textContent = `${points.length} diem`;
+
+            if (!points.length) {
+                body.innerHTML = '<tr><td colspan="6" class="history-empty">Không có dữ liệu GPS trong ngày này.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = points.map(point => `
+                <tr>
+                    <td class="ps-3">${formatDateTime(point.timestamp)}</td>
+                    <td>${Number(point.latitude).toFixed(6)}, ${Number(point.longitude).toFixed(6)}</td>
+                    <td>${Number(point.speed || 0).toFixed(1)} km/h</td>
+                    <td>${point.accuracyMeters == null ? '-' : Math.round(point.accuracyMeters) + ' m'}</td>
+                    <td>${point.batteryLevel == null ? '-' : Number(point.batteryLevel).toFixed(0) + '%' + (point.isCharging ? ' - sac' : '')}</td>
+                    <td class="pe-3">${point.source || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderMap(points) {
+            clearMarkers();
+            const coords = points.map(point => [point.latitude, point.longitude]);
+            routeLine.setLatLngs(coords);
+
+            if (!coords.length) {
+                map.setView([10.7769, 106.7009], 12);
+                return;
+            }
+
+            startMarker = L.marker(coords[0]).addTo(map).bindPopup('Bắt đầu');
+            endMarker = L.marker(coords[coords.length - 1]).addTo(map).bindPopup('Kết thúc');
+
+            if (coords.length === 1) {
+                map.setView(coords[0], 16);
+            } else {
+                map.fitBounds(L.latLngBounds(coords).pad(.18), { maxZoom: 16 });
+            }
+        }
+
+        async function loadHistory() {
+            const carId = carSelect.value;
+            const date = dateInput.value;
+            if (!carId || !date) return;
+
+            const url = `/Tracking/GetCarHistoryByDate?carId=${encodeURIComponent(carId)}&date=${encodeURIComponent(date)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data.message || 'Không tải được lịch sử GPS.');
+                return;
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            params.set('carId', carId);
+            params.set('date', date);
+            history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+
+            renderSummary(data.summary || {});
+            renderAlerts(data.alerts || []);
+            renderPoints(data.points || []);
+            renderMap(data.points || []);
+        }
+
+        document.getElementById('historyForm').addEventListener('submit', event => {
+            event.preventDefault();
+            loadHistory();
+        });
+
+        initMap();
+        if (selectedCarId) {
+            carSelect.value = selectedCarId;
+            dateInput.value = selectedDate;
+            loadHistory();
+        }
+    </script>
+}

@@ -1,0 +1,152 @@
+@using System.Globalization
+@model CarRentalSystem.ViewModels.OwnerCarDetailsViewModel
+@{
+    ViewData["Title"] = $"Chi tiết {Model.DisplayName}";
+    var mainImage = Model.ImageUrls.FirstOrDefault() ?? "/images/default-car.png";
+    var latitude = Model.Latitude?.ToString(CultureInfo.InvariantCulture);
+    var longitude = Model.Longitude?.ToString(CultureInfo.InvariantCulture);
+    var hasCoordinates = Model.Latitude.HasValue && Model.Longitude.HasValue;
+}
+
+<div class="owner-portal owner-details-page">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    <div class="owner-details-heading">
+        <div>
+            <a class="owner-details-back" asp-action="Index"><i class="bi bi-arrow-left"></i> Danh sách xe</a>
+            <h2>@Model.DisplayName</h2>
+            <div class="owner-car-meta">
+                <span><i class="bi bi-credit-card-2-front"></i> @Model.LicensePlate</span>
+                <span><i class="bi bi-people"></i> @Model.Seats chỗ</span>
+                <span><i class="bi bi-fuel-pump"></i> @Model.FuelType</span>
+                <span><i class="bi bi-gear"></i> @Model.Transmission</span>
+            </div>
+        </div>
+        <div class="owner-badges">
+            <span class="owner-badge info">@Model.ServiceLabel</span>
+            <span class="owner-badge @(Model.IsApproved ? "ok" : Model.ApprovalStatus == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected ? "danger" : "warn")">
+                @(Model.IsApproved ? "Đã duyệt" : Model.ApprovalStatus == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected ? "Bị từ chối" : "Chờ duyệt")
+            </span>
+            <span class="owner-badge">@Model.StatusName</span>
+        </div>
+    </div>
+
+    <section class="owner-details-kpis" aria-label="Hiệu quả khai thác xe">
+        <div class="owner-stat"><span>Giá khách thấy</span><strong>@Model.PricePerDay.ToString("N0")đ/ngày</strong></div>
+        <div class="owner-stat"><span>Giá thuê chủ xe nhận</span><strong class="text-success">@Model.OwnerIncomePerDay.ToString("N0")đ/ngày</strong></div>
+        <div class="owner-stat"><span>Chuyến hoàn tất</span><strong>@Model.CompletedTripCount</strong></div>
+        <div class="owner-stat"><span>GMV booking tháng</span><strong>@Model.MonthGmv.ToString("N0")đ</strong></div>
+        <div class="owner-stat"><span>Giá thuê tháng dự kiến nhận</span><strong>@Model.MonthOwnerIncome.ToString("N0")đ</strong></div>
+        <div class="owner-stat"><span>Booking đang hoạt động</span><strong>@Model.ActiveBookingCount</strong></div>
+    </section>
+
+    <div class="owner-details-grid">
+        <main>
+            <section class="owner-panel owner-details-section">
+                <div class="owner-details-section-title">
+                    <h3><i class="bi bi-images"></i> Hình ảnh xe</h3>
+                    <span class="owner-badge @(Model.HasEnoughImages ? "ok" : "warn")">@Model.ImageUrls.Count/4 ảnh tối thiểu</span>
+                </div>
+                <img class="owner-details-main-image" src="@mainImage" alt="@Model.DisplayName" />
+                @if (Model.ImageUrls.Count > 1)
+                {
+                    <div class="owner-details-thumbnails">
+                        @foreach (var image in Model.ImageUrls.Skip(1))
+                        {
+                            <img src="@image" alt="@Model.DisplayName" loading="lazy" />
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="owner-panel owner-details-section">
+                <div class="owner-details-section-title">
+                    <h3><i class="bi bi-card-checklist"></i> Thông tin vận hành</h3>
+                </div>
+                <div class="owner-details-info-grid">
+                    <div><span>Đăng kiểm</span><strong>@Model.InspectionStatusLabel</strong></div>
+                    <div><span>GPS</span><strong>@(Model.HasGps ? $"Cập nhật {Model.LatestGpsAt?.ToLocalTime():dd/MM/yyyy HH:mm}" : "Chưa có tín hiệu")</strong></div>
+                    <div><span>Hợp đồng</span><strong>@Model.ContractSigningModeLabel</strong></div>
+                    <div><span>Hồ sơ bắt buộc</span><strong>@(Model.HasRequiredDocuments ? "Đã sẵn sàng" : "Cần bổ sung")</strong></div>
+                    <div><span>Tiêu hao</span><strong>@(string.IsNullOrWhiteSpace(Model.FuelConsumption) ? "Chưa cập nhật" : Model.FuelConsumption)</strong></div>
+                    <div><span>Địa chỉ xe</span><strong>@(Model.CarAddress ?? "Chưa cập nhật")</strong></div>
+                </div>
+                <div class="owner-details-description">
+                    <span>Mô tả</span>
+                    <p>@(string.IsNullOrWhiteSpace(Model.Description) ? "Chưa có mô tả xe." : Model.Description)</p>
+                </div>
+                <div class="owner-badges">
+                    @if (Model.Amenities.Any())
+                    {
+                        @foreach (var amenity in Model.Amenities)
+                        {
+                            <span class="owner-badge info"><i class="bi bi-check2-circle"></i> @amenity</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="owner-muted">Chưa cập nhật tiện nghi.</span>
+                    }
+                </div>
+            </section>
+
+            <section class="owner-panel owner-details-section">
+                <div class="owner-details-section-title">
+                    <h3><i class="bi bi-geo-alt"></i> Vị trí xe trên OpenStreetMap</h3>
+                    @if (hasCoordinates)
+                    {
+                        <a class="owner-pill" href="https://www.openstreetmap.org/?mlat=@latitude&mlon=@longitude#map=16/@latitude/@longitude" target="_blank" rel="noopener">
+                            Mở OpenStreetMap <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                    }
+                </div>
+                @if (hasCoordinates)
+                {
+                    <div id="ownerCarDetailsMap" class="owner-details-map"></div>
+                }
+                else
+                {
+                    <div class="owner-empty owner-details-empty">
+                        <div><i class="bi bi-geo-alt"></i><h3>Chưa có tọa độ xe</h3><p class="owner-muted">Bổ sung vị trí để khách tìm được điểm nhận xe.</p></div>
+                    </div>
+                }
+            </section>
+        </main>
+
+        <aside>
+            <section class="owner-panel owner-details-section owner-details-actions">
+                <div class="owner-details-section-title">
+                    <h3><i class="bi bi-list-check"></i> Việc cần làm</h3>
+                </div>
+                @foreach (var item in Model.ActionItems)
+                {
+                    <article class="owner-action-item @item.CssClass">
+                        <i class="bi @item.Icon"></i>
+                        <div>
+                            <strong>@item.Title</strong>
+                            <p>@item.Description</p>
+                        </div>
+                    </article>
+                }
+            </section>
+
+            <section class="owner-panel owner-details-section">
+                <h3><i class="bi bi-cash-stack"></i> Tiền cọc</h3>
+                <p class="owner-muted mb-0">DriveGo ghi nhận và giữ tiền cọc để đối soát khi trả xe. Giá thuê của chủ xe được trình bày riêng với tiền cọc.</p>
+            </section>
+        </aside>
+    </div>
+</div>
+
+@section Scripts {
+    @if (hasCoordinates)
+    {
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof SmartMap !== 'undefined') {
+                    SmartMap.initStaticMap('ownerCarDetailsMap', @latitude, @longitude, @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DisplayName)));
+                }
+            });
+        </script>
+    }
+}

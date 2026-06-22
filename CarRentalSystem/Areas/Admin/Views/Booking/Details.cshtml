@@ -319,21 +319,9 @@
                     <div class="d-grid gap-2">
                         @if(booking.BookingStatus?.Name == "Pending")
                         {
-                            <form asp-action="UpdateStatus" method="post">
-                                <input type="hidden" name="id" value="@booking.BookingID" />
-                                <input type="hidden" name="status" value="Confirmed" />
-                                <button type="submit" class="btn btn-success w-100 mb-2 rounded-3 fw-bold"
-                                        onclick="return confirm('Xác nhận đơn đặt xe này?')">
-                                    <i class="bi bi-check-circle me-2"></i>Xác nhận
-                                </button>
-                            </form>
-                            <form asp-action="Cancel" method="post" onsubmit="return confirmCancel('@booking.BookingID')">
-                                <input type="hidden" name="id" value="@booking.BookingID" />
-                                <input type="hidden" name="reason" id="reason-@booking.BookingID" />
-                                <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold">
-                                    <i class="bi bi-x-circle me-2"></i>Hủy đơn
-                                </button>
-                            </form>
+                            <div class="alert alert-warning mb-0">
+                                Booking đang chờ chủ xe duyệt hoặc từ chối. Admin chỉ theo dõi và hỗ trợ, không duyệt thay chủ xe.
+                            </div>
                         }
                         else if(booking.BookingStatus?.Name == "Confirmed")
                         {

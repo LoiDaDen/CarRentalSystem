@@ -352,11 +352,10 @@
 </div>
 
 @section Scripts {
-    <!-- Select2 + Leaflet CSS + Leaflet JS -->
+    <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/vi.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         // ── Province list ───────────────────────────────────────────────
@@ -534,10 +533,8 @@
         if (mapEl && typeof L !== 'undefined') {
             var initLat = parseFloat('@(Model.Latitude ?? 0)') || 16.0544;
             var initLng = parseFloat('@(Model.Longitude ?? 0)') || 108.2022;
-            var map = L.map('mapPicker').setView([initLat, initLng], @(Model.Latitude != null ? "14" : "6"));
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+            var baseMap = SmartMap.createMap('mapPicker', initLat, initLng, @(Model.Latitude != null ? "14" : "6"));
+            var map = baseMap.map;
 
             var marker = null;
             @if (Model.Latitude != null)

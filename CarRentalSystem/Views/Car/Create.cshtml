@@ -1,11 +1,11 @@
 @model CarRentalSystem.Models.Car
 @{
-    ViewData["Title"] = "Add New Car";
+    ViewData["Title"] = "Thêm xe mới";
     Layout = "_AdminLayout";
     var serviceTypes = ViewBag.ServiceTypes as IEnumerable<CarRentalSystem.Models.ServiceType>;
 }
 
-<h2 class="mb-4">Add New Car</h2>
+<h2 class="mb-4">Thêm xe mới</h2>
 
 <div class="row">
     <div class="col-md-8">
@@ -28,28 +28,28 @@
                     </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Brand</label>
+                            <label class="form-label">Hãng xe</label>
                             <select asp-for="BrandID" class="form-select" required>
-                                <option value="">Select Brand</option>
+                                <option value="">Chọn hãng xe</option>
                                 @foreach (var b in ViewBag.Brands) { <option value="@b.BrandID">@b.Name</option> }
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Car Type</label>
+                            <label class="form-label">Loại xe</label>
                             <select asp-for="CarTypeID" class="form-select" required>
-                                <option value="">Select Type</option>
+                                <option value="">Chọn loại xe</option>
                                 @foreach (var t in ViewBag.CarTypes) { <option value="@t.CarTypeID">@t.Name</option> }
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Car Name (Model)</label>
+                            <label class="form-label">Tên xe (mẫu xe)</label>
                             <input asp-for="CarName" class="form-control" required />
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">License Plate</label>
+                            <label class="form-label">Biển số</label>
                             <input asp-for="LicensePlate" class="form-control" required />
                         </div>
                         <div class="col-md-4 mb-3">
@@ -57,45 +57,45 @@
                             <input asp-for="VIN" class="form-control" required />
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Number of Seats</label>
+                            <label class="form-label">Số chỗ</label>
                             <input type="number" asp-for="Seats" class="form-control" required />
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Location (Regional Server)</label>
+                            <label class="form-label">Khu vực</label>
                             <select asp-for="LocationID" class="form-select" required>
-                                <option value="">Select Region</option>
+                                <option value="">Chọn khu vực</option>
                                 @foreach (var l in ViewBag.Locations) { <option value="@l.LocationID">@l.Name</option> }
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Price Per Day (VND)</label>
+                            <label class="form-label">Giá mỗi ngày (VND)</label>
                             <input type="number" step="0.01" asp-for="PricePerDay" class="form-control" required />
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Status</label>
+                            <label class="form-label">Trạng thái</label>
                             <select asp-for="CarStatusID" class="form-select">
-                                <option value="1">Available</option>
-                                <option value="3">Maintenance</option>
+                                <option value="1">Sẵn sàng</option>
+                                <option value="3">Bảo trì</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Description</label>
+                        <label class="form-label">Mô tả</label>
                         <textarea asp-for="Description" class="form-control" rows="3"></textarea>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">Car Image (.jpg, .png)</label>
+                        <label class="form-label">Ảnh xe (.jpg, .png)</label>
                         <input type="file" name="imageFile" class="form-control" accept="image/*" required />
                     </div>
 
                     <div class="d-flex justify-content-between">
-                        <a asp-action="Manage" class="btn btn-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Car</button>
+                        <a asp-action="Manage" class="btn btn-secondary">Hủy</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Lưu xe</button>
                     </div>
                 </form>
             </div>

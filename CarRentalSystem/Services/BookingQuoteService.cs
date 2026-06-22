@@ -28,6 +28,23 @@ namespace CarRentalSystem.Services
         public int? LongTermMonths { get; set; }
     }
 
+    public static class BookingQuoteFailureCode
+    {
+        public const string MissingDrivingLicense = "MissingDrivingLicense";
+        public const string ValidationFailed = "ValidationFailed";
+    }
+
+    public sealed class BookingQuoteException : InvalidOperationException
+    {
+        public BookingQuoteException(string code, string message)
+            : base(message)
+        {
+            Code = code;
+        }
+
+        public string Code { get; }
+    }
+
     public interface IBookingQuoteService
     {
         Task<CheckoutQuoteViewModel> BuildQuoteAsync(BookingQuoteRequest request);
@@ -71,16 +88,17 @@ namespace CarRentalSystem.Services
                 .Include(c => c.CarBrand)
                 .Include(c => c.Location)
                 .Include(c => c.ServiceType)
+                .Include(c => c.CarStatus)
                 .FirstOrDefaultAsync(c => c.CarID == request.CarID);
             if (car == null)
                 throw new InvalidOperationException("Car not found.");
 
+            if (!CarRentabilityPolicy.IsSelfDriveRentable(car))
+                throw new InvalidOperationException(CarRentabilityPolicy.GetUnavailableReason(car));
+
             var selfDriveServiceTypeId = await _businessRules.GetServiceTypeIdAsync(ServiceTypeConstants.SelfDrive);
             if (car.ServiceTypeID.HasValue && car.ServiceTypeID != selfDriveServiceTypeId)
                 throw new InvalidOperationException("Xe này không thuộc luồng thuê xe tự lái.");
-
-            if (!car.IsSelfDriveAllowed || car.IsWithDriverAllowed)
-                throw new InvalidOperationException("Xe tự lái không được cấu hình kèm tài xế.");
 
             var user = await _context.Users
                 .Include(u => u.MembershipTier)
@@ -90,7 +108,9 @@ namespace CarRentalSystem.Services
 
             var drivingLicense = await _businessRules.GetValidCustomerDrivingLicenseAsync(user.UserID);
             if (drivingLicense == null)
-                throw new InvalidOperationException("Khách thuê xe tự lái phải cung cấp giấy phép lái xe hợp lệ.");
+                throw new BookingQuoteException(
+                    BookingQuoteFailureCode.MissingDrivingLicense,
+                    "Khách thuê xe tự lái phải cung cấp giấy phép lái xe hợp lệ.");
 
             var selfDrivePrice = _selfDrivePricingService.Calculate(car, request.StartDate, request.EndDate);
             var totalHours = selfDrivePrice.TotalHours;
@@ -162,7 +182,7 @@ namespace CarRentalSystem.Services
             }
 
             var totalPrice = Math.Max(0m, totalBeforeDiscount - discountTotal);
-            var holdingFee = Math.Round(totalPrice * 0.2m, 0, MidpointRounding.AwayFromZero);
+            var holdingFee = DepositPolicy.Calculate(totalPrice);
 
             var quote = new CheckoutQuoteViewModel
             {
@@ -212,7 +232,7 @@ namespace CarRentalSystem.Services
                 TotalPrice = totalPrice,
                 HoldingFee = holdingFee,
                 RemainingRentalAmount = Math.Max(0m, totalPrice - holdingFee),
-                CollateralAmount = car.DefaultDeposit,
+                CollateralAmount = holdingFee,
                 AddOns = addOns
             };
 

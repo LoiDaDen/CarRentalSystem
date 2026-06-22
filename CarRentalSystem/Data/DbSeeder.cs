@@ -253,6 +253,45 @@ namespace CarRentalSystem.Data
             // ═══ 8. SUB-SEEDERS (Xe mở rộng, Tài xế, Đối tác) ═══
             CarMockDataSeeder.Seed(context);
             BlogMockDataSeeder.Seed(context);
+            EnsureDefaultCarInventory(context);
+        }
+
+        private static void EnsureDefaultCarInventory(ApplicationDbContext context)
+        {
+            var carIdsWithInventory = context.CarInventoryItems
+                .IgnoreQueryFilters()
+                .Select(i => i.CarID)
+                .Distinct()
+                .ToHashSet();
+
+            var carsWithoutInventory = context.Cars
+                .Where(c => !carIdsWithInventory.Contains(c.CarID))
+                .Select(c => c.CarID)
+                .ToList();
+
+            if (carsWithoutInventory.Count == 0)
+                return;
+
+            foreach (var carId in carsWithoutInventory)
+            {
+                context.CarInventoryItems.AddRange(BuildDefaultInventory(carId));
+            }
+
+            context.SaveChanges();
+        }
+
+        private static IEnumerable<CarInventoryItem> BuildDefaultInventory(int carId)
+        {
+            return new[]
+            {
+                new CarInventoryItem { CarID = carId, ItemName = "Dang kiem/bao hiem photo", Quantity = 1, UnitReplacementCost = 200000, Description = "Bo giay to ban sao tren xe." },
+                new CarInventoryItem { CarID = carId, ItemName = "Tham san", Quantity = 1, UnitReplacementCost = 500000 },
+                new CarInventoryItem { CarID = carId, ItemName = "Banh du phong", Quantity = 1, UnitReplacementCost = 2500000 },
+                new CarInventoryItem { CarID = carId, ItemName = "Bo kich va co le", Quantity = 1, UnitReplacementCost = 1200000 },
+                new CarInventoryItem { CarID = carId, ItemName = "Camera hanh trinh/the nho", Quantity = 1, UnitReplacementCost = 1800000 },
+                new CarInventoryItem { CarID = carId, ItemName = "Cap sac dien thoai", Quantity = 1, UnitReplacementCost = 250000 },
+                new CarInventoryItem { CarID = carId, ItemName = "Bom lop mini", Quantity = 1, UnitReplacementCost = 700000 }
+            };
         }
     }
 }

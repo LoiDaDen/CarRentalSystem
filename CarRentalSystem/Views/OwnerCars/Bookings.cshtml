@@ -1,0 +1,84 @@
+@model CarRentalSystem.ViewModels.OwnerBookingsViewModel
+@{
+    ViewData["Title"] = "Đơn thuê";
+    IReadOnlyList<CarRentalSystem.ViewModels.OwnerBookingRowViewModel> rows = Model.Tab switch
+    {
+        "current" => Model.CurrentBookings,
+        "history" => Model.HistoryBookings,
+        _ => Model.PendingBookings
+    };
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <section class="owner-panel">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <h2>Đơn thuê xe của tôi</h2>
+                <p class="owner-muted mb-0">Chỉ hiển thị các đơn liên quan đến xe thuộc quyền sở hữu của bạn.</p>
+            </div>
+            <div class="owner-badges">
+                <a class="owner-badge @(Model.Tab == "pending" ? "active" : "")" asp-action="Bookings" asp-route-tab="pending">Chờ duyệt (@Model.PendingBookings.Count)</a>
+                <a class="owner-badge @(Model.Tab == "current" ? "active" : "")" asp-action="Bookings" asp-route-tab="current">Hiện tại (@Model.CurrentBookings.Count)</a>
+                <a class="owner-badge @(Model.Tab == "history" ? "active" : "")" asp-action="Bookings" asp-route-tab="history">Lịch sử (@Model.HistoryBookings.Count)</a>
+            </div>
+        </div>
+    </section>
+
+    @if (!rows.Any())
+    {
+        <section class="owner-empty">
+            <div>
+                <i class="bi bi-receipt"></i>
+                <h2>Không có đơn thuê phù hợp</h2>
+                <p class="owner-muted">Khi xe của bạn có đơn ở nhóm này, hệ thống sẽ hiển thị tại đây.</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <div class="owner-table-wrap">
+            <table class="owner-table">
+                <thead>
+                    <tr>
+                        <th>Mã đơn</th>
+                        <th>Xe</th>
+                        <th>Khách thuê</th>
+                        <th>Thời gian</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Giá thuê</th>
+                        <th class="text-end">Tiền cọc</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in rows)
+                {
+                    <tr>
+                        <td class="fw-bold">#@row.BookingID</td>
+                        <td><strong>@row.CarName</strong><br /><span class="owner-muted">@row.LicensePlate</span></td>
+                        <td>@row.CustomerName<br /><span class="owner-muted">@row.CustomerPhone</span></td>
+                        <td>@row.StartDate.ToString("dd/MM/yyyy HH:mm")<br /><span class="owner-muted">đến @row.EndDate.ToString("dd/MM/yyyy HH:mm")</span></td>
+                        <td><span class="owner-status-dot @row.StatusClass"></span>@row.StatusName</td>
+                        <td class="text-end">@row.TotalPrice.ToString("N0")đ</td>
+                        <td class="text-end">@row.DepositAmount.ToString("N0")đ<br /><span class="owner-muted">@row.DepositStatus</span></td>
+                        <td class="text-end">
+                            <a class="owner-filter-button" asp-action="BookingDetails" asp-route-id="@row.BookingID">Xem</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

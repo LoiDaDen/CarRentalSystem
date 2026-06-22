@@ -1,0 +1,11 @@
+@model IReadOnlyList<HandoverQueueItem>
+@{
+    ViewData["Title"] = "Nhận xe trả";
+}
+<h1 class="portal-page-title h3 mb-4">Xe cần nhận trả</h1>
+<div class="portal-card"><div class="table-responsive"><table class="table portal-table">
+    <thead><tr><th>Booking</th><th>Khách</th><th>Xe</th><th>Giờ trả</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var item in Model) { <tr><td>#@item.BookingID</td><td>@item.CustomerName</td><td>@item.CarName · @item.LicensePlate</td><td>@item.DueAt.ToString("dd/MM HH:mm")</td><td><a class="btn btn-sm btn-primary" asp-action="Capture" asp-route-bookingId="@item.BookingID">Kiểm tra xe</a></td></tr> }
+    </tbody>
+</table></div></div>

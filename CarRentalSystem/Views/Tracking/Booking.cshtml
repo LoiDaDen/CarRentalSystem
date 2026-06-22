@@ -23,8 +23,8 @@
             <a asp-controller="Booking" asp-action="Details" asp-route-id="@Model.BookingID" class="btn btn-outline-secondary rounded-3">
                 <i class="bi bi-arrow-left me-1"></i>Chi tiết đơn
             </a>
-            <a id="googleMapsLink" href="#" target="_blank" rel="noopener" class="btn btn-success rounded-3">
-                <i class="bi bi-signpost-split me-1"></i>Google Maps
+            <a id="openStreetMapLink" href="#" target="_blank" rel="noopener" class="btn btn-success rounded-3">
+                <i class="bi bi-signpost-split me-1"></i>OpenStreetMap
             </a>
         </div>
     </div>
@@ -50,10 +50,8 @@
 
         function initTrackingMap(lat, lng) {
             if (map) return;
-            map = L.map('trackingMap').setView([lat, lng], 14);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO'
-            }).addTo(map);
+            const baseMap = SmartMap.createMap('trackingMap', lat, lng, 14);
+            if (baseMap) map = baseMap.map;
         }
 
         function renderSnapshot(snapshot) {
@@ -92,7 +90,7 @@
             document.getElementById('distanceText').textContent = `${Number(snapshot.distanceKm || 0).toFixed(1)} km`;
             document.getElementById('etaText').textContent = snapshot.etaMinutes ? `~${snapshot.etaMinutes} phút` : '-';
             document.getElementById('updatedText').textContent = snapshot.lastUpdatedUtc ? new Date(snapshot.lastUpdatedUtc).toLocaleTimeString('vi-VN') : '-';
-            document.getElementById('googleMapsLink').href = snapshot.googleMapsUrl || '#';
+            document.getElementById('openStreetMapLink').href = snapshot.openStreetMapUrl || '#';
         }
 
         async function loadSnapshot() {

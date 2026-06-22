@@ -1,0 +1,21 @@
+@model PortalBookingRowViewModel
+@{
+    ViewData["Title"] = $"Booking #{Model.BookingID}";
+}
+<div class="portal-card"><div class="portal-card-body">
+    <div class="d-flex justify-content-between gap-3 flex-wrap mb-4">
+        <div><h1 class="h4 fw-bold">Booking #@Model.BookingID</h1><div class="text-muted">@Model.CustomerName · @Model.MaskedPhone</div></div>
+        <span class="badge text-bg-primary align-self-start">@Model.Status</span>
+    </div>
+    <dl class="row">
+        <dt class="col-sm-3">Xe</dt><dd class="col-sm-9">@Model.CarName · @Model.LicensePlate</dd>
+        <dt class="col-sm-3">Thời gian</dt><dd class="col-sm-9">@Model.StartDate.ToString("dd/MM/yyyy HH:mm") - @Model.EndDate.ToString("dd/MM/yyyy HH:mm")</dd>
+        <dt class="col-sm-3">Phụ trách</dt><dd class="col-sm-9">@(Model.AssignedStaffName ?? "Chưa phân công")</dd>
+    </dl>
+    <div class="portal-task-actions">
+        <a class="btn btn-outline-primary" asp-area="Staff" asp-controller="Handover" asp-action="Capture" asp-route-bookingId="@Model.BookingID">Bàn giao xe</a>
+        <a class="btn btn-outline-primary" asp-area="Staff" asp-controller="Return" asp-action="Capture" asp-route-bookingId="@Model.BookingID">Nhận xe trả</a>
+        <form asp-action="Transition" method="post"><input type="hidden" name="id" value="@Model.BookingID" /><input type="hidden" name="targetStatus" value="Active" /><button class="btn btn-primary">Bắt đầu chuyến</button></form>
+        <form asp-action="Transition" method="post"><input type="hidden" name="id" value="@Model.BookingID" /><input type="hidden" name="targetStatus" value="Completed" /><button class="btn btn-success">Hoàn tất chuyến</button></form>
+    </div>
+</div></div>

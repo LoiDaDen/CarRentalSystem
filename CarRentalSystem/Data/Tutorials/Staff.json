@@ -1,0 +1,26 @@
+{
+  "panel": "Staff",
+  "roleName": "Staff",
+  "tutorialKey": "staff-panel-v1",
+  "title": "Làm quen với Staff Portal",
+  "description": "Xử lý booking được phân công, bàn giao, nhận xe trả và hỗ trợ khách hàng.",
+  "icon": "bi-person-badge-fill",
+  "steps": [
+    { "key": "dashboard", "title": "Dashboard nhân viên", "description": "Theo dõi booking hôm nay, tác vụ bàn giao, nhận trả và ticket đang chờ.", "icon": "bi-grid-fill", "route": "/Staff/Dashboard", "target": "staff-dashboard" },
+    { "key": "bookings", "title": "Xử lý booking", "description": "Mở booking được phân công để kiểm tra thông tin và thực hiện chuyển trạng thái phù hợp.", "icon": "bi-calendar-check-fill", "route": "/Staff/Booking", "target": "staff-bookings" },
+    { "key": "customer-profile", "title": "Kiểm tra hồ sơ khách hàng", "description": "Trong chi tiết booking, đối chiếu thông tin khách và trạng thái hồ sơ trước khi giao xe.", "icon": "bi-person-vcard-fill", "route": "/Staff/Booking", "target": "staff-bookings" },
+    { "key": "payment", "title": "Kiểm tra thanh toán", "description": "Xác nhận booking đã đạt điều kiện thanh toán trước khi tiếp tục quy trình nhận xe.", "icon": "bi-credit-card-fill", "route": "/Staff/Booking", "target": "staff-bookings" },
+    { "key": "handover", "title": "Hỗ trợ hợp đồng và bàn giao", "description": "Ghi nhận hiện trạng xe, tài sản, km, nhiên liệu và bằng chứng bàn giao.", "icon": "bi-key-fill", "route": "/Staff/Handover", "target": "staff-handover" },
+    { "key": "vehicle-status", "title": "Theo dõi trạng thái xe", "description": "Quy trình nhận xe trả giúp ghi nhận tình trạng và đưa xe về trạng thái vận hành đúng.", "icon": "bi-arrow-return-left", "route": "/Staff/Return", "target": "staff-return" },
+    { "key": "support", "title": "Hỗ trợ khách hàng", "description": "Tiếp nhận và cập nhật ticket hỗ trợ trong phạm vi khu vực được phân công.", "icon": "bi-headset", "route": "/Staff/Support", "target": "staff-support" }
+  ],
+  "quickGuides": [
+    { "area": "Staff", "controller": "Dashboard", "title": "Công việc hôm nay", "description": "Tổng hợp các tác vụ được phân công cần xử lý.", "mainActions": ["Kiểm tra KPI đầu ca", "Mở danh sách tác vụ", "Ưu tiên bàn giao và nhận trả đúng giờ"], "notes": ["Chỉ xử lý booking trong khu vực được phân công."], "faqs": [{ "question": "Vì sao không thấy booking?", "answer": "Booking cần thuộc khu vực và được phân công cho bạn." }] },
+    { "area": "Staff", "controller": "Booking", "title": "Xử lý booking", "description": "Kiểm tra hồ sơ, thanh toán và trạng thái của booking được phân công.", "mainActions": ["Lọc theo trạng thái", "Mở chi tiết booking", "Chuyển trạng thái khi đủ điều kiện"], "notes": ["Không bỏ qua bước kiểm tra hồ sơ và thanh toán."], "faqs": [{ "question": "Tôi có thể xử lý mọi booking không?", "answer": "Không. Staff chỉ truy cập booking trong phạm vi được phân công." }] },
+    { "area": "Staff", "controller": "Handover", "title": "Bàn giao xe", "description": "Ghi nhận tình trạng xe trước khi khách bắt đầu chuyến đi.", "mainActions": ["Mở booking cần bàn giao", "Chụp và ghi nhận bằng chứng", "Xác nhận đủ tài sản và nhiên liệu"], "notes": ["Bằng chứng bàn giao là căn cứ xử lý tranh chấp."], "faqs": [{ "question": "Cần ghi nhận những gì?", "answer": "Ngoại thất, nội thất, km, nhiên liệu, phụ kiện và ghi chú bất thường." }] },
+    { "area": "Staff", "controller": "Return", "title": "Nhận xe trả", "description": "Kiểm tra xe khi kết thúc chuyến và ghi nhận phát sinh.", "mainActions": ["Mở booking cần nhận trả", "Đối chiếu với biên bản bàn giao", "Ghi nhận hư hỏng hoặc thất lạc"], "notes": ["Không hoàn tất trả xe khi chưa kiểm tra đầy đủ."], "faqs": [{ "question": "Có phát sinh thì làm gì?", "answer": "Ghi nhận bằng chứng và chuyển trường hợp cần rà soát theo quy trình." }] },
+    { "area": "Staff", "controller": "Support", "title": "Hỗ trợ khách hàng", "description": "Theo dõi và cập nhật ticket hỗ trợ tại khu vực.", "mainActions": ["Lọc ticket mở", "Đọc đầy đủ nội dung", "Cập nhật trạng thái và kết quả xử lý"], "notes": ["Không ghi dữ liệu nhạy cảm không cần thiết vào nội dung hỗ trợ."], "faqs": [{ "question": "Khi nào đóng ticket?", "answer": "Chỉ đóng khi vấn đề đã được giải quyết và có kết quả rõ ràng." }] },
+    { "area": "Staff", "controller": "Profile", "title": "Hồ sơ nhân viên", "description": "Kiểm tra thông tin tài khoản và các khu vực được phân công.", "mainActions": ["Kiểm tra thông tin cá nhân", "Xem danh sách khu vực", "Báo Manager nếu phân công chưa đúng"], "notes": ["Không chia sẻ tài khoản Staff."], "faqs": [{ "question": "Đổi khu vực ở đâu?", "answer": "Sử dụng bộ chọn khu vực trong sidebar nếu bạn được phân công nhiều khu vực." }] },
+    { "area": "Staff", "controller": "*", "title": "Hướng dẫn Staff Portal", "description": "Trang này hỗ trợ xử lý tác vụ vận hành hằng ngày.", "mainActions": ["Kiểm tra đúng khu vực", "Mở chi tiết trước khi cập nhật", "Ghi nhận kết quả rõ ràng"], "notes": ["Mọi thao tác phải nằm trong phạm vi được phân công."], "faqs": [{ "question": "Xem lại tutorial ở đâu?", "answer": "Bấm nút Hướng dẫn trên thanh trên cùng." }] }
+  ]
+}

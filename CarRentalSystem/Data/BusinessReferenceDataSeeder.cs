@@ -94,7 +94,8 @@ namespace CarRentalSystem.Data
                     .SetProperty(c => c.IsSelfDriveAllowed, true)
                     .SetProperty(c => c.IsWithDriverAllowed, false)
                     .SetProperty(c => c.TransportPermitStatus, "NotRequired")
-                    .SetProperty(c => c.IsApproved, true));
+                    .SetProperty(c => c.IsApproved, true)
+                    .SetProperty(c => c.ApprovalStatus, CarApprovalStatusConstants.Approved));
 
             await db.Bookings
                 .IgnoreQueryFilters()

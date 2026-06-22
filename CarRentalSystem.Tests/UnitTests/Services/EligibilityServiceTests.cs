@@ -4,6 +4,7 @@ using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
+using Moq;
 using Xunit;
 
 namespace CarRentalSystem.Tests.UnitTests.Services
@@ -12,11 +13,16 @@ namespace CarRentalSystem.Tests.UnitTests.Services
     {
         private readonly CarRentalSystem.Data.ApplicationDbContext _context;
         private readonly EligibilityService _service;
+        private readonly Mock<IPiiEncryptionService> _piiEncryption = new();
+        private readonly Mock<IIdentityHashService> _identityHash = new();
 
         public EligibilityServiceTests()
         {
             _context = MockRepositoryHelper.CreateInMemoryDbContext();
-            _service = new EligibilityService(_context);
+            _piiEncryption.Setup(service => service.Encrypt(It.IsAny<string>())).Returns<string>(value => $"enc:{value}");
+            _identityHash.Setup(service => service.HashForStorage(It.IsAny<string?>())).Returns<string?>(value => value == null ? null : $"hash:{value}");
+            var licenseSync = new CustomerDrivingLicenseSyncService(_context, _piiEncryption.Object, _identityHash.Object);
+            _service = new EligibilityService(_context, licenseSync);
         }
 
         [Fact]
@@ -80,6 +86,11 @@ namespace CarRentalSystem.Tests.UnitTests.Services
             result.IsEligible.Should().BeTrue();
             result.FailureCode.Should().Be(EligibilityFailureCode.None);
             result.Reason.Should().BeNull();
+            _context.CustomerDrivingLicenses.Should().ContainSingle(license =>
+                license.UserID == user.UserID &&
+                license.IsActive &&
+                license.IsApproved &&
+                license.VerificationStatus == "Verified");
         }
 
         private static User CreateBaseUser() => new()

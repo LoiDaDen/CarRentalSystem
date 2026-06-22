@@ -155,6 +155,54 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             controller.TempData["BookingError"].Should().NotBeNull();
         }
 
+        [Fact]
+        [Trait("Module", "Booking")]
+        [Trait("Type", "Regression")]
+        public async Task Checkout_RedirectsToEkyc_WhenQuoteRequiresDrivingLicense()
+        {
+            // Arrange
+            var startDate = DateTime.UtcNow.AddDays(1);
+            var endDate = startDate.AddHours(6);
+            var car = new Car
+            {
+                CarID = 1,
+                PricePerDay = 1000000m,
+                PricePerHour = 150000m,
+                CarName = "Test",
+                VIN = "TESTVIN000000001",
+                LicensePlate = "51A-00001",
+                IsApproved = true,
+                ApprovalStatus = CarApprovalStatusConstants.Approved,
+                IsSelfDriveAllowed = true,
+                IsWithDriverAllowed = false,
+                CarStatus = new CarStatus { Name = CarStatusConstants.Available }
+            };
+            _mockCarService.Setup(s => s.GetCarByIdAsync(1)).ReturnsAsync(car);
+            _mockReservationService
+                .Setup(s => s.CheckCarAvailabilityAsync(1, startDate, endDate, null, null))
+                .ReturnsAsync(new ReservationCheckResult(true, null));
+            _mockQuoteService
+                .Setup(s => s.BuildQuoteAsync(It.IsAny<BookingQuoteRequest>()))
+                .ThrowsAsync(new BookingQuoteException(
+                    BookingQuoteFailureCode.MissingDrivingLicense,
+                    "Khách thuê xe tự lái phải cung cấp giấy phép lái xe hợp lệ."));
+            var controller = CreateController();
+            controller.HttpContext.Request.Path = "/Booking/Checkout";
+            controller.HttpContext.Request.QueryString = new QueryString("?CarID=1");
+
+            // Act
+            var result = await controller.Checkout(1, startDate, endDate, "Location 1") as RedirectToActionResult;
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.ActionName.Should().Be("Details");
+            result.ControllerName.Should().Be("Car");
+            result.RouteValues!["id"].Should().Be(1);
+            controller.TempData["ShowEkycModal"].Should().Be("true");
+            controller.TempData["EkycReturnUrl"].Should().Be("/Booking/Checkout?CarID=1");
+            controller.TempData["WarningMessage"]!.ToString().Should().Contain("GPLX");
+        }
+
         // =============================================
         // BOOK TESTS
         // =============================================

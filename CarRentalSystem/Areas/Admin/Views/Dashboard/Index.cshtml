@@ -1,377 +1,148 @@
 @using CarRentalSystem.Areas.Admin.Models
+@using CarRentalSystem.Models
 @model DashboardViewModel
 @{
-    ViewData["Title"] = "Trung tâm Điều hành Smart Car";
-    Layout = "_AdminLayout";
+    ViewData["Title"] = "Dashboard điều hành";
+    string BookingTone(string? status) => status switch
+    {
+        BookingStatusConstants.Completed => "admin-status-success",
+        BookingStatusConstants.Confirmed or BookingStatusConstants.Active => "admin-status-info",
+        BookingStatusConstants.Pending or BookingStatusConstants.Unpaid => "admin-status-warning",
+        BookingStatusConstants.Cancelled or BookingStatusConstants.Rejected or BookingStatusConstants.Expired => "admin-status-danger",
+        _ => "admin-status-neutral"
+    };
+    string PaymentTone(string? status) => status switch
+    {
+        PaymentStatusConstants.Paid => "admin-status-success",
+        PaymentStatusConstants.Pending or PaymentStatusConstants.Processing => "admin-status-warning",
+        PaymentStatusConstants.Failed or PaymentStatusConstants.Cancelled => "admin-status-danger",
+        _ => "admin-status-neutral"
+    };
+    string SupportTone(string? status) => status switch
+    {
+        SupportTicketStatusConstants.Resolved or SupportTicketStatusConstants.Closed => "admin-status-success",
+        SupportTicketStatusConstants.InProgress => "admin-status-info",
+        SupportTicketStatusConstants.Open => "admin-status-warning",
+        _ => "admin-status-neutral"
+    };
 }
 
-<!-- Pass server data to JavaScript safely -->
 <script>
-    window.dashboardData = {
-        revenueLabels: @Html.Raw(Json.Serialize(Model.RevenueLabels)),
-        revenueData: @Html.Raw(Json.Serialize(Model.RevenueData)),
-        bookingLabels: @Html.Raw(Json.Serialize(Model.BookingLabels)),
-        bookingData: @Html.Raw(Json.Serialize(Model.BookingData)),
-        carLabels: @Html.Raw(Json.Serialize(Model.CarLabels)),
-        carData: @Html.Raw(Json.Serialize(Model.CarData))
-    };
+    window.dashboardData = @Html.Raw(Json.Serialize(new
+    {
+        depositLabels = Model.DepositLabels,
+        depositData = Model.DepositData,
+        bookingLabels = Model.BookingLabels.Select(UiLabels.BookingStatus),
+        bookingData = Model.BookingData,
+        carLabels = Model.CarLabels.Select(UiLabels.CarStatus),
+        carData = Model.CarData
+    }));
 </script>
 
-<div class="page-admin-dashboard theme-admin">
-    <!-- Page Header -->
-    <div class="page-header mb-4">
+<div class="page-admin-dashboard">
+    <div class="page-header">
         <div>
-            <h2 class="fw-800 ls-neg-1 mb-1">Tổng quan Hệ thống</h2>
-            <p class="text-muted mb-0">Hiệu suất vận hành thời gian thực của đội xe và doanh thu.</p>
+            <h2>Trung tâm điều hành</h2>
+            <p>Tổng quan vận hành theo ngày nghiệp vụ Việt Nam @Model.BusinessDate.ToString("dd/MM/yyyy").</p>
         </div>
-        <div class="d-flex gap-3 align-items-center">
-            <div class="px-3 py-2 rounded-4 d-flex align-items-center" style="background: var(--admin-surface); border: 1px solid var(--admin-border);">
-                <div class="me-3 p-2 rounded-3" style="background: rgba(59, 130, 246, 0.2);">
-                    <i class="bi bi-clock-fill" style="color: var(--admin-primary);"></i>
-                </div>
-                <div>
-                    <small class="d-block fw-bold text-uppercase ls-1" style="font-size: 0.6rem; color: var(--admin-text-muted);">Hệ thống</small>
-                    <span class="fw-800 small" id="liveTime">@DateTime.Now.ToString("HH:mm - dd/MM/yyyy")</span>
-                </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Enterprise" asp-action="Index"><i class="bi bi-command"></i> Command center</a>
+            <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="StartupKpi" asp-action="Index"><i class="bi bi-bullseye"></i> KPI startup</a>
+            <a class="btn btn-primary" asp-area="Admin" asp-controller="Reports" asp-action="Index"><i class="bi bi-bar-chart"></i> Xem báo cáo</a>
+        </div>
+    </div>
+
+    @if (Model.HasLoadError)
+    {
+        <div class="alert alert-warning admin-flash-alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>@Model.LoadErrorMessage</span>
+            <a class="btn btn-sm btn-outline-warning ms-auto" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Tải lại</a>
+        </div>
+    }
+
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="User" asp-action="Index"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-people-fill"></i></span><div class="admin-kpi-value">@Model.TotalUsers.ToString("N0")</div><div class="admin-kpi-label">Tổng người dùng</div><div class="admin-kpi-note">@Model.PendingEkyc.ToString("N0") eKYC đang chờ</div></div></a></div>
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="Car" asp-action="Manage"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-car-front-fill"></i></span><div class="admin-kpi-value">@Model.TotalCars.ToString("N0")</div><div class="admin-kpi-label">Tổng xe</div><div class="admin-kpi-note">@Model.AvailableCars.ToString("N0") xe sẵn sàng</div></div></a></div>
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="Booking" asp-action="Index"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-calendar2-check-fill"></i></span><div class="admin-kpi-value">@Model.TodayBookings.ToString("N0")</div><div class="admin-kpi-label">Booking hôm nay</div><div class="admin-kpi-note">@Model.TotalBookings.ToString("N0") booking đang hiển thị</div></div></a></div>
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="Reports" asp-action="Index"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-cash-coin"></i></span><div class="admin-kpi-value">@Model.TodayDepositAmount.ToString("N0") đ</div><div class="admin-kpi-label">Tiền cọc hôm nay</div><div class="admin-kpi-note">DepositCharge đã hạch toán</div></div></a></div>
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="Booking" asp-action="Index" asp-route-status="@BookingStatusConstants.Pending"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-hourglass-split"></i></span><div class="admin-kpi-value">@Model.PendingBookings.ToString("N0")</div><div class="admin-kpi-label">Booking chờ xử lý</div><div class="admin-kpi-note">@Model.OverdueBookings.ToString("N0") lượt trả xe quá hạn</div></div></a></div>
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="Car" asp-action="Manage"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-key-fill"></i></span><div class="admin-kpi-value">@Model.RentedCars.ToString("N0")</div><div class="admin-kpi-label">Xe đang thuê</div><div class="admin-kpi-note">@Model.CancellationRate30Days.ToString("N1")% tỷ lệ hủy 30 ngày</div></div></a></div>
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="Maintenance" asp-action="Index"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-tools"></i></span><div class="admin-kpi-value">@Model.MaintenanceCars.ToString("N0")</div><div class="admin-kpi-label">Xe bảo trì</div><div class="admin-kpi-note">@Model.MaintenanceDueSoon.ToString("N0") xe đến hạn trong 14 ngày</div></div></a></div>
+        <div class="col-xl-3 col-md-6"><a class="text-decoration-none" asp-area="Admin" asp-controller="Support" asp-action="Index"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-headset"></i></span><div class="admin-kpi-value">@Model.OpenSupportTickets.ToString("N0")</div><div class="admin-kpi-label">Ticket chưa xử lý</div><div class="admin-kpi-note">Theo hàng đợi Support</div></div></a></div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
+                <div><h5 class="mb-1 fw-bold">Quick actions</h5><span class="text-muted small">Truy cập nhanh các hàng đợi cần xử lý.</span></div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="CarApproval" asp-action="Index"><i class="bi bi-check2-square"></i> Duyệt xe (@Model.PendingApprovalCars)</a>
+                <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Booking" asp-action="Index" asp-route-status="@BookingStatusConstants.Pending"><i class="bi bi-calendar-plus"></i> Booking mới</a>
+                <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Payment" asp-action="Index"><i class="bi bi-credit-card"></i> Thanh toán</a>
+                <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Support" asp-action="Index"><i class="bi bi-headset"></i> Support tickets</a>
+                <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="StartupKpi" asp-action="Index"><i class="bi bi-bullseye"></i> KPI startup</a>
+                <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Reports" asp-action="Index"><i class="bi bi-file-earmark-bar-graph"></i> Báo cáo</a>
             </div>
         </div>
     </div>
 
-    <!-- Stat Cards Row -->
-    <div class="row g-4 mb-4">
-        <!-- Stat Card: Tổng Doanh thu -->
-        <div class="col-md-3 col-sm-6">
-            <div class="admin-stat-card stat-revenue">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                    <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-600) 100%); color: white;">
-                        <i class="bi bi-currency-dollar"></i>
-                    </div>
-                    <span class="badge" style="background-color: rgba(16, 185, 129, 0.2); color: var(--admin-success);">
-                        <i class="bi bi-graph-up-arrow me-1"></i> Tăng trưởng
-                    </span>
-                </div>
-                <div>
-                    <small class="d-block mb-1 text-uppercase fw-bold ls-1" style="font-size: 0.7rem; color: var(--admin-text-muted);">Tổng Doanh thu</small>
-                    <h2 class="fw-800 mb-1" style="font-size: 1.5rem; color: var(--admin-text);">
-                        <span class="revenue-counter" data-value="@Model.TotalRevenue">@Model.TotalRevenue.ToString("N0")</span>
-                        <small class="fs-6 fw-normal" style="color: var(--admin-text-secondary);">đ</small>
-                    </h2>
-                    <div class="progress mt-3" style="height: 6px;">
-                        <div class="progress-bar" role="progressbar" style="width: 75%; background: linear-gradient(90deg, var(--admin-primary), var(--admin-info));"></div>
-                    </div>
-                </div>
-                <div class="stat-bg-icon">
-                    <i class="bi bi-currency-dollar"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stat Card: Tổng số chuyến xe -->
-        <div class="col-md-3 col-sm-6">
-            <div class="admin-stat-card stat-bookings">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                    <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, var(--admin-success) 0%, #059669 100%); color: white;">
-                        <i class="bi bi-calendar-check"></i>
-                    </div>
-                    <span class="badge" style="background-color: rgba(59, 130, 246, 0.2); color: var(--admin-primary);">
-                        <i class="bi bi-check-circle me-1"></i> Tốt
-                    </span>
-                </div>
-                <div>
-                    <small class="d-block mb-1 text-uppercase fw-bold ls-1" style="font-size: 0.7rem; color: var(--admin-text-muted);">Tổng số chuyến xe</small>
-                    <h2 class="fw-800 mb-1" style="font-size: 1.5rem; color: var(--admin-text);">
-                        <span class="booking-counter" data-value="@Model.TotalBookings">@Model.TotalBookings</span>
-                    </h2>
-                    <div class="mt-3">
-                        <span class="fw-semibold small" style="color: var(--admin-success);">
-                            <i class="bi bi-lightning-charge me-1"></i> Đang xử lý tốt
-                        </span>
-                    </div>
-                </div>
-                <div class="stat-bg-icon">
-                    <i class="bi bi-calendar-check"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stat Card: Tình trạng Đội xe -->
-        <div class="col-md-3 col-sm-6">
-            <div class="admin-stat-card stat-fleet">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                    <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, var(--admin-warning) 0%, #d97706 100%); color: white;">
-                        <i class="bi bi-truck-front"></i>
-                    </div>
-                    <span class="badge" style="background-color: rgba(245, 158, 11, 0.2); color: var(--admin-warning);">
-                        <i class="bi bi-info-circle me-1"></i> @Model.RentedCars xe
-                    </span>
-                </div>
-                <div>
-                    <small class="d-block mb-1 text-uppercase fw-bold ls-1" style="font-size: 0.7rem; color: var(--admin-text-muted);">Tình trạng Đội xe</small>
-                    <h2 class="fw-800 mb-1" style="font-size: 1.5rem; color: var(--admin-text);">
-                        @((Model.RentedCars * 100 / (Model.TotalCars > 0 ? Model.TotalCars : 1)))%
-                    </h2>
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between small mb-1" style="color: var(--admin-text-muted);">
-                            <span>Đang thuê</span>
-                            <span class="fw-bold" style="color: var(--admin-text);">@Model.RentedCars / @Model.TotalCars xe</span>
-                        </div>
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar" role="progressbar" style="width: @((Model.RentedCars * 100 / (Model.TotalCars > 0 ? Model.TotalCars : 1)))%; background: linear-gradient(90deg, var(--admin-warning), #fbbf24);"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="stat-bg-icon">
-                    <i class="bi bi-truck-front"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stat Card: Khả năng đáp ứng -->
-        <div class="col-md-3 col-sm-6">
-            <div class="admin-stat-card stat-cars">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                    <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, var(--admin-info) 0%, #0284c7 100%); color: white;">
-                        <i class="bi bi-box2-check"></i>
-                    </div>
-                    <span class="badge" style="background-color: rgba(14, 165, 233, 0.2); color: var(--admin-info);">
-                        <i class="bi bi-check2-all me-1"></i> Sẵn sàng
-                    </span>
-                </div>
-                <div>
-                    <small class="d-block mb-1 text-uppercase fw-bold ls-1" style="font-size: 0.7rem; color: var(--admin-text-muted);">Khả năng đáp ứng</small>
-                    <h2 class="fw-800 mb-1" style="font-size: 1.5rem; color: var(--admin-text);">
-                        @Model.AvailableCars
-                        <small class="fs-6 fw-normal" style="color: var(--admin-text-secondary);">xe</small>
-                    </h2>
-                    <div class="mt-3">
-                        <span class="fw-semibold small" style="color: var(--admin-info);">
-                            <i class="bi bi-check-circle-fill me-1"></i> Xe sẵn sàng cho thuê
-                        </span>
-                    </div>
-                </div>
-                <div class="stat-bg-icon">
-                    <i class="bi bi-box2-check"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Deposit Alert Card -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-warning" style="border-left: 4px solid var(--admin-warning) !important;">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <div class="d-flex align-items-center gap-3 mb-2">
-                                <div class="p-3 rounded-3" style="background-color: rgba(245, 158, 11, 0.2);">
-                                    <i class="bi bi-shield-lock-fill fs-3" style="color: var(--admin-warning);"></i>
-                                </div>
-                                <div>
-                                    <h5 class="fw-800 mb-1">Tài sản Cọc Đang Giữ</h5>
-                                    <p class="mb-0 text-muted">Hệ thống đang tạm giữ <span class="fw-bold" style="color: var(--admin-danger);">@Model.TotalHeldDepositsCount</span> khoản cọc của đơn chưa trả xe.</p>
-                                </div>
-                            </div>
-                            <div class="mt-3 d-flex gap-4">
-                                <div class="px-3 py-2 rounded-3" style="background-color: var(--admin-surface-2);">
-                                    <small class="d-block fw-600" style="font-size: 0.75rem; color: var(--admin-text-muted);">Tổng số khoản cọc</small>
-                                    <span class="fw-800 fs-5">@Model.TotalHeldDepositsCount</span>
-                                </div>
-                                <div class="px-3 py-2 rounded-3" style="background-color: var(--admin-surface-2);">
-                                    <small class="d-block fw-600" style="font-size: 0.75rem; color: var(--admin-text-muted);">Tổng giá trị</small>
-                                    <span class="fw-800 fs-5" style="color: var(--admin-primary);">@Model.TotalHeldDepositsAmount.ToString("N0") <small class="fs-6 fw-light" style="color: var(--admin-text-secondary);">đ</small></span>
-                                </div>
-                                <div class="px-3 py-2 rounded-3" style="background-color: var(--admin-surface-2);">
-                                    <small class="d-block fw-600" style="font-size: 0.75rem; color: var(--admin-text-muted);">Trung bình/khoản</small>
-                                    <span class="fw-800 fs-5" style="color: var(--admin-success);">@(Model.TotalHeldDepositsCount > 0 ? ((Model.TotalHeldDepositsAmount / Model.TotalHeldDepositsCount).ToString("N0")) : "0") <small class="fs-6 fw-light" style="color: var(--admin-text-secondary);">đ</small></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="position-relative d-inline-block">
-                                <div class="rounded-4 p-4 d-inline-flex flex-column align-items-center justify-content-center" style="min-width: 180px; background-color: rgba(245, 158, 11, 0.15);">
-                                    <i class="bi bi-safe2 fs-1 mb-2 opacity-50" style="color: var(--admin-warning);"></i>
-                                    <span class="fw-800 display-6">@Model.TotalHeldDepositsAmount.ToString("N0")</span>
-                                    <small class="fw-bold" style="color: var(--admin-text-muted);">VNĐ</small>
-                                </div>
-                                <div class="position-absolute top-50 start-100 translate-middle-y ms-3">
-                                    <span class="badge px-3 py-2 rounded-pill fw-bold" style="background-color: rgba(239, 68, 68, 0.2); color: var(--admin-danger); border: 1px solid rgba(239, 68, 68, 0.3);">
-                                        <i class="bi bi-exclamation-triangle me-1"></i> Chưa hoàn trả
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="row g-4 mb-4">
-        <!-- Revenue Chart -->
-        <div class="col-lg-8">
-            <div class="chart-container">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h5 class="fw-800 ls-neg-1 mb-0">Phân tích Doanh thu</h5>
-                        <small class="text-muted">Đơn vị: Triệu VNĐ</small>
-                    </div>
-                    <div class="btn-group p-1 rounded-4" style="background-color: var(--admin-surface-2);">
-                        <button class="btn btn-sm rounded-3" style="background-color: var(--admin-border-light); color: var(--admin-text);">6 Tháng</button>
-                        <button class="btn btn-sm" style="color: var(--admin-text-secondary);">Theo tuần</button>
-                    </div>
-                </div>
-                <div class="position-relative" style="height: 320px;">
-                    <canvas id="revenueChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Top Performing Vehicles -->
-        <div class="col-lg-4">
+    <div class="row g-3 mb-4">
+        <div class="col-lg-7">
             <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="fw-800 ls-neg-1 mb-0"><i class="bi bi-trophy text-warning me-2"></i>Xe Hiệu suất Cao</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex flex-column gap-3">
-                        @foreach (var topCar in Model.TopCars)
-                        {
-                            <div class="d-flex align-items-center p-2 rounded-3" style="background-color: var(--admin-surface-2);">
-                                <div class="position-relative me-3">
-                                    <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill shadow-sm" style="font-size: 0.6rem; background-color: var(--admin-primary);">#@(Model.TopCars.IndexOf(topCar) + 1)</span>
-                                    <div class="rounded-circle shadow-sm p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background-color: var(--admin-border-light);">
-                                        <i class="bi bi-car-front fs-4" style="color: var(--admin-primary);"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="fw-800 mb-0 small">@(topCar.Car?.CarBrand?.Name ?? "Unknown") @(topCar.Car?.CarName ?? "Unknown Car")</h6>
-                                    <small class="d-block" style="color: var(--admin-text-muted);">@topCar.RentalCount lượt thuê</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="fw-bold small" style="color: var(--admin-primary);">@((topCar.TotalRevenue / 1000000).ToString("N1")) tr</span>
-                                </div>
-                            </div>
-                        }
-                        @if (!Model.TopCars.Any())
-                        {
-                            <div class="text-center py-4 empty-state">
-                                <i class="bi bi-car-front fs-1"></i>
-                                <p class="mt-2 mb-0">Chưa có dữ liệu thuê xe.</p>
-                            </div>
-                        }
-                    </div>
-                </div>
+                <div class="card-header"><div><h5 class="mb-1 fw-bold">Tiền cọc 7 ngày</h5><small class="text-muted">Đơn vị: triệu VNĐ</small></div></div>
+                <div class="card-body"><div class="admin-chart-height"><canvas id="revenueChart"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="row g-3 h-100">
+                <div class="col-sm-6 col-lg-12 col-xl-6"><div class="card h-100"><div class="card-header"><h6 class="mb-0 fw-bold">Booking theo trạng thái</h6></div><div class="card-body"><div class="admin-chart-height admin-chart-height-sm"><canvas id="bookingsChart"></canvas></div></div></div></div>
+                <div class="col-sm-6 col-lg-12 col-xl-6"><div class="card h-100"><div class="card-header"><h6 class="mb-0 fw-bold">Xe theo trạng thái</h6></div><div class="card-body"><div class="admin-chart-height admin-chart-height-sm"><canvas id="carsChart"></canvas></div></div></div></div>
             </div>
         </div>
     </div>
 
-    <!-- Tables Row -->
-    <div class="row g-4 mb-4">
-        <!-- Top 5 Cars -->
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="fw-800 ls-neg-1 mb-0"><i class="bi bi-star text-primary me-2"></i>Top 5 Xe Hiệu Suất Cao</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <tbody>
-                            @foreach (var item in Model.TopCars)
-                            {
-                                <tr>
-                                    <td style="width:50px;">
-                                        <div class="rounded-3 overflow-hidden" style="width:40px;height:40px; background-color: var(--admin-surface-2);">
-                                            @if (item.Car.CarImages?.Any() == true) {
-                                                <img src="@item.Car.CarImages.First().ImageUrl" class="w-100 h-100" style="object-fit: cover;">
-                                            } else {
-                                                <i class="bi bi-car-front fs-5 p-2 d-block" style="color: var(--admin-text-muted);"></i>
-                                            }
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="fw-bold small">@item.Car.CarBrand?.Name @item.Car.CarName</div>
-                                        <small style="color: var(--admin-text-muted);">@item.Car.LicensePlate</small>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="fw-bold small">@item.RentalCount lượt</div>
-                                        <small class="fw-bold" style="font-size: 0.7rem; color: var(--admin-primary);">@item.TotalRevenue.ToString("N0") đ</small>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Maintenance Summary -->
-        <div class="col-lg-6">
-            <div class="card border-danger" style="border-left: 4px solid var(--admin-danger) !important;">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="fw-800 text-uppercase mb-0" style="font-size:0.85rem;"><i class="bi bi-tools text-danger me-2"></i>Nhật ký bảo trì gần đây</h5>
-                    <span class="badge" style="background-color: rgba(239, 68, 68, 0.2); color: var(--admin-danger);">Chi phí năm: @(((decimal)ViewBag.MaintenanceCostYear).ToString("N0")) đ</span>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <tbody>
-                            @foreach (var log in ViewBag.MaintenanceLogs as List<CarRentalSystem.Models.MaintenanceLog>)
-                            {
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold small">@log.Car?.CarBrand?.Name @log.Car?.CarName</div>
-                                        <small style="color: var(--admin-text-muted);">@log.Description</small>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="small fw-500" style="color: var(--admin-text-secondary);">@log.ServiceDate.ToString("dd/MM/yyyy")</div>
-                                        <small class="fw-bold" style="color: var(--admin-danger);">@log.Cost.ToString("N0") đ</small>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between"><h5 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Cảnh báo vận hành</h5><a asp-area="Admin" asp-controller="Enterprise" asp-action="Index" class="btn btn-sm btn-outline-secondary">Xem toàn bộ</a></div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-lg col-sm-6"><div class="admin-warning-tile"><span class="admin-status-badge @(Model.OverdueBookings > 0 ? "admin-status-danger" : "admin-status-success")">@Model.OverdueBookings</span><strong>Booking quá hạn</strong><small>Đang thuê nhưng quá ngày trả.</small></div></div>
+                <div class="col-lg col-sm-6"><div class="admin-warning-tile"><span class="admin-status-badge @(Model.MaintenanceDueSoon > 0 ? "admin-status-warning" : "admin-status-success")">@Model.MaintenanceDueSoon</span><strong>Xe cần bảo trì</strong><small>Đến hạn trong 14 ngày tới.</small></div></div>
+                <div class="col-lg col-sm-6"><div class="admin-warning-tile"><span class="admin-status-badge @(Model.StalePendingPayments > 0 ? "admin-status-danger" : "admin-status-success")">@Model.StalePendingPayments</span><strong>Payment pending lâu</strong><small>Chờ xử lý trên 24 giờ.</small></div></div>
+                <div class="col-lg col-sm-6"><div class="admin-warning-tile"><span class="admin-status-badge @(Model.PendingEkyc > 0 ? "admin-status-warning" : "admin-status-success")">@Model.PendingEkyc</span><strong>eKYC chờ xác minh</strong><small>Khách hàng chưa đủ xác minh.</small></div></div>
+                <div class="col-lg col-sm-6"><div class="admin-warning-tile"><span class="admin-status-badge @(Model.HighRiskUsers > 0 ? "admin-status-danger" : "admin-status-success")">@Model.HighRiskUsers</span><strong>Khách hàng rủi ro</strong><small>High/Critical trong 30 ngày.</small></div></div>
             </div>
         </div>
     </div>
 
-    <!-- Top Customers -->
-    <div class="row g-4">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="fw-800 ls-neg-1 mb-0"><i class="bi bi-gem text-info me-2"></i>Khách hàng VIP (Doanh thu cao nhất)</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr class="small fw-bold" style="color: var(--admin-text-secondary);">
-                                <th class="ps-3">Khách hàng</th>
-                                <th class="text-center">Số đơn</th>
-                                <th class="text-end pe-3">Tổng chi tiêu</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in ViewBag.TopCustomers as List<CarRentalSystem.Areas.Admin.Models.TopCustomerViewModel>)
-                            {
-                                <tr>
-                                    <td class="ps-3">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(item.User?.Name ?? "?")&background=3b82f6&color=fff" width="30" height="30" class="rounded-circle">
-                                            <div>
-                                                <div class="fw-bold small">@item.User?.Name</div>
-                                                <small style="font-size:0.7rem; color: var(--admin-text-muted);">@item.User?.Email</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center fw-bold">@item.BookingCount</td>
-                                    <td class="text-end pe-3 fw-800" style="color: var(--admin-success);">@item.TotalSpent.ToString("N0") đ</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+    <div class="row g-3">
+        <div class="col-xl-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between"><h5 class="mb-0 fw-bold">Booking mới nhất</h5><a asp-area="Admin" asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-outline-secondary">Xem tất cả</a></div>
+                @if (Model.RecentBookings.Count == 0) { <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel { Icon = "bi-calendar-x", Title = "Chưa có booking", Message = "Booking mới sẽ xuất hiện tại đây." })" /> }
+                else { <div class="table-responsive"><table class="table"><thead><tr><th>Mã</th><th>Khách hàng</th><th>Xe</th><th>Trạng thái</th><th></th></tr></thead><tbody>@foreach (var item in Model.RecentBookings) { <tr><td>#@item.BookingID</td><td><strong>@(item.User?.Name ?? "—")</strong><small class="d-block text-muted">@item.CreatedAt.ToString("dd/MM HH:mm")</small></td><td>@(item.Car?.CarBrand?.Name) @(item.Car?.CarName)</td><td><span class="admin-status-badge @BookingTone(item.BookingStatus?.Name)">@UiLabels.BookingStatus(item.BookingStatus?.Name)</span></td><td><a class="btn btn-sm btn-outline-primary" asp-area="Admin" asp-controller="Booking" asp-action="Details" asp-route-id="@item.BookingID"><i class="bi bi-eye"></i></a></td></tr> }</tbody></table></div> }
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between"><h5 class="mb-0 fw-bold">Xe chờ duyệt</h5><a asp-area="Admin" asp-controller="CarApproval" asp-action="Index" class="btn btn-sm btn-outline-secondary">Mở hàng đợi</a></div>
+                @if (Model.PendingCars.Count == 0) { <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel { Icon = "bi-car-front", Title = "Không có xe chờ duyệt", Message = "Hàng đợi duyệt xe hiện đã được xử lý hết." })" /> }
+                else { <div class="table-responsive"><table class="table"><thead><tr><th>Xe</th><th>Biển số</th><th>Chủ xe</th><th>Ngày gửi</th><th></th></tr></thead><tbody>@foreach (var item in Model.PendingCars) { <tr><td><strong>@item.CarBrand?.Name @item.CarName</strong></td><td>@item.LicensePlate</td><td>@(item.Owner?.Name ?? "Nền tảng")</td><td>@item.CreatedAt.ToString("dd/MM/yyyy")</td><td><a class="btn btn-sm btn-outline-primary" asp-area="Admin" asp-controller="Car" asp-action="Details" asp-route-id="@item.CarID"><i class="bi bi-eye"></i></a></td></tr> }</tbody></table></div> }
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between"><h5 class="mb-0 fw-bold">Thanh toán gần đây</h5><a asp-area="Admin" asp-controller="Payment" asp-action="Index" class="btn btn-sm btn-outline-secondary">Xem tất cả</a></div>
+                @if (Model.RecentPayments.Count == 0) { <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel { Icon = "bi-credit-card", Title = "Chưa có thanh toán", Message = "Giao dịch mới sẽ xuất hiện tại đây." })" /> }
+                else { <div class="table-responsive"><table class="table"><thead><tr><th>Đơn</th><th>Khách hàng</th><th>Số tiền</th><th>Trạng thái</th></tr></thead><tbody>@foreach (var item in Model.RecentPayments) { <tr><td>#@item.BookingID</td><td>@(item.Booking?.User?.Name ?? "—")</td><td><strong>@item.Amount.ToString("N0") đ</strong><small class="d-block text-muted">@item.PaymentDate.ToString("dd/MM HH:mm")</small></td><td><span class="admin-status-badge @PaymentTone(item.PaymentStatus)">@UiLabels.PaymentStatus(item.PaymentStatus)</span></td></tr> }</tbody></table></div> }
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between"><h5 class="mb-0 fw-bold">Support tickets mới</h5><a asp-area="Admin" asp-controller="Support" asp-action="Index" class="btn btn-sm btn-outline-secondary">Mở queue</a></div>
+                @if (Model.RecentSupportTickets.Count == 0) { <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel { Icon = "bi-headset", Title = "Chưa có ticket", Message = "Ticket hỗ trợ mới sẽ xuất hiện tại đây." })" /> }
+                else { <div class="table-responsive"><table class="table"><thead><tr><th>Ticket</th><th>Khách hàng</th><th>Ưu tiên</th><th>Trạng thái</th></tr></thead><tbody>@foreach (var item in Model.RecentSupportTickets) { <tr><td><strong>#@item.SupportTicketID @item.Subject</strong><small class="d-block text-muted">@item.CreatedAt.ToString("dd/MM HH:mm")</small></td><td>@(item.User?.Name ?? "—")</td><td><span class="badge bg-secondary">@item.Priority</span></td><td><span class="admin-status-badge @SupportTone(item.Status)">@UiLabels.GenericStatus(item.Status)</span></td></tr> }</tbody></table></div> }
             </div>
         </div>
     </div>
@@ -379,5 +150,5 @@
 
 @section Scripts {
     <script src="~/lib/chart.min.js"></script>
-    <script src="~/js/admin/dashboard.js"></script>
+    <script src="~/js/admin/dashboard.js" asp-append-version="true"></script>
 }

@@ -16,20 +16,27 @@ namespace CarRentalSystem.Controllers
     [Authorize]
     public class OwnerCarsController : Controller
     {
+        private const decimal DefaultCommissionRate = 0m;
         private readonly ApplicationDbContext _context;
         private readonly IFileUploadValidationService _fileValidation;
         private readonly IAuditTrailService _auditTrail;
+        private readonly ICarChangeRequestService _carChanges;
+        private readonly IBookingTransitionService _bookingTransitions;
         private readonly IWebHostEnvironment _environment;
 
         public OwnerCarsController(
             ApplicationDbContext context,
             IFileUploadValidationService fileValidation,
             IAuditTrailService auditTrail,
+            ICarChangeRequestService carChanges,
+            IBookingTransitionService bookingTransitions,
             IWebHostEnvironment environment)
         {
             _context = context;
             _fileValidation = fileValidation;
             _auditTrail = auditTrail;
+            _carChanges = carChanges;
+            _bookingTransitions = bookingTransitions;
             _environment = environment;
         }
 
@@ -40,6 +47,7 @@ namespace CarRentalSystem.Controllers
             var visibleCars = ApplyOwnerCarFilters(allCars, q, service, status).ToList();
             var allCarIds = allCars.Select(c => c.CarID).ToList();
             var visibleCarIds = visibleCars.Select(c => c.CarID).ToList();
+            var activeChanges = await LoadActiveChangeRequestsAsync(allCarIds);
             var bookingRows = await LoadOwnerBookingRowsAsync(allCarIds);
             var visibleBookingRows = bookingRows.Where(b => visibleCarIds.Contains(b.CarID)).ToList();
             var latestTracking = await LoadLatestTrackingAsync(allCarIds);
@@ -63,7 +71,16 @@ namespace CarRentalSystem.Controllers
                     ServiceLabel = car.IsWithDriverAllowed ? "Xe có tài" : "Xe tự lái",
                     StatusName = car.CarStatus?.Name ?? "Unknown",
                     IsApproved = car.IsApproved,
+                    ApprovalStatus = car.ApprovalStatus,
+                    ApprovalRejectionReason = car.ApprovalRejectionReason,
+                    IsPendingDeletion = car.IsPendingDeletion,
+                    HasPendingChange = activeChanges.ContainsKey(car.CarID),
+                    PendingChangeOperation = activeChanges.TryGetValue(car.CarID, out var cardChange) ? cardChange.Operation : null,
+                    PendingChangeStage = cardChange?.CurrentStage,
+                    PendingApprovalLabel = BuildPendingApprovalLabel(cardChange),
+                    PendingChangeCreatedAt = cardChange?.CreatedAt,
                     PricePerDay = car.PricePerDay,
+                    OwnerIncomePerDay = car.PricePerDay,
                     TripCount = carBookings.Count(b => b.StatusName == BookingStatusConstants.Completed),
                     ActiveBookingCount = carBookings.Count(b => b.StatusName is BookingStatusConstants.Confirmed or BookingStatusConstants.Active),
                     MonthRevenue = carBookings
@@ -99,6 +116,109 @@ namespace CarRentalSystem.Controllers
                     .Where(b => b.CreatedAt >= monthStart && IsRevenueStatus(b.StatusName))
                     .Sum(b => b.TotalPrice)
             };
+
+            return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Details(int id, bool partial = false)
+        {
+            var userId = GetCurrentUserId();
+            var car = await _context.Cars
+                .AsNoTracking()
+                .Include(c => c.CarBrand)
+                .Include(c => c.CarModel)
+                .Include(c => c.CarStatus)
+                .Include(c => c.CarImages)
+                .Include(c => c.CarAmenityMappings)
+                    .ThenInclude(mapping => mapping.CarAmenity)
+                .FirstOrDefaultAsync(c => c.CarID == id && c.OwnerID == userId);
+
+            if (car == null)
+                return NotFound();
+
+            var bookings = await LoadOwnerBookingRowsAsync(new[] { car.CarID });
+            var latestTracking = await LoadLatestTrackingAsync(new[] { car.CarID });
+            var activeChanges = await LoadActiveChangeRequestsAsync(new[] { car.CarID });
+            activeChanges.TryGetValue(car.CarID, out var activeChange);
+            latestTracking.TryGetValue(car.CarID, out var tracking);
+
+            var signatureProfile = await _context.OwnerDigitalSignatureProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(profile => profile.UserID == userId);
+            var hasReadyDigitalSignature = signatureProfile?.IsReady == true;
+            var hasEnoughImages = (car.CarImages?.Count ?? 0) >= 4;
+            var hasRequiredDocuments =
+                CarContractSigningModes.Normalize(car.ContractSigningMode) != CarContractSigningModes.Digital ||
+                hasReadyDigitalSignature;
+            var inspectionStatus = BuildInspectionStatus(car.NextInspectionDate, GetVietnamToday());
+            var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var monthGmv = bookings
+                .Where(booking => booking.CreatedAt >= monthStart && IsRevenueStatus(booking.StatusName))
+                .Sum(booking => booking.TotalPrice);
+
+            var model = new OwnerCarDetailsViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Cars"),
+                CarID = car.CarID,
+                DisplayName = BuildCarDisplayName(car),
+                LicensePlate = car.LicensePlate,
+                ImageUrls = car.CarImages?
+                    .OrderBy(image => image.ImageID)
+                    .Select(image => image.ImageUrl)
+                    .ToList() ?? new List<string>(),
+                Amenities = car.CarAmenityMappings
+                    .Where(mapping => !mapping.IsDeleted && mapping.CarAmenity != null)
+                    .OrderBy(mapping => mapping.CarAmenity!.DisplayOrder)
+                    .ThenBy(mapping => mapping.CarAmenity!.Name)
+                    .Select(mapping => mapping.CarAmenity!.Name)
+                    .ToList(),
+                ServiceLabel = car.IsWithDriverAllowed ? "Xe có tài" : "Xe tự lái",
+                StatusName = car.CarStatus?.Name ?? "Unknown",
+                IsApproved = car.IsApproved,
+                ApprovalStatus = car.ApprovalStatus,
+                ApprovalRejectionReason = car.ApprovalRejectionReason,
+                IsPendingDeletion = car.IsPendingDeletion,
+                HasPendingChange = activeChange != null,
+                PendingChangeOperation = activeChange?.Operation,
+                PendingChangeStage = activeChange?.CurrentStage,
+                PendingChangeStatus = activeChange?.Status,
+                PendingApprovalLabel = BuildPendingApprovalLabel(activeChange),
+                PendingChangeCreatedAt = activeChange?.CreatedAt,
+                PricePerDay = car.PricePerDay,
+                OwnerIncomePerDay = car.PricePerDay,
+                MonthGmv = monthGmv,
+                MonthOwnerIncome = monthGmv,
+                CompletedTripCount = bookings.Count(booking => booking.StatusName == BookingStatusConstants.Completed),
+                ActiveBookingCount = bookings.Count(booking => booking.StatusName is BookingStatusConstants.Confirmed or BookingStatusConstants.Active),
+                HasGps = tracking != null,
+                LatestGpsAt = tracking?.Timestamp,
+                HasEnoughImages = hasEnoughImages,
+                HasRequiredDocuments = hasRequiredDocuments,
+                ContractSigningModeLabel = CarContractSigningModes.DisplayName(car.ContractSigningMode),
+                Seats = car.Seats,
+                FuelType = car.FuelType,
+                Transmission = car.Transmission,
+                FuelConsumption = car.FuelConsumption,
+                Description = car.Description,
+                CarAddress = car.CarAddress,
+                Latitude = car.Latitude,
+                Longitude = car.Longitude,
+                NextInspectionDate = car.NextInspectionDate,
+                InspectionStatusLabel = inspectionStatus.Label,
+                InspectionStatusClass = inspectionStatus.CssClass,
+                InspectionStatusIcon = inspectionStatus.Icon,
+                ActionItems = BuildOwnerCarActionItems(
+                    car,
+                    hasEnoughImages,
+                    hasRequiredDocuments,
+                    tracking != null,
+                    inspectionStatus,
+                    activeChange)
+            };
+
+            if (partial)
+                return PartialView("_DetailsModal", model);
 
             return View(model);
         }
@@ -164,6 +284,131 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Bookings(string tab = "pending")
+        {
+            var userId = GetCurrentUserId();
+            var ownerBookings = await _context.Bookings
+                .AsNoTracking()
+                .Include(b => b.BookingStatus)
+                .Include(b => b.User)
+                .Include(b => b.Car).ThenInclude(c => c!.CarBrand)
+                .Include(b => b.Car).ThenInclude(c => c!.CarModel)
+                .Where(b => b.Car != null && b.Car.OwnerID == userId)
+                .OrderByDescending(b => b.CreatedAt)
+                .Take(300)
+                .ToListAsync();
+            var rows = ownerBookings.Select(ToOwnerBookingRow).ToList();
+
+            var model = new OwnerBookingsViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Bookings"),
+                Tab = NormalizeOwnerBookingTab(tab),
+                PendingBookings = rows.Where(IsPendingOwnerBooking).ToList(),
+                CurrentBookings = rows.Where(IsCurrentOwnerBooking).ToList(),
+                HistoryBookings = rows.Where(IsHistoryOwnerBooking).ToList()
+            };
+
+            return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> BookingDetails(int id)
+        {
+            var userId = GetCurrentUserId();
+            var booking = await LoadOwnerBookingAsync(id, userId, asTracking: false);
+            if (booking == null)
+                return NotFound();
+
+            var baseRow = ToOwnerBookingRow(booking);
+            var model = new OwnerBookingDetailsViewModel
+            {
+                Chrome = await BuildChromeAsync(userId, "Bookings"),
+                BookingID = baseRow.BookingID,
+                CarID = baseRow.CarID,
+                CarName = baseRow.CarName,
+                LicensePlate = baseRow.LicensePlate,
+                CustomerName = baseRow.CustomerName,
+                CustomerPhone = baseRow.CustomerPhone,
+                StartDate = baseRow.StartDate,
+                EndDate = baseRow.EndDate,
+                StatusName = baseRow.StatusName,
+                StatusClass = baseRow.StatusClass,
+                TotalPrice = baseRow.TotalPrice,
+                DepositAmount = baseRow.DepositAmount,
+                DepositStatus = baseRow.DepositStatus,
+                CanDecide = baseRow.CanDecide,
+                CancelReason = booking.CancelReason,
+                HandoverRecords = booking.HandoverRecords?
+                    .Where(h => !h.IsDeleted)
+                    .OrderBy(h => h.RecordDate)
+                    .Select(h => new OwnerHandoverRecordRowViewModel
+                    {
+                        HandoverID = h.HandoverID,
+                        Type = h.Type,
+                        TypeLabel = h.Type == "CheckIn" ? "Biên bản giao xe" : "Biên bản trả xe",
+                        RecordDate = h.RecordDate,
+                        Odo = h.Odo,
+                        FuelLevel = h.FuelLevel,
+                        CompensationAmount = h.InventoryItems.Sum(i => i.MissingCharge)
+                    })
+                    .ToList() ?? new List<OwnerHandoverRecordRowViewModel>()
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveBooking(int id)
+        {
+            var userId = GetCurrentUserId();
+            var booking = await LoadOwnerBookingAsync(id, userId, asTracking: true);
+            if (booking == null)
+                return NotFound();
+
+            if (booking.BookingStatus?.Name != BookingStatusConstants.Pending)
+            {
+                TempData["Error"] = "Chỉ đơn đang chờ chủ xe duyệt mới có thể được duyệt.";
+                return RedirectToAction(nameof(BookingDetails), new { id });
+            }
+
+            var result = await _bookingTransitions.TransitionAsync(
+                id,
+                BookingStatusConstants.Confirmed,
+                userId,
+                UserRoleConstants.Partner,
+                "Chủ xe duyệt đơn thuê.");
+
+            TempData[result.IsSuccess ? "Success" : "Error"] = result.ErrorMessage ?? "Đã duyệt đơn thuê.";
+            return RedirectToAction(nameof(BookingDetails), new { id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectBooking(int id, string? reason)
+        {
+            var userId = GetCurrentUserId();
+            var booking = await LoadOwnerBookingAsync(id, userId, asTracking: true);
+            if (booking == null)
+                return NotFound();
+
+            if (booking.BookingStatus?.Name != BookingStatusConstants.Pending)
+            {
+                TempData["Error"] = "Chỉ đơn đang chờ chủ xe duyệt mới có thể bị từ chối.";
+                return RedirectToAction(nameof(BookingDetails), new { id });
+            }
+
+            var result = await _bookingTransitions.RejectAsync(
+                id,
+                userId,
+                UserRoleConstants.Partner,
+                string.IsNullOrWhiteSpace(reason) ? "Chủ xe từ chối đơn thuê." : reason.Trim());
+
+            TempData[result.IsSuccess ? "Success" : "Error"] = result.ErrorMessage ?? "Đã từ chối đơn thuê.";
+            return RedirectToAction(nameof(Bookings), new { tab = "history" });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Guide()
         {
             var userId = GetCurrentUserId();
@@ -175,29 +420,13 @@ namespace CarRentalSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Fines(int? carId, string? plate)
+        public async Task<IActionResult> Fines()
         {
             var userId = GetCurrentUserId();
-            var cars = await GetOwnerCarsQuery(userId).ToListAsync();
-            if (carId.HasValue)
-            {
-                var car = cars.FirstOrDefault(c => c.CarID == carId.Value);
-                if (car != null) plate = car.LicensePlate;
-            }
-
-            var normalized = LicensePlateNormalizer.Normalize(plate);
-            var hasQuery = !string.IsNullOrWhiteSpace(normalized);
-            var isOwned = hasQuery && cars.Any(c => LicensePlateNormalizer.Normalize(c.LicensePlate) == normalized);
 
             return View(new OwnerFinesViewModel
             {
-                Chrome = await BuildChromeAsync(userId, "Fines"),
-                Cars = cars.Select(ToOwnerCarOption).ToList(),
-                CarId = carId,
-                Plate = plate,
-                NormalizedPlate = normalized,
-                HasQuery = hasQuery,
-                IsPlateOwned = isOwned
+                Chrome = await BuildChromeAsync(userId, "Fines")
             });
         }
 
@@ -501,8 +730,6 @@ namespace CarRentalSystem.Controllers
             var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var bookingRows = bookings.Select(b =>
             {
-                var commission = b.Car?.CommissionRate ?? 0m;
-                var ownerIncome = Math.Round(b.TotalPrice * Math.Max(0m, 100m - commission) / 100m, 0, MidpointRounding.AwayFromZero);
                 return new OwnerWalletBookingRowViewModel
                 {
                     BookingID = b.BookingID,
@@ -511,11 +738,29 @@ namespace CarRentalSystem.Controllers
                     StartDate = b.StartDate,
                     EndDate = b.EndDate,
                     RentalAmount = b.TotalPrice,
-                    CommissionRate = commission,
-                    OwnerIncome = ownerIncome,
+                    OwnerIncome = b.TotalPrice,
+                    DepositAmount = ResolveBookingDepositAmount(b),
+                    DepositStatus = b.DepositStatus,
                     StatusName = b.BookingStatus?.Name ?? "Unknown"
                 };
             }).ToList();
+
+            var bookingIds = bookings.Select(b => b.BookingID).ToList();
+            var depositLedger = bookingIds.Count == 0
+                ? new List<PaymentLedgerEntry>()
+                : await _context.PaymentLedgerEntries
+                    .AsNoTracking()
+                    .Where(l => l.BookingID.HasValue && bookingIds.Contains(l.BookingID.Value))
+                    .ToListAsync();
+            var heldDeposits = depositLedger
+                .Where(l => l.EntryType == PaymentLedgerEntryTypeConstants.DepositCharge && l.Status == PaymentStatusConstants.Paid)
+                .Sum(l => l.Amount);
+            var refundedDeposits = depositLedger
+                .Where(l => l.EntryType == PaymentLedgerEntryTypeConstants.Refund && l.Status == PaymentStatusConstants.Refunded)
+                .Sum(l => l.Amount);
+            var depositDeductions = depositLedger
+                .Where(l => l.EntryType == PaymentLedgerEntryTypeConstants.Deduction && l.Status == PaymentStatusConstants.Paid)
+                .Sum(l => l.Amount);
 
             return View(new OwnerWalletViewModel
             {
@@ -525,6 +770,9 @@ namespace CarRentalSystem.Controllers
                 GrossRevenue = bookingRows.Sum(b => b.RentalAmount),
                 EstimatedOwnerIncome = bookingRows.Sum(b => b.OwnerIncome),
                 MonthIncome = bookingRows.Where(b => b.StartDate >= monthStart).Sum(b => b.OwnerIncome),
+                HeldDeposits = heldDeposits,
+                RefundedDeposits = refundedDeposits,
+                DepositDeductions = depositDeductions,
                 CompletedTrips = bookingRows.Count(b => b.StatusName == BookingStatusConstants.Completed),
                 Transactions = transactions.Select(t => new OwnerWalletTransactionRowViewModel
                 {
@@ -542,6 +790,175 @@ namespace CarRentalSystem.Controllers
         {
             await PopulateCreateViewDataAsync();
             return View(new OwnerCarCreateViewModel());
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CheckLicensePlate(string? licensePlate, int? excludeCarId = null)
+        {
+            var normalizedPlate = LicensePlateNormalizer.Normalize(licensePlate);
+            if (string.IsNullOrWhiteSpace(normalizedPlate))
+                return Json(new { exists = false });
+
+            var rawPlate = licensePlate?.Trim().ToUpperInvariant() ?? string.Empty;
+            var query = _context.Cars.AsNoTracking().Where(c => !c.IsDeleted);
+            if (excludeCarId.HasValue)
+                query = query.Where(c => c.CarID != excludeCarId.Value);
+
+            var exists = await query.AnyAsync(c =>
+                c.LicensePlate.ToUpper() == rawPlate ||
+                c.LicensePlateNormalized == normalizedPlate ||
+                c.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == normalizedPlate);
+
+            return Json(new
+            {
+                exists,
+                message = exists ? "Biển số xe này đã tồn tại trên hệ thống. Vui lòng kiểm tra lại trước khi gửi duyệt." : "Biển số có thể sử dụng."
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var userId = GetCurrentUserId();
+            var car = await _context.Cars
+                .AsNoTracking()
+                .Include(c => c.CarAmenityMappings)
+                .FirstOrDefaultAsync(c => c.CarID == id && c.OwnerID == userId);
+
+            if (car == null)
+                return NotFound();
+
+            await PopulateCreateViewDataAsync();
+            ViewBag.CarId = car.CarID;
+            ViewBag.HasPendingChange = await _carChanges.HasActiveRequestAsync(car.CarID);
+            return PartialView("_EditModal", ToOwnerCarInputModel(car));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, OwnerCarCreateViewModel model)
+        {
+            var userId = GetCurrentUserId();
+            var car = await _context.Cars
+                .Include(c => c.CarAmenityMappings)
+                .FirstOrDefaultAsync(c => c.CarID == id && c.OwnerID == userId);
+
+            if (car == null)
+                return NotFound();
+
+            if (await _carChanges.HasActiveRequestAsync(car.CarID))
+                return OwnerModalError("Xe đang có yêu cầu thay đổi chờ duyệt. Vui lòng đợi duyệt xong trước khi sửa tiếp.");
+
+            var normalizedContractMode = CarContractSigningModes.Normalize(model.ContractSigningMode);
+            if (normalizedContractMode == CarContractSigningModes.Digital)
+            {
+                var signatureProfile = await _context.OwnerDigitalSignatureProfiles
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.UserID == userId);
+                if (signatureProfile?.IsReady != true)
+                    ModelState.AddModelError(nameof(model.ContractSigningMode), "Bạn cần hoàn tất hồ sơ chữ ký số trước khi chọn hợp đồng số.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                await PopulateCreateViewDataAsync();
+                ViewBag.CarId = car.CarID;
+                ViewBag.HasPendingChange = false;
+                Response.StatusCode = StatusCodes.Status400BadRequest;
+                return PartialView("_EditModal", model);
+            }
+
+            var pendingImageUrls = new List<string>();
+            if (model.ImageFiles != null && model.ImageFiles.Count > 0)
+            {
+                foreach (var file in model.ImageFiles)
+                {
+                    if (!await _fileValidation.IsAllowedImageAsync(file, 10 * 1024 * 1024))
+                        return OwnerModalError("Chỉ chấp nhận ảnh JPG, PNG, WEBP tối đa 10MB.");
+                }
+
+                foreach (var file in model.ImageFiles)
+                    pendingImageUrls.Add(await SaveFileAsync(file, "images/cars/pending"));
+            }
+
+            var selectedModel = await _context.CarModels.FirstOrDefaultAsync(m => m.CarModelID == model.CarModelID);
+            var carTypeId = await ResolveCarTypeIdAsync(model.Seats);
+            var locationId = await ResolveLocationIdAsync(model.CityOrProvince);
+            var withDriverId = await _context.ServiceTypes
+                .Where(s => s.Code == ServiceTypeConstants.WithDriver)
+                .Select(s => (int?)s.ServiceTypeID)
+                .FirstOrDefaultAsync();
+            var isWithDriver = model.ServiceTypeID == withDriverId;
+            var selectedAmenities = await _context.CarAmenities
+                .Where(a => model.AmenityIDs.Distinct().Contains(a.CarAmenityID))
+                .OrderBy(a => a.DisplayOrder)
+                .ThenBy(a => a.Name)
+                .ToListAsync();
+
+            var snapshot = new CarChangeSnapshot
+            {
+                LicensePlate = model.LicensePlate.Trim().ToUpperInvariant(),
+                VIN = string.IsNullOrWhiteSpace(model.VIN) ? car.VIN : model.VIN.Trim().ToUpperInvariant(),
+                BrandID = model.BrandID,
+                CarModelID = model.CarModelID,
+                CarName = selectedModel?.Name ?? car.CarName,
+                Seats = model.Seats,
+                ManufactureYear = model.ManufactureYear,
+                Transmission = model.Transmission,
+                FuelType = model.FuelType,
+                FuelConsumption = model.FuelConsumption,
+                Description = model.Description,
+                NextInspectionDate = model.NextInspectionDate?.Date,
+                ServiceTypeID = model.ServiceTypeID,
+                PricePerDay = model.PricePerDay,
+                WeeklyDiscountPercent = model.WeeklyDiscountPercent,
+                MonthlyDiscountPercent = model.MonthlyDiscountPercent,
+                DeliveryEnabled = model.DeliveryEnabled,
+                MaxDeliveryDistanceKm = model.MaxDeliveryDistanceKm,
+                DeliveryFeePerKm = model.DeliveryFeePerKm,
+                FreeDeliveryRadiusKm = model.FreeDeliveryRadiusKm,
+                MileageLimitEnabled = model.MileageLimitEnabled,
+                DailyMileageLimitKm = model.DailyMileageLimitKm,
+                ExtraMileageFeePerKm = model.ExtraMileageFeePerKm,
+                RentalTerms = model.RentalTerms,
+                ContractSigningMode = normalizedContractMode,
+                LocationID = locationId,
+                CarAddress = model.CarAddress,
+                Latitude = model.Latitude,
+                Longitude = model.Longitude,
+                CarTypeID = carTypeId,
+                IsSelfDriveAllowed = !isWithDriver,
+                IsWithDriverAllowed = isWithDriver,
+                TransportPermitStatus = isWithDriver ? "Pending" : "NotRequired",
+                CommissionRate = NormalizeCommissionRate(car.CommissionRate),
+                AmenityIDs = selectedAmenities.Select(a => a.CarAmenityID).ToList(),
+                ImageUrls = pendingImageUrls
+            };
+
+            await _carChanges.CreateAsync(car, CarChangeOperationConstants.Update, userId, snapshot, "Chỉnh sửa xe");
+            TempData["Success"] = "Bản sửa xe đã được gửi cho Staff khu vực, Manager khu vực và Admin duyệt.";
+            return Json(new { success = true, message = TempData["Success"] });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = GetCurrentUserId();
+            var car = await _context.Cars.FirstOrDefaultAsync(c => c.CarID == id && c.OwnerID == userId);
+            if (car == null)
+                return NotFound();
+
+            if (await _carChanges.HasActiveRequestAsync(car.CarID))
+                return OwnerModalError("Xe đang có yêu cầu thay đổi chờ duyệt. Vui lòng đợi duyệt xong trước khi xóa.");
+
+            car.IsPendingDeletion = true;
+            car.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            await _carChanges.CreateAsync(car, CarChangeOperationConstants.Delete, userId, null, "Yêu cầu xóa xe");
+            TempData["Success"] = "Yêu cầu xóa xe đã được gửi duyệt. Xe tạm ngưng nhận booking mới.";
+            return Json(new { success = true, message = TempData["Success"] });
         }
 
         [HttpPost]
@@ -595,6 +1012,29 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
+            var normalizedLicensePlate = model.LicensePlate?.Trim().ToUpperInvariant() ?? string.Empty;
+            var normalizedLicensePlateKey = LicensePlateNormalizer.Normalize(normalizedLicensePlate);
+            var normalizedVin = string.IsNullOrWhiteSpace(model.VIN) ? null : model.VIN.Trim().ToUpperInvariant();
+            model.LicensePlate = normalizedLicensePlate;
+            model.VIN = normalizedVin;
+
+            if (!string.IsNullOrWhiteSpace(normalizedLicensePlate) &&
+                await _context.Cars.AsNoTracking().AnyAsync(c =>
+                    c.LicensePlate == normalizedLicensePlate ||
+                    c.LicensePlateNormalized == normalizedLicensePlateKey ||
+                    c.LicensePlate.Replace("-", "").Replace(".", "").Replace(" ", "").ToUpper() == normalizedLicensePlateKey))
+            {
+                ModelState.AddModelError(nameof(model.LicensePlate), "Biển số xe này đã tồn tại trên hệ thống.");
+                initialStep = 1;
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalizedVin) &&
+                await _context.Cars.AsNoTracking().AnyAsync(c => c.VIN == normalizedVin))
+            {
+                ModelState.AddModelError(nameof(model.VIN), "Số VIN này đã tồn tại trên hệ thống.");
+                initialStep = 1;
+            }
+
             if (!ModelState.IsValid)
             {
                 await PopulateCreateViewDataAsync();
@@ -645,8 +1085,8 @@ namespace CarRentalSystem.Controllers
                 BrandID = model.BrandID,
                 CarModelID = model.CarModelID,
                 Seats = model.Seats,
-                LicensePlate = model.LicensePlate.Trim().ToUpperInvariant(),
-                VIN = string.IsNullOrWhiteSpace(model.VIN) ? GeneratePlaceholderVin() : model.VIN.Trim().ToUpperInvariant(),
+                LicensePlate = normalizedLicensePlate,
+                VIN = normalizedVin ?? GeneratePlaceholderVin(),
                 PricePerDay = model.PricePerDay,
                 PricePerHour = Math.Max(1, Math.Round(model.PricePerDay / 8m)),
                 CarStatusID = pendingStatusId,
@@ -660,6 +1100,8 @@ namespace CarRentalSystem.Controllers
                 IsWithDriverAllowed = isWithDriver,
                 TransportPermitStatus = isWithDriver ? "Pending" : "NotRequired",
                 IsApproved = false,
+                ApprovalStatus = CarApprovalStatusConstants.Pending,
+                ApprovalRejectionReason = null,
                 LocationID = await ResolveLocationIdAsync(model.CityOrProvince),
                 CarAddress = model.CarAddress,
                 Latitude = model.Latitude,
@@ -667,7 +1109,7 @@ namespace CarRentalSystem.Controllers
                 NextInspectionDate = model.NextInspectionDate?.Date,
                 Features = string.Join(", ", selectedAmenities.Select(a => a.Name)),
                 CurrentOdometer = 0,
-                CommissionRate = 20m,
+                CommissionRate = DefaultCommissionRate,
                 WeeklyDiscountPercent = model.WeeklyDiscountPercent,
                 MonthlyDiscountPercent = model.MonthlyDiscountPercent,
                 DeliveryEnabled = model.DeliveryEnabled,
@@ -682,8 +1124,26 @@ namespace CarRentalSystem.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
+            await using var createTransaction = _context.Database.IsRelational()
+                ? await _context.Database.BeginTransactionAsync()
+                : null;
+
             _context.Cars.Add(car);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueCarIdentityConflict(ex))
+            {
+                if (createTransaction != null)
+                    await createTransaction.RollbackAsync();
+
+                _context.Entry(car).State = EntityState.Detached;
+                ModelState.AddModelError(nameof(model.LicensePlate), "Biển số hoặc số VIN đã tồn tại trên hệ thống. Vui lòng kiểm tra lại thông tin xe.");
+                await PopulateCreateViewDataAsync();
+                ViewBag.InitialStep = 1;
+                return View(model);
+            }
 
             var savedUrls = new List<string>();
             foreach (var image in model.ImageFiles!)
@@ -704,7 +1164,31 @@ namespace CarRentalSystem.Controllers
             }
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = "Xe đã được gửi lên hệ thống và đang chờ duyệt.";
+            CarChangeRequest approvalRequest;
+            try
+            {
+                approvalRequest = await _carChanges.CreateAsync(
+                    car,
+                    CarChangeOperationConstants.Create,
+                    userId,
+                    BuildSnapshotFromCar(car, selectedAmenities.Select(a => a.CarAmenityID), savedUrls),
+                    "Đăng ký xe mới");
+
+                if (createTransaction != null)
+                    await createTransaction.CommitAsync();
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+            {
+                if (createTransaction != null)
+                    await createTransaction.RollbackAsync();
+
+                ModelState.AddModelError(string.Empty, "Xe chưa gửi được vào hàng đợi duyệt. Vui lòng thử lại để hệ thống ghi nhận yêu cầu duyệt.");
+                await PopulateCreateViewDataAsync();
+                ViewBag.InitialStep = 3;
+                return View(model);
+            }
+
+            TempData["Success"] = $"{BuildPendingApprovalLabel(approvalRequest)} lúc {approvalRequest.CreatedAt.ToLocalTime():dd/MM/yyyy HH:mm}.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -828,6 +1312,8 @@ namespace CarRentalSystem.Controllers
                 WalletBalance = walletBalance,
                 CarsCount = carCount,
                 Tabs = GetOwnerTabs()
+                    .Prepend(new OwnerPortalTabViewModel("Bookings", "Đơn thuê", "Bookings", "bi-receipt"))
+                    .ToList()
             };
         }
 
@@ -845,6 +1331,92 @@ namespace CarRentalSystem.Controllers
                 new OwnerPortalTabViewModel("Privacy", "Chính sách dữ liệu", "Privacy", "bi-lock"),
                 new OwnerPortalTabViewModel("Wallet", "Ví của tôi", "Wallet", "bi-wallet2")
             };
+        }
+
+        private async Task<Booking?> LoadOwnerBookingAsync(int bookingId, int ownerUserId, bool asTracking)
+        {
+            var query = asTracking ? _context.Bookings.AsQueryable() : _context.Bookings.AsNoTracking();
+            return await query
+                .Include(b => b.BookingStatus)
+                .Include(b => b.User)
+                .Include(b => b.Payment)
+                .Include(b => b.Car).ThenInclude(c => c!.CarBrand)
+                .Include(b => b.Car).ThenInclude(c => c!.CarModel)
+                .Include(b => b.HandoverRecords).ThenInclude(h => h.InventoryItems)
+                .FirstOrDefaultAsync(b => b.BookingID == bookingId && b.Car != null && b.Car.OwnerID == ownerUserId);
+        }
+
+        private static OwnerBookingRowViewModel ToOwnerBookingRow(Booking booking)
+        {
+            var statusName = booking.BookingStatus?.Name ?? "Unknown";
+            return new OwnerBookingRowViewModel
+            {
+                BookingID = booking.BookingID,
+                CarID = booking.CarID,
+                CarName = BuildCarDisplayName(booking.Car),
+                LicensePlate = booking.Car?.LicensePlate ?? string.Empty,
+                CustomerName = booking.User?.Name ?? "Khách thuê",
+                CustomerPhone = booking.User?.Phone ?? "Đã ẩn",
+                StartDate = booking.StartDate,
+                EndDate = booking.EndDate,
+                StatusName = statusName,
+                StatusClass = GetStatusClass(statusName),
+                TotalPrice = booking.TotalPrice,
+                DepositAmount = ResolveBookingDepositAmount(booking),
+                DepositStatus = booking.DepositStatus,
+                CanDecide = statusName == BookingStatusConstants.Pending
+            };
+        }
+
+        private static decimal ResolveBookingDepositAmount(Booking booking)
+        {
+            if (booking.DepositAmount > 0) return booking.DepositAmount;
+            if (booking.ReservationFee > 0) return booking.ReservationFee;
+            return DepositPolicy.Calculate(booking.TotalPrice);
+        }
+
+        private static string NormalizeOwnerBookingTab(string? tab)
+        {
+            return NormalizeFilter(tab) switch
+            {
+                "current" => "current",
+                "history" => "history",
+                _ => "pending"
+            };
+        }
+
+        private static bool IsPendingOwnerBooking(OwnerBookingRowViewModel row) =>
+            row.StatusName == BookingStatusConstants.Pending;
+
+        private static bool IsCurrentOwnerBooking(OwnerBookingRowViewModel row) =>
+            row.StatusName is BookingStatusConstants.Confirmed or BookingStatusConstants.Active;
+
+        private static bool IsHistoryOwnerBooking(OwnerBookingRowViewModel row) =>
+            row.StatusName is BookingStatusConstants.Completed
+                or BookingStatusConstants.Cancelled
+                or BookingStatusConstants.Rejected
+                or BookingStatusConstants.Expired;
+
+        private async Task<Dictionary<int, CarChangeRequest>> LoadActiveChangeRequestsAsync(IReadOnlyCollection<int> carIds)
+        {
+            if (carIds.Count == 0) return new Dictionary<int, CarChangeRequest>();
+
+            var activeStatuses = new[]
+            {
+                CarChangeRequestStatusConstants.PendingStaff,
+                CarChangeRequestStatusConstants.PendingManager,
+                CarChangeRequestStatusConstants.PendingAdmin
+            };
+
+            var requests = await _context.CarChangeRequests
+                .AsNoTracking()
+                .Where(request => carIds.Contains(request.CarID) && activeStatuses.Contains(request.Status))
+                .OrderByDescending(request => request.CreatedAt)
+                .ToListAsync();
+
+            return requests
+                .GroupBy(request => request.CarID)
+                .ToDictionary(group => group.Key, group => group.First());
         }
 
         private async Task<List<OwnerBookingProjection>> LoadOwnerBookingRowsAsync(IReadOnlyCollection<int> carIds)
@@ -936,6 +1508,138 @@ namespace CarRentalSystem.Controllers
             return string.IsNullOrWhiteSpace(value) ? "all" : value.Trim().ToLowerInvariant();
         }
 
+        private static string? BuildPendingApprovalLabel(CarChangeRequest? request)
+        {
+            if (request == null)
+                return null;
+
+            return request.AreaID.HasValue
+                ? "Đã gửi duyệt - chờ Staff/Manager khu vực duyệt"
+                : "Đã gửi duyệt - chờ Admin duyệt do chưa xác định khu vực";
+        }
+
+        private static decimal NormalizeCommissionRate(decimal rate)
+        {
+            return Math.Clamp(rate, 0m, 100m);
+        }
+
+        private static decimal CalculateCommission(decimal amount, decimal rate)
+        {
+            return Math.Round(
+                amount * NormalizeCommissionRate(rate) / 100m,
+                0,
+                MidpointRounding.AwayFromZero);
+        }
+
+        private static decimal CalculateOwnerIncome(decimal amount, decimal rate)
+        {
+            return Math.Max(0m, amount - CalculateCommission(amount, rate));
+        }
+
+        private static IReadOnlyList<OwnerCarActionItemViewModel> BuildOwnerCarActionItems(
+            Car car,
+            bool hasEnoughImages,
+            bool hasRequiredDocuments,
+            bool hasGps,
+            InspectionBadge inspectionStatus,
+            CarChangeRequest? activeChange = null)
+        {
+            var items = new List<OwnerCarActionItemViewModel>();
+
+            if (activeChange != null)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Đang chờ duyệt thay đổi",
+                    $"Yêu cầu {activeChange.Operation} đang ở bước {activeChange.CurrentStage}. Vui lòng đợi Staff khu vực, Manager khu vực và Admin xử lý xong trước khi gửi thay đổi mới.",
+                    "info",
+                    "bi-hourglass-split"));
+            }
+
+            if (car.IsPendingDeletion)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Tạm ngưng nhận booking mới",
+                    "Xe đang chờ duyệt yêu cầu xóa nên không còn nhận booking mới trong thời gian chờ duyệt.",
+                    "danger",
+                    "bi-trash"));
+            }
+
+            if (car.ApprovalStatus == CarApprovalStatusConstants.Rejected)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Xử lý lý do từ chối",
+                    string.IsNullOrWhiteSpace(car.ApprovalRejectionReason)
+                        ? "Liên hệ Admin để biết nội dung cần bổ sung."
+                        : car.ApprovalRejectionReason,
+                    "danger",
+                    "bi-x-circle"));
+            }
+            else if (!car.IsApproved)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Theo dõi duyệt xe",
+                    "Xe đang chờ Admin kiểm tra và chưa thể nhận booking.",
+                    "info",
+                    "bi-hourglass-split"));
+            }
+
+            if (!hasEnoughImages)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Bổ sung ảnh xe",
+                    "Cần tối thiểu 4 ảnh rõ nét để hoàn thiện hồ sơ xe.",
+                    "warn",
+                    "bi-images"));
+            }
+
+            if (!hasRequiredDocuments)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Hoàn tất hồ sơ chữ ký số",
+                    "Xe đang chọn hợp đồng số nhưng hồ sơ chữ ký số chưa sẵn sàng.",
+                    "warn",
+                    "bi-file-earmark-text"));
+            }
+
+            if (inspectionStatus.CssClass is "warn" or "danger")
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Kiểm tra đăng kiểm",
+                    inspectionStatus.Label,
+                    inspectionStatus.CssClass,
+                    inspectionStatus.Icon));
+            }
+
+            if (!car.Latitude.HasValue || !car.Longitude.HasValue || string.IsNullOrWhiteSpace(car.CarAddress))
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Bổ sung vị trí giao nhận",
+                    "Địa chỉ và tọa độ giúp khách tìm đúng điểm nhận xe.",
+                    "warn",
+                    "bi-geo-alt"));
+            }
+
+            if (!hasGps)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Kết nối GPS",
+                    "Chưa có tín hiệu GPS; hệ thống hiện chỉ dùng vị trí đăng ký của xe.",
+                    "info",
+                    "bi-broadcast-pin"));
+            }
+
+            if (items.Count == 0)
+            {
+                items.Add(new OwnerCarActionItemViewModel(
+                    "Hồ sơ vận hành đã đầy đủ",
+                    "Xe đã sẵn sàng để theo dõi và nhận booking theo trạng thái hiện tại.",
+                    "ok",
+                    "bi-check-circle"));
+            }
+
+            return items;
+        }
+
         private static InspectionBadge BuildInspectionStatus(DateTime? nextInspectionDate, DateTime today)
         {
             if (!nextInspectionDate.HasValue)
@@ -980,8 +1684,8 @@ namespace CarRentalSystem.Controllers
                 new OwnerDocumentViewModel
                 {
                     Title = "Cẩm nang cho thuê xe an toàn",
-                    Description = "Quy trình chuẩn bị, bàn giao, theo dõi chuyến đi và xử lý rủi ro.",
-                    Url = "/docs/owner/cam-nang-cho-thue-xe-an-toan.pdf",
+                    Description = "Tài liệu DriveGo về chuẩn bị hồ sơ, đăng xe, bàn giao, theo dõi chuyến đi và xử lý sự cố.",
+                    Url = "/docs/owner/drivego-cam-nang-cho-thue-xe-an-toan.pdf",
                     Icon = "bi-journal-richtext",
                     FileType = "PDF"
                 },
@@ -1030,6 +1734,7 @@ namespace CarRentalSystem.Controllers
         private async Task PopulateCreateViewDataAsync()
         {
             ViewBag.Brands = await _context.CarBrands.AsNoTracking().OrderBy(b => b.Name).ToListAsync();
+            ViewBag.CarModels = await _context.CarModels.AsNoTracking().OrderBy(m => m.Name).ToListAsync();
             ViewBag.ServiceTypes = await _context.ServiceTypes.AsNoTracking().Where(s => s.IsActive).OrderBy(s => s.ServiceTypeID).ToListAsync();
             ViewBag.Amenities = await _context.CarAmenities.AsNoTracking().Where(a => a.IsActive).OrderBy(a => a.DisplayOrder).ToListAsync();
         }
@@ -1063,6 +1768,100 @@ namespace CarRentalSystem.Controllers
         private static string GeneratePlaceholderVin()
         {
             return $"CRS{Guid.NewGuid():N}"[..17].ToUpperInvariant();
+        }
+
+        private static bool IsUniqueCarIdentityConflict(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message;
+            return message.Contains("IX_Cars_LicensePlate", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("IX_Cars_VIN", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("LicensePlate", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("VIN", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private IActionResult OwnerModalError(string message)
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            return Json(new { success = false, message });
+        }
+
+        private static OwnerCarCreateViewModel ToOwnerCarInputModel(Car car)
+        {
+            return new OwnerCarCreateViewModel
+            {
+                LicensePlate = car.LicensePlate,
+                VIN = car.VIN,
+                BrandID = car.BrandID,
+                CarModelID = car.CarModelID,
+                Seats = car.Seats,
+                Transmission = car.Transmission,
+                FuelType = car.FuelType,
+                FuelConsumption = car.FuelConsumption,
+                Description = car.Description,
+                NextInspectionDate = car.NextInspectionDate,
+                ServiceTypeID = car.ServiceTypeID,
+                PricePerDay = car.PricePerDay,
+                WeeklyDiscountPercent = car.WeeklyDiscountPercent,
+                MonthlyDiscountPercent = car.MonthlyDiscountPercent,
+                DeliveryEnabled = car.DeliveryEnabled,
+                MaxDeliveryDistanceKm = car.MaxDeliveryDistanceKm,
+                DeliveryFeePerKm = car.DeliveryFeePerKm,
+                FreeDeliveryRadiusKm = car.FreeDeliveryRadiusKm,
+                MileageLimitEnabled = car.MileageLimitEnabled,
+                DailyMileageLimitKm = car.DailyMileageLimitKm,
+                ExtraMileageFeePerKm = car.ExtraMileageFeePerKm,
+                RentalTerms = car.RentalTerms,
+                ContractSigningMode = CarContractSigningModes.Normalize(car.ContractSigningMode),
+                CarAddress = car.CarAddress,
+                Latitude = car.Latitude,
+                Longitude = car.Longitude,
+                AmenityIDs = car.CarAmenityMappings
+                    .Where(mapping => !mapping.IsDeleted)
+                    .Select(mapping => mapping.CarAmenityID)
+                    .ToList()
+            };
+        }
+
+        private static CarChangeSnapshot BuildSnapshotFromCar(Car car, IEnumerable<int> amenityIds, IEnumerable<string> imageUrls)
+        {
+            return new CarChangeSnapshot
+            {
+                LicensePlate = car.LicensePlate,
+                VIN = car.VIN,
+                BrandID = car.BrandID,
+                CarModelID = car.CarModelID,
+                CarName = car.CarName,
+                Seats = car.Seats,
+                Transmission = car.Transmission,
+                FuelType = car.FuelType,
+                FuelConsumption = car.FuelConsumption,
+                Description = car.Description,
+                NextInspectionDate = car.NextInspectionDate,
+                ServiceTypeID = car.ServiceTypeID,
+                PricePerDay = car.PricePerDay,
+                WeeklyDiscountPercent = car.WeeklyDiscountPercent,
+                MonthlyDiscountPercent = car.MonthlyDiscountPercent,
+                DeliveryEnabled = car.DeliveryEnabled,
+                MaxDeliveryDistanceKm = car.MaxDeliveryDistanceKm,
+                DeliveryFeePerKm = car.DeliveryFeePerKm,
+                FreeDeliveryRadiusKm = car.FreeDeliveryRadiusKm,
+                MileageLimitEnabled = car.MileageLimitEnabled,
+                DailyMileageLimitKm = car.DailyMileageLimitKm,
+                ExtraMileageFeePerKm = car.ExtraMileageFeePerKm,
+                RentalTerms = car.RentalTerms,
+                ContractSigningMode = CarContractSigningModes.Normalize(car.ContractSigningMode),
+                LocationID = car.LocationID,
+                CarAddress = car.CarAddress,
+                Latitude = car.Latitude,
+                Longitude = car.Longitude,
+                CarTypeID = car.CarTypeID,
+                IsSelfDriveAllowed = car.IsSelfDriveAllowed,
+                IsWithDriverAllowed = car.IsWithDriverAllowed,
+                TransportPermitStatus = car.TransportPermitStatus,
+                CommissionRate = NormalizeCommissionRate(car.CommissionRate),
+                AmenityIDs = amenityIds.Distinct().ToList(),
+                ImageUrls = imageUrls.Where(url => !string.IsNullOrWhiteSpace(url)).ToList()
+            };
         }
 
         private static async Task<string> SaveFileAsync(IFormFile file, string relativeFolder)
@@ -1104,7 +1903,7 @@ namespace CarRentalSystem.Controllers
         [Required(ErrorMessage = "Vui lòng nhập ngày đăng kiểm tiếp theo.")]
         public DateTime? NextInspectionDate { get; set; }
         public int? ServiceTypeID { get; set; }
-        public decimal PricePerDay { get; set; }
+        public decimal PricePerDay { get; set; } = 440000m;
         public decimal WeeklyDiscountPercent { get; set; } = 5m;
         public decimal MonthlyDiscountPercent { get; set; }
         public bool DeliveryEnabled { get; set; }

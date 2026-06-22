@@ -1,0 +1,4 @@
+.staff-portal { --portal-accent: #0f766e; }
+.staff-sidebar { background: linear-gradient(180deg, #0f4c4a, #12343b); }
+.staff-portal .btn-primary { background: #0f766e; border-color: #0f766e; }
+.staff-task-board { border-top: 4px solid #14b8a6; }

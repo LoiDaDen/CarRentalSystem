@@ -4,6 +4,7 @@ using CarRentalSystem.Repositories;
 using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using System;
@@ -33,6 +34,8 @@ namespace CarRentalSystem.Tests.IntegrationTests
             _authService = new AuthService(
                 userRepo,
                 piiEncryption.Object,
+                new IdentityHashService(new ConfigurationBuilder().Build()),
+                new PasswordHashService(),
                 Mock.Of<Microsoft.Extensions.Logging.ILogger<AuthService>>());
         }
 

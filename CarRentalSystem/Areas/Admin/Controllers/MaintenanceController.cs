@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 // CarRentalSystem/Areas/Admin/Controllers/MaintenanceController.cs
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
@@ -13,7 +14,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager", "Staff")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class MaintenanceController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -132,6 +133,16 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 _context.MaintenanceLogs.Add(log);
 
                 car.CurrentOdometer = log.OdometerAtService;
+                var maintenanceStatus = await _context.CarStatuses
+                    .FirstOrDefaultAsync(status => status.Name == CarStatusConstants.Maintenance);
+                if (maintenanceStatus == null)
+                {
+                    TempData["Error"] = "Không tìm thấy trạng thái Maintenance trong hệ thống.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                car.CarStatusID = maintenanceStatus.CarStatusID;
+                car.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Đã thêm bảo trì thành công.";

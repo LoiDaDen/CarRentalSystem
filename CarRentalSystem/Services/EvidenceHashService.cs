@@ -38,7 +38,32 @@ namespace CarRentalSystem.Services
                 record.CustomerSignatureHash,
                 record.GeoLatitude,
                 record.GeoLongitude,
-                record.RecordedByUserId
+                record.RecordedByUserId,
+                InventoryItems = record.InventoryItems
+                    .OrderBy(i => i.ItemName)
+                    .Select(i => new
+                    {
+                        i.CarInventoryItemID,
+                        i.ItemName,
+                        i.ExpectedQuantity,
+                        i.ActualQuantity,
+                        i.MissingQuantity,
+                        i.ConditionStatus,
+                        i.UnitReplacementCost,
+                        i.MissingCharge,
+                        i.Notes
+                    }),
+                LostFoundItems = record.LostFoundItems
+                    .OrderBy(i => i.Description)
+                    .Select(i => new
+                    {
+                        i.Description,
+                        i.LocationDescription,
+                        i.PhotoUrl,
+                        i.Status,
+                        i.ReportedByUserID,
+                        i.FoundAt
+                    })
             };
 
             return ComputeContractHash(snapshot);

@@ -204,10 +204,6 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/vi.js"></script>
 
-    <!-- Leaflet map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
         // ── 63 Tỉnh / Thành phố Việt Nam ──────────────────────────────
         const vietnamProvinces = [
@@ -281,10 +277,9 @@
         const hasCoords = '@Model?.Latitude' !== '' && '@Model?.Longitude' !== '';
 
         function initMap(lat, lng) {
-            map = L.map('mapPicker').setView([lat, lng], hasCoords ? 14 : 6);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+            const baseMap = SmartMap.createMap('mapPicker', lat, lng, hasCoords ? 14 : 6);
+            if (!baseMap) return;
+            map = baseMap.map;
 
             if (hasCoords) {
                 marker = L.marker([lat, lng]).addTo(map);

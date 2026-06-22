@@ -157,7 +157,8 @@ namespace CarRentalSystem.Controllers
                 selectedCar = await _context.Cars
                     .Include(c => c.CarBrand)
                     .Include(c => c.CarStatus)
-                    .FirstOrDefaultAsync(c => c.CarID == CarID.Value && c.CarStatus != null && c.CarStatus.Name == "Available");
+                    .WhereSelfDriveRentable()
+                    .FirstOrDefaultAsync(c => c.CarID == CarID.Value);
 
                 if (selectedCar == null)
                 {
@@ -563,7 +564,7 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CarBrand)
                 .Include(c => c.Location)
                 .Include(c => c.CarStatus)
-                .Where(c => c.CarStatus != null && c.CarStatus.Name == "Available")
+                .WhereSelfDriveRentable()
                 .AsQueryable();
 
             // Lọc theo location nếu có
@@ -646,7 +647,7 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.Location)
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarType)
-                .Where(c => c.CarStatus != null && c.CarStatus.Name == "Available")
+                .WhereSelfDriveRentable()
                 .AsQueryable();
 
             // Lọc theo location
@@ -917,8 +918,8 @@ namespace CarRentalSystem.Controllers
             value.Contains('Ã') ||
             value.Contains('Ä') ||
             value.Contains('Â') ||
-            value.Contains("áº", StringComparison.Ordinal) ||
-            value.Contains("á»", StringComparison.Ordinal);
+            value.Contains("\u00E1\u00BA", StringComparison.Ordinal) ||
+            value.Contains("\u00E1\u00BB", StringComparison.Ordinal);
 
         /// <summary>
         /// Tính ngày kết thúc dựa trên duration và contract type

@@ -4,6 +4,7 @@ using CarRentalSystem.Controllers;
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.Tests.Helpers;
+using CarRentalSystem.ViewModels;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -40,12 +41,13 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
 
             // Assert
             result.Should().NotBeNull();
+            result!.Model.Should().BeOfType<HomeIndexViewModel>();
         }
 
         [Fact]
         [Trait("Module", "Home")]
         [Trait("Type", "Unit")]
-        public void SetRegion_ShouldSetCookieAndRedirect()
+        public async Task SetRegion_ShouldSetCookieAndRedirect()
         {
             // Arrange
             var controller = new HomeController(_context);
@@ -55,7 +57,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             };
 
             // Act
-            var result = controller.SetRegion(1, "/Home") as LocalRedirectResult;
+            var result = await controller.SetRegion(1, "/Home") as LocalRedirectResult;
 
             // Assert
             result.Should().NotBeNull();
@@ -65,7 +67,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         [Fact]
         [Trait("Module", "Home")]
         [Trait("Type", "Unit")]
-        public void SetRegion_NullLocationId_DeletesCookieAndRedirects()
+        public async Task SetRegion_NullLocationId_DeletesCookieAndRedirects()
         {
             // Arrange
             var controller = new HomeController(_context);
@@ -75,11 +77,24 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             };
 
             // Act
-            var result = controller.SetRegion(null, "/") as LocalRedirectResult;
+            var result = await controller.SetRegion(null, "/") as LocalRedirectResult;
 
             // Assert
             result.Should().NotBeNull();
             result!.Url.Should().Be("/");
+        }
+
+        [Fact]
+        public async Task SetRegion_InvalidLocation_ReturnsBadRequestForJson()
+        {
+            var controller = new HomeController(_context);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers.Accept = "application/json";
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+            var result = await controller.SetRegion(999999, "/");
+
+            result.Should().BeOfType<BadRequestObjectResult>();
         }
 
         public void Dispose()

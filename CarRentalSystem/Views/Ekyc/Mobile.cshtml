@@ -1,0 +1,326 @@
+@model CarRentalSystem.ViewModels.EkycMobileViewModel
+@{
+    ViewData["Title"] = "eKYC trên điện thoại";
+    Layout = "_Layout";
+}
+
+<style>
+    body { background: #f1f5f9; }
+    .mobile-ekyc-shell { max-width: 760px; margin: 0 auto; padding: 18px 12px 40px; }
+    .mobile-ekyc-hero {
+        background: linear-gradient(135deg, #0f172a, #2563eb);
+        color: #fff;
+        border-radius: 24px;
+        padding: 24px;
+        margin-bottom: 18px;
+        box-shadow: 0 20px 55px rgba(37, 99, 235, .22);
+    }
+    .mobile-ekyc-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 22px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, .08);
+    }
+    .mobile-status {
+        display: inline-flex;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-weight: 700;
+        background: #eef2ff;
+        color: #3730a3;
+    }
+    .mobile-status.Verified { background: #dcfce7; color: #166534; }
+    .mobile-status.PendingReview { background: #fef9c3; color: #854d0e; }
+    .mobile-status.Rejected,
+    .mobile-status.Expired,
+    .mobile-status.Failed { background: #fee2e2; color: #991b1b; }
+    .mobile-file-preview {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid #dbeafe;
+        border-radius: 14px;
+        background: #f8fafc;
+    }
+    .mobile-file-preview img {
+        width: 82px;
+        height: 58px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+    }
+    .mobile-file-preview strong,
+    .mobile-file-preview span {
+        display: block;
+        overflow-wrap: anywhere;
+    }
+    .mobile-camera-stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 22px;
+        background: #0f172a;
+        aspect-ratio: 4 / 5;
+        min-height: 300px;
+        max-height: 520px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mobile-camera-stage video,
+    .mobile-camera-stage img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 22px;
+    }
+    .mobile-face-frame {
+        position: absolute;
+        width: min(50%, 230px);
+        aspect-ratio: 3 / 4;
+        border: 3px solid rgba(96, 165, 250, .95);
+        border-radius: 50%;
+        box-shadow: 0 0 0 999px rgba(15, 23, 42, .42), 0 0 35px rgba(96, 165, 250, .45);
+        pointer-events: none;
+    }
+    .mobile-face-hint {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, .72);
+        color: #e0f2fe;
+        padding: 10px 12px;
+        font-size: .9rem;
+    }
+    .mobile-sticky-submit {
+        position: sticky;
+        bottom: 12px;
+        z-index: 10;
+    }
+</style>
+
+<main class="mobile-ekyc-shell" data-testid="ekyc-mobile-page">
+    <section class="mobile-ekyc-hero">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+            <div>
+                <div class="text-uppercase small fw-bold text-white-50 mb-2">DriveGo eKYC</div>
+                <h1 class="h3 fw-black mb-2">Xác thực bằng điện thoại</h1>
+                <p class="mb-0 text-white-50">Chụp giấy tờ và selfie rõ mặt để hoàn tất hồ sơ thuê xe.</p>
+            </div>
+            <i class="bi bi-phone fs-1 text-white-50"></i>
+        </div>
+    </section>
+
+    <section class="mobile-ekyc-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <div class="small text-muted">Trạng thái phiên</div>
+                <span class="mobile-status @Model.Status">@Model.StatusText</span>
+            </div>
+            @if (Model.ExpiresAtUtc.HasValue && Model.CanSubmit)
+            {
+                <div class="text-end">
+                    <div class="small text-muted">Có hiệu lực đến</div>
+                    <strong>@Model.ExpiresAtUtc.Value.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</strong>
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Message))
+        {
+            <div class="alert @(Model.CanSubmit ? "alert-warning" : "alert-info") rounded-4 mt-3 mb-0">
+                @Model.Message
+            </div>
+        }
+
+        @if (Model.Warnings.Count > 0)
+        {
+            <ul class="alert alert-warning rounded-4 mt-3 mb-0 ps-4">
+                @foreach (var warning in Model.Warnings)
+                {
+                    <li>@warning</li>
+                }
+            </ul>
+        }
+    </section>
+
+    @if (Model.CanSubmit)
+    {
+        <form asp-controller="Ekyc" asp-action="Mobile" asp-route-token="@Model.Token" method="post" enctype="multipart/form-data" id="mobileEkycForm" novalidate>
+            @Html.AntiForgeryToken()
+
+            <section class="mobile-ekyc-card">
+                <h2 class="h5 fw-bold mb-3">1. Chụp giấy tờ</h2>
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold">CCCD mặt trước</label>
+                        <input type="file" name="idFront" class="form-control form-control-lg" accept=".jpg,.jpeg,.png,.webp,image/*" capture="environment" data-ekyc-file-input required>
+                        <div class="mobile-file-preview d-none" data-ekyc-file-preview>
+                            <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                            <div class="small">
+                                <strong data-ekyc-file-preview-name></strong>
+                                <span class="text-muted" data-ekyc-file-preview-size></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold">CCCD mặt sau</label>
+                        <input type="file" name="idBack" class="form-control form-control-lg" accept=".jpg,.jpeg,.png,.webp,image/*" capture="environment" data-ekyc-file-input required>
+                        <div class="mobile-file-preview d-none" data-ekyc-file-preview>
+                            <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                            <div class="small">
+                                <strong data-ekyc-file-preview-name></strong>
+                                <span class="text-muted" data-ekyc-file-preview-size></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold">GPLX mặt trước</label>
+                        <input type="file" name="license" class="form-control form-control-lg" accept=".jpg,.jpeg,.png,.webp,image/*" capture="environment" data-ekyc-file-input required>
+                        <div class="mobile-file-preview d-none" data-ekyc-file-preview>
+                            <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                            <div class="small">
+                                <strong data-ekyc-file-preview-name></strong>
+                                <span class="text-muted" data-ekyc-file-preview-size></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold">GPLX mặt sau</label>
+                        <input type="file" name="licenseBack" class="form-control form-control-lg" accept=".jpg,.jpeg,.png,.webp,image/*" capture="environment" data-ekyc-file-input required>
+                        <div class="mobile-file-preview d-none" data-ekyc-file-preview>
+                            <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                            <div class="small">
+                                <strong data-ekyc-file-preview-name></strong>
+                                <span class="text-muted" data-ekyc-file-preview-size></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-text mt-3">Ảnh cần rõ 4 góc, không bị lóa, không cắt mất thông tin.</div>
+            </section>
+
+            <section class="mobile-ekyc-card">
+                <h2 class="h5 fw-bold mb-2">2. Quét khuôn mặt</h2>
+                <p class="text-muted small">Dùng camera trước, đưa mặt vào khung và giữ yên khi chụp.</p>
+                <div class="ekyc-face-capture" data-ekyc-face-capture>
+                    <input type="file" name="face" id="mobileFaceInput" class="d-none" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-face-input required>
+                    <div class="mobile-camera-stage mb-3">
+                        <div class="text-center text-white-50 px-3">
+                            <i class="bi bi-person-bounding-box fs-1 d-block mb-2"></i>
+                            <div class="fw-semibold">Camera selfie bảo mật</div>
+                            <small>Ảnh chỉ dùng để xác minh eKYC.</small>
+                        </div>
+                        <video class="d-none" autoplay playsinline muted data-ekyc-face-video></video>
+                        <canvas class="d-none" data-ekyc-face-canvas></canvas>
+                        <img class="d-none" alt="Ảnh selfie xem trước" data-ekyc-face-preview>
+                        <div class="mobile-face-frame"></div>
+                        <div class="mobile-face-hint" data-ekyc-face-status>Đưa mặt vào khung, nhìn thẳng camera và giữ yên.</div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-lg rounded-pill" data-ekyc-face-start>Mở camera</button>
+                        <button type="button" class="btn btn-primary btn-lg rounded-pill d-none" data-ekyc-face-capture-btn>Chụp selfie</button>
+                        <button type="button" class="btn btn-light btn-lg rounded-pill d-none" data-ekyc-face-retake>Chụp lại</button>
+                    </div>
+                    <div class="text-danger small mt-2 d-none text-center" data-ekyc-face-error id="mobileFaceError"></div>
+                </div>
+            </section>
+
+            <section class="mobile-ekyc-card">
+                <h2 class="h5 fw-bold mb-3">3. Đồng ý xử lý dữ liệu</h2>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="EkycPrivacyConsent" value="true" id="MobileEkycPrivacyConsent" required>
+                    <label class="form-check-label" for="MobileEkycPrivacyConsent">
+                        Tôi đồng ý để DriveGo xử lý ảnh CCCD/GPLX, thông tin định danh và gửi dữ liệu cần thiết cho FPT.AI nhằm xác minh điều kiện thuê xe.
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="EkycBiometricConsent" value="true" id="MobileEkycBiometricConsent" required>
+                    <label class="form-check-label" for="MobileEkycBiometricConsent">
+                        Tôi đồng ý xử lý ảnh khuôn mặt/sinh trắc học để đối chiếu selfie với CCCD/GPLX trong quy trình eKYC.
+                    </label>
+                </div>
+                <div class="text-danger small mt-3 d-none" id="mobileFormError"></div>
+            </section>
+
+            <div class="mobile-sticky-submit">
+                <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow">
+                    <i class="bi bi-cloud-upload me-2"></i>Gửi xác thực
+                </button>
+            </div>
+        </form>
+    }
+    else
+    {
+        <section class="mobile-ekyc-card text-center">
+            <i class="bi bi-laptop fs-1 text-primary d-block mb-3"></i>
+            <h2 class="h5 fw-bold">Bạn có thể quay lại máy tính</h2>
+            <p class="text-muted mb-0">Trang checkout trên máy tính sẽ tự cập nhật trạng thái eKYC trong vài giây.</p>
+        </section>
+    }
+</main>
+
+@section Scripts {
+    <script src="~/js/ekyc-camera.js" asp-append-version="true"></script>
+    <script src="~/js/ekyc-file-preview.js" asp-append-version="true"></script>
+    <script>
+        (() => {
+            const form = document.getElementById('mobileEkycForm');
+            const error = document.getElementById('mobileFormError');
+            const faceInput = document.getElementById('mobileFaceInput');
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            const maxSize = 5 * 1024 * 1024;
+
+            if (!form) return;
+
+            form.querySelectorAll('[data-ekyc-file-input]').forEach(input => {
+                input.addEventListener('change', () => validateFileInput(input));
+            });
+
+            function validateFileInput(input) {
+                const file = input.files?.[0];
+                if (!file) return true;
+                if (!allowedTypes.includes(file.type) || file.size > maxSize) {
+                    input.value = '';
+                    window.DriveGoEkycFilePreview?.update(input);
+                    error.textContent = file.size > maxSize
+                        ? 'Mỗi ảnh tối đa 5MB.'
+                        : 'Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP.';
+                    error.classList.remove('d-none');
+                    return false;
+                }
+                error.classList.add('d-none');
+                return true;
+            }
+
+            form.addEventListener('submit', event => {
+                const errors = [];
+                form.querySelectorAll('input[type="file"]').forEach(input => {
+                    const file = input.files?.[0];
+                    if (!file) {
+                        errors.push('Vui lòng tải/chụp đủ tất cả ảnh bắt buộc.');
+                        return;
+                    }
+                    if (!validateFileInput(input)) errors.push('Vui lòng chọn lại ảnh đúng định dạng và dung lượng.');
+                });
+
+                if (!faceInput?.files?.length) errors.push('Vui lòng chụp selfie bằng camera.');
+                if (!document.getElementById('MobileEkycPrivacyConsent')?.checked || !document.getElementById('MobileEkycBiometricConsent')?.checked) {
+                    errors.push('Bạn cần đồng ý đầy đủ các nội dung xử lý dữ liệu eKYC.');
+                }
+
+                if (errors.length) {
+                    event.preventDefault();
+                    error.textContent = [...new Set(errors)].join(' ');
+                    error.classList.remove('d-none');
+                }
+            });
+        })();
+    </script>
+}

@@ -1,0 +1,99 @@
+@model IEnumerable<CarRentalSystem.Models.LostFoundItem>
+@{
+    ViewData["Title"] = "Đồ thất lạc";
+    var currentStatus = ViewBag.Status as string;
+}
+
+<div class="theme-admin">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-box-seam text-primary me-2"></i>Đồ thất lạc</h2>
+            <p class="text-muted mb-0">Đồ khách bỏ quên được ghi nhận từ biên bản bàn giao.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-outline-secondary @(string.IsNullOrWhiteSpace(currentStatus) ? "active" : "")">Tất cả</a>
+            <a asp-action="Index" asp-route-status="@LostFoundStatusConstants.Found" class="btn btn-outline-primary @(currentStatus == LostFoundStatusConstants.Found ? "active" : "")">Đã tìm thấy</a>
+            <a asp-action="Index" asp-route-status="@LostFoundStatusConstants.CustomerNotified" class="btn btn-outline-info @(currentStatus == LostFoundStatusConstants.CustomerNotified ? "active" : "")">Đã thông báo</a>
+            <a asp-action="Index" asp-route-status="@LostFoundStatusConstants.Returned" class="btn btn-outline-success @(currentStatus == LostFoundStatusConstants.Returned ? "active" : "")">Đã trả</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Đơn thuê</th>
+                            <th>Đồ vật</th>
+                            <th>Thời gian thấy</th>
+                            <th>Trạng thái</th>
+                            <th>Bằng chứng</th>
+                            <th class="text-end">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>#@item.LostFoundItemID</td>
+                            <td>
+                                <div class="fw-bold">#@item.BookingID - @item.Booking?.User?.Name</div>
+                                <div class="small text-muted">@item.Booking?.Car?.CarBrand?.Name @item.Booking?.Car?.CarName @item.Booking?.Car?.LicensePlate</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">@item.Description</div>
+                                <div class="small text-muted">@item.LocationDescription</div>
+                            </td>
+                            <td>@item.FoundAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td><span class="badge bg-info text-dark">@UiLabels.LostFoundStatus(item.Status)</span></td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(item.PhotoUrl))
+                                {
+                                    <a href="@item.PhotoUrl" target="_blank" class="btn btn-sm btn-outline-secondary">Ảnh</a>
+                                }
+                                @if (item.HandoverID.HasValue)
+                                {
+                                    <a asp-area="" asp-controller="Handover" asp-action="ViewRecord" asp-route-id="@item.HandoverID" class="btn btn-sm btn-outline-primary">Biên bản</a>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (item.Status != LostFoundStatusConstants.Returned && item.Status != LostFoundStatusConstants.Disposed)
+                                {
+                                    <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.LostFoundItemID" />
+                                        <input type="hidden" name="status" value="@LostFoundStatusConstants.CustomerNotified" />
+                                        <input type="hidden" name="note" value="Đã thông báo khách từ hàng đợi admin." />
+                                        <button class="btn btn-sm btn-outline-info" type="submit">Đã thông báo</button>
+                                    </form>
+                                    <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.LostFoundItemID" />
+                                        <input type="hidden" name="status" value="@LostFoundStatusConstants.Returned" />
+                                        <input type="hidden" name="note" value="Đã trả lại cho khách." />
+                                        <button class="btn btn-sm btn-success" type="submit">Đã trả</button>
+                                    </form>
+                                    <form asp-action="UpdateStatus" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.LostFoundItemID" />
+                                        <input type="hidden" name="status" value="@LostFoundStatusConstants.Disposed" />
+                                        <input type="hidden" name="note" value="Đã xử lý từ hàng đợi admin." />
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Đã xử lý</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

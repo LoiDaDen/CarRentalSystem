@@ -1,0 +1,18 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "Dashboard";
+    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? "Index";
+    var title = ViewData["Title"]?.ToString() ?? controller;
+}
+<nav class="admin-breadcrumb" aria-label="breadcrumb">
+    <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-house-door"></i> Admin</a>
+    @if (!controller.Equals("Dashboard", StringComparison.OrdinalIgnoreCase))
+    {
+        <i class="bi bi-chevron-right"></i>
+        <span>@controller</span>
+    }
+    @if (!action.Equals("Index", StringComparison.OrdinalIgnoreCase) && !title.Equals(controller, StringComparison.OrdinalIgnoreCase))
+    {
+        <i class="bi bi-chevron-right"></i>
+        <span aria-current="page">@title</span>
+    }
+</nav>

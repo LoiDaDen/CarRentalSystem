@@ -1,0 +1,7 @@
+@model ManagerPortalSnapshot
+@{
+    ViewData["Title"] = "GMV khu vực";
+}
+<h1 class="portal-page-title h3 mb-4">GMV booking khu vực</h1>
+<div class="row g-3"><div class="col-md-4"><div class="portal-card portal-kpi"><div class="label">GMV booking hôm nay</div><div class="value">@Model.TodayRevenue.ToString("N0") đ</div></div></div><div class="col-md-4"><div class="portal-card portal-kpi"><div class="label">Booking hôm nay</div><div class="value">@Model.TodayBookings</div></div></div><div class="col-md-4"><div class="portal-card portal-kpi"><div class="label">Tỷ lệ hủy</div><div class="value">@Model.CancellationRate%</div></div></div></div>
+<div class="alert alert-info mt-4">GMV là tổng giá trị booking trong khu vực; tiền cọc được theo dõi riêng theo trạng thái giữ, hoàn hoặc khấu trừ.</div>

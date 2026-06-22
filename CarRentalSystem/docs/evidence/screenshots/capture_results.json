@@ -1,0 +1,226 @@
+[
+  {
+    "role": "public",
+    "route": "/",
+    "name": "customer_home",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\public\\customer_home.png"
+  },
+  {
+    "role": "public",
+    "route": "/Car",
+    "name": "customer_car_list",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Car",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\public\\customer_car_list.png"
+  },
+  {
+    "role": "public",
+    "route": "/Car/MapSearch",
+    "name": "customer_car_map",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Car/MapSearch",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\public\\customer_car_map.png"
+  },
+  {
+    "role": "customer",
+    "route": "/Booking/MyBookings",
+    "name": "customer_booking_history",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Booking/MyBookings",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\customer\\customer_booking_history.png"
+  },
+  {
+    "role": "customer",
+    "route": "/Support/Mine",
+    "name": "customer_support",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Support/Mine",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\customer\\customer_support.png"
+  },
+  {
+    "role": "customer",
+    "route": "/Ekyc",
+    "name": "customer_ekyc_mock",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Ekyc",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\customer\\customer_ekyc_mock.png"
+  },
+  {
+    "role": "owner",
+    "route": "/OwnerCars",
+    "name": "owner_dashboard",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/OwnerCars",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\owner\\owner_dashboard.png"
+  },
+  {
+    "role": "owner",
+    "route": "/OwnerCars/Create",
+    "name": "owner_create_car",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/OwnerCars/Create",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\owner\\owner_create_car.png"
+  },
+  {
+    "role": "owner",
+    "route": "/OwnerCars/Wallet",
+    "name": "owner_revenue_payout",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/OwnerCars/Wallet",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\owner\\owner_revenue_payout.png"
+  },
+  {
+    "role": "owner",
+    "route": "/OwnerCars/Contracts",
+    "name": "owner_contracts",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/OwnerCars/Contracts",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\owner\\owner_contracts.png"
+  },
+  {
+    "role": "staff",
+    "route": "/Staff/Dashboard",
+    "name": "staff_dashboard",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Staff/Dashboard",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\staff\\staff_dashboard.png"
+  },
+  {
+    "role": "staff",
+    "route": "/Staff/Handover",
+    "name": "staff_handover_list",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Staff/Handover",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\staff\\staff_handover_list.png"
+  },
+  {
+    "role": "staff",
+    "route": "/Staff/Return",
+    "name": "staff_return_vehicle",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Staff/Return",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\staff\\staff_return_vehicle.png"
+  },
+  {
+    "role": "staff",
+    "route": "/Staff/Support",
+    "name": "staff_ticket_handling",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Staff/Support",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\staff\\staff_ticket_handling.png"
+  },
+  {
+    "role": "manager",
+    "route": "/Manager/Dashboard",
+    "name": "manager_dashboard",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Manager/Dashboard",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\manager\\manager_dashboard.png"
+  },
+  {
+    "role": "manager",
+    "route": "/Manager/Operation",
+    "name": "manager_operations",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Manager/Operation",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\manager\\manager_operations.png"
+  },
+  {
+    "role": "manager",
+    "route": "/Manager/Report",
+    "name": "manager_reports",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Manager/Report",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\manager\\manager_reports.png"
+  },
+  {
+    "role": "manager",
+    "route": "/Manager/Staff",
+    "name": "manager_staff_assignment",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Manager/Staff",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\manager\\manager_staff_assignment.png"
+  },
+  {
+    "role": "manager",
+    "route": "/Manager/Revenue",
+    "name": "manager_revenue",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Manager/Revenue",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\manager\\manager_revenue.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/Dashboard",
+    "name": "admin_dashboard",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/Dashboard",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_dashboard.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/User",
+    "name": "admin_user_role",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/User",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_user_role.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/CarApproval",
+    "name": "admin_car_approval",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/CarApproval",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_car_approval.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/Payment",
+    "name": "admin_payment_reconciliation",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/Payment",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_payment_reconciliation.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/ApiKeys",
+    "name": "admin_api_keys",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/ApiKeys",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_api_keys.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/Privacy",
+    "name": "admin_privacy",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/Privacy",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_privacy.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/AuditLog",
+    "name": "admin_audit_log",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/AuditLog",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_audit_log.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/Sre/Slo",
+    "name": "admin_sre_monitoring",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/Sre/Slo",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_sre_monitoring.png"
+  },
+  {
+    "role": "admin",
+    "route": "/Admin/Settlement",
+    "name": "admin_settlement",
+    "status": 200,
+    "finalUrl": "http://localhost:5168/Admin/Settlement",
+    "file": "D:\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\CarRentalSystem\\docs\\evidence\\screenshots\\admin\\admin_settlement.png"
+  }
+]

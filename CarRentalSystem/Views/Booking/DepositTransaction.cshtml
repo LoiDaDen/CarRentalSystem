@@ -8,7 +8,9 @@
     {
         foreach (var b in Model.Bookings)
         {
-            totalDepositAmount += b.Car?.DefaultDeposit ?? 0;
+            totalDepositAmount += b.DepositAmount > 0
+                ? b.DepositAmount
+                : CarRentalSystem.Services.DepositPolicy.Calculate(b.TotalPrice);
             totalPrice += b.TotalPrice;
         }
     }
@@ -18,8 +20,10 @@
         totalPrice = snapshot.Value.GetProperty("totalAmount").GetDecimal();
         totalDepositAmount = snapshot.Value.GetProperty("totalDeposit").GetDecimal();
     }
-    var requiredDeposit = totalPrice * 0.2m;
-    var finalAmount = totalPrice + 150000m;
+    var requiredDeposit = CarRentalSystem.Services.DepositPolicy.Calculate(totalPrice);
+    totalDepositAmount = requiredDeposit;
+    var remainingAmount = Math.Max(0m, totalPrice - requiredDeposit);
+    var finalAmount = totalPrice;
 }
 
 <style>
@@ -177,7 +181,7 @@
                             <span class="fw-bold">Thanh toán giữ chỗ qua CarRental</span>
                             <span class="fw-bold text-dark">@requiredDeposit.ToString("N0")đ</span>
                         </div>
-                        <p class="small text-muted mb-0">Đại diện cho phí cọc chung của @Model.Bookings.Count xe, sẽ được trừ vào tài khoản tổng sau đó.</p>
+                        <p class="small text-muted mb-0">Đại diện cho phí cọc chung của @Model.Bookings.Count xe, sẽ được trừ vào tổng tiền thuê sau đó.</p>
                     </div>
                 </div>
                 
@@ -188,14 +192,14 @@
                     <div class="w-100">
                         <div class="d-flex justify-content-between">
                             <span class="fw-bold">Thanh toán khi nhận xe</span>
-                            <span class="fw-bold text-dark">@((totalPrice * 0.8m + totalDepositAmount).ToString("N0"))đ</span>
+                            <span class="fw-bold text-dark">@remainingAmount.ToString("N0")đ</span>
                         </div>
                         <div class="d-flex justify-content-between small text-muted mt-1">
-                            <span>Tiền thuê</span>
-                            <span>@((totalPrice * 0.8m).ToString("N0"))đ</span>
+                            <span>Tiền thuê còn lại</span>
+                            <span>@remainingAmount.ToString("N0")đ</span>
                         </div>
                         <div class="d-flex justify-content-between small text-muted">
-                            <span>Tiền thế chấp (các xe) chờ thu hồi khoản phạt</span>
+                            <span>Cọc hệ thống giữ (20%)</span>
                             <span>@totalDepositAmount.ToString("N0")đ</span>
                         </div>
                         <div class="small text-muted fst-italic mt-1 text-warning"><i class="bi bi-shield-lock me-1"></i>Sẽ phân bổ theo từng xe và hoàn lại sau 15 ngày qua ví điện tử.</div>

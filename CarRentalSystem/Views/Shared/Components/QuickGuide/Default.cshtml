@@ -1,0 +1,50 @@
+@model QuickGuideViewModel
+
+<aside class="quick-guide" aria-labelledby="quickGuideTitle-@Model.Panel">
+    <div class="quick-guide-heading">
+        <div>
+            <span class="quick-guide-kicker"><i class="bi bi-lightbulb-fill"></i> Hướng dẫn sử dụng nhanh</span>
+            <h2 id="quickGuideTitle-@Model.Panel">@Model.Guide.Title</h2>
+            <p>@Model.Guide.Description</p>
+        </div>
+        <div class="quick-guide-actions">
+            <button type="button" class="btn btn-primary" data-tutorial-replay data-panel="@Model.Panel">
+                <i class="bi bi-play-circle"></i> Xem lại tutorial
+            </button>
+            <a class="btn btn-outline-primary" href="@Model.DetailUrl">
+                <i class="bi bi-book"></i> Hướng dẫn chi tiết
+            </a>
+        </div>
+    </div>
+
+    <div class="quick-guide-grid">
+        <section>
+            <h3><i class="bi bi-cursor-fill"></i> Thao tác chính</h3>
+            <ul>
+                @foreach (var item in Model.Guide.MainActions)
+                {
+                    <li>@item</li>
+                }
+            </ul>
+        </section>
+        <section>
+            <h3><i class="bi bi-exclamation-circle-fill"></i> Lưu ý quan trọng</h3>
+            <ul>
+                @foreach (var item in Model.Guide.Notes)
+                {
+                    <li>@item</li>
+                }
+            </ul>
+        </section>
+        <section>
+            <h3><i class="bi bi-question-circle-fill"></i> Câu hỏi thường gặp</h3>
+            @foreach (var faq in Model.Guide.Faqs)
+            {
+                <details>
+                    <summary>@faq.Question</summary>
+                    <p>@faq.Answer</p>
+                </details>
+            }
+        </section>
+    </div>
+</aside>

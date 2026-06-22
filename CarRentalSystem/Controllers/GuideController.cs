@@ -1,63 +1,76 @@
+using CarRentalSystem.Services;
+using CarRentalSystem.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CarRentalSystem.Controllers
+namespace CarRentalSystem.Controllers;
+
+public sealed class GuideController : Controller
 {
-    public class GuideController : Controller
+    private static readonly Dictionary<string, (string Name, string Icon, string Color, string File)> PublicGuides =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customer"] = ("Khách hàng", "bi-person-fill", "#8b5cf6", "02-customer-guide.md"),
+            ["driver"] = ("Tài xế", "bi-steering-wheel", "#3b82f6", "04-driver-guide.md")
+        };
+
+    private static readonly Dictionary<string, string> InternalPanels =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["admin"] = "Admin",
+            ["partner"] = "Partner",
+            ["staff"] = "Staff",
+            ["manager"] = "Manager"
+        };
+
+    private readonly IWebHostEnvironment _environment;
+    private readonly ITutorialService _tutorials;
+
+    public GuideController(IWebHostEnvironment environment, ITutorialService tutorials)
     {
-        private readonly IWebHostEnvironment _env;
+        _environment = environment;
+        _tutorials = tutorials;
+    }
 
-        public GuideController(IWebHostEnvironment env)
+    public async Task<IActionResult> Index(string role = "customer", CancellationToken cancellationToken = default)
+    {
+        if (InternalPanels.TryGetValue(role, out var panel))
         {
-            _env = env;
+            if (User.Identity?.IsAuthenticated != true)
+                return Challenge();
+            if (!await _tutorials.CanAccessPanelAsync(User, panel, cancellationToken))
+                return StatusCode(StatusCodes.Status403Forbidden);
+
+            var tutorial = await _tutorials.GetTutorialAsync(User, panel, manual: true, cancellationToken);
+            if (tutorial == null)
+                return StatusCode(StatusCodes.Status403Forbidden);
+
+            return View(new GuideViewModel
+            {
+                Role = role.ToLowerInvariant(),
+                RoleName = tutorial.RoleName,
+                RoleIcon = tutorial.Icon,
+                RoleColor = "#2563eb",
+                IsInternal = true,
+                Tutorial = tutorial,
+                QuickGuides = await _tutorials.GetAllQuickGuidesAsync(User, panel, cancellationToken)
+            });
         }
 
-        public IActionResult Index(string role = "customer")
+        var selectedRole = PublicGuides.TryGetValue(role, out var requestedGuide)
+            ? role.ToLowerInvariant()
+            : "customer";
+        var guide = PublicGuides[selectedRole];
+        var guidePath = Path.Combine(_environment.ContentRootPath, "docs", "guides", guide.File);
+
+        return View(new GuideViewModel
         {
-            var allowedRoles = new[] { "admin", "manager", "staff", "partner", "driver", "customer" };
-            if (!allowedRoles.Contains(role.ToLower()))
-                role = "customer";
-
-            // Files are at ../docs/guides relative to ContentRootPath (ContentRootPath = CarRentalSystem/)
-            var guidePath = Path.GetFullPath(Path.Combine(_env.ContentRootPath, "..", "docs", "guides"));
-            var fileName = role.ToLower() switch
-            {
-                "admin" => "01-admin-guide.md",
-                "manager" => "05-manager-staff-guide.md",
-                "staff" => "05-manager-staff-guide.md",
-                "partner" => "03-partner-guide.md",
-                "driver" => "04-driver-guide.md",
-                _ => "02-customer-guide.md"
-            };
-
-            var filePath = Path.Combine(guidePath, fileName);
-            var content = "";
-            if (System.IO.File.Exists(filePath))
-            {
-                content = System.IO.File.ReadAllText(filePath);
-            }
-
-            var roleInfo = GetRoleInfo(role);
-            ViewData["Role"] = role.ToLower();
-            ViewData["RoleName"] = roleInfo.name;
-            ViewData["RoleIcon"] = roleInfo.icon;
-            ViewData["RoleColor"] = roleInfo.color;
-            ViewData["Content"] = content;
-            ViewData["MarkdownFile"] = $"/docs/guides/{fileName}";
-
-            return View();
-        }
-
-        private static (string name, string icon, string color) GetRoleInfo(string role)
-        {
-            return role.ToLower() switch
-            {
-                "admin" => ("Quản trị viên", "bi-shield-lock-fill", "#f59e0b"),
-                "manager" => ("Quản lý Khu vực", "bi-person-check-fill", "#ef4444"),
-                "staff" => ("Nhân viên Khu vực", "bi-person-badge-fill", "#10b981"),
-                "partner" => ("Đối tác", "bi-building-fill", "#f59e0b"),
-                "driver" => ("Tài xế", "bi-steering-fill", "#3b82f6"),
-                _ => ("Khách hàng", "bi-person-fill", "#8b5cf6")
-            };
-        }
+            Role = selectedRole,
+            RoleName = guide.Name,
+            RoleIcon = guide.Icon,
+            RoleColor = guide.Color,
+            MarkdownContent = System.IO.File.Exists(guidePath)
+                ? await System.IO.File.ReadAllTextAsync(guidePath, cancellationToken)
+                : "# Hướng dẫn đang được cập nhật"
+        });
     }
 }

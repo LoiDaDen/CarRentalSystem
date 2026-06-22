@@ -1,0 +1,11 @@
+@model PortalBookingRowViewModel
+@{
+    ViewData["Title"] = $"Booking #{Model.BookingID}";
+}
+<div class="portal-card"><div class="portal-card-body">
+<h1 class="h4 fw-bold">Booking #@Model.BookingID</h1><p class="text-muted">@Model.CustomerName · @Model.MaskedPhone</p>
+<dl class="row"><dt class="col-sm-3">Xe</dt><dd class="col-sm-9">@Model.CarName · @Model.LicensePlate</dd><dt class="col-sm-3">Trạng thái</dt><dd class="col-sm-9">@Model.Status</dd><dt class="col-sm-3">Phụ trách</dt><dd class="col-sm-9">@(Model.AssignedStaffName ?? "Chưa phân công")</dd></dl>
+<div class="portal-task-actions">
+@foreach(var status in new[]{"Active","Completed"}){<form asp-action="Transition" method="post"><input type="hidden" name="id" value="@Model.BookingID"/><input type="hidden" name="targetStatus" value="@status"/><button class="btn btn-outline-primary">@status</button></form>}
+<form asp-action="Transition" method="post"><input type="hidden" name="id" value="@Model.BookingID"/><input type="hidden" name="targetStatus" value="Cancelled"/><input class="form-control" name="reason" placeholder="Lý do hủy" required/><button class="btn btn-danger">Hủy booking</button></form>
+</div></div></div>

@@ -63,7 +63,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const points = @Html.Raw(mapPointsJson);
-            const map = L.map('ownerTrackingMap');
+            const baseMap = SmartMap.createMap('ownerTrackingMap', SmartMap.defaultLat, SmartMap.defaultLng, 12);
+            if (!baseMap) return;
+            const map = baseMap.map;
             const escapeHtml = value => String(value || '').replace(/[&<>"']/g, char => ({
                 '&': '&amp;',
                 '<': '&lt;',
@@ -71,11 +73,6 @@
                 '"': '&quot;',
                 "'": '&#039;'
             }[char]));
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
-
             const bounds = [];
             points.forEach(point => {
                 const color = point.Status === 'live' ? '#16a34a' : point.Status === 'stale' ? '#f59e0b' : '#2563eb';

@@ -49,11 +49,14 @@
              string.Equals(layoutAction, "Book", StringComparison.OrdinalIgnoreCase))) ||
         (string.Equals(layoutController, "Tracking", StringComparison.OrdinalIgnoreCase) &&
             (string.Equals(layoutAction, "Map", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(layoutAction, "Booking", StringComparison.OrdinalIgnoreCase))) ||
-        (string.Equals(layoutController, "OwnerCars", StringComparison.OrdinalIgnoreCase) && string.Equals(layoutAction, "Tracking", StringComparison.OrdinalIgnoreCase));
-    var requiresSmartMap = string.Equals(layoutController, "Car", StringComparison.OrdinalIgnoreCase) &&
-        (string.Equals(layoutAction, "Details", StringComparison.OrdinalIgnoreCase) ||
-         string.Equals(layoutAction, "MapSearch", StringComparison.OrdinalIgnoreCase));
+             string.Equals(layoutAction, "Booking", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "History", StringComparison.OrdinalIgnoreCase))) ||
+        (string.Equals(layoutController, "OwnerCars", StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(layoutAction, "Index", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "Create", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "Details", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(layoutAction, "Tracking", StringComparison.OrdinalIgnoreCase)));
+    var requiresSmartMap = requiresLeaflet;
     var layoutToastSuccess = TempData["Success"]?.ToString();
     var layoutToastError = TempData["Error"]?.ToString();
     var hasLayoutToast = !string.IsNullOrWhiteSpace(layoutToastSuccess) || !string.IsNullOrWhiteSpace(layoutToastError);
@@ -83,6 +86,7 @@
     @if (isOwnerCarsActive)
     {
         <link rel="stylesheet" href="~/css/owner-portal.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/tutorial.css" asp-append-version="true" />
     }
     @if (hasLayoutToast)
     {
@@ -516,7 +520,7 @@
                                 </a>
                             </li>
                             <li class="nav-item px-2">
-                                <a class="nav-link user-profile-link d-flex align-items-center" asp-controller="Auth" asp-action="Profile" title="Hồ sơ cá nhân">
+                                <a class="nav-link user-profile-link d-flex align-items-center" data-tutorial-target="@(isOwnerCarsActive ? "partner-profile" : null)" asp-controller="Auth" asp-action="Profile" title="Hồ sơ cá nhân">
                                     <div class="text-end me-2 d-none d-lg-block">
                                         <span class="text-white-50 small d-block text-greeting">Xin chào,</span>
                                         <span class="text-white fw-bold">@User.Identity.Name</span>
@@ -549,6 +553,10 @@
     <div class="app-main-shell mt-4">
         <main role="main" class="pb-3">
             @RenderBody()
+            @if (isOwnerCarsActive)
+            {
+                @await Component.InvokeAsync("QuickGuide", new { panel = "Partner" })
+            }
         </main>
     </div>
 
@@ -607,7 +615,7 @@
         </div>
         <div class="bg-black py-3 border-top border-secondary border-opacity-25 text-center text-md-start">
             <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
-                <span class="text-white-50 small mb-2 mb-md-0">&copy; 2026 CarRental. All rights reserved.</span>
+                <span class="text-white-50 small mb-2 mb-md-0">&copy; 2026 CarRental. Đã đăng ký bản quyền.</span>
                 <div>
                     <i class="bi bi-credit-card mx-2 text-white-50 fs-4"></i>
                     <i class="bi bi-paypal mx-2 text-white-50 fs-4"></i>
@@ -640,6 +648,10 @@
     @if (User.Identity?.IsAuthenticated == true)
     {
         @await Html.PartialAsync("_EkycModal", ekycQuickReturnUrl)
+    }
+    @if (isOwnerCarsActive)
+    {
+        @await Component.InvokeAsync("TutorialPopup", new { panel = "Partner" })
     }
     @if (showEkycQuickModal)
     {
@@ -752,6 +764,10 @@
     </script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/pwa.js" asp-append-version="true"></script>
+    @if (isOwnerCarsActive)
+    {
+        <script src="~/js/tutorial.js" asp-append-version="true"></script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

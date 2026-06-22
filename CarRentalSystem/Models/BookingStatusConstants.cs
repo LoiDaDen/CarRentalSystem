@@ -30,6 +30,13 @@ namespace CarRentalSystem.Models
         public const string Pending = "Pending";
     }
 
+    public static class CarApprovalStatusConstants
+    {
+        public const string Pending = "Pending";
+        public const string Approved = "Approved";
+        public const string Rejected = "Rejected";
+    }
+
     public static class DepositStatusConstants
     {
         public const string Pending = "Pending";
@@ -68,6 +75,15 @@ namespace CarRentalSystem.Models
         public const string Refund = "Refund";
         public const string Deduction = "Deduction";
         public const string Payout = "Payout";
+    }
+
+    public static class HandoverInventoryConditionStatusConstants
+    {
+        public const string Present = "Present";
+        public const string Absent = "Absent";
+        public const string Intact = "Intact";
+        public const string Missing = "Missing";
+        public const string Damaged = "Damaged";
     }
 
     public static class RefundRequestStatusConstants

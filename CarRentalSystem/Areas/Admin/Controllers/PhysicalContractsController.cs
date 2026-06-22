@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using CarRentalSystem.Authorization;
 using System.Security.Claims;
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
@@ -9,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager", "Staff")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class PhysicalContractsController : Controller
     {
         private readonly ApplicationDbContext _context;

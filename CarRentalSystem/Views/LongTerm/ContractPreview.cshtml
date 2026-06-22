@@ -63,6 +63,7 @@
     decimal totalContractPriceBeforeMem = discountedPerDay * totalDays;
     decimal memDiscountAmount = totalContractPriceBeforeMem * (membershipDiscountPct / 100m);
     decimal totalContractPrice = totalContractPriceBeforeMem - memDiscountAmount;
+    decimal depositAmount = CarRentalSystem.Services.DepositPolicy.Calculate(totalContractPrice);
 }
 
 <div class="container py-5 mt-5">
@@ -167,8 +168,8 @@
                             <h5 class="fw-bold text-success mb-0">@string.Format("{0:N0}", totalContractPrice) VNĐ</h5>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-0 mt-3 pt-3 border-top">
-                            <span class="fw-bold text-muted">Tiền thế chấp (Cọc):</span>
-                            <span class="fw-bold text-dark fs-5">@string.Format("{0:N0}", car.DefaultDeposit) VNĐ</span>
+                            <span class="fw-bold text-muted">Cọc hệ thống giữ (20%):</span>
+                            <span class="fw-bold text-dark fs-5">@string.Format("{0:N0}", depositAmount) VNĐ</span>
                         </div>
                     </div>
 

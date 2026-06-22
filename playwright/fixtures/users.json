@@ -1,0 +1,37 @@
+{
+  "admin": {
+    "email": "admin@admin.com",
+    "password": "Playwright@123",
+    "role": "Admin"
+  },
+  "manager": {
+    "email": "manager@playwright.local",
+    "password": "Playwright@123",
+    "role": "Manager"
+  },
+  "staff": {
+    "email": "staff@playwright.local",
+    "password": "Playwright@123",
+    "role": "Staff"
+  },
+  "viewer": {
+    "email": "viewer@playwright.local",
+    "password": "Playwright@123",
+    "role": "Viewer"
+  },
+  "customer": {
+    "email": "customer@playwright.local",
+    "password": "Playwright@123",
+    "role": "Customer"
+  },
+  "customerUnverified": {
+    "email": "customer-unverified@playwright.local",
+    "password": "Playwright@123",
+    "role": "Customer"
+  },
+  "owner": {
+    "email": "owner@playwright.local",
+    "password": "Playwright@123",
+    "role": "Customer"
+  }
+}

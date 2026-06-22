@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using CarRentalSystem.Authorization;
 // CarRentalSystem/Areas/Admin/Controllers/AreaManagerController.cs
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
@@ -14,7 +16,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class AreaManagerController : Controller
     {
         private readonly ApplicationDbContext _context;

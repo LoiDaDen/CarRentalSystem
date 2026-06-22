@@ -289,12 +289,12 @@ namespace CarRentalSystem.Services
                 RentalEndDate = booking.EndDate,
                 RentalPricePerDay = ResolveDailyPrice(booking.TotalPrice, booking.StartDate, booking.EndDate),
                 TotalContractValue = booking.TotalPrice,
-                DepositAmount = booking.DepositAmount,
+                DepositAmount = ResolveDepositAmount(booking),
                 PaymentMethod = booking.Payment?.PaymentMethod,
                 TermsAndConditions = BuildTerms(
                     $"- Xe: {carName}, BKS: {booking.Car?.LicensePlate ?? "N/A"}, Giá trị thuê: {booking.TotalPrice:N0} VND",
                     booking.TotalPrice,
-                    booking.DepositAmount,
+                    ResolveDepositAmount(booking),
                     booking.StartDate,
                     booking.EndDate),
                 ContractVersion = ContractVersion,
@@ -317,7 +317,7 @@ namespace CarRentalSystem.Services
             var firstStart = bookings.Min(b => b.StartDate);
             var lastEnd = bookings.Max(b => b.EndDate);
             var totalValue = bookings.Sum(b => b.TotalPrice);
-            var totalDeposit = bookings.Sum(b => b.DepositAmount);
+            var totalDeposit = bookings.Sum(ResolveDepositAmount);
             var carLines = bookings.Select((booking, index) =>
             {
                 var carName = $"{booking.Car?.CarBrand?.Name} {booking.Car?.CarName}".Trim();
@@ -352,6 +352,13 @@ namespace CarRentalSystem.Services
             };
             contract.RenderedContentHash = ComputeRenderedContentHash(contract);
             return contract;
+        }
+
+        private static decimal ResolveDepositAmount(Booking booking)
+        {
+            if (booking.DepositAmount > 0) return booking.DepositAmount;
+            if (booking.ReservationFee > 0) return booking.ReservationFee;
+            return DepositPolicy.Calculate(booking.TotalPrice);
         }
 
         private async Task EnsureContractEvidenceAsync(DigitalContract contract, CancellationToken cancellationToken)

@@ -30,7 +30,7 @@ namespace CarRentalSystem.Services
 
         private readonly IDataProtector _protector;
         private readonly ILogger<PiiEncryptionService> _logger;
-        private readonly bool _isCypressEnvironment;
+        private readonly bool _isPlaywrightEnvironment;
 
         public PiiEncryptionService(
             IDataProtectionProvider provider,
@@ -40,7 +40,7 @@ namespace CarRentalSystem.Services
             // Purpose string = unique key per app/feature
             _protector = provider.CreateProtector("CarRentalSystem.PII.v1");
             _logger = logger;
-            _isCypressEnvironment = environment.IsEnvironment("Cypress");
+            _isPlaywrightEnvironment = environment.IsEnvironment("Playwright");
         }
 
         public string Encrypt(string plainText)
@@ -56,7 +56,7 @@ namespace CarRentalSystem.Services
             var protectedPayload = cipherText.Trim();
             if (!IsLikelyDataProtectionPayload(protectedPayload))
             {
-                if (_isCypressEnvironment)
+                if (_isPlaywrightEnvironment)
                 {
                     _logger.LogDebug("PII value does not look encrypted; returning legacy plaintext fallback. Length={Length}", cipherText.Length);
                 }

@@ -138,6 +138,11 @@ namespace CarRentalSystem.Services
                 u.IsBlacklisted || u.IsLocked,
                 cancellationToken);
 
+            var highRiskAssessments = await _context.CustomerRiskAssessments.AsNoTracking().CountAsync(r =>
+                r.AssessedAtUtc >= last30Days &&
+                (r.RiskLevel == CustomerRiskLevels.High || r.RiskLevel == CustomerRiskLevels.Critical),
+                cancellationToken);
+
             var finance = await BuildFinanceSnapshotAsync(last30Days, cancellationToken);
             var fleet = await BuildFleetSnapshotAsync(now, trackingCutoff, monthStart, maintenanceWindowEnd, cancellationToken);
 
@@ -210,9 +215,9 @@ namespace CarRentalSystem.Services
                     new()
                     {
                         Title = "Risk review",
-                        Value = pendingEkyc.ToString("N0"),
-                        Detail = $"{blockedRiskUsers:N0} locked/blacklisted users",
-                        Severity = pendingEkyc + blockedRiskUsers > 0 ? EnterpriseSeverity.Warning : EnterpriseSeverity.Success,
+                        Value = highRiskAssessments.ToString("N0"),
+                        Detail = $"{pendingEkyc:N0} eKYC pending, {blockedRiskUsers:N0} locked/blacklisted",
+                        Severity = highRiskAssessments + blockedRiskUsers > 0 ? EnterpriseSeverity.Warning : EnterpriseSeverity.Success,
                         Icon = "bi-shield-check",
                         Url = "/Admin/User"
                     },
@@ -234,6 +239,7 @@ namespace CarRentalSystem.Services
                     pendingPrivacy,
                     breachedSupport,
                     pendingEkyc,
+                    highRiskAssessments,
                     fleet,
                     finance,
                     unsignedContracts,
@@ -381,6 +387,7 @@ namespace CarRentalSystem.Services
             int pendingPrivacy,
             int breachedSupport,
             int pendingEkyc,
+            int highRiskAssessments,
             EnterpriseFleetSnapshot fleet,
             EnterpriseFinanceSnapshot finance,
             int unsignedContracts,
@@ -395,6 +402,7 @@ namespace CarRentalSystem.Services
                 Queue("PayOS reconciliation", "Provider and ledger entries that do not match.", finance.PayOSPaidWithoutLedger + finance.LedgerWithoutPayOS, "Finance", "/Admin/Payment", EnterpriseSeverity.Critical),
                 Queue("Support SLA breach", "Open support cases past first response target.", breachedSupport, "Support", "/Admin/Support", EnterpriseSeverity.Critical),
                 Queue("eKYC / eligibility", "Customers that need identity or eligibility review.", pendingEkyc, "Risk", "/Admin/User", EnterpriseSeverity.Warning),
+                Queue("Customer risk scoring", "Recent High/Critical risk assessments waiting for staff review.", highRiskAssessments, "Risk", "/Admin/User", EnterpriseSeverity.Warning),
                 Queue("Fleet readiness", "Cars blocked by approval, maintenance, alerts, or tracking gaps.", fleet.PendingApprovalCars + fleet.MaintenanceDueSoon + fleet.MissingTracking + fleet.OpenAlerts, "Fleet", "/Admin/Car/Manage", EnterpriseSeverity.Warning),
                 Queue("Privacy requests", "Runtime privacy requests waiting for review.", pendingPrivacy, "Compliance", "/Admin/Privacy", EnterpriseSeverity.Warning),
                 Queue("Contract evidence", "Unsigned digital contracts or recent handovers missing evidence.", unsignedContracts + handoversMissingEvidence, "Legal ops", "/Admin/Booking", EnterpriseSeverity.Warning)

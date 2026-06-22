@@ -160,6 +160,26 @@ namespace CarRentalSystem.Tests.UnitTests.Services
         }
 
         [Fact]
+        [Trait("Module", "Booking")]
+        [Trait("Type", "Regression")]
+        public async Task BookingQuote_ThrowsBusinessError_WhenDrivingLicenseIsMissing()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var service = CreateQuoteService(context, hasDrivingLicense: false);
+
+            var act = () => service.BuildQuoteAsync(new BookingQuoteRequest
+            {
+                UserID = 2,
+                CarID = 1,
+                StartDate = new DateTime(2026, 5, 19, 8, 0, 0),
+                EndDate = new DateTime(2026, 5, 20, 8, 0, 0)
+            });
+
+            var exception = await act.Should().ThrowAsync<BookingQuoteException>();
+            exception.Which.Code.Should().Be(BookingQuoteFailureCode.MissingDrivingLicense);
+        }
+
+        [Fact]
         [Trait("Module", "Data")]
         [Trait("Type", "Regression")]
         public void Booking_DefaultDepositStatus_IsUnpaid()
@@ -203,7 +223,8 @@ namespace CarRentalSystem.Tests.UnitTests.Services
         private static BookingQuoteService CreateQuoteService(
             CarRentalSystem.Data.ApplicationDbContext context,
             decimal holidayMultiplier = 1m,
-            decimal referralDiscount = 0m)
+            decimal referralDiscount = 0m,
+            bool hasDrivingLicense = true)
         {
             if (!context.ServiceTypes.Any(s => s.ServiceTypeID == 10))
             {
@@ -220,7 +241,7 @@ namespace CarRentalSystem.Tests.UnitTests.Services
             car.IsSelfDriveAllowed = true;
             car.IsWithDriverAllowed = false;
 
-            if (!context.CustomerDrivingLicenses.Any(l => l.CustomerDrivingLicenseID == 22))
+            if (hasDrivingLicense && !context.CustomerDrivingLicenses.Any(l => l.CustomerDrivingLicenseID == 22))
             {
                 context.CustomerDrivingLicenses.Add(new CustomerDrivingLicense
                 {
@@ -245,7 +266,9 @@ namespace CarRentalSystem.Tests.UnitTests.Services
             var businessRules = new Mock<IBookingBusinessRuleService>();
             businessRules.Setup(s => s.GetServiceTypeIdAsync(ServiceTypeConstants.SelfDrive)).ReturnsAsync(10);
             businessRules.Setup(s => s.GetValidCustomerDrivingLicenseAsync(2))
-                .ReturnsAsync(new CustomerDrivingLicense { CustomerDrivingLicenseID = 22, UserID = 2 });
+                .ReturnsAsync(hasDrivingLicense
+                    ? new CustomerDrivingLicense { CustomerDrivingLicenseID = 22, UserID = 2 }
+                    : null);
 
             var holidayPricing = new Mock<IHolidayPricingService>();
             holidayPricing.Setup(s => s.GetMultiplier(It.IsAny<DateTime>(), It.IsAny<DateTime>())).Returns(holidayMultiplier);

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
 using CarRentalSystem.Services;
@@ -7,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager", "Staff")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class SupportController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -20,13 +22,20 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? status = null)
+        public async Task<IActionResult> Index(string? status = null, string? format = null)
         {
-            var query = _context.SupportTickets.AsNoTracking().Include(t => t.User).AsQueryable();
-            if (!string.IsNullOrWhiteSpace(status))
-                query = query.Where(t => t.Status == status);
+            var tickets = await GetTicketsAsync(status);
+            if (WantsJson(format))
+                return Json(tickets);
 
-            return Json(await query.OrderByDescending(t => t.CreatedAt).Take(200).ToListAsync());
+            ViewBag.Status = status;
+            return View(tickets);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Data(string? status = null)
+        {
+            return Json(await GetTicketsAsync(status));
         }
 
         [HttpPost]
@@ -34,7 +43,40 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         public async Task<IActionResult> UpdateStatus(int id, string status, string? resolution)
         {
             var result = await _supportTickets.UpdateStatusAsync(id, status, GetCurrentUserId(), User.Identity?.Name ?? "Staff", resolution);
-            return Json(new { success = result.IsSuccess, message = result.Message });
+            if (WantsJson(null))
+                return Json(new { success = result.IsSuccess, message = result.Message });
+
+            TempData[result.IsSuccess ? "Success" : "Error"] = result.Message;
+            return RedirectToAction(nameof(Index));
+        }
+
+        private async Task<List<CarRentalSystem.Models.SupportTicket>> GetTicketsAsync(string? status)
+        {
+            var query = _context.SupportTickets
+                .AsNoTracking()
+                .Include(ticket => ticket.User)
+                .Include(ticket => ticket.AssignedToUser)
+                .Include(ticket => ticket.Booking)
+                .AsQueryable();
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(ticket => ticket.Status == status);
+
+            return await query.OrderByDescending(ticket => ticket.CreatedAt).Take(200).ToListAsync();
+        }
+
+        private bool WantsJson(string? format)
+        {
+            if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (Request.Headers.TryGetValue("X-Requested-With", out var requestedWith) &&
+                string.Equals(requestedWith.ToString(), "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var accept = Request.GetTypedHeaders().Accept;
+            return accept != null &&
+                accept.Any(media => string.Equals(media.MediaType.Value, "application/json", StringComparison.OrdinalIgnoreCase)) &&
+                !accept.Any(media => string.Equals(media.MediaType.Value, "text/html", StringComparison.OrdinalIgnoreCase));
         }
 
         private int GetCurrentUserId()

@@ -1,0 +1,21 @@
+@if (TempData["Success"] is string success && !string.IsNullOrWhiteSpace(success))
+{
+    <div class="alert alert-success admin-flash-alert alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i><span>@success</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+    </div>
+}
+@if (TempData["Error"] is string error && !string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger admin-flash-alert alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i><span>@error</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+    </div>
+}
+@if (TempData["Warning"] is string warning && !string.IsNullOrWhiteSpace(warning))
+{
+    <div class="alert alert-warning admin-flash-alert alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle-fill"></i><span>@warning</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng"></button>
+    </div>
+}

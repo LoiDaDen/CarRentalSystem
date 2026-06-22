@@ -1,0 +1,190 @@
+@model CarRentalSystem.Controllers.OwnerCarCreateViewModel
+@{
+    var carId = ViewBag.CarId as int? ?? 0;
+    var brands = ViewBag.Brands as IEnumerable<CarRentalSystem.Models.CarBrand> ?? Enumerable.Empty<CarRentalSystem.Models.CarBrand>();
+    var models = ViewBag.CarModels as IEnumerable<CarRentalSystem.Models.CarModel> ?? Enumerable.Empty<CarRentalSystem.Models.CarModel>();
+    var serviceTypes = ViewBag.ServiceTypes as IEnumerable<CarRentalSystem.Models.ServiceType> ?? Enumerable.Empty<CarRentalSystem.Models.ServiceType>();
+    var amenities = ViewBag.Amenities as IEnumerable<CarRentalSystem.Models.CarAmenity> ?? Enumerable.Empty<CarRentalSystem.Models.CarAmenity>();
+    var hasPendingChange = ViewBag.HasPendingChange as bool? ?? false;
+}
+
+<form asp-action="Edit" asp-route-id="@carId" method="post" enctype="multipart/form-data" class="owner-modal-edit-form" data-owner-car-edit-form>
+    @Html.AntiForgeryToken()
+    @if (hasPendingChange)
+    {
+        <div class="alert alert-warning rounded-3">
+            Xe đang có yêu cầu thay đổi chờ duyệt. Vui lòng đợi quy trình Staff khu vực -> Manager khu vực -> Admin hoàn tất trước khi sửa tiếp.
+        </div>
+    }
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="owner-modal-form-grid">
+        <label>Biển số
+            <input asp-for="LicensePlate" required />
+            <span asp-validation-for="LicensePlate" class="field-error"></span>
+        </label>
+        <label>VIN
+            <input asp-for="VIN" maxlength="17" />
+            <span asp-validation-for="VIN" class="field-error"></span>
+        </label>
+        <label>Hãng xe
+            <select asp-for="BrandID" required>
+                <option value="">Chọn hãng xe</option>
+                @foreach (var brand in brands)
+                {
+                    <option value="@brand.BrandID">@brand.Name</option>
+                }
+            </select>
+        </label>
+        <label>Mẫu xe
+            <select asp-for="CarModelID">
+                <option value="">Chọn mẫu xe</option>
+                @foreach (var item in models)
+                {
+                    <option value="@item.CarModelID">@item.Name</option>
+                }
+            </select>
+        </label>
+        <label>Số ghế
+            <select asp-for="Seats">
+                <option>4</option>
+                <option>5</option>
+                <option>7</option>
+                <option>9</option>
+                <option>16</option>
+            </select>
+        </label>
+        <label>Đăng kiểm tiếp theo
+            <input asp-for="NextInspectionDate" type="date" required />
+            <span asp-validation-for="NextInspectionDate" class="field-error"></span>
+        </label>
+        <label>Truyền động
+            <select asp-for="Transmission">
+                <option value="Automatic">Tự động</option>
+                <option value="Manual">Số sàn</option>
+                <option value="Tự động">Tự động</option>
+                <option value="Số sàn">Số sàn</option>
+            </select>
+        </label>
+        <label>Nhiên liệu
+            <select asp-for="FuelType">
+                <option value="Gasoline">Xăng</option>
+                <option value="Diesel">Dầu</option>
+                <option value="Electric">Điện</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="Xăng">Xăng</option>
+                <option value="Dầu">Dầu</option>
+                <option value="Điện">Điện</option>
+            </select>
+        </label>
+        <label>Tiêu hao
+            <input asp-for="FuelConsumption" placeholder="8L/100km" />
+        </label>
+        <label>Loại dịch vụ
+            <select asp-for="ServiceTypeID">
+                @foreach (var serviceType in serviceTypes)
+                {
+                    <option value="@serviceType.ServiceTypeID">@serviceType.Name</option>
+                }
+            </select>
+        </label>
+        <label>Giá khách thấy mỗi ngày
+            <input asp-for="PricePerDay" type="number" min="100000" required data-owner-price-input />
+            <span asp-validation-for="PricePerDay" class="field-error"></span>
+        </label>
+        <label>Kiểu hợp đồng
+            <select asp-for="ContractSigningMode">
+                <option value="@CarRentalSystem.Models.CarContractSigningModes.PhysicalSelfManaged">Hợp đồng giấy tự quản</option>
+                <option value="@CarRentalSystem.Models.CarContractSigningModes.Digital">Hợp đồng số trên app</option>
+            </select>
+            <span asp-validation-for="ContractSigningMode" class="field-error"></span>
+        </label>
+    </div>
+
+    <div class="commission-explainer compact" data-owner-commission>
+        <div><span>Giá thuê khách thấy</span><strong data-owner-customer-price>0đ/ngày</strong></div>
+        <div><span>Tiền cọc hệ thống giữ</span><strong class="commission-fee" data-owner-commission-fee>Theo chính sách xe</strong></div>
+        <div><span>Giá thuê chủ xe ghi nhận</span><strong class="commission-income" data-owner-income>0đ/ngày</strong></div>
+        <p><i class="bi bi-info-circle"></i> Bản sửa này chỉ áp dụng sau khi người có quyền duyệt yêu cầu xe.</p>
+    </div>
+
+    <label class="owner-modal-label">Mô tả
+        <textarea asp-for="Description" rows="3"></textarea>
+    </label>
+
+    <div class="owner-modal-form-grid">
+        <label>Giảm giá tuần (%)
+            <input asp-for="WeeklyDiscountPercent" type="number" min="0" max="100" step="0.01" />
+        </label>
+        <label>Giảm giá tháng (%)
+            <input asp-for="MonthlyDiscountPercent" type="number" min="0" max="100" step="0.01" />
+        </label>
+        <label>Quãng đường giao tối đa
+            <input asp-for="MaxDeliveryDistanceKm" type="number" min="0" step="0.1" />
+        </label>
+        <label>Phí giao mỗi km
+            <input asp-for="DeliveryFeePerKm" type="number" min="0" />
+        </label>
+        <label>Giới hạn km/ngày
+            <input asp-for="DailyMileageLimitKm" type="number" min="0" step="0.1" />
+        </label>
+        <label>Phí vượt km
+            <input asp-for="ExtraMileageFeePerKm" type="number" min="0" />
+        </label>
+    </div>
+
+    <div class="owner-modal-checks">
+        <label><input asp-for="DeliveryEnabled" type="checkbox" /> Giao xe tận nơi</label>
+        <label><input asp-for="MileageLimitEnabled" type="checkbox" /> Giới hạn số km</label>
+    </div>
+    <input asp-for="FreeDeliveryRadiusKm" type="hidden" />
+    <input asp-for="ManufactureYear" type="hidden" />
+
+    <label class="owner-modal-label">Địa chỉ xe
+        <input asp-for="CarAddress" id="CarAddress" required />
+        <span asp-validation-for="CarAddress" class="field-error"></span>
+    </label>
+    <div class="owner-modal-map-row">
+        <button type="button" class="owner-pill" id="btnUseCurrentLocation"><i class="bi bi-crosshair"></i> Lấy vị trí hiện tại</button>
+        <span class="owner-muted">Kéo marker hoặc bấm trên bản đồ để cập nhật tọa độ.</span>
+    </div>
+    <div id="ownerEditMap" class="owner-details-map owner-modal-picker" data-owner-edit-map></div>
+    <input asp-for="Latitude" type="hidden" id="Latitude" />
+    <input asp-for="Longitude" type="hidden" id="Longitude" />
+    <span asp-validation-for="Latitude" class="field-error"></span>
+    <span asp-validation-for="Longitude" class="field-error"></span>
+
+    <div class="owner-modal-section-title">Tiện nghi</div>
+    <div class="amenities owner-modal-amenities">
+        @foreach (var amenity in amenities)
+        {
+            <label class="amenity">
+                <input type="checkbox"
+                       name="AmenityIDs"
+                       value="@amenity.CarAmenityID"
+                       checked="@Model.AmenityIDs.Contains(amenity.CarAmenityID)" />
+                <i class="bi @amenity.Icon"></i>
+                <span>@amenity.Name</span>
+            </label>
+        }
+    </div>
+
+    <label class="owner-modal-label">Ảnh thay thế (không bắt buộc)
+        <input asp-for="ImageFiles" type="file" accept="image/*" multiple />
+        <small class="owner-muted">Nếu tải ảnh mới, bộ ảnh này sẽ thay ảnh hiện tại sau khi duyệt.</small>
+    </label>
+
+    <label class="owner-modal-label">Điều khoản thuê xe
+        <textarea asp-for="RentalTerms" rows="3"></textarea>
+    </label>
+
+    <div class="owner-modal-footer-actions">
+        <button type="button" class="owner-pill" data-owner-car-back>
+            <i class="bi bi-arrow-left"></i> Quay lại chi tiết
+        </button>
+        <button type="submit" class="owner-pill primary" disabled="@hasPendingChange">
+            <i class="bi bi-send"></i> Gửi bản sửa để duyệt
+        </button>
+    </div>
+</form>

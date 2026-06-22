@@ -1,19 +1,25 @@
 using System.Text.Json;
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
+using CarRentalSystem.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Services.Ai;
 
 public sealed class AiToolExecutor : IAiToolExecutor
 {
-    private const decimal PlatformFee = 150000m;
+    private const decimal ServiceFee = 150000m;
     private readonly ApplicationDbContext _db;
+    private readonly IOperationsCopilotService _operationsCopilot;
     private readonly ILogger<AiToolExecutor> _logger;
 
-    public AiToolExecutor(ApplicationDbContext db, ILogger<AiToolExecutor> logger)
+    public AiToolExecutor(
+        ApplicationDbContext db,
+        IOperationsCopilotService operationsCopilot,
+        ILogger<AiToolExecutor> logger)
     {
         _db = db;
+        _operationsCopilot = operationsCopilot;
         _logger = logger;
     }
 
@@ -25,6 +31,14 @@ public sealed class AiToolExecutor : IAiToolExecutor
 
         try
         {
+            if (IsOpsTool(request.Name) && !user.IsInternalStaff)
+                return new AiToolResult
+                {
+                    Success = false,
+                    RequiresLogin = !user.IsAuthenticated,
+                    Message = "Operations Copilot chỉ dành cho Admin, Manager hoặc Staff."
+                };
+
             result = request.Name switch
             {
                 "searchCars" => await SearchCarsAsync(request.Arguments, state, cancellationToken),
@@ -40,6 +54,11 @@ public sealed class AiToolExecutor : IAiToolExecutor
                 "updateTripStatus" => await UpdateTripStatusAsync(request.Arguments, user, request.IsConfirmed, cancellationToken),
                 "createRentalContract" => await CreateRentalContractAsync(request.Arguments, user, cancellationToken),
                 "answerPolicyQuestion" => AnswerPolicyQuestion(request.Arguments),
+                "getOpsSnapshot" => await GetOpsSnapshotAsync(cancellationToken),
+                "explainMoneyExceptions" => await ExplainMoneyExceptionsAsync(cancellationToken),
+                "inspectVehicleTimeline" => await InspectVehicleTimelineAsync(request.Arguments, cancellationToken),
+                "summarizeCameraRisk" => await SummarizeCameraRiskAsync(cancellationToken),
+                "recommendNextActions" => await RecommendNextActionsAsync(cancellationToken),
                 _ => new AiToolResult { Success = false, Message = $"Tool {request.Name} chưa được hỗ trợ." }
             };
             status = result.Success ? "Success" : "DeniedOrFailed";
@@ -55,6 +74,60 @@ public sealed class AiToolExecutor : IAiToolExecutor
 
         await LogToolCallAsync(request.Name, request.Arguments, result, user, status, error, cancellationToken);
         return result;
+    }
+
+    private static bool IsOpsTool(string name) =>
+        name is "getOpsSnapshot" or
+            "explainMoneyExceptions" or
+            "inspectVehicleTimeline" or
+            "summarizeCameraRisk" or
+            "recommendNextActions";
+
+    private async Task<AiToolResult> GetOpsSnapshotAsync(CancellationToken ct)
+    {
+        var snapshot = await _operationsCopilot.GetOpsSnapshotAsync(ct);
+        var message = snapshot.TopSignals.Count == 0
+            ? $"Ops snapshot: rủi ro {snapshot.RiskLevel} ({snapshot.RiskScore}/100). Không có queue nổi bật."
+            : $"Ops snapshot: rủi ro {snapshot.RiskLevel} ({snapshot.RiskScore}/100). Tín hiệu chính: {string.Join("; ", snapshot.TopSignals.Take(3).Select(s => s.Message))}.";
+        return new AiToolResult { Success = true, Message = message, Data = snapshot };
+    }
+
+    private async Task<AiToolResult> ExplainMoneyExceptionsAsync(CancellationToken ct)
+    {
+        var report = await _operationsCopilot.ExplainMoneyExceptionsAsync(ct);
+        var exceptionCount = report.PayOSPaidWithoutLedger.Count + report.LedgerWithoutPayOS.Count;
+        var message = exceptionCount == 0 && report.PendingRefunds.Count == 0 && report.PendingPayouts.Count == 0
+            ? "Tài chính hiện không có exception PayOS/ledger/refund/payout nổi bật."
+            : $"Có {exceptionCount} lệch PayOS/ledger, {report.PendingRefunds.Count} refund pending và {report.PendingPayouts.Count} payout cần theo dõi.";
+        return new AiToolResult { Success = true, Message = message, Data = report };
+    }
+
+    private async Task<AiToolResult> InspectVehicleTimelineAsync(JsonElement args, CancellationToken ct)
+    {
+        var carId = GetInt(args, "carId");
+        var plate = GetString(args, "licensePlate") ?? GetString(args, "plate");
+        var timeline = await _operationsCopilot.InspectVehicleTimelineAsync(carId, plate, ct);
+        var message = timeline.CarID.HasValue
+            ? $"Timeline xe #{timeline.CarID} ({timeline.LicensePlate}): rủi ro {timeline.RiskLevel} ({timeline.RiskScore}/100), {timeline.Timeline.Count} sự kiện, {timeline.RiskSignals.Count} tín hiệu cần chú ý."
+            : "Không tìm thấy xe phù hợp để dựng timeline.";
+        return new AiToolResult { Success = timeline.CarID.HasValue, Message = message, Data = timeline };
+    }
+
+    private async Task<AiToolResult> SummarizeCameraRiskAsync(CancellationToken ct)
+    {
+        var summary = await _operationsCopilot.SummarizeCameraRiskAsync(ct);
+        var message = $"Camera 24h: {summary.TotalEvents24h} events, {summary.AreaMismatchCount} mismatch, {summary.UnknownPlateCount} biển lạ, {summary.LowConfidenceCount} low confidence. Risk {summary.RiskScore}/100.";
+        return new AiToolResult { Success = true, Message = message, Data = summary };
+    }
+
+    private async Task<AiToolResult> RecommendNextActionsAsync(CancellationToken ct)
+    {
+        var plan = await _operationsCopilot.RecommendNextActionsAsync(ct);
+        var top = plan.Actions.FirstOrDefault();
+        var message = top == null
+            ? "Chưa có hành động khẩn cấp."
+            : $"Ưu tiên cao nhất: {top.Priority} - {top.Action} Lý do: {top.Reason}";
+        return new AiToolResult { Success = true, Message = message, Data = plan };
     }
 
     private async Task<AiToolResult> SearchCarsAsync(JsonElement args, AiConversationState state, CancellationToken ct)
@@ -174,7 +247,6 @@ public sealed class AiToolExecutor : IAiToolExecutor
                 c.Transmission,
                 c.PricePerDay,
                 c.PricePerHour,
-                c.DefaultDeposit,
                 c.ImageURL,
                 c.Features,
                 c.RentalTerms,
@@ -210,15 +282,16 @@ public sealed class AiToolExecutor : IAiToolExecutor
             ? totalHours * car.PricePerHour
             : days * (car.DiscountPrice ?? car.PricePerDay);
         var driverFee = driverService ? totalHours * 80000m : 0m;
+        var estimatedTotal = rentalAmount + driverFee + ServiceFee;
         var quote = new AiPriceQuote
         {
             CarId = car.CarID,
             CarName = car.CarName,
             RentalAmount = rentalAmount,
             DriverFee = driverFee,
-            PlatformFee = PlatformFee,
-            Deposit = car.DefaultDeposit,
-            EstimatedTotal = rentalAmount + driverFee + PlatformFee,
+            ServiceFee = ServiceFee,
+            Deposit = DepositPolicy.Calculate(estimatedTotal),
+            EstimatedTotal = estimatedTotal,
             TotalHours = totalHours,
             RentalDays = days
         };
@@ -259,7 +332,7 @@ public sealed class AiToolExecutor : IAiToolExecutor
             TotalHours = quote.TotalHours,
             TotalPrice = quote.EstimatedTotal,
             DepositAmount = quote.Deposit,
-            ReservationFee = Math.Round(quote.EstimatedTotal * 0.2m, 0, MidpointRounding.AwayFromZero),
+            ReservationFee = quote.Deposit,
             BookingStatusID = status.BookingStatusID,
             DeliveryAddress = GetString(args, "pickupLocation"),
             AdminNotes = GetString(args, "note")

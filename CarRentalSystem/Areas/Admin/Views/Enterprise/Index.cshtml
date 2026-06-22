@@ -1,7 +1,7 @@
 @model CarRentalSystem.Areas.Admin.Models.EnterpriseCommandCenterViewModel
 @using CarRentalSystem.Areas.Admin.Models
 @{
-    ViewData["Title"] = "Enterprise Command Center";
+    ViewData["Title"] = "Trung tâm điều hành doanh nghiệp";
 }
 
 @section Styles {
@@ -49,24 +49,67 @@
         .enterprise-table th {
             vertical-align: middle;
         }
+
+        .ops-copilot {
+            border: 1px solid rgba(56, 189, 248, .35);
+            background: linear-gradient(135deg, rgba(14, 116, 144, .20), rgba(15, 23, 42, .92));
+            border-radius: 8px;
+        }
+
+        .ops-copilot-output {
+            min-height: 132px;
+            border: 1px solid var(--admin-border);
+            background: rgba(15, 23, 42, .76);
+            border-radius: 8px;
+        }
+
+        .ops-copilot-card {
+            border: 1px solid rgba(148, 163, 184, .22);
+            border-left: 4px solid #38bdf8;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, .84);
+            padding: .85rem;
+        }
+
+        .ops-copilot-card.critical,
+        .ops-copilot-card.high,
+        .ops-copilot-card.p0 { border-left-color: #ef4444; }
+
+        .ops-copilot-card.warning,
+        .ops-copilot-card.medium,
+        .ops-copilot-card.p1 { border-left-color: #f59e0b; }
+
+        .ops-copilot-card.success,
+        .ops-copilot-card.low,
+        .ops-copilot-card.p3 { border-left-color: #22c55e; }
+
+        .ops-copilot-card-title {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .ops-copilot-card-detail {
+            color: #cbd5e1;
+            font-size: .875rem;
+        }
     </style>
 }
 
 <div class="enterprise-header p-3 p-lg-4 mb-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
         <div>
-            <div class="text-uppercase text-info fw-bold small mb-2">Enterprise operating layer</div>
-            <h1 class="h3 fw-bold mb-2">Command Center</h1>
+            <div class="text-uppercase text-info fw-bold small mb-2">Lớp vận hành doanh nghiệp</div>
+            <h1 class="h3 fw-bold mb-2">Trung tâm điều hành</h1>
             <p class="mb-0 text-secondary">
-                One screen for booking, money, fleet, evidence, support, compliance and API readiness signals.
+                Một màn hình cho tín hiệu đơn thuê, dòng tiền, đội xe, bằng chứng, hỗ trợ, tuân thủ và mức sẵn sàng API.
             </p>
         </div>
         <div class="d-flex flex-wrap align-items-start gap-2">
             <a href="/Admin/Enterprise/Snapshot" class="btn btn-outline-info btn-sm">
-                <i class="bi bi-braces me-1"></i> JSON snapshot
+                <i class="bi bi-braces me-1"></i> Snapshot JSON
             </a>
             <a href="/Admin/Enterprise" class="btn btn-primary btn-sm">
-                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
             </a>
         </div>
     </div>
@@ -74,6 +117,35 @@
         Generated UTC: @Model.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")
     </div>
 </div>
+
+<section class="ops-copilot p-3 p-lg-4 mb-4" aria-label="Copilot vận hành đội xe AI">
+    <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 mb-3">
+        <div>
+            <div class="text-uppercase text-info fw-bold small mb-1">AI Fleet Operations Copilot</div>
+            <div class="text-uppercase text-info fw-bold small mb-2">Copilot vận hành đội xe AI</div>
+            <h2 class="h5 fw-bold mb-1">Hỏi vì sao vận hành có rủi ro và cần làm gì tiếp theo</h2>
+            <p class="mb-0 text-secondary">
+                Copilot chỉ đọc cho lệch tiền, GPS, camera ANPR, SLA hỗ trợ, hợp đồng và mức sẵn sàng đội xe.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-content-start">
+            <button type="button" class="btn btn-sm btn-outline-info js-ops-prompt" data-prompt="Tổng quan rủi ro vận hành hôm nay">Tóm tắt vận hành</button>
+            <button type="button" class="btn btn-sm btn-outline-warning js-ops-prompt" data-prompt="Tiền đang lệch ở đâu giữa PayOS ledger refund payout?">Lệch tiền</button>
+            <button type="button" class="btn btn-sm btn-outline-danger js-ops-prompt" data-prompt="Camera ANPR có rủi ro gì trong 24 giờ gần nhất?">Rủi ro camera</button>
+            <button type="button" class="btn btn-sm btn-outline-success js-ops-prompt" data-prompt="Việc cần làm tiếp theo cho staff và manager là gì?">Việc tiếp theo</button>
+        </div>
+    </div>
+    <div class="input-group mb-3">
+        <input id="opsCopilotInput" type="text" class="form-control bg-dark text-white border-secondary"
+               placeholder="VD: dựng timeline xe 51A-12345 hoặc giải thích money exceptions" />
+        <button id="opsCopilotAsk" type="button" class="btn btn-primary">
+            <i class="bi bi-robot me-1"></i> Hỏi Copilot
+        </button>
+    </div>
+    <div id="opsCopilotOutput" class="ops-copilot-output p-3">
+        <div class="text-secondary">Chọn một prompt mẫu hoặc hỏi Copilot về rủi ro vận hành.</div>
+    </div>
+</section>
 
 <div class="row g-3 mb-4">
     @foreach (var kpi in Model.Kpis)
@@ -101,8 +173,8 @@
     <div class="col-12 col-xl-7">
         <div class="enterprise-panel p-3 h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="h5 fw-bold mb-0">Operational Queues</h2>
-                <span class="badge bg-secondary">@Model.Queues.Sum(q => q.Count).ToString("N0") total signals</span>
+                <h2 class="h5 fw-bold mb-0">Hàng đợi vận hành</h2>
+                <span class="badge bg-secondary">@Model.Queues.Sum(q => q.Count).ToString("N0") tín hiệu</span>
             </div>
             <div class="row g-3">
                 @foreach (var queue in Model.Queues)
@@ -127,29 +199,29 @@
     </div>
     <div class="col-12 col-xl-5">
         <div class="enterprise-panel p-3 mb-3">
-            <h2 class="h5 fw-bold mb-3">Finance Snapshot</h2>
+            <h2 class="h5 fw-bold mb-3">Tóm tắt tài chính</h2>
             <div class="table-responsive">
                 <table class="table table-sm table-dark table-hover enterprise-table mb-0">
                     <tbody>
-                        <tr><th>Ledger charges 30d</th><td class="text-end">@Money(Model.Finance.LedgerCharge30Days)</td></tr>
-                        <tr><th>Refunds 30d</th><td class="text-end">@Money(Model.Finance.LedgerRefund30Days)</td></tr>
-                        <tr><th>Deductions 30d</th><td class="text-end">@Money(Model.Finance.LedgerDeduction30Days)</td></tr>
-                        <tr><th>Payouts 30d</th><td class="text-end">@Money(Model.Finance.LedgerPayout30Days)</td></tr>
-                        <tr><th>PayOS without ledger</th><td class="text-end">@Model.Finance.PayOSPaidWithoutLedger</td></tr>
-                        <tr><th>Ledger without PayOS</th><td class="text-end">@Model.Finance.LedgerWithoutPayOS</td></tr>
+                        <tr><th>Khoản thu ledger 30 ngày</th><td class="text-end">@Money(Model.Finance.LedgerCharge30Days)</td></tr>
+                        <tr><th>Hoàn tiền 30 ngày</th><td class="text-end">@Money(Model.Finance.LedgerRefund30Days)</td></tr>
+                        <tr><th>Khấu trừ 30 ngày</th><td class="text-end">@Money(Model.Finance.LedgerDeduction30Days)</td></tr>
+                        <tr><th>Chi trả 30 ngày</th><td class="text-end">@Money(Model.Finance.LedgerPayout30Days)</td></tr>
+                        <tr><th>PayOS chưa có ledger</th><td class="text-end">@Model.Finance.PayOSPaidWithoutLedger</td></tr>
+                        <tr><th>Ledger chưa có PayOS</th><td class="text-end">@Model.Finance.LedgerWithoutPayOS</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
         <div class="enterprise-panel p-3">
-            <h2 class="h5 fw-bold mb-3">Fleet Snapshot</h2>
+            <h2 class="h5 fw-bold mb-3">Tóm tắt đội xe</h2>
             <div class="row g-2">
-                <div class="col-6"><div class="p-2 bg-dark rounded">Available<br /><strong>@Model.Fleet.AvailableCars/@Model.Fleet.TotalCars</strong></div></div>
-                <div class="col-6"><div class="p-2 bg-dark rounded">Utilization<br /><strong>@Model.Fleet.MonthlyUtilizationPercent.ToString("N1")%</strong></div></div>
-                <div class="col-6"><div class="p-2 bg-dark rounded">Maintenance due<br /><strong>@Model.Fleet.MaintenanceDueSoon</strong></div></div>
-                <div class="col-6"><div class="p-2 bg-dark rounded">Tracking gaps<br /><strong>@Model.Fleet.MissingTracking</strong></div></div>
-                <div class="col-6"><div class="p-2 bg-dark rounded">Open alerts<br /><strong>@Model.Fleet.OpenAlerts</strong></div></div>
-                <div class="col-6"><div class="p-2 bg-dark rounded">Pending approval<br /><strong>@Model.Fleet.PendingApprovalCars</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Sẵn sàng<br /><strong>@Model.Fleet.AvailableCars/@Model.Fleet.TotalCars</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Mức sử dụng<br /><strong>@Model.Fleet.MonthlyUtilizationPercent.ToString("N1")%</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Đến hạn bảo trì<br /><strong>@Model.Fleet.MaintenanceDueSoon</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Thiếu tracking<br /><strong>@Model.Fleet.MissingTracking</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Cảnh báo mở<br /><strong>@Model.Fleet.OpenAlerts</strong></div></div>
+                <div class="col-6"><div class="p-2 bg-dark rounded">Chờ duyệt<br /><strong>@Model.Fleet.PendingApprovalCars</strong></div></div>
             </div>
         </div>
     </div>
@@ -158,20 +230,20 @@
 <div class="enterprise-panel p-3 mb-4">
     <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
         <div>
-            <h2 class="h5 fw-bold mb-1">Capability Coverage</h2>
-            <div class="small text-secondary">The 14 enterprise modules from the roadmap, mapped to current runtime coverage.</div>
+            <h2 class="h5 fw-bold mb-1">Mức phủ năng lực</h2>
+            <div class="small text-secondary">14 module doanh nghiệp trong roadmap, được ánh xạ với mức phủ runtime hiện tại.</div>
         </div>
-        <span class="small text-secondary">Live: @Model.Capabilities.Count(c => c.Status == EnterpriseCapabilityState.Live) / @Model.Capabilities.Count</span>
+        <span class="small text-secondary">Đang chạy: @Model.Capabilities.Count(c => c.Status == EnterpriseCapabilityState.Live) / @Model.Capabilities.Count</span>
     </div>
     <div class="table-responsive">
         <table class="table table-dark table-hover enterprise-table mb-0">
             <thead>
                 <tr>
                     <th>Module</th>
-                    <th>Status</th>
-                    <th>Current coverage</th>
-                    <th>Next step</th>
-                    <th>Priority</th>
+                    <th>Trạng thái</th>
+                    <th>Mức phủ hiện tại</th>
+                    <th>Bước tiếp theo</th>
+                    <th>Ưu tiên</th>
                 </tr>
             </thead>
             <tbody>
@@ -179,7 +251,7 @@
                 {
                     <tr>
                         <td class="fw-semibold">@capability.Module</td>
-                        <td><span class="badge enterprise-status @CapabilityBadgeClass(capability.Status)">@capability.Status</span></td>
+                        <td><span class="badge enterprise-status @CapabilityBadgeClass(capability.Status)">@UiLabels.EnterpriseCapabilityStatus(capability.Status)</span></td>
                         <td>@capability.CurrentCoverage</td>
                         <td>@capability.NextStep</td>
                         <td><span class="badge bg-secondary">@capability.Priority</span></td>
@@ -243,4 +315,152 @@
     {
         return string.Format("{0:N0} VND", amount);
     }
+}
+
+@section Scripts {
+    <script>
+        (() => {
+            const input = document.getElementById('opsCopilotInput');
+            const askButton = document.getElementById('opsCopilotAsk');
+            const output = document.getElementById('opsCopilotOutput');
+            const sessionId = `ops-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+            function clearOutput() {
+                output.innerHTML = '';
+            }
+
+            function appendText(text, className = 'text-secondary') {
+                const div = document.createElement('div');
+                div.className = className;
+                div.textContent = text;
+                output.appendChild(div);
+                return div;
+            }
+
+            function appendCard(title, detail, severity, url) {
+                const card = document.createElement('div');
+                card.className = `ops-copilot-card ${String(severity || '').toLowerCase()} mb-2`;
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'ops-copilot-card-title';
+                titleEl.textContent = title;
+                card.appendChild(titleEl);
+
+                const detailEl = document.createElement('div');
+                detailEl.className = 'ops-copilot-card-detail mt-1';
+                detailEl.textContent = detail || '';
+                card.appendChild(detailEl);
+
+                if (url) {
+                    const link = document.createElement('a');
+                    link.className = 'btn btn-sm btn-outline-info mt-2';
+                    link.href = url;
+                    link.textContent = 'Open related page';
+                    card.appendChild(link);
+                }
+
+                output.appendChild(card);
+            }
+
+            function getPayloadData(response) {
+                if (!response || !Array.isArray(response.data) || response.data.length === 0) return null;
+                return response.data[0];
+            }
+
+            function renderActions(actions) {
+                if (!Array.isArray(actions) || actions.length === 0) return;
+                appendText('Recommended actions', 'fw-bold text-info mb-2 mt-3');
+                actions.slice(0, 8).forEach(action => {
+                    appendCard(`${action.priority || 'P?'} - ${action.owner || 'Ops'}`, action.action || action.reason, (action.priority || '').toLowerCase(), action.url);
+                });
+            }
+
+            function renderResponse(response) {
+                clearOutput();
+                appendText(response.reply || 'Copilot returned no message.', 'text-white mb-3');
+                const data = getPayloadData(response);
+                if (!data) return;
+
+                if (typeof data.riskScore === 'number') {
+                    appendCard(`Risk ${data.riskLevel || ''}: ${data.riskScore}/100`, `Generated ${data.generatedAtUtc || ''}`, data.riskLevel || 'info');
+                }
+
+                if (Array.isArray(data.topSignals)) {
+                    appendText('Top signals', 'fw-bold text-info mb-2 mt-3');
+                    data.topSignals.forEach(signal => appendCard(signal.area || 'Signal', signal.message, signal.severity, signal.url));
+                }
+
+                if (Array.isArray(data.recommendedActions)) {
+                    renderActions(data.recommendedActions);
+                }
+
+                if (Array.isArray(data.actions)) {
+                    renderActions(data.actions);
+                }
+
+                if (Array.isArray(data.recentRiskEvents)) {
+                    appendText('Recent camera risk events', 'fw-bold text-info mb-2 mt-3');
+                    data.recentRiskEvents.slice(0, 8).forEach(evt => {
+                        appendCard(`${evt.matchStatus} - ${evt.licensePlate}`, `${evt.cameraCode} at ${evt.capturedAt}, confidence ${Number(evt.confidence || 0).toLocaleString('vi-VN', { style: 'percent' })}. ${evt.reason || ''}`, evt.matchStatus === 'AreaMismatch' ? 'critical' : 'warning', '/Admin/Camera/Monitor');
+                    });
+                }
+
+                if (Array.isArray(data.payOSPaidWithoutLedger) || Array.isArray(data.ledgerWithoutPayOS)) {
+                    appendText('Lệch tiền', 'fw-bold text-info mb-2 mt-3');
+                    (data.payOSPaidWithoutLedger || []).slice(0, 5).forEach(item => {
+                        appendCard(`PayOS paid without ledger #${item.orderCode}`, `${Number(item.amount || 0).toLocaleString('vi-VN')} VND, transaction ${item.payOSTransactionID}`, 'critical', '/Admin/Payment');
+                    });
+                    (data.ledgerWithoutPayOS || []).slice(0, 5).forEach(item => {
+                        appendCard(`Ledger chưa có PayOS #${item.orderCode}`, `${Number(item.amount || 0).toLocaleString('vi-VN')} VND, ${item.entryType}`, 'critical', '/Admin/Payment');
+                    });
+                }
+
+                if (Array.isArray(data.timeline)) {
+                    appendText(`Timeline ${data.vehicle || ''} ${data.licensePlate || ''}`, 'fw-bold text-info mb-2 mt-3');
+                    const timelineCarId = data.carID || data.carId;
+                    if (timelineCarId) {
+                        appendCard(`Open vehicle timeline`, `Car #${timelineCarId}, risk ${data.riskScore}/100`, data.riskLevel || 'info', '/Tracking/Map');
+                    }
+                    data.timeline.slice(0, 10).forEach(evt => {
+                        appendCard(`${evt.type}: ${evt.title}`, `${evt.timestamp} - ${evt.detail}`, evt.severity, evt.url);
+                    });
+                }
+            }
+
+            async function askCopilot(prompt) {
+                const message = (prompt || input.value || '').trim();
+                if (!message) return;
+                input.value = message;
+                clearOutput();
+                appendText('Copilot is reading live operations data...', 'text-info');
+                askButton.disabled = true;
+                try {
+                    const response = await fetch('/api/ai/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: 'ops', sessionId, message })
+                    });
+                    if (!response.ok) {
+                        clearOutput();
+                        appendText(`Copilot request failed: HTTP ${response.status}`, 'text-danger');
+                        return;
+                    }
+                    renderResponse(await response.json());
+                } catch (error) {
+                    clearOutput();
+                    appendText(`Copilot request failed: ${error.message}`, 'text-danger');
+                } finally {
+                    askButton.disabled = false;
+                }
+            }
+
+            askButton?.addEventListener('click', () => askCopilot());
+            input?.addEventListener('keydown', event => {
+                if (event.key === 'Enter') askCopilot();
+            });
+            document.querySelectorAll('.js-ops-prompt').forEach(button => {
+                button.addEventListener('click', () => askCopilot(button.dataset.prompt));
+            });
+        })();
+    </script>
 }

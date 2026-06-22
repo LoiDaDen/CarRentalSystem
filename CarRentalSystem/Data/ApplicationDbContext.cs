@@ -1,5 +1,6 @@
 using CarRentalSystem.Helpers;
 using CarRentalSystem.Models;
+using CarRentalSystem.Models.Tutorial;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Data
@@ -25,6 +26,9 @@ namespace CarRentalSystem.Data
         public DbSet<MaintenanceLog> MaintenanceLogs { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<HandoverRecord> HandoverRecords { get; set; }
+        public DbSet<CarInventoryItem> CarInventoryItems { get; set; }
+        public DbSet<HandoverInventoryItem> HandoverInventoryItems { get; set; }
+        public DbSet<LostFoundItem> LostFoundItems { get; set; }
         
         public DbSet<Location> Locations { get; set; }
         public DbSet<CarBrand> CarBrands { get; set; }
@@ -72,6 +76,8 @@ namespace CarRentalSystem.Data
         public DbSet<RefundRequest> RefundRequests { get; set; }
         public DbSet<RefundPayout> RefundPayouts { get; set; }
         public DbSet<SettlementReview> SettlementReviews { get; set; }
+        public DbSet<CustomerRiskAssessment> CustomerRiskAssessments { get; set; }
+        public DbSet<PartnerPayoutStatement> PartnerPayoutStatements { get; set; }
         
         // Scheduling
         public DbSet<AvailabilitySchedule> AvailabilitySchedules { get; set; }
@@ -103,6 +109,8 @@ namespace CarRentalSystem.Data
         public DbSet<Area> Areas { get; set; }
         public DbSet<AreaLocation> AreaLocations { get; set; }
         public DbSet<AreaStaff> AreaStaffs { get; set; }
+        public DbSet<CarChangeRequest> CarChangeRequests { get; set; }
+        public DbSet<CarChangeApprovalStep> CarChangeApprovalSteps { get; set; }
         public DbSet<CameraDevice> CameraDevices { get; set; }
         public DbSet<CameraGateEvent> CameraGateEvents { get; set; }
         public DbSet<VehicleAreaPresence> VehicleAreaPresences { get; set; }
@@ -115,6 +123,8 @@ namespace CarRentalSystem.Data
         public DbSet<ConsentRecord> ConsentRecords { get; set; }
         public DbSet<SupportTicket> SupportTickets { get; set; }
         public DbSet<ApiKey> ApiKeys { get; set; }
+        public DbSet<UserTutorialProgress> UserTutorialProgresses { get; set; }
+        public DbSet<EkycMobileSession> EkycMobileSessions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -133,6 +143,15 @@ namespace CarRentalSystem.Data
                 .Property(c => c.ContractSigningMode)
                 .HasMaxLength(40)
                 .HasDefaultValue(CarContractSigningModes.PhysicalSelfManaged);
+
+            modelBuilder.Entity<Car>()
+                .Property(c => c.ApprovalStatus)
+                .HasMaxLength(20)
+                .HasDefaultValue(CarApprovalStatusConstants.Approved);
+
+            modelBuilder.Entity<Car>()
+                .Property(c => c.IsPendingDeletion)
+                .HasDefaultValue(false);
 
             modelBuilder.Entity<DigitalContract>()
                 .Property(c => c.ContractSigningMode)
@@ -176,6 +195,14 @@ namespace CarRentalSystem.Data
 
             modelBuilder.Entity<TrackingIngestNonce>()
                 .HasIndex(n => n.CreatedAt);
+
+            modelBuilder.Entity<VehicleTracking>()
+                .Property(t => t.Source)
+                .HasMaxLength(40)
+                .HasDefaultValue("HardwareGps");
+
+            modelBuilder.Entity<VehicleTracking>()
+                .HasIndex(t => new { t.CarID, t.Timestamp });
 
             modelBuilder.Entity<Payment>()
                 .Property(p => p.Amount)
@@ -310,6 +337,96 @@ namespace CarRentalSystem.Data
                 .HasForeignKey(s => s.HandoverID)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<CustomerRiskAssessment>()
+                .HasIndex(r => new { r.UserID, r.AssessedAtUtc });
+
+            modelBuilder.Entity<CustomerRiskAssessment>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PartnerPayoutStatement>()
+                .HasIndex(s => s.IdempotencyKey)
+                .IsUnique();
+
+            modelBuilder.Entity<PartnerPayoutStatement>()
+                .HasIndex(s => new { s.PartnerUserID, s.PeriodStartUtc, s.PeriodEndUtc });
+
+            modelBuilder.Entity<PartnerPayoutStatement>()
+                .HasOne(s => s.PartnerUser)
+                .WithMany()
+                .HasForeignKey(s => s.PartnerUserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<CarInventoryItem>()
+                .Property(i => i.UnitReplacementCost)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<CarInventoryItem>()
+                .HasIndex(i => new { i.CarID, i.IsActive, i.IsDeleted });
+
+            modelBuilder.Entity<CarInventoryItem>()
+                .HasOne(i => i.Car)
+                .WithMany(c => c.InventoryItems)
+                .HasForeignKey(i => i.CarID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<HandoverInventoryItem>()
+                .Property(i => i.UnitReplacementCost)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<HandoverInventoryItem>()
+                .Property(i => i.MissingCharge)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<HandoverInventoryItem>()
+                .Property(i => i.ConditionStatus)
+                .HasMaxLength(20)
+                .HasDefaultValue(HandoverInventoryConditionStatusConstants.Present);
+
+            modelBuilder.Entity<HandoverInventoryItem>()
+                .HasIndex(i => new { i.HandoverID, i.MissingQuantity });
+
+            modelBuilder.Entity<HandoverInventoryItem>()
+                .HasOne(i => i.HandoverRecord)
+                .WithMany(h => h.InventoryItems)
+                .HasForeignKey(i => i.HandoverID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<HandoverInventoryItem>()
+                .HasOne(i => i.CarInventoryItem)
+                .WithMany()
+                .HasForeignKey(i => i.CarInventoryItemID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<LostFoundItem>()
+                .HasIndex(i => new { i.BookingID, i.Status, i.FoundAt });
+
+            modelBuilder.Entity<LostFoundItem>()
+                .HasOne(i => i.Booking)
+                .WithMany(b => b.LostFoundItems)
+                .HasForeignKey(i => i.BookingID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<LostFoundItem>()
+                .HasOne(i => i.HandoverRecord)
+                .WithMany(h => h.LostFoundItems)
+                .HasForeignKey(i => i.HandoverID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<LostFoundItem>()
+                .HasOne(i => i.ReportedByUser)
+                .WithMany()
+                .HasForeignKey(i => i.ReportedByUserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<LostFoundItem>()
+                .HasOne(i => i.ResolvedByUser)
+                .WithMany()
+                .HasForeignKey(i => i.ResolvedByUserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
             modelBuilder.Entity<PrivacyRequest>()
                 .HasIndex(p => new { p.UserID, p.Status, p.CreatedAt });
 
@@ -358,6 +475,22 @@ namespace CarRentalSystem.Data
                 .WithMany(d => d.ConsentRecords)
                 .HasForeignKey(c => c.LegalDocumentVersionID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EkycMobileSession>()
+                .HasIndex(s => s.TokenHash)
+                .IsUnique();
+
+            modelBuilder.Entity<EkycMobileSession>()
+                .HasIndex(s => new { s.UserID, s.ExpiresAtUtc });
+
+            modelBuilder.Entity<EkycMobileSession>()
+                .HasIndex(s => s.Status);
+
+            modelBuilder.Entity<EkycMobileSession>()
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserID)
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<SupportTicket>()
                 .HasIndex(t => new { t.UserID, t.Status, t.CreatedAt });
@@ -545,6 +678,18 @@ namespace CarRentalSystem.Data
                 .WithMany()
                 .HasForeignKey(b => b.CustomerDrivingLicenseID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.AssignedStaffUser)
+                .WithMany()
+                .HasForeignKey(b => b.AssignedStaffUserID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.AssignedByUser)
+                .WithMany()
+                .HasForeignKey(b => b.AssignedByUserID)
+                .OnDelete(DeleteBehavior.NoAction);
 
             // Configure DeleteBehavior for Location in Car
             modelBuilder.Entity<Car>()
@@ -972,6 +1117,46 @@ namespace CarRentalSystem.Data
                 .HasQueryFilter(a => !a.IsDeleted);
 
             // Camera ANPR — devices, gate events and vehicle presence
+            modelBuilder.Entity<CarChangeRequest>()
+                .HasOne(request => request.Car)
+                .WithMany(car => car.ChangeRequests)
+                .HasForeignKey(request => request.CarID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CarChangeRequest>()
+                .HasOne(request => request.Owner)
+                .WithMany()
+                .HasForeignKey(request => request.OwnerID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CarChangeRequest>()
+                .HasOne(request => request.Area)
+                .WithMany()
+                .HasForeignKey(request => request.AreaID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<CarChangeRequest>()
+                .HasIndex(request => new { request.Status, request.CurrentStage, request.AreaID });
+
+            modelBuilder.Entity<CarChangeRequest>()
+                .HasIndex(request => new { request.CarID, request.Status });
+
+            modelBuilder.Entity<CarChangeApprovalStep>()
+                .HasOne(step => step.Request)
+                .WithMany(request => request.ApprovalSteps)
+                .HasForeignKey(step => step.CarChangeRequestID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CarChangeApprovalStep>()
+                .HasOne(step => step.Actor)
+                .WithMany()
+                .HasForeignKey(step => step.ActorUserID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<CarChangeApprovalStep>()
+                .HasIndex(step => new { step.CarChangeRequestID, step.Stage })
+                .IsUnique();
+
             modelBuilder.Entity<CameraDevice>()
                 .HasIndex(c => c.Code)
                 .IsUnique();
@@ -1109,7 +1294,41 @@ namespace CarRentalSystem.Data
                 .HasFilter("[CitizenId] IS NOT NULL");
 
             modelBuilder.Entity<User>()
+                .HasIndex(u => u.CitizenIdHash)
+                .IsUnique()
+                .HasFilter("[CitizenIdHash] IS NOT NULL");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.DrivingLicenseHash)
+                .IsUnique()
+                .HasFilter("[DrivingLicenseHash] IS NOT NULL");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.PhoneHash)
+                .IsUnique()
+                .HasFilter("[PhoneHash] IS NOT NULL");
+
+            modelBuilder.Entity<User>()
                 .HasIndex(u => u.Role);
+
+            modelBuilder.Entity<UserTutorialProgress>()
+                .ToTable("UserTutorialProgress");
+
+            modelBuilder.Entity<UserTutorialProgress>()
+                .HasIndex(progress => new
+                {
+                    progress.UserID,
+                    progress.RoleName,
+                    progress.PanelName,
+                    progress.TutorialKey
+                })
+                .IsUnique();
+
+            modelBuilder.Entity<UserTutorialProgress>()
+                .HasOne(progress => progress.User)
+                .WithMany()
+                .HasForeignKey(progress => progress.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Car indexes
             modelBuilder.Entity<Car>()
@@ -1160,6 +1379,9 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => new { b.UserID, b.CreatedAt });
 
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.AssignedStaffUserID, b.StartDate });
+
             // Payment index
             modelBuilder.Entity<Payment>()
                 .HasIndex(p => p.BookingID);
@@ -1184,6 +1406,7 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<Alert>().HasQueryFilter(a => !a.IsDeleted);
             modelBuilder.Entity<Booking>().HasQueryFilter(b => !b.IsDeleted);
             modelBuilder.Entity<BookingAddOn>().HasQueryFilter(ba => !ba.IsDeleted);
+            modelBuilder.Entity<CarInventoryItem>().HasQueryFilter(i => !i.IsDeleted && !i.Car!.IsDeleted);
             modelBuilder.Entity<CarImage>().HasQueryFilter(ci => !ci.IsDeleted);
             modelBuilder.Entity<CartItem>().HasQueryFilter(ci => !ci.IsDeleted);
             modelBuilder.Entity<DigitalContract>().HasQueryFilter(dc => !dc.IsDeleted);
@@ -1192,8 +1415,10 @@ namespace CarRentalSystem.Data
             modelBuilder.Entity<TripBooking>().HasQueryFilter(tb => !tb.IsDeleted);
             modelBuilder.Entity<TripStop>().HasQueryFilter(ts => !ts.TripBooking!.IsDeleted);
             modelBuilder.Entity<HandoverRecord>().HasQueryFilter(hr => !hr.IsDeleted);
+            modelBuilder.Entity<HandoverInventoryItem>().HasQueryFilter(i => !i.IsDeleted && !i.HandoverRecord!.IsDeleted);
             modelBuilder.Entity<InspectionRecord>().HasQueryFilter(ir => !ir.IsDeleted);
             modelBuilder.Entity<Invoice>().HasQueryFilter(i => !i.IsDeleted);
+            modelBuilder.Entity<LostFoundItem>().HasQueryFilter(i => !i.IsDeleted && !i.Booking!.IsDeleted);
             modelBuilder.Entity<LongTermRental>().HasQueryFilter(ltr => !ltr.IsDeleted);
             modelBuilder.Entity<MaintenanceLog>().HasQueryFilter(ml => !ml.IsDeleted);
             modelBuilder.Entity<Payment>().HasQueryFilter(p => !p.IsDeleted);
@@ -1242,6 +1467,13 @@ namespace CarRentalSystem.Data
                 entry.Entity.Code = entry.Entity.Code.Trim().ToUpperInvariant();
                 entry.Entity.UpdatedAt = now;
             }
+
+            foreach (var entry in ChangeTracker.Entries<CarInventoryItem>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified))
+            {
+                entry.Entity.ItemName = entry.Entity.ItemName.Trim();
+                entry.Entity.UpdatedAt = now;
+            }
         }
 
         private void ApplySoftDeleteRules()
@@ -1269,6 +1501,9 @@ namespace CarRentalSystem.Data
                     case BookingAddOn bookingAddOn:
                         bookingAddOn.IsDeleted = true;
                         break;
+                    case CarInventoryItem carInventoryItem:
+                        carInventoryItem.IsDeleted = true;
+                        break;
                     case CarImage carImage:
                         carImage.IsDeleted = true;
                         break;
@@ -1290,8 +1525,14 @@ namespace CarRentalSystem.Data
                     case HandoverRecord handoverRecord:
                         handoverRecord.IsDeleted = true;
                         break;
+                    case HandoverInventoryItem handoverInventoryItem:
+                        handoverInventoryItem.IsDeleted = true;
+                        break;
                     case InspectionRecord inspectionRecord:
                         inspectionRecord.IsDeleted = true;
+                        break;
+                    case LostFoundItem lostFoundItem:
+                        lostFoundItem.IsDeleted = true;
                         break;
                     case Invoice invoice:
                         invoice.IsDeleted = true;

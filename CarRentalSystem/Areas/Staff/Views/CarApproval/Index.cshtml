@@ -1,0 +1,24 @@
+@model IEnumerable<CarRentalSystem.Models.CarChangeRequest>
+@{
+    ViewData["Title"] = "Duyệt xe khu vực";
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Duyệt xe khu vực</h1>
+            <p class="text-muted mb-0">Staff kiểm tra bước đầu cho yêu cầu tạo, sửa và xóa xe trong khu vực.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @await Html.PartialAsync("_CarChangeApprovalQueue", Model)
+</div>

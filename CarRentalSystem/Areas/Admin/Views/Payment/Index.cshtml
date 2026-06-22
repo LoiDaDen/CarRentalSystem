@@ -61,7 +61,7 @@
                                         _ => "bg-secondary"
                                     };
                                 }
-                                <span class="badge @badgeClass rounded-pill px-3">@payment.PaymentStatus</span>
+                                <span class="badge @badgeClass rounded-pill px-3">@UiLabels.PaymentStatus(payment.PaymentStatus)</span>
                             </td>
                             <td class="text-center pe-4">
                                 @if (payment.PaymentStatus == "Pending")

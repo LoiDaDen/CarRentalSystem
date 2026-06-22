@@ -19,13 +19,13 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "cypress": {
+    "playwright": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
       "applicationUrl": "http://localhost:5168",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Cypress"
+        "ASPNETCORE_ENVIRONMENT": "Playwright"
       }
     }
   }

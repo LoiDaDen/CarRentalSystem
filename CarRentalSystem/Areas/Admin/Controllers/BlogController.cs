@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using CarRentalSystem.ViewModels;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class BlogController : Controller
     {
         private const long MaxBlogImageBytes = 5 * 1024 * 1024;

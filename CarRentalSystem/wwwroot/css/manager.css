@@ -1,0 +1,6 @@
+.manager-portal { --portal-accent: #4338ca; }
+.manager-sidebar { background: linear-gradient(180deg, #25205f, #172033); }
+.manager-portal .btn-primary { background: #4338ca; border-color: #4338ca; }
+.manager-shortcuts { gap: 6px; }
+.manager-shortcuts a { color: #4338ca; background: #eef2ff; padding: 7px 10px; border-radius: 9px; text-decoration: none; font-size: .78rem; font-weight: 700; }
+.manager-alert-card { border-left: 4px solid #f59e0b; }

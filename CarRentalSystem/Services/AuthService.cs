@@ -3,7 +3,6 @@ using CarRentalSystem.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace CarRentalSystem.Services
@@ -24,31 +23,33 @@ namespace CarRentalSystem.Services
     {
         private readonly IRepository<User> _userRepository;
         private readonly IPiiEncryptionService _piiEncryption;
+        private readonly IIdentityHashService _identityHash;
+        private readonly IPasswordHashService _passwordHashService;
         private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IRepository<User> userRepository, IPiiEncryptionService piiEncryption, ILogger<AuthService> logger)
+        public AuthService(
+            IRepository<User> userRepository,
+            IPiiEncryptionService piiEncryption,
+            IIdentityHashService identityHash,
+            IPasswordHashService passwordHashService,
+            ILogger<AuthService> logger)
         {
             _userRepository = userRepository;
             _piiEncryption = piiEncryption;
+            _identityHash = identityHash;
+            _passwordHashService = passwordHashService;
             _logger = logger;
-        }
-
-        private static string ComputeHash(string? value)
-        {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value.Trim()));
-            return Convert.ToHexString(bytes).ToLowerInvariant();
         }
 
         public async Task<bool> IsCitizenIdTakenAsync(string citizenId, int excludeUserId)
         {
             if (string.IsNullOrEmpty(citizenId)) return false;
-            var hash = ComputeHash(citizenId);
+            var hashes = _identityHash.HashesForLookup(citizenId);
 
             // Tối ưu: Filter ở database level thay vì load tất cả users vào memory
             var exists = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
-                .Where(u => u.CitizenIdHash == hash)
+                .Where(u => u.CitizenIdHash != null && hashes.Contains(u.CitizenIdHash))
                 .AnyAsync();
 
             if (exists) return true;
@@ -67,12 +68,12 @@ namespace CarRentalSystem.Services
         public async Task<bool> IsDrivingLicenseTakenAsync(string licenseNumber, int excludeUserId)
         {
             if (string.IsNullOrEmpty(licenseNumber)) return false;
-            var hash = ComputeHash(licenseNumber);
+            var hashes = _identityHash.HashesForLookup(licenseNumber);
 
             // Tối ưu: Filter ở database level
             var exists = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
-                .Where(u => u.DrivingLicenseHash == hash)
+                .Where(u => u.DrivingLicenseHash != null && hashes.Contains(u.DrivingLicenseHash))
                 .AnyAsync();
 
             if (exists) return true;
@@ -107,12 +108,12 @@ namespace CarRentalSystem.Services
         public async Task<bool> IsPhoneTakenAsync(string phone, int excludeUserId)
         {
             if (string.IsNullOrEmpty(phone)) return false;
-            var hash = ComputeHash(phone);
+            var hashes = _identityHash.HashesForLookup(phone);
 
             // Tối ưu: Filter ở database level
             var exists = await _userRepository.Query()
                 .Where(u => u.UserID != excludeUserId)
-                .Where(u => u.PhoneHash == hash)
+                .Where(u => u.PhoneHash != null && hashes.Contains(u.PhoneHash))
                 .AnyAsync();
 
             if (exists) return true;
@@ -132,8 +133,19 @@ namespace CarRentalSystem.Services
             var user = await _userRepository.Query()
                 .FirstOrDefaultAsync(u => u.Email == email);
 
-            if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+            if (user != null)
             {
+                var verification = _passwordHashService.Verify(password, user.PasswordHash);
+                if (!verification.Success)
+                    return null;
+
+                if (verification.NeedsRehash)
+                {
+                    user.PasswordHash = _passwordHashService.HashPassword(password);
+                    _userRepository.Update(user);
+                    await _userRepository.SaveChangesAsync();
+                }
+
                 return user;
             }
             return null;
@@ -141,7 +153,7 @@ namespace CarRentalSystem.Services
 
         public async Task<User> RegisterAsync(User user)
         {
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
+            user.PasswordHash = _passwordHashService.HashPassword(user.PasswordHash);
             await _userRepository.AddAsync(user);
             await _userRepository.SaveChangesAsync();
             return user;

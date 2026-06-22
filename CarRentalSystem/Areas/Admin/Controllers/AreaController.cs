@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 // CarRentalSystem/Areas/Admin/Controllers/AreaController.cs
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
@@ -16,7 +17,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager", "Staff")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class AreaController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -596,7 +597,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         // ═══════════════════════════════════════════════
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
         public async Task<IActionResult> DeletePermanent(int id)
         {
             // Lấy area đã bị soft delete

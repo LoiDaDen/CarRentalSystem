@@ -1,0 +1,118 @@
+@model CarRentalSystem.ViewModels.OwnerBookingDetailsViewModel
+@{
+    ViewData["Title"] = $"Đơn thuê #{Model.BookingID}";
+}
+
+<div class="owner-portal">
+    @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <section class="owner-panel">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <a asp-action="Bookings" class="owner-muted text-decoration-none"><i class="bi bi-arrow-left"></i> Quay lại danh sách đơn</a>
+                <h2 class="mt-2">Đơn thuê #@Model.BookingID</h2>
+                <p class="owner-muted mb-0">@Model.CarName - @Model.LicensePlate</p>
+            </div>
+            <span class="owner-badge"><span class="owner-status-dot @Model.StatusClass"></span>@Model.StatusName</span>
+        </div>
+    </section>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <section class="owner-panel h-100">
+                <h2>Thông tin đơn thuê</h2>
+                <dl class="row mt-3 mb-0">
+                    <dt class="col-sm-4">Khách thuê</dt>
+                    <dd class="col-sm-8">@Model.CustomerName<br /><span class="owner-muted">@Model.CustomerPhone</span></dd>
+                    <dt class="col-sm-4">Thời gian nhận xe</dt>
+                    <dd class="col-sm-8">@Model.StartDate.ToString("dd/MM/yyyy HH:mm")</dd>
+                    <dt class="col-sm-4">Thời gian trả xe</dt>
+                    <dd class="col-sm-8">@Model.EndDate.ToString("dd/MM/yyyy HH:mm")</dd>
+                    <dt class="col-sm-4">Giá thuê</dt>
+                    <dd class="col-sm-8">@Model.TotalPrice.ToString("N0")đ</dd>
+                    <dt class="col-sm-4">Tiền cọc hệ thống giữ</dt>
+                    <dd class="col-sm-8">@Model.DepositAmount.ToString("N0")đ <span class="owner-muted">(@Model.DepositStatus)</span></dd>
+                    @if (!string.IsNullOrWhiteSpace(Model.CancelReason))
+                    {
+                        <dt class="col-sm-4">Lý do từ chối/hủy</dt>
+                        <dd class="col-sm-8 text-danger">@Model.CancelReason</dd>
+                    }
+                </dl>
+            </section>
+        </div>
+        <div class="col-lg-5">
+            <section class="owner-panel h-100">
+                <h2>Xử lý của chủ xe</h2>
+                @if (Model.CanDecide)
+                {
+                    <p class="owner-muted">Bạn là chủ xe nên có quyền duyệt hoặc từ chối đơn thuê này.</p>
+                    <form asp-action="ApproveBooking" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.BookingID" />
+                        <button type="submit" class="owner-filter-button w-100">Duyệt đơn thuê</button>
+                    </form>
+                    <form asp-action="RejectBooking" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.BookingID" />
+                        <label class="form-label fw-bold" for="reason">Lý do từ chối</label>
+                        <textarea id="reason" name="reason" class="form-control mb-2" maxlength="1000" rows="3" required></textarea>
+                        <button type="submit" class="btn btn-outline-danger w-100">Từ chối đơn thuê</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="owner-muted mb-0">Đơn này không còn ở trạng thái chờ duyệt. Bạn có thể theo dõi biên bản và lịch sử xử lý bên dưới.</p>
+                }
+            </section>
+        </div>
+    </div>
+
+    <section class="owner-panel mt-3">
+        <h2>Handover và biên bản giao/trả xe</h2>
+        @if (!Model.HandoverRecords.Any())
+        {
+            <p class="owner-muted mb-0">Chưa có biên bản giao/trả xe cho đơn thuê này.</p>
+        }
+        else
+        {
+            <div class="owner-table-wrap">
+                <table class="owner-table">
+                    <thead>
+                        <tr>
+                            <th>Loại biên bản</th>
+                            <th>Thời gian</th>
+                            <th>ODO</th>
+                            <th>Nhiên liệu</th>
+                            <th class="text-end">Bồi thường phụ kiện</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var record in Model.HandoverRecords)
+                    {
+                        <tr>
+                            <td>@record.TypeLabel</td>
+                            <td>@record.RecordDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@record.Odo.ToString("N0") km</td>
+                            <td>@record.FuelLevel</td>
+                            <td class="text-end">@record.CompensationAmount.ToString("N0")đ</td>
+                            <td class="text-end">
+                                <a class="owner-filter-button" asp-controller="Handover" asp-action="ViewRecord" asp-route-id="@record.HandoverID">Xem biên bản</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

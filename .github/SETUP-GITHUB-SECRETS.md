@@ -11,7 +11,7 @@ Tài liệu này hướng dẫn bạn thiết lập toàn bộ CI/CD pipeline t�
 GitHub Actions
 ├── security-scan          ← Quét lỗ hổng bảo mật (Trivy + OWASP)
 ├── build-and-test         ← Build, test, SonarCloud, Docker push
-├── cypress-e2e            ← Test trình duyệt tự động
+├── playwright-e2e            ← Test trình duyệt tự động
 ├── deploy-staging         ← Deploy lên môi trường staging
 └── deploy-production      ← Deploy lên production
 ```
@@ -602,7 +602,7 @@ git push origin develop
 ```
 [1] security-scan          ← ~2-3 phút
 [2] build-and-test         ← ~5-8 phút  (chạy song song với [1])
-[3] cypress-e2e            ← ~10-15 phút (chạy sau [2])
+[3] playwright-e2e            ← ~10-15 phút (chạy sau [2])
 [4] deploy-staging         ← ~3-5 phút   (chỉ khi push lên develop)
 ```
 

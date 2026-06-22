@@ -3,7 +3,7 @@
     ViewData["Title"] = "Vehicle Tracking Map";
 }
 
-<h2 class="mb-4">Live Vehicle Tracking</h2>
+<h2 class="mb-4">Theo dõi xe trực tiếp</h2>
 
 <div class="row">
     <div class="col-md-9">
@@ -16,18 +16,18 @@
     <div class="col-md-3">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-white">
-                <h5 class="mb-0">Track a Car</h5>
+                <h5 class="mb-0">Theo dõi xe</h5>
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label">Select Car ID</label>
-                    <input type="number" id="carIdInput" class="form-control" placeholder="Enter Car ID..." />
+                    <label class="form-label">Chọn mã xe</label>
+                    <input type="number" id="carIdInput" class="form-control" placeholder="Nhập mã xe..." />
                 </div>
-                <button id="trackBtn" class="btn btn-primary w-100 mb-4">Focus Vehicle</button>
+                <button id="trackBtn" class="btn btn-primary w-100 mb-4">Tập trung vào xe</button>
                 
-                <h6 class="border-bottom pb-2">Status Log</h6>
+                <h6 class="border-bottom pb-2">Nhật ký trạng thái</h6>
                 <div id="statusLog" class="small text-muted" style="max-height: 350px; overflow-y: auto;">
-                    <div>System active. Monitoring fleet...</div>
+                    <div>Hệ thống đang hoạt động. Đang giám sát đội xe...</div>
                 </div>
             </div>
         </div>
@@ -35,48 +35,39 @@
 </div>
 
 @section Scripts {
-    <!-- Replace API_KEY with a real Google Maps API key in production -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap" async defer></script>
     <script>
         let map;
         let carMarker;
 
-        window.initMap = function() {
-            const defaultLocation = { lat: 10.762622, lng: 106.660172 }; // TP. Hồ Chí Minh
-            map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 12,
-                center: defaultLocation,
-            });
-        };
+        function initMap() {
+            const baseMap = SmartMap.createMap('map', 10.762622, 106.660172, 12);
+            if (baseMap) map = baseMap.map;
+        }
 
         $(document).ready(function() {
+            initMap();
             $('#trackBtn').click(function() {
                 var carId = $('#carIdInput').val();
-                if (!carId) return;
+                if (!carId || !map) return;
 
                 $.get('/Admin/Tracking/GetCarLocation?carId=' + carId, function(data) {
                     if (data) {
-                        const pos = { lat: data.latitude, lng: data.longitude };
+                        const pos = [data.latitude, data.longitude];
                         
                         if (!carMarker) {
-                            carMarker = new google.maps.Marker({
-                                position: pos,
-                                map: map,
-                                title: "Car #" + carId,
-                                icon: {
-                                    url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-                                }
-                            });
+                            carMarker = L.marker(pos, { icon: SmartMap.getCarIcon() })
+                                .addTo(map)
+                                .bindPopup('Xe #' + carId)
+                                .openPopup();
                         } else {
-                            carMarker.setPosition(pos);
+                            carMarker.setLatLng(pos);
                         }
                         
-                        map.setCenter(pos);
-                        map.setZoom(15);
+                        map.setView(pos, 15);
                         
-                        $('#statusLog').prepend('<div class="mb-2">[' + new Date().toLocaleTimeString() + '] Car #' + carId + ' located at ' + data.latitude.toFixed(4) + ', ' + data.longitude.toFixed(4) + ' moving at ' + data.speed + ' km/h.</div>');
+                        $('#statusLog').prepend('<div class="mb-2">[' + new Date().toLocaleTimeString() + '] Xe #' + carId + ' ở tọa độ ' + data.latitude.toFixed(4) + ', ' + data.longitude.toFixed(4) + ' di chuyển với tốc độ ' + data.speed + ' km/h.</div>');
                     } else {
-                        $('#statusLog').prepend('<div class="text-danger mb-2">[' + new Date().toLocaleTimeString() + '] No tracking data found for Car #' + carId + '.</div>');
+                        $('#statusLog').prepend('<div class="text-danger mb-2">[' + new Date().toLocaleTimeString() + '] Không có dữ liệu tracking cho xe #' + carId + '.</div>');
                     }
                 });
             });

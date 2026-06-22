@@ -76,6 +76,36 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             model.Should().NotBeNull();
         }
 
+        [Fact]
+        public async Task CalculateDelivery_RejectsInvalidCoordinates()
+        {
+            var controller = CreateController();
+
+            var result = await controller.CalculateDelivery(1, 91, 181);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task GetAllCarsWithDistance_RejectsInvalidCoordinates()
+        {
+            var controller = CreateController();
+
+            var result = await controller.GetAllCarsWithDistance(double.NaN, 106.7);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
+        [Fact]
+        public async Task BusyDates_RejectsInvalidCarId()
+        {
+            var controller = CreateController();
+
+            var result = await controller.BusyDates(0);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+        }
+
         // =============================================
         // DETAILS TESTS
         // =============================================
@@ -102,7 +132,19 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         public async Task Details_ReturnsViewWithViewModel_WhenCarExists()
         {
             // Arrange
-            var car = new Car { CarID = 1, CarName = "Honda City", LicensePlate = "B", VIN = "2", PricePerDay = 1000000 };
+            var car = new Car
+            {
+                CarID = 1,
+                CarName = "Honda City",
+                LicensePlate = "B",
+                VIN = "2",
+                PricePerDay = 1000000,
+                IsApproved = true,
+                ApprovalStatus = CarApprovalStatusConstants.Approved,
+                IsSelfDriveAllowed = true,
+                IsWithDriverAllowed = false,
+                CarStatus = new CarStatus { Name = CarStatusConstants.Available }
+            };
             _mockCarService.Setup(s => s.GetCarByIdAsync(1)).ReturnsAsync(car);
             var controller = CreateController();
 

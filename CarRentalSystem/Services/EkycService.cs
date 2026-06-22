@@ -17,12 +17,14 @@ namespace CarRentalSystem.Services
     {
         private readonly HttpClient _httpClient;
         private readonly string? _apiKey;
+        private readonly int _maxThrottlingRetries;
         private readonly ILogger<FptEkycService> _logger;
 
         public FptEkycService(HttpClient httpClient, IConfiguration config, ILogger<FptEkycService> logger)
         {
             _httpClient = httpClient;
             _apiKey = config["FptAi:ApiKey"];
+            _maxThrottlingRetries = Math.Clamp(config.GetValue("FptAi:MaxThrottlingRetries", 2), 0, 5);
             _logger = logger;
         }
 
@@ -102,16 +104,9 @@ namespace CarRentalSystem.Services
         private async Task<EkycIdResult> CallIdrApiAsync(IFormFile image)
         {
             var bytes = await ReadFullyAsync(image);
-            using var formData = new MultipartFormDataContent();
-            var content = new ByteArrayContent(bytes);
-            content.Headers.ContentType = MediaTypeHeaderValue.Parse(image.ContentType);
-            formData.Add(content, "image", image.FileName);
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.fpt.ai/vision/idr/vnm");
-            request.Headers.Add("api-key", _apiKey!);
-            request.Content = formData;
-
-            var response = await _httpClient.SendAsync(request);
+            using var response = await SendImageRequestWithRetryAsync(
+                "https://api.fpt.ai/vision/idr/vnm",
+                ("image", image.FileName, bytes, image.ContentType));
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("FPT.AI IDR API returned {StatusCode}", response.StatusCode);
@@ -209,16 +204,9 @@ namespace CarRentalSystem.Services
             try
             {
                 var bytes = await ReadFullyAsync(licenseImage);
-                using var formData = new MultipartFormDataContent();
-                var content = new ByteArrayContent(bytes);
-                content.Headers.ContentType = MediaTypeHeaderValue.Parse(licenseImage.ContentType);
-                formData.Add(content, "image", licenseImage.FileName);
-
-                var request = new HttpRequestMessage(HttpMethod.Post, "https://api.fpt.ai/vision/dlr/vnm");
-                request.Headers.Add("api-key", _apiKey!);
-                request.Content = formData;
-
-                var response = await _httpClient.SendAsync(request);
+                using var response = await SendImageRequestWithRetryAsync(
+                    "https://api.fpt.ai/vision/dlr/vnm",
+                    ("image", licenseImage.FileName, bytes, licenseImage.ContentType));
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError("FPT.AI DLR API returned {StatusCode}", response.StatusCode);
@@ -315,20 +303,10 @@ namespace CarRentalSystem.Services
                 var faceBytes = await ReadFullyAsync(faceImage);
                 var cardBytes = await ReadFullyAsync(cardImage);
 
-                using var formData = new MultipartFormDataContent();
-                var faceContent = new ByteArrayContent(faceBytes);
-                faceContent.Headers.ContentType = MediaTypeHeaderValue.Parse(faceImage.ContentType);
-                formData.Add(faceContent, "file[]", faceImage.FileName);
-
-                var cardContent = new ByteArrayContent(cardBytes);
-                cardContent.Headers.ContentType = MediaTypeHeaderValue.Parse(cardImage.ContentType);
-                formData.Add(cardContent, "file[]", cardImage.FileName);
-
-                var request = new HttpRequestMessage(HttpMethod.Post, "https://api.fpt.ai/dmp/checkface/v1");
-                request.Headers.Add("api-key", _apiKey!);
-                request.Content = formData;
-
-                var response = await _httpClient.SendAsync(request);
+                using var response = await SendImageRequestWithRetryAsync(
+                    "https://api.fpt.ai/dmp/checkface/v1",
+                    ("file[]", faceImage.FileName, faceBytes, faceImage.ContentType),
+                    ("file[]", cardImage.FileName, cardBytes, cardImage.ContentType));
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError("FPT.AI Face Compare API returned {StatusCode}", response.StatusCode);
@@ -442,6 +420,42 @@ namespace CarRentalSystem.Services
                 return dt.ToString("dd/MM/yyyy");
             }
             return date;
+        }
+
+        private async Task<HttpResponseMessage> SendImageRequestWithRetryAsync(
+            string url,
+            params (string FieldName, string FileName, byte[] Bytes, string ContentType)[] files)
+        {
+            for (var attempt = 0; ; attempt++)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Headers.Add("api-key", _apiKey!);
+
+                var formData = new MultipartFormDataContent();
+                foreach (var file in files)
+                {
+                    var content = new ByteArrayContent(file.Bytes);
+                    if (MediaTypeHeaderValue.TryParse(file.ContentType, out var contentType))
+                        content.Headers.ContentType = contentType;
+                    formData.Add(content, file.FieldName, file.FileName);
+                }
+                request.Content = formData;
+
+                var response = await _httpClient.SendAsync(request);
+                var statusCode = (int)response.StatusCode;
+                var isRetryable = statusCode == 429 || statusCode >= 500;
+                if (!isRetryable || attempt >= _maxThrottlingRetries)
+                    return response;
+
+                response.Dispose();
+                var delay = TimeSpan.FromMilliseconds(Math.Min(2000, 250 * Math.Pow(2, attempt)));
+                _logger.LogWarning(
+                    "FPT.AI request returned retryable status {StatusCode}; retrying attempt {Attempt}/{MaxAttempts}.",
+                    statusCode,
+                    attempt + 1,
+                    _maxThrottlingRetries);
+                await Task.Delay(delay);
+            }
         }
 
         private void LogProviderResponseMetadata(string operation, string responseBody)

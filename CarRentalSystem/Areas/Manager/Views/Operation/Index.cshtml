@@ -1,0 +1,7 @@
+@model ManagerOperationViewModel
+@{
+    ViewData["Title"] = "Vận hành";
+}
+<h1 class="portal-page-title h3 mb-4">Điều hành trong ngày</h1>
+<div class="row g-3 mb-4"><div class="col-md-3"><div class="portal-card portal-kpi"><div class="label">Cần bàn giao</div><div class="value">@Model.Handovers.Count</div></div></div><div class="col-md-3"><div class="portal-card portal-kpi"><div class="label">Cần nhận trả</div><div class="value">@Model.Returns.Count</div></div></div><div class="col-md-3"><div class="portal-card portal-kpi"><div class="label">Cảnh báo mở</div><div class="value">@Model.OpenAlerts</div></div></div><div class="col-md-3"><div class="portal-card portal-kpi"><div class="label">Xe bảo trì</div><div class="value">@Model.MaintenanceCars</div></div></div></div>
+<div class="portal-card"><div class="portal-card-body"><h2 class="h5 fw-bold">Checklist bàn giao/trả xe</h2><p class="text-muted mb-0">Theo dõi queue trong ngày và điều phối Staff từ trang Booking.</p></div></div>

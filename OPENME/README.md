@@ -308,7 +308,7 @@ CarRentalSystem/
 │   ├── product-backlog-full.md
 │   ├── release-backlog.md
 │   └── CarRentalSystem.vsdx     # Sơ đồ hệ thống (Visio)
-├── cypress/                      # E2E tests (Cypress)
+├── playwright/                      # E2E tests (Playwright)
 │   └── e2e/
 ├── nginx/                        # Nginx reverse proxy config
 │   └── conf.d/

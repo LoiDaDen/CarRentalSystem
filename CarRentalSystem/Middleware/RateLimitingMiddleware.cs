@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using CarRentalSystem.Services;
 using Microsoft.Extensions.Hosting;
 
 namespace CarRentalSystem.Middleware
@@ -24,16 +25,19 @@ namespace CarRentalSystem.Middleware
 
         private readonly RequestDelegate _next;
         private readonly ILogger<RateLimitingMiddleware> _logger;
-        private readonly bool _isCypressEnvironment;
+        private readonly IDistributedRateLimitStore _rateLimitStore;
+        private readonly bool _isPlaywrightEnvironment;
 
         public RateLimitingMiddleware(
             RequestDelegate next,
             ILogger<RateLimitingMiddleware> logger,
+            IDistributedRateLimitStore rateLimitStore,
             IHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
-            _isCypressEnvironment = environment.IsEnvironment("Cypress");
+            _rateLimitStore = rateLimitStore;
+            _isPlaywrightEnvironment = environment.IsEnvironment("Playwright");
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -45,7 +49,8 @@ namespace CarRentalSystem.Middleware
             if (path.Contains("/auth/login") && method == HttpMethods.Post)
             {
                 var key = $"login:{clientIp}";
-                if (IsLoginRateLimited(key))
+                var loginLimit = await _rateLimitStore.PeekAsync(key, LoginMaxAttempts, LoginWindow, context.RequestAborted);
+                if (loginLimit.IsLimited)
                 {
                     _logger.LogWarning("Rate limit exceeded for login from IP: {IP}", clientIp);
                     await RateLimitResponseWriter.WriteHtmlAsync(
@@ -62,7 +67,8 @@ namespace CarRentalSystem.Middleware
             if (path.Equals("/api/chat", StringComparison.OrdinalIgnoreCase) && method == HttpMethods.Post)
             {
                 var key = $"chat:{clientIp}";
-                if (IsRateLimited(key, ChatMaxAttempts, ChatWindow))
+                var chatLimit = await _rateLimitStore.HitAsync(key, ChatMaxAttempts, ChatWindow, context.RequestAborted);
+                if (chatLimit.IsLimited)
                 {
                     _logger.LogWarning("Chat rate limit exceeded from IP: {IP}", clientIp);
                     await RateLimitResponseWriter.WriteJsonAsync(
@@ -76,7 +82,8 @@ namespace CarRentalSystem.Middleware
             if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
             {
                 var key = $"api:{clientIp}";
-                if (IsRateLimited(key, ApiMaxAttempts, ApiWindow))
+                var apiLimit = await _rateLimitStore.HitAsync(key, ApiMaxAttempts, ApiWindow, context.RequestAborted);
+                if (apiLimit.IsLimited)
                 {
                     _logger.LogWarning("API rate limit exceeded from IP: {IP}, Path: {Path}", clientIp, path);
                     await RateLimitResponseWriter.WriteJsonAsync(
@@ -90,7 +97,8 @@ namespace CarRentalSystem.Middleware
             if (path.Equals("/tracking/receivedata", StringComparison.OrdinalIgnoreCase) && method == HttpMethods.Post)
             {
                 var key = $"tracking:{clientIp}";
-                if (IsRateLimited(key, TrackingMaxAttempts, TrackingWindow))
+                var trackingLimit = await _rateLimitStore.HitAsync(key, TrackingMaxAttempts, TrackingWindow, context.RequestAborted);
+                if (trackingLimit.IsLimited)
                 {
                     _logger.LogWarning("Tracking ingest rate limit exceeded from IP: {IP}", clientIp);
                     await RateLimitResponseWriter.WriteJsonAsync(
@@ -104,7 +112,8 @@ namespace CarRentalSystem.Middleware
             if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) && method == HttpMethods.Post)
             {
                 var key = $"pin:{clientIp}";
-                if (IsRateLimited(key, PinMaxAttempts, PinWindow, PinAttempts))
+                var pinLimit = await _rateLimitStore.HitAsync(key, PinMaxAttempts, PinWindow, context.RequestAborted);
+                if (pinLimit.IsLimited)
                 {
                     _logger.LogWarning("PIN rate limit exceeded from IP: {IP}", clientIp);
                     await RateLimitResponseWriter.WriteJsonAsync(
@@ -117,8 +126,8 @@ namespace CarRentalSystem.Middleware
 
             await _next(context);
 
-            TrackLoginResult(context, path, method, clientIp);
-            TrackPinResult(context, path, method, clientIp);
+            await TrackLoginResultAsync(context, path, method, clientIp);
+            await TrackPinResultAsync(context, path, method, clientIp);
         }
 
         private static string GetTrustedClientIpAddress(HttpContext context)
@@ -169,7 +178,7 @@ namespace CarRentalSystem.Middleware
             return entry.Count > maxAttempts;
         }
 
-        private void TrackLoginResult(HttpContext context, string path, string method, string clientIp)
+        private async Task TrackLoginResultAsync(HttpContext context, string path, string method, string clientIp)
         {
             if (!path.Contains("/auth/login") || method != HttpMethods.Post)
                 return;
@@ -183,48 +192,35 @@ namespace CarRentalSystem.Middleware
 
             if (isSuccess)
             {
-                FailedLoginAttempts.TryRemove(key, out _);
+                await _rateLimitStore.RemoveAsync(key, context.RequestAborted);
                 _logger.LogInformation("Login successful, reset failed attempts for IP: {IP}", clientIp);
                 return;
             }
 
             if (context.Items.TryGetValue(LoginFailedKey, out var value) && value is true)
-                IncrementFailedLoginAttempt(key, clientIp);
+                await IncrementFailedLoginAttemptAsync(key, clientIp, context.RequestAborted);
         }
 
-        private static void TrackPinResult(HttpContext context, string path, string method, string clientIp)
+        private async Task TrackPinResultAsync(HttpContext context, string path, string method, string clientIp)
         {
             if ((path.Contains("/auth/setpiipin") || path.Contains("/auth/verifypiipin")) &&
                 method == HttpMethods.Post &&
-                context.Response.StatusCode == StatusCodes.Status200OK)
+                context.Response.StatusCode == StatusCodes.Status200OK &&
+                context.Items.TryGetValue("RateLimit:PinSuccess", out var value) &&
+                value is true)
             {
-                PinAttempts.TryRemove($"pin:{clientIp}", out _);
+                await _rateLimitStore.RemoveAsync($"pin:{clientIp}", context.RequestAborted);
             }
         }
 
-        private void IncrementFailedLoginAttempt(string key, string clientIp)
+        private async Task IncrementFailedLoginAttemptAsync(string key, string clientIp, CancellationToken cancellationToken)
         {
-            var now = DateTime.UtcNow;
+            var result = await _rateLimitStore.HitAsync(key, LoginMaxAttempts, LoginWindow, cancellationToken);
 
-            FailedLoginAttempts.AddOrUpdate(
-                key,
-                _ => new RateLimitEntry { Count = 1, WindowStart = now },
-                (_, existing) =>
-                {
-                    if (now - existing.WindowStart > LoginWindow)
-                        return new RateLimitEntry { Count = 1, WindowStart = now };
-
-                    existing.Count++;
-                    return existing;
-                });
-
-            if (_isCypressEnvironment)
-                _logger.LogDebug("Failed login attempt #{Count} from IP: {IP}", GetFailedAttemptCount(key), clientIp);
+            if (_isPlaywrightEnvironment)
+                _logger.LogDebug("Failed login attempt #{Count} from IP: {IP}", result.Count, clientIp);
             else
-                _logger.LogWarning("Failed login attempt #{Count} from IP: {IP}", GetFailedAttemptCount(key), clientIp);
-
-            if (FailedLoginAttempts.Count > 5000)
-                CleanupStaleEntries(now);
+                _logger.LogWarning("Failed login attempt #{Count} from IP: {IP}", result.Count, clientIp);
         }
 
         private static int GetFailedAttemptCount(string key)

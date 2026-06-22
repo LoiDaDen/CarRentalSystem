@@ -200,9 +200,6 @@ namespace CarRentalSystem.Services
                 result.PriceAfterMembershipDiscount = result.PriceAfterContractDiscount;
             }
 
-            // Tính tiền cọc (dựa trên giá trị xe)
-            result.DepositAmount = car.DefaultDeposit;
-
             // Tính giá hàng tháng (cho thuê dài hạn)
             if (termMonths > 0)
             {
@@ -210,6 +207,7 @@ namespace CarRentalSystem.Services
             }
 
             result.FinalPrice = result.PriceAfterMembershipDiscount;
+            result.DepositAmount = DepositPolicy.Calculate(result.FinalPrice);
 
             // Kiểm tra discount cap
             var totalDiscount = result.ContractDiscount + result.MembershipDiscount;

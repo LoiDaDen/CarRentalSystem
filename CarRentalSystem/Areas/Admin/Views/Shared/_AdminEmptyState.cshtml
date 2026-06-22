@@ -1,0 +1,17 @@
+@model CarRentalSystem.ViewModels.EmptyStateViewModel
+<div class="admin-empty-state">
+    <span class="admin-empty-icon"><i class="bi @Model.Icon"></i></span>
+    <h3>@(string.IsNullOrWhiteSpace(Model.Title) ? "Chưa có dữ liệu" : Model.Title)</h3>
+    <p>@(string.IsNullOrWhiteSpace(Model.Message) ? "Chưa có bản ghi phù hợp để hiển thị." : Model.Message)</p>
+    @if (!string.IsNullOrWhiteSpace(Model.ActionText) &&
+        !string.IsNullOrWhiteSpace(Model.ActionController) &&
+        !string.IsNullOrWhiteSpace(Model.ActionName))
+    {
+        <a class="btn btn-primary btn-sm"
+           asp-area="@Model.ActionArea"
+           asp-controller="@Model.ActionController"
+           asp-action="@Model.ActionName">
+            <i class="bi bi-plus-lg"></i>@Model.ActionText
+        </a>
+    }
+</div>

@@ -136,7 +136,7 @@ const modules = [
       feature('Đăng ký Customer với consent', '/Auth/Register', 'Guest', 'AuthController.Register; RegisterViewModel', 'nhập thông tin hợp lệ, tick Terms/Privacy/consent và submit', 'Tạo tài khoản đúng role, lưu consent version và không lưu plaintext PII'),
       feature('Đăng ký validation tuổi/email/phone/CCCD/GPLX/password', '/Auth/Register', 'Guest', 'AuthController.Register', 'thử email sai/trùng, tuổi dưới 18, CCCD/GPLX sai, password yếu', 'Form bị chặn đúng trường và không tạo user rác'),
       feature('Xác thực email OTP', '/Auth/VerifyEmailStep1, /Auth/VerifyEmailStep2', 'Guest', 'AuthController.VerifyEmailStep1/VerifyEmailStep2/ResendOtp', 'nhập email, OTP đúng/sai/hết hạn và resend', 'OTP đúng verify email; OTP sai/hết hạn không verify và không lộ OTP'),
-      feature('Đăng nhập Customer và cookie auth', '/Auth/Login', 'Customer', 'AuthController.Login; cypress/e2e/01-auth', 'login customer@cypress.local / Cypress@123', 'Đăng nhập thành công, cookie an toàn, user menu xuất hiện'),
+      feature('Đăng nhập Customer và cookie auth', '/Auth/Login', 'Customer', 'AuthController.Login; playwright/e2e/01-auth', 'login customer@playwright.local / Playwright@123', 'Đăng nhập thành công, cookie an toàn, user menu xuất hiện'),
       feature('Đăng nhập sai và rate limit', '/Auth/Login', 'Guest', 'AuthController.Login; RateLimitingMiddleware', 'nhập sai password nhiều lần với email tồn tại/không tồn tại', 'Không account enumeration; sau ngưỡng bị throttle/rate limit'),
       feature('MFA cho Admin/Manager/Staff', '/Auth/VerifyMfa', 'Admin/Manager/Staff', 'AuthController.VerifyMfa/ResendMfa', 'login privileged user, nhập OTP đúng/sai/hết hạn, resend', 'Privileged user không vào dashboard khi chưa qua MFA nếu policy bật'),
       feature('Forgot/reset password', '/Auth/ForgotPassword, /Auth/ResetPassword', 'Guest', 'AuthController.ForgotPassword/ResetPassword', 'gửi email reset, dùng token đúng/sai/hết hạn, đặt password mới', 'Token một lần, hết hạn đúng và không tiết lộ email tồn tại'),
@@ -385,7 +385,7 @@ const modules = [
   {
     code: 'MD23', title: 'Security RBAC Audit', req: 'SEC01', color: colors.red,
     features: [
-      feature('RBAC route matrix', 'public/customer/admin/area routes', 'Guest/Customer/Owner/Manager/Staff/Admin', 'RoleAuthorizeAttribute; Authorize attributes; cypress/e2e/02-rbac', 'quét route bằng các role chính', 'Ma trận quyền đúng, route private không bị lộ'),
+      feature('RBAC route matrix', 'public/customer/admin/area routes', 'Guest/Customer/Owner/Manager/Staff/Admin', 'RoleAuthorizeAttribute; Authorize attributes; playwright/e2e/02-rbac', 'quét route bằng các role chính', 'Ma trận quyền đúng, route private không bị lộ'),
       feature('CSRF toàn bộ POST/PUT/DELETE MVC', 'MVC forms/actions', 'All roles', 'Global antiforgery; Controllers POST actions', 'gửi request thiếu/sai token và token user khác', 'Request thiếu/sai CSRF bị chặn, webhook/API có auth riêng'),
       feature('Rate limit và spoof X-Forwarded-For', '/Auth/Login, /api/ai/chat, /Tracking/ReceiveData, /Auth/VerifyPiiPin', 'Guest/All', 'RateLimitingMiddleware; Program ForwardedHeaders', 'spam request và đổi X-Forwarded-For giả', 'Header giả không bypass rate limit nếu proxy không trusted'),
       feature('Security headers/cookie flags', '/, /Auth/Login, /Admin/Dashboard', 'All', 'Program.cs security headers; Cookie auth config', 'kiểm tra CSP/HSTS/X-Frame-Options/cookie HttpOnly/SameSite/Secure', 'Headers/cookie flags phù hợp môi trường'),
@@ -397,13 +397,13 @@ const modules = [
   {
     code: 'MD24', title: 'A11y Responsive NFR', req: 'NFR01', color: colors.red,
     features: [
-      feature('Responsive public key pages', '/, /Car, /Car/Details, /Cart, /Booking/Checkout, /Home/Privacy, /Home/Terms', 'Guest/Customer', 'cypress/e2e/10-nonfunctional; site.css', 'mở mobile/tablet/desktop, cuộn và mở modal/calendar/dropdown', 'Không horizontal overflow, không che CTA, text không cắt'),
+      feature('Responsive public key pages', '/, /Car, /Car/Details, /Cart, /Booking/Checkout, /Home/Privacy, /Home/Terms', 'Guest/Customer', 'playwright/e2e/10-nonfunctional; site.css', 'mở mobile/tablet/desktop, cuộn và mở modal/calendar/dropdown', 'Không horizontal overflow, không che CTA, text không cắt'),
       feature('Responsive admin key pages', '/Admin/Dashboard, /Admin/Booking, /Admin/Car/Manage, /Admin/User, /Admin/Reports', 'Admin', '_AdminLayout; admin-theme.css', 'mở desktop/mobile, sidebar/offcanvas/table/action menus', 'Sidebar/table/action buttons không vỡ layout'),
       feature('Keyboard-only critical flows', 'login/checkout/eKYC/admin booking', 'All roles', 'docs/accessibility-wcag-aa-checklist.md', 'hoàn thành flow bằng Tab/Shift+Tab/Enter/Escape', 'Không keyboard trap, focus order hợp lý, focus visible'),
       feature('Labels/error association forms', 'Register/Login/eKYC/Checkout/Admin forms', 'All roles', 'Razor views; _ValidationScriptsPartial', 'submit form trống/sai và inspect label/aria-describedby', 'Error gắn đúng field, không chỉ dùng màu'),
       feature('Contrast AA public/admin themes', 'public/admin dark-light pages', 'All roles', 'site.css; admin-theme.css', 'đo contrast text/link/button/badge/table ở hover/focus/disabled', 'Đạt ngưỡng WCAG AA hoặc bug được ghi rõ'),
-      feature('Console/network smoke internal links', '/ and /Admin/Dashboard links', 'Guest/Admin', 'cypress/e2e/10-nonfunctional/nonfunctional.cy.js', 'quét link nội bộ bounded và kiểm tra console error', 'Không link 500, không ReferenceError/TypeError/invalid object name'),
-      feature('Background jobs behavior', 'Hangfire recurring jobs', 'System/Admin', 'Program.cs Hangfire; BackgroundJobs', 'kiểm tra Testing/Cypress không chạy jobs và production-like đăng ký jobs', 'Jobs idempotent, cron đúng, lỗi được log và không crash app'),
+      feature('Console/network smoke internal links', '/ and /Admin/Dashboard links', 'Guest/Admin', 'playwright/e2e/10-nonfunctional/nonfunctional.spec.js', 'quét link nội bộ bounded và kiểm tra console error', 'Không link 500, không ReferenceError/TypeError/invalid object name'),
+      feature('Background jobs behavior', 'Hangfire recurring jobs', 'System/Admin', 'Program.cs Hangfire; BackgroundJobs', 'kiểm tra Testing/Playwright không chạy jobs và production-like đăng ký jobs', 'Jobs idempotent, cron đúng, lỗi được log và không crash app'),
     ],
   },
   {
@@ -436,17 +436,17 @@ function makeDataSheet(workbook) {
     cell.border = borderAll();
   });
   [
-    ['Tài khoản', 'Admin', 'admin@admin.com / Cypress@123', 'Toàn quyền Admin, dashboard, users, reports, snapshot, API keys.'],
-    ['Tài khoản', 'Manager', 'manager@cypress.local / Cypress@123', 'Kiểm thử quản lý theo khu vực và một số module vận hành.'],
-    ['Tài khoản', 'Staff', 'staff@cypress.local / Cypress@123', 'Kiểm thử staff area scope, booking/car/maintenance theo quyền.'],
-    ['Tài khoản', 'Viewer', 'viewer@cypress.local / Cypress@123', 'Kiểm thử role chỉ xem nếu hệ thống bật Viewer.'],
-    ['Tài khoản', 'Customer verified', 'customer@cypress.local / Cypress@123', 'Đặt xe, checkout, cart, profile, eKYC đã duyệt.'],
-    ['Tài khoản', 'Customer unverified', 'customer-unverified@cypress.local / Cypress@123', 'Kiểm thử chặn checkout và eKYC pending.'],
-    ['Tài khoản', 'Owner/Partner approved', 'owner@cypress.local / Cypress@123', 'Kiểm thử OwnerCars và đăng xe P2P.'],
-    ['Xe', 'First available car', 'CYP-READY hoặc seed.firstAvailableCarId', 'Xe mẫu từ CypressTestDataSeeder.'],
+    ['Tài khoản', 'Admin', 'admin@admin.com / Playwright@123', 'Toàn quyền Admin, dashboard, users, reports, snapshot, API keys.'],
+    ['Tài khoản', 'Manager', 'manager@playwright.local / Playwright@123', 'Kiểm thử quản lý theo khu vực và một số module vận hành.'],
+    ['Tài khoản', 'Staff', 'staff@playwright.local / Playwright@123', 'Kiểm thử staff area scope, booking/car/maintenance theo quyền.'],
+    ['Tài khoản', 'Viewer', 'viewer@playwright.local / Playwright@123', 'Kiểm thử role chỉ xem nếu hệ thống bật Viewer.'],
+    ['Tài khoản', 'Customer verified', 'customer@playwright.local / Playwright@123', 'Đặt xe, checkout, cart, profile, eKYC đã duyệt.'],
+    ['Tài khoản', 'Customer unverified', 'customer-unverified@playwright.local / Playwright@123', 'Kiểm thử chặn checkout và eKYC pending.'],
+    ['Tài khoản', 'Owner/Partner approved', 'owner@playwright.local / Playwright@123', 'Kiểm thử OwnerCars và đăng xe P2P.'],
+    ['Xe', 'First available car', 'PW-READY hoặc seed.firstAvailableCarId', 'Xe mẫu từ PlaywrightTestDataSeeder.'],
     ['Khu vực', 'Area fixture', 'seed.areaId', 'Khu vực test cho Manager/Staff/Viewer.'],
     ['Booking', 'Booking fixture', 'seed.bookingId', 'Booking mẫu có payment/contract records.'],
-    ['Reset data', 'Cypress reset endpoint', 'POST /__test/reset', 'Chỉ dùng môi trường Cypress với X-Cypress-Reset-Secret, không dùng production.'],
+    ['Reset data', 'Playwright reset endpoint', 'POST /__test/reset', 'Chỉ dùng môi trường Playwright với X-Playwright-Reset-Secret, không dùng production.'],
   ].forEach((data, idx) => {
     const row = ws.addRow({ group: data[0], name: data[1], value: data[2], note: data[3] });
     row.height = 36;

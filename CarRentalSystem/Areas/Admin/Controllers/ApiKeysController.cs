@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
 using CarRentalSystem.Services;
@@ -7,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class ApiKeysController : Controller
     {
         private readonly ApplicationDbContext _context;

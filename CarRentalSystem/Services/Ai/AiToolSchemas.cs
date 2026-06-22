@@ -134,6 +134,35 @@ public static class AiToolSchemas
             type = "object",
             properties = new { question = String("Câu hỏi chính sách") },
             required = new[] { "question" }
+        }),
+        Tool("getOpsSnapshot", "Operations Copilot: tổng quan rủi ro vận hành, tiền, fleet, support và legal evidence. Chỉ dùng cho Admin/Manager/Staff.", new
+        {
+            type = "object",
+            properties = new { }
+        }),
+        Tool("explainMoneyExceptions", "Operations Copilot: giải thích lệch PayOS/ledger/refund/payout. Chỉ dùng cho Admin/Manager/Staff.", new
+        {
+            type = "object",
+            properties = new { }
+        }),
+        Tool("inspectVehicleTimeline", "Operations Copilot: dựng timeline xe từ booking, GPS, camera, alert, hợp đồng và bàn giao. Chỉ dùng cho Admin/Manager/Staff.", new
+        {
+            type = "object",
+            properties = new
+            {
+                carId = Number("ID xe nếu biết"),
+                licensePlate = String("Biển số xe nếu biết")
+            }
+        }),
+        Tool("summarizeCameraRisk", "Operations Copilot: tóm tắt rủi ro camera ANPR 24 giờ gần nhất. Chỉ dùng cho Admin/Manager/Staff.", new
+        {
+            type = "object",
+            properties = new { }
+        }),
+        Tool("recommendNextActions", "Operations Copilot: đề xuất checklist hành động tiếp theo cho staff/manager. Chỉ dùng cho Admin/Manager/Staff.", new
+        {
+            type = "object",
+            properties = new { }
         })
     ];
 

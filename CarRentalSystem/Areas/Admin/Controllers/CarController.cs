@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 // CarRentalSystem/Areas/Admin/Controllers/CarController.cs
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
@@ -19,7 +20,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager", "Staff")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class CarController : AdminAreaControllerBase
     {
         private readonly ICarService _carService;
@@ -30,6 +31,11 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         {
             _carService = carService;
             _context = context;
+        }
+
+        public IActionResult Index()
+        {
+            return RedirectToAction(nameof(Manage));
         }
 
         public async Task<IActionResult> Manage(int? brandId, int? locationId, int? statusId, int? areaId)
@@ -261,6 +267,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 car.IsWithDriverAllowed = true;
                 car.TransportPermitStatus = string.IsNullOrWhiteSpace(car.TransportPermitStatus) ? "Pending" : car.TransportPermitStatus;
                 car.IsApproved = false;
+                car.ApprovalStatus = CarApprovalStatusConstants.Pending;
             }
             else
             {
@@ -271,6 +278,8 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 car.BadgeType = null;
                 car.BadgeExpiryDate = null;
                 car.IsApproved = true;
+                car.ApprovalStatus = CarApprovalStatusConstants.Approved;
+                car.ApprovalRejectionReason = null;
             }
 
             ModelState.Remove("CarImages");

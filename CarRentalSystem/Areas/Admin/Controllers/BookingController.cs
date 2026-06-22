@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.Filters;
 using CarRentalSystem.Models;
@@ -12,7 +13,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager", "Staff")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class BookingController : Controller
     {
         private readonly IBookingService _bookingService;
@@ -114,6 +115,10 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var role = GetCurrentRole();
             var userId = GetCurrentUserId();
 
+            if (status is BookingStatusConstants.Confirmed or BookingStatusConstants.Rejected &&
+                await IsOwnerPendingBookingAsync(id))
+                return Forbid();
+
             if (role == "Staff" || role == "Manager")
             {
                 var booking = await _context.Bookings.Include(b => b.Car).FirstOrDefaultAsync(b => b.BookingID == id);
@@ -188,6 +193,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var role = GetCurrentRole();
             var userId = GetCurrentUserId();
 
+            if (await IsOwnerPendingBookingAsync(id))
+                return Forbid();
+
             if (role == "Staff" || role == "Manager")
             {
                 var booking = await _context.Bookings.Include(b => b.Car).FirstOrDefaultAsync(b => b.BookingID == id);
@@ -209,6 +217,9 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         {
             var role = GetCurrentRole();
             var userId = GetCurrentUserId();
+
+            if (await IsOwnerPendingBookingAsync(id))
+                return Forbid();
 
             if (role == "Staff" || role == "Manager")
             {
@@ -246,6 +257,18 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             await _bookingService.StartTripAsync(id);
             TempData["Success"] = "Chuyến xe đã bắt đầu!";
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        private async Task<bool> IsOwnerPendingBookingAsync(int bookingId)
+        {
+            var booking = await _context.Bookings
+                .AsNoTracking()
+                .Include(b => b.BookingStatus)
+                .Include(b => b.Car)
+                .FirstOrDefaultAsync(b => b.BookingID == bookingId);
+
+            return booking?.Car?.OwnerID != null &&
+                   booking.BookingStatus?.Name == BookingStatusConstants.Pending;
         }
 
         [HttpPost]

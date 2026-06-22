@@ -1,0 +1,20 @@
+﻿@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    string Active(string value) => controller == value ? "active" : "";
+}
+<aside class="portal-sidebar staff-sidebar" id="portalSidebar">
+    <a asp-area="Staff" asp-controller="Dashboard" asp-action="Index" class="portal-brand">
+        <img src="~/images/car_rental_logo.png" alt="" />
+        <span><strong>Staff Portal</strong><small>Vận hành hằng ngày</small></span>
+    </a>
+    @await Html.PartialAsync("_StaffAreaSelector")
+    <nav class="portal-nav">
+        <a class="@Active("Dashboard")" data-tutorial-target="staff-dashboard" asp-area="Staff" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-grid"></i>Dashboard</a>
+        <a class="@Active("Booking")" data-tutorial-target="staff-bookings" asp-area="Staff" asp-controller="Booking" asp-action="Index"><i class="bi bi-calendar-check"></i>Quản lý đặt xe</a>
+        <a class="@Active("CarApproval")" asp-area="Staff" asp-controller="CarApproval" asp-action="Index"><i class="bi bi-shield-check"></i>Duyệt xe</a>
+        <a class="@Active("Handover")" data-tutorial-target="staff-handover" asp-area="Staff" asp-controller="Handover" asp-action="Index"><i class="bi bi-key"></i>Bàn giao xe</a>
+        <a class="@Active("Return")" data-tutorial-target="staff-return" asp-area="Staff" asp-controller="Return" asp-action="Index"><i class="bi bi-arrow-return-left"></i>Nhận xe trả</a>
+        <a class="@Active("Support")" data-tutorial-target="staff-support" asp-area="Staff" asp-controller="Support" asp-action="Index"><i class="bi bi-headset"></i>Hỗ trợ khách hàng</a>
+        <a class="@Active("Profile")" asp-area="Staff" asp-controller="Profile" asp-action="Index"><i class="bi bi-person"></i>Hồ sơ cá nhân</a>
+    </nav>
+</aside>

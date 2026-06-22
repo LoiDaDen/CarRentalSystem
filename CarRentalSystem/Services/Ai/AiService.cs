@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
@@ -14,25 +15,30 @@ public sealed class AiService : IAiService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAiToolExecutor _toolExecutor;
     private readonly IMemoryCache _cache;
+    private readonly IDistributedCache _distributedCache;
     private readonly AiProviderOptions _options;
     private readonly ILogger<AiService> _logger;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public AiService(
         IHttpClientFactory httpClientFactory,
         IAiToolExecutor toolExecutor,
         IMemoryCache cache,
+        IDistributedCache distributedCache,
         IOptions<AiProviderOptions> options,
         ILogger<AiService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _toolExecutor = toolExecutor;
         _cache = cache;
+        _distributedCache = distributedCache;
         _options = options.Value;
         _logger = logger;
     }
 
     public async Task<AiChatResponse> ChatAsync(AiChatRequest request, AiUserContext user, CancellationToken cancellationToken = default)
     {
+        request.Message ??= "";
         if (request.Message.Length > MaxMessageLength)
             return new AiChatResponse { Reply = $"Tin nhắn quá dài. Vui lòng nhập tối đa {MaxMessageLength} ký tự." };
 
@@ -48,6 +54,9 @@ public sealed class AiService : IAiService
 
         if (!string.IsNullOrWhiteSpace(request.ConfirmationId))
             return await ExecuteConfirmedActionAsync(request.ConfirmationId, user, state, cancellationToken);
+
+        if (IsOpsMode(request))
+            return await RunOpsModeAsync(request.Message, user, state, cancellationToken);
 
         var slotUpdate = UpdateRentalNeedFromMessage(request.Message, state);
         if (slotUpdate && IsRentalNeedOnlyMessage(request.Message))
@@ -78,7 +87,12 @@ public sealed class AiService : IAiService
 
     private async Task<AiChatResponse> ExecuteConfirmedActionAsync(string confirmationId, AiUserContext user, AiConversationState state, CancellationToken ct)
     {
-        if (!_cache.TryGetValue<AiConfirmationEnvelope>($"ai_confirm:{confirmationId}", out var envelope) || envelope == null || envelope.ExpiresAtUtc < DateTime.UtcNow)
+        var confirmationKey = $"ai_confirm:{confirmationId}";
+        var envelopeJson = await _distributedCache.GetStringAsync(confirmationKey, ct);
+        var envelope = string.IsNullOrWhiteSpace(envelopeJson)
+            ? null
+            : JsonSerializer.Deserialize<AiConfirmationEnvelope>(envelopeJson, JsonOptions);
+        if (envelope == null || envelope.ExpiresAtUtc < DateTime.UtcNow)
             return new AiChatResponse { Reply = "Yêu cầu xác nhận đã hết hạn. Bạn vui lòng thao tác lại." };
 
         if (envelope.UserId != user.UserId)
@@ -91,7 +105,7 @@ public sealed class AiService : IAiService
             IsConfirmed = true
         }, user, state, ct);
 
-        _cache.Remove($"ai_confirm:{confirmationId}");
+        await _distributedCache.RemoveAsync(confirmationKey, ct);
         return ToResponse(result, state);
     }
 
@@ -176,6 +190,103 @@ public sealed class AiService : IAiService
         }
 
         return BuildConciergeFallback(message, state);
+    }
+
+    private async Task<AiChatResponse> RunOpsModeAsync(string message, AiUserContext user, AiConversationState state, CancellationToken ct)
+    {
+        if (!user.IsInternalStaff)
+        {
+            return new AiChatResponse
+            {
+                Reply = "Operations Copilot chỉ dành cho Admin, Manager hoặc Staff.",
+                RequiresLogin = !user.IsAuthenticated
+            };
+        }
+
+        var normalized = NormalizeText(message);
+        var toolName = "getOpsSnapshot";
+        var args = ToArgs(new { });
+
+        if (IsOpsMoneyIntent(normalized))
+        {
+            toolName = "explainMoneyExceptions";
+        }
+        else if (IsOpsCameraIntent(normalized))
+        {
+            toolName = "summarizeCameraRisk";
+        }
+        else if (IsOpsActionIntent(normalized))
+        {
+            toolName = "recommendNextActions";
+        }
+        else if (IsOpsVehicleTimelineIntent(normalized))
+        {
+            toolName = "inspectVehicleTimeline";
+            args = ToArgs(new
+            {
+                carId = ExtractCarIdForOps(normalized),
+                licensePlate = ExtractLicensePlateHint(message)
+            });
+        }
+
+        var result = await _toolExecutor.ExecuteAsync(new AiToolCallRequest
+        {
+            Name = toolName,
+            Arguments = args
+        }, user, state, ct);
+
+        return ToResponse(result, state);
+    }
+
+    private static bool IsOpsMode(AiChatRequest request) =>
+        string.Equals(request.Mode, "ops", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOpsMoneyIntent(string normalized) =>
+        normalized.Contains("payos") ||
+        normalized.Contains("ledger") ||
+        normalized.Contains("refund") ||
+        normalized.Contains("payout") ||
+        normalized.Contains("thanh toan") ||
+        normalized.Contains("tien") ||
+        normalized.Contains("doi soat") ||
+        normalized.Contains("lech");
+
+    private static bool IsOpsCameraIntent(string normalized) =>
+        normalized.Contains("camera") ||
+        normalized.Contains("anpr") ||
+        normalized.Contains("bien so") ||
+        normalized.Contains("plate") ||
+        normalized.Contains("mismatch") ||
+        normalized.Contains("unknown");
+
+    private static bool IsOpsActionIntent(string normalized) =>
+        normalized.Contains("viec can lam") ||
+        normalized.Contains("lam gi") ||
+        normalized.Contains("next action") ||
+        normalized.Contains("recommend") ||
+        normalized.Contains("de xuat") ||
+        normalized.Contains("checklist") ||
+        normalized.Contains("xu ly tiep");
+
+    private static bool IsOpsVehicleTimelineIntent(string normalized) =>
+        normalized.Contains("timeline") ||
+        normalized.Contains("gps") ||
+        normalized.Contains("tracking") ||
+        normalized.Contains("xe") ||
+        Regex.IsMatch(normalized, @"\b\d{2}[a-z]\s*-?\s*\d{3,5}");
+
+    private static int? ExtractCarIdForOps(string normalized)
+    {
+        var match = Regex.Match(normalized, @"(?:car|xe|id)\s*#?\s*(\d{1,9})");
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var id))
+            return id;
+        return null;
+    }
+
+    private static string? ExtractLicensePlateHint(string message)
+    {
+        var match = Regex.Match(message, @"\b\d{2}[A-Za-z][A-Za-z0-9]?\s*[-.]?\s*\d{3,5}(?:[.]?\d{2})?\b");
+        return match.Success ? match.Value.Trim() : null;
     }
 
     private async Task<AiChatResponse> ContinueRentalNeedConversationAsync(AiConversationState state, AiUserContext user, CancellationToken ct)
@@ -329,14 +440,19 @@ public sealed class AiService : IAiService
         if (result.PendingAction != null)
         {
             var confirmationId = result.PendingAction.ConfirmationId;
-            _cache.Set($"ai_confirm:{confirmationId}", new AiConfirmationEnvelope
+            var envelope = new AiConfirmationEnvelope
             {
                 Action = toolName,
                 Arguments = arguments,
                 Summary = result.PendingAction.Summary,
                 UserId = user.UserId,
                 ExpiresAtUtc = DateTime.UtcNow.AddMinutes(10)
-            }, TimeSpan.FromMinutes(10));
+            };
+            await _distributedCache.SetStringAsync(
+                $"ai_confirm:{confirmationId}",
+                JsonSerializer.Serialize(envelope, JsonOptions),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10) },
+                ct);
         }
         return result;
     }

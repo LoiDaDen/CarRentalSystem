@@ -38,8 +38,6 @@
     .theme-admin .new-feature-row .btn { flex: 0 0 auto; }
 </style>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
 <div class="d-flex justify-content-between align-items-center mb-5">
     <div>
         <h2 class="fw-800 ls-neg-1 mb-1">Chỉnh sửa: @Model.CarBrand?.Name @Model.CarName</h2>
@@ -277,7 +275,6 @@
 </div>
 
 @section Scripts {
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     function previewImages(input) {
         const container = document.getElementById('previewContainer');

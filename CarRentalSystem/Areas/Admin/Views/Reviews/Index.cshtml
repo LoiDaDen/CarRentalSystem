@@ -1,6 +1,6 @@
 @model IEnumerable<CarRentalSystem.Models.Review>
 @{
-    ViewData["Title"] = "Kiểm duyệt Đánh giá";
+    ViewData["Title"] = "Quản lý Đánh giá";
     Layout = "_AdminLayout";
 }
 
@@ -20,7 +20,7 @@
             <h2 class="fw-800 ls-neg-1 mb-1">
                 <i class="bi bi-star me-2" style="color: var(--admin-warning);"></i>Quản lý Đánh Giá
             </h2>
-            <p class="text-muted mb-0">Kiểm duyệt các phản hồi từ khách hàng về chất lượng xe.</p>
+            <p class="text-muted mb-0">Theo dõi phản hồi của khách hàng và ẩn/xóa các đánh giá vi phạm nếu cần.</p>
         </div>
     </div>
 
@@ -64,11 +64,11 @@
                             <td class="text-center">
                                 @if (r.IsApproved)
                                 {
-                                    <span class="badge bg-success-subtle text-success border border-success rounded-pill px-3 py-2 fw-bold" style="font-size: 0.77rem;">Đã duyệt</span>
+                                    <span class="badge bg-success-subtle text-success border border-success rounded-pill px-3 py-2 fw-bold" style="font-size: 0.77rem;">Đang hiển thị</span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-bold" style="font-size: 0.77rem;">Chờ duyệt</span>
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary rounded-pill px-3 py-2 fw-bold" style="font-size: 0.77rem;">Đã ẩn</span>
                                 }
                             </td>
                             <td class="small text-muted">
@@ -77,8 +77,8 @@
                             <td class="text-end pe-4">
                                 <div class="d-flex justify-content-end gap-2">
                                     <form asp-action="ToggleApproval" asp-route-id="@r.ReviewID" method="post" class="m-0">
-                                        <button type="submit" class="btn btn-sm @(r.IsApproved ? "btn-outline-warning" : "btn-success") rounded-3" title="@(r.IsApproved ? "Bỏ duyệt" : "Duyệt hiển thị")">
-                                            <i class="bi @(r.IsApproved ? "bi-shield-lock" : "bi-check-circle-fill")"></i>
+                                        <button type="submit" class="btn btn-sm @(r.IsApproved ? "btn-outline-warning" : "btn-success") rounded-3" title="@(r.IsApproved ? "Ẩn khỏi trang xe" : "Hiển thị lại")">
+                                            <i class="bi @(r.IsApproved ? "bi-eye-slash" : "bi-eye")"></i>
                                         </button>
                                     </form>
                                     <button type="button" class="btn btn-outline-danger btn-sm rounded-3" data-bs-toggle="modal" data-bs-target="#deleteModal-@r.ReviewID" title="Xóa đánh giá vi phạm">

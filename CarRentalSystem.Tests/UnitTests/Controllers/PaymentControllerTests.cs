@@ -92,7 +92,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         [Fact]
         [Trait("Module", "Payment")]
         [Trait("Type", "Regression")]
-        public async Task CancelHoldReturn_GetCallback_RendersCancelPageAndMarksHoldCancelled()
+        public async Task CancelHoldReturn_GetCallback_RendersCancelPageWithoutMutation()
         {
             var transaction = await SeedHoldTransactionAsync();
             var controller = CreateController();
@@ -103,7 +103,11 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             view.ViewName.Should().Be("CancelHold");
             view.Model.Should().BeOfType<PayOSTransaction>()
                 .Subject.OrderCode.Should().Be(transaction.OrderCode);
-            _payOSPaymentService.Verify(s => s.MarkHoldCancelledAsync(transaction.OrderCode), Times.Once);
+            _payOSPaymentService.Verify(s => s.MarkHoldCancelledAsync(It.IsAny<long>()), Times.Never);
+            (await _context.PayOSTransactions.FindAsync(transaction.PayOSTransactionID))!.Status
+                .Should().Be(PaymentStatusConstants.Pending);
+            (await _context.BookingHolds.FindAsync(transaction.BookingHoldID))!.Status
+                .Should().Be(BookingHoldStatusConstants.Active);
         }
 
         private PaymentController CreateController(int userId = 2, string role = "Customer")

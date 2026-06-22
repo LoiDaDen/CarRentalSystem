@@ -1,0 +1,5 @@
+<nav class="portal-breadcrumb" aria-label="breadcrumb">
+    <a asp-area="Manager" asp-controller="Dashboard" asp-action="Index">Manager</a>
+    <i class="bi bi-chevron-right"></i>
+    <span>@(ViewData["Title"] ?? ViewContext.RouteData.Values["controller"])</span>
+</nav>

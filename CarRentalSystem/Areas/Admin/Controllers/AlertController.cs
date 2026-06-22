@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class AlertController : Controller
     {
         private readonly ITrackingService _trackingService;
@@ -18,15 +19,15 @@ namespace CarRentalSystem.Areas.Admin.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var alerts = await _trackingService.GetActiveAlertsAsync();
-            return View(alerts);
+            await Task.CompletedTask;
+            return RedirectToAction("Index", "Alert", new { area = "" });
         }
 
         [HttpPost]
         public async Task<IActionResult> Resolve(int id)
         {
             await _trackingService.ResolveAlertAsync(id);
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index", "Alert", new { area = "" });
         }
     }
 }

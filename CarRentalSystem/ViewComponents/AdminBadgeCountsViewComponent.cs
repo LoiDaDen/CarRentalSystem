@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CarRentalSystem.Data;
+using CarRentalSystem.Models;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -29,11 +30,18 @@ namespace CarRentalSystem.ViewComponents
             var partnerPendingCount = await _context.PartnerContracts
                 .CountAsync(pc => pc.Status == "Pending");
 
+            var pendingCarApprovalCount = await _context.CarChangeRequests
+                .CountAsync(request =>
+                    request.Status == CarChangeRequestStatusConstants.PendingStaff ||
+                    request.Status == CarChangeRequestStatusConstants.PendingManager ||
+                    request.Status == CarChangeRequestStatusConstants.PendingAdmin);
+
             return View(new AdminBadgeCounts
             {
                 PendingDriverCount = pendingDriverCount,
                 PendingContractCount = pendingContractCount + partnerPendingCount,
-                ExpiringContractCount = expiringContractCount
+                ExpiringContractCount = expiringContractCount,
+                PendingCarApprovalCount = pendingCarApprovalCount
             });
         }
     }
@@ -43,8 +51,10 @@ namespace CarRentalSystem.ViewComponents
         public int PendingDriverCount { get; set; }
         public int PendingContractCount { get; set; }
         public int ExpiringContractCount { get; set; }
+        public int PendingCarApprovalCount { get; set; }
 
         public int DriverBadgeCount => PendingDriverCount;
         public int ContractBadgeCount => PendingContractCount + ExpiringContractCount;
+        public int CarApprovalBadgeCount => PendingCarApprovalCount;
     }
 }

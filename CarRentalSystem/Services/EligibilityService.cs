@@ -26,10 +26,14 @@ namespace CarRentalSystem.Services
     public class EligibilityService : IEligibilityService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ICustomerDrivingLicenseSyncService _drivingLicenseSync;
 
-        public EligibilityService(ApplicationDbContext context)
+        public EligibilityService(
+            ApplicationDbContext context,
+            ICustomerDrivingLicenseSyncService drivingLicenseSync)
         {
             _context = context;
+            _drivingLicenseSync = drivingLicenseSync;
         }
 
         public async Task<EligibilityResult> CheckRentalEligibilityAsync(int userId)
@@ -50,17 +54,8 @@ namespace CarRentalSystem.Services
             if (string.IsNullOrWhiteSpace(user.CitizenIdHash))
                 return new EligibilityResult(false, "Vui lòng xác thực CCCD trước khi thuê xe.", EligibilityFailureCode.MissingIdentityDocuments);
 
-            var hasApprovedLicense = await _context.CustomerDrivingLicenses.AnyAsync(l =>
-                l.UserID == userId &&
-                l.IsActive &&
-                l.IsApproved &&
-                l.VerificationStatus == "Verified" &&
-                (!l.ExpiryDate.HasValue || l.ExpiryDate.Value.Date >= DateTime.UtcNow.Date));
-
-            var hasLegacyVerifiedLicense = !string.IsNullOrWhiteSpace(user.DrivingLicenseHash) &&
-                !string.IsNullOrWhiteSpace(user.DrivingLicenseUrl);
-
-            if (!hasApprovedLicense && !hasLegacyVerifiedLicense)
+            var verifiedLicense = await _drivingLicenseSync.EnsureVerifiedLicenseForUserAsync(userId);
+            if (verifiedLicense == null)
                 return new EligibilityResult(false, "Vui lòng xác thực giấy phép lái xe trước khi thuê xe tự lái.", EligibilityFailureCode.MissingIdentityDocuments);
 
             return new EligibilityResult(true, null);

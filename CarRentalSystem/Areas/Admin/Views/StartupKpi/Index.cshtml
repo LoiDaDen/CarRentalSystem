@@ -1,0 +1,133 @@
+@model CarRentalSystem.Areas.Admin.Models.StartupKpiViewModel
+@{
+    ViewData["Title"] = "KPI startup 6 tháng";
+    var s = Model.Snapshot;
+    var t = Model.Targets;
+    decimal Progress(decimal actual, decimal target) => target <= 0 ? 0 : Math.Min(100m, Math.Round(actual * 100m / target, 1));
+    string ProgressTone(decimal actual, decimal target) => target > 0 && actual >= target ? "bg-success" : "bg-primary";
+}
+
+@section Styles {
+    <style>
+        .startup-kpi-hero { background: linear-gradient(135deg, #0f2854, #164b87); color: #fff; border-radius: 16px; }
+        .startup-kpi-card { border: 1px solid var(--admin-border); border-radius: 14px; background: var(--admin-surface); height: 100%; }
+        .startup-kpi-card .metric { font-size: 1.65rem; font-weight: 800; }
+        .startup-kpi-card .target { color: var(--admin-text-secondary); font-size: .8rem; }
+        .startup-kpi-formula { border-left: 4px solid #22c55e; background: #ecfdf3; color: #14532d; border-radius: 10px; }
+        .startup-kpi-note { border-left: 4px solid #f59e0b; background: #fffbeb; color: #78350f; border-radius: 10px; }
+    </style>
+}
+
+<div class="page-header mb-4">
+    <div>
+        <h2>KPI startup 6 tháng</h2>
+        <p>Đo dữ liệu local và khoảng cách tới mục tiêu vận hành, không thay thế số liệu pilot hoặc kết quả thương mại thật.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Reports" asp-action="Index"><i class="bi bi-bar-chart"></i> Báo cáo vận hành</a>
+</div>
+
+<section class="startup-kpi-hero p-4 mb-4">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <span class="badge text-bg-warning mb-2">MỤC TIÊU / DỮ LIỆU MÔ PHỎNG</span>
+            <h3 class="fw-bold">DriveGo theo dõi GMV, booking hoàn tất và dòng tiền cọc</h3>
+            <p class="mb-0 opacity-75">Kỳ đo: @s.PeriodStartUtc.ToString("dd/MM/yyyy") - @s.PeriodEndUtc.AddDays(-1).ToString("dd/MM/yyyy"). Booking thành công chỉ tính các đơn Completed trong nhóm đơn đã có kết quả cuối cùng.</p>
+        </div>
+        <div class="col-lg-5">
+            <div class="startup-kpi-formula p-3 fw-bold">
+                GMV mục tiêu @t.TargetGmv.ToString("N0") đ từ @t.TargetCompletedBookings.ToString("N0") booking Completed; tiền cọc được theo dõi riêng qua ledger.
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-4">
+    <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+        <div><h4 class="fw-bold mb-1">Dữ liệu local hiện tại</h4><p class="text-muted mb-0">Các số dưới đây được tính trực tiếp từ database trong kỳ đo.</p></div>
+    </div>
+    <div class="row g-3">
+        @{
+            var cards = new[]
+            {
+                new { Label = "Người dùng đăng ký", Actual = (decimal)s.RegisteredUsers, Target = (decimal)t.TargetRegisteredUsers, Display = s.RegisteredUsers.ToString("N0"), TargetText = $"Mục tiêu: {t.TargetRegisteredUsers:N0}", Note = "Tài khoản tạo trong kỳ" },
+                new { Label = "Xe tự lái đã duyệt", Actual = (decimal)s.ApprovedSelfDriveCars, Target = (decimal)t.TargetApprovedCars, Display = s.ApprovedSelfDriveCars.ToString("N0"), TargetText = $"Mục tiêu: {t.TargetApprovedCars:N0}", Note = "Đã duyệt, không bị xóa" },
+                new { Label = "Booking hợp lệ", Actual = (decimal)s.ValidBookings, Target = (decimal)t.TargetValidBookings, Display = s.ValidBookings.ToString("N0"), TargetText = $"Mục tiêu: {t.TargetValidBookings:N0}", Note = "Loại Draft và Unpaid" },
+                new { Label = "Booking Completed", Actual = (decimal)s.CompletedBookings, Target = (decimal)t.TargetCompletedBookings, Display = s.CompletedBookings.ToString("N0"), TargetText = $"Mục tiêu: {t.TargetCompletedBookings:N0}", Note = $"{s.OutcomeBookings:N0} booking đã có kết quả" },
+                new { Label = "Tỷ lệ thành công", Actual = s.SuccessRatePercent, Target = t.TargetSuccessRatePercent, Display = $"{s.SuccessRatePercent:N1}%", TargetText = $"Mục tiêu: {t.TargetSuccessRatePercent:N1}%", Note = "Completed / kết quả cuối cùng" },
+                new { Label = "GMV Completed", Actual = s.Gmv, Target = t.TargetGmv, Display = $"{s.Gmv:N0} đ", TargetText = $"Mục tiêu: {t.TargetGmv:N0} đ", Note = "Tổng giá trị thuê đã hoàn thành" },
+                new { Label = "Ledger tiền cọc", Actual = s.LedgerNetPostedAmount, Target = 0m, Display = $"{s.LedgerNetPostedAmount:N0} đ", TargetText = "Theo ledger", Note = $"{s.LedgerPostedEntryCount:N0} bút toán đã hạch toán" },
+                new { Label = "Mức độ hài lòng", Actual = s.SatisfactionRatePercent, Target = t.TargetSatisfactionRatePercent, Display = $"{s.SatisfactionRatePercent:N1}%", TargetText = $"Mục tiêu: {t.TargetSatisfactionRatePercent:N1}%", Note = $"{s.FavorableReviews:N0}/{s.ApprovedReviews:N0} review từ 4-5 sao" }
+            };
+        }
+        @foreach (var card in cards)
+        {
+            var progress = Progress(card.Actual, card.Target);
+            <div class="col-xl-3 col-md-6">
+                <div class="startup-kpi-card p-3">
+                    <div class="text-uppercase small fw-bold text-muted">@card.Label</div>
+                    <div class="metric mt-2">@card.Display</div>
+                    <div class="target mb-2">@card.TargetText</div>
+                    <div class="progress" style="height:7px"><div class="progress-bar @ProgressTone(card.Actual, card.Target)" style="width:@progress%"></div></div>
+                    <div class="small text-muted mt-2">@card.Note</div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><h5 class="fw-bold mb-0">Ba lớp bằng chứng tài chính</h5></div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Chỉ số</th><th class="text-end">Dữ liệu local</th><th>Ý nghĩa</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>GMV Completed</strong></td><td class="text-end">@s.Gmv.ToString("N0") đ</td><td>Tổng giá trị thuê đã hoàn thành.</td></tr>
+                            <tr><td><strong>Ledger tiền cọc</strong></td><td class="text-end">@s.LedgerNetPostedAmount.ToString("N0") đ</td><td>Dòng tiền cọc ròng từ @s.LedgerPostedEntryCount bút toán đã hạch toán.</td></tr>
+                            <tr><td><strong>Tỷ lệ hoàn tất</strong></td><td class="text-end">@s.SuccessRatePercent.ToString("N1")%</td><td>Đo chất lượng vận hành từ các booking đã có kết quả cuối cùng.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="startup-kpi-note p-4 h-100">
+            <h5 class="fw-bold">Cách đọc tỷ lệ thành công</h5>
+            <p class="mb-2"><strong>Tử số:</strong> booking Completed.</p>
+            <p class="mb-2"><strong>Mẫu số:</strong> Completed + Cancelled + Rejected + Expired.</p>
+            <p class="mb-0">Pending, Confirmed và Active chưa có kết quả cuối cùng nên không được tính là thành công hoặc thất bại.</p>
+        </div>
+    </div>
+</section>
+
+<section class="card mb-4">
+    <div class="card-header"><h5 class="fw-bold mb-0">Kế hoạch vận hành đạt GMV mục tiêu</h5></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead><tr><th>Tháng</th><th class="text-end">Người dùng mới</th><th class="text-end">Xe duyệt</th><th class="text-end">Booking</th><th class="text-end">Completed</th><th class="text-end">GMV</th></tr></thead>
+                <tbody>
+                    @foreach (var row in Model.GrowthPlan)
+                    {
+                        <tr><td>Tháng @row.Month</td><td class="text-end">@row.NewUsers</td><td class="text-end">@row.ApprovedCars</td><td class="text-end">@row.Bookings</td><td class="text-end">@row.CompletedBookings</td><td class="text-end">@row.Gmv.ToString("N0") đ</td></tr>
+                    }
+                </tbody>
+                <tfoot class="fw-bold"><tr><td>Tổng</td><td class="text-end">@Model.GrowthPlan.Sum(row => row.NewUsers)</td><td class="text-end">@Model.GrowthPlan.Sum(row => row.ApprovedCars)</td><td class="text-end">@Model.GrowthPlan.Sum(row => row.Bookings)</td><td class="text-end">@Model.GrowthPlan.Sum(row => row.CompletedBookings)</td><td class="text-end">@Model.GrowthPlan.Sum(row => row.Gmv).ToString("N0") đ</td></tr></tfoot>
+            </table>
+        </div>
+        <div class="alert alert-info mb-0">Kế hoạch yêu cầu giá trị trung bình khoảng <strong>@((t.TargetGmv / t.TargetCompletedBookings).ToString("N0")) đ</strong> cho mỗi booking Completed, ưu tiên các chuyến thuê nhiều ngày.</div>
+    </div>
+</section>
+
+<section class="card">
+    <div class="card-header"><h5 class="fw-bold mb-0">Pilot một tuần cần thu thập</h5></div>
+    <div class="card-body row g-3">
+        <div class="col-md-3"><strong>5 chủ xe</strong><div class="text-muted small">Xác nhận quan tâm, pipeline tối thiểu 8 xe.</div></div>
+        <div class="col-md-3"><strong>20 phản hồi khách thuê</strong><div class="text-muted small">Nhu cầu, thời gian thuê và mức giá chấp nhận.</div></div>
+        <div class="col-md-3"><strong>10 đăng ký thử nghiệm</strong><div class="text-muted small">Đo khả năng thu hút người dùng ban đầu.</div></div>
+        <div class="col-md-3"><strong>3 booking test đầu-cuối</strong><div class="text-muted small">Dùng dữ liệu có đồng ý và được ẩn danh.</div></div>
+    </div>
+</section>

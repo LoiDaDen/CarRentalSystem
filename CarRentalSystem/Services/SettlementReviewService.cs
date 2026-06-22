@@ -110,6 +110,8 @@ namespace CarRentalSystem.Services
                 NewValues = JsonSerializer.Serialize(new { review.Status, review.PaymentLedgerEntryID })
             });
 
+            await ReconcileBookingDepositAfterReviewAsync(review.BookingID, reviewedByUserId, reason);
+
             return new SettlementReviewServiceResult(true, "Settlement review approved.", review);
         }
 
@@ -138,7 +140,47 @@ namespace CarRentalSystem.Services
                 NewValues = JsonSerializer.Serialize(new { review.Status })
             });
 
+            await ReconcileBookingDepositAfterReviewAsync(review.BookingID, reviewedByUserId, reason);
+
             return new SettlementReviewServiceResult(true, "Settlement review rejected.", review);
+        }
+
+        private async Task ReconcileBookingDepositAfterReviewAsync(int bookingId, int actorUserId, string reason)
+        {
+            var booking = await _context.Bookings
+                .Include(b => b.BookingStatus)
+                .FirstOrDefaultAsync(b => b.BookingID == bookingId);
+            if (booking?.BookingStatus?.Name != BookingStatusConstants.Completed)
+                return;
+
+            var pendingCount = await _context.SettlementReviews
+                .CountAsync(r => r.BookingID == bookingId && r.Status == SettlementReviewStatusConstants.PendingReview);
+            if (pendingCount > 0)
+                return;
+
+            var approvedDeductions = await _context.SettlementReviews
+                .Where(r => r.BookingID == bookingId && r.Status == SettlementReviewStatusConstants.Approved)
+                .SumAsync(r => r.Amount);
+
+            var oldStatus = booking.DepositStatus;
+            booking.DepositStatus = approvedDeductions >= booking.DepositAmount && booking.DepositAmount > 0
+                ? DepositStatusConstants.Deducted
+                : DepositStatusConstants.PendingRefund;
+
+            if (oldStatus == booking.DepositStatus)
+                return;
+
+            await _context.SaveChangesAsync();
+            await _audit.RecordAsync(new AuditLog
+            {
+                Action = "ReconcileDepositAfterSettlement",
+                EntityType = nameof(Booking),
+                EntityId = booking.BookingID,
+                UserId = actorUserId,
+                Reason = reason,
+                OldValues = JsonSerializer.Serialize(new { DepositStatus = oldStatus }),
+                NewValues = JsonSerializer.Serialize(new { booking.DepositStatus, ApprovedDeductions = approvedDeductions })
+            });
         }
 
         private static string NormalizeType(string reviewType)
@@ -149,6 +191,7 @@ namespace CarRentalSystem.Services
                 SettlementReviewTypeConstants.Fuel,
                 SettlementReviewTypeConstants.Cleaning,
                 SettlementReviewTypeConstants.Damage,
+                SettlementReviewTypeConstants.LostItem,
                 SettlementReviewTypeConstants.Toll,
                 SettlementReviewTypeConstants.Violation,
                 SettlementReviewTypeConstants.Other

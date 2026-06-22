@@ -174,7 +174,7 @@
                                         @snap.TotalRows.ToString("N0")
                                     </td>
                                     <td class="py-3">
-                                        <span class="badge @statusBadge rounded-pill px-2">@snap.Status</span>
+                                        <span class="badge @statusBadge rounded-pill px-2">@UiLabels.SnapshotStatus(snap.Status)</span>
                                         @if (snap.Status == "Restored" && snap.RestoredAt.HasValue)
                                         {
                                             <br><small class="text-muted">@snap.RestoredAt.Value.ToString("dd/MM/yyyy HH:mm")</small>

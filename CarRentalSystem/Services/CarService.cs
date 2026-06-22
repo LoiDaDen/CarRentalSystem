@@ -55,7 +55,7 @@ namespace CarRentalSystem.Services
                 .Include(c => c.CarType)
                 .Include(c => c.Location)
                 .Include(c => c.CarBrand)
-                .Where(c => c.CarStatus!.Name == "Available")
+                .WhereSelfDriveRentable()
                 .ToListAsync();
         }
 
@@ -70,7 +70,8 @@ namespace CarRentalSystem.Services
                 .Include(c => c.CarBrand)
                 .Include(c => c.CarModel)
                 .Include(c => c.Owner)
-                .Include(c => c.Reviews)
+                .Include(c => c.Reviews!)
+                    .ThenInclude(r => r.User)
                 .Include(c => c.CarAmenityMappings)
                     .ThenInclude(m => m.CarAmenity)
                 .FirstOrDefaultAsync(m => m.CarID == id);

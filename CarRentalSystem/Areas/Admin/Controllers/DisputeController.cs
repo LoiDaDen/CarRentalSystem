@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using System.Security.Claims;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class DisputeController : Controller
     {
         private readonly IDisputeExportService _disputeExport;

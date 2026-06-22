@@ -85,6 +85,7 @@ namespace CarRentalSystem.Models
         public DateTime? ActualReturnDate { get; set; }
         public DateTime? ActualPickupDate { get; set; }
         public ICollection<HandoverRecord>? HandoverRecords { get; set; } = new List<HandoverRecord>();
+        public ICollection<LostFoundItem>? LostFoundItems { get; set; } = new List<LostFoundItem>();
 
         // Phase 3: Promotions, Add-ons & Delivery
         [ForeignKey("Promotion")]
@@ -129,6 +130,14 @@ namespace CarRentalSystem.Models
 
         [MaxLength(2000)]
         public string? AdminNotes { get; set; }
+
+        public int? AssignedStaffUserID { get; set; }
+        public User? AssignedStaffUser { get; set; }
+
+        public int? AssignedByUserID { get; set; }
+        public User? AssignedByUser { get; set; }
+
+        public DateTime? AssignedAtUtc { get; set; }
 
         public ICollection<BookingAddOn>? BookingAddOns { get; set; } = new List<BookingAddOn>();
 

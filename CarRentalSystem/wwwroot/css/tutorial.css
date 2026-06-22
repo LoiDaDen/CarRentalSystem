@@ -1,0 +1,328 @@
+.tutorial-modal {
+    z-index: 1080;
+}
+
+.tutorial-modal .modal-dialog {
+    max-width: min(760px, calc(100vw - 24px));
+}
+
+.tutorial-modal .modal-content {
+    overflow: hidden;
+    border: 0;
+    border-radius: 22px;
+    background: var(--bs-body-bg, #fff);
+    box-shadow: 0 28px 80px rgba(15, 23, 42, .3);
+}
+
+.tutorial-progress-track {
+    height: 5px;
+    background: rgba(148, 163, 184, .2);
+}
+
+.tutorial-progress-track span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: 0 999px 999px 0;
+    background: linear-gradient(90deg, #2563eb, #7c3aed);
+    transition: width .25s ease;
+}
+
+.tutorial-modal-header {
+    align-items: flex-start;
+    padding: 22px 26px 14px;
+    border: 0;
+}
+
+.tutorial-eyebrow,
+.quick-guide-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #2563eb;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.tutorial-modal-header .modal-title {
+    margin-top: 5px;
+    color: var(--bs-emphasis-color, #0f172a);
+    font-size: clamp(1.25rem, 3vw, 1.65rem);
+    font-weight: 850;
+}
+
+.tutorial-step-count {
+    flex: 0 0 auto;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, .1);
+    color: #2563eb;
+    font-size: .75rem;
+    font-weight: 800;
+}
+
+.tutorial-modal-body {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 26px;
+    align-items: center;
+    padding: 20px 26px 28px;
+}
+
+.tutorial-visual {
+    display: grid;
+    place-items: center;
+    min-height: 150px;
+    border-radius: 22px;
+    background:
+        radial-gradient(circle at 25% 20%, rgba(255,255,255,.7), transparent 35%),
+        linear-gradient(145deg, #dbeafe, #ede9fe);
+}
+
+.tutorial-visual span {
+    display: grid;
+    place-items: center;
+    width: 84px;
+    height: 84px;
+    border-radius: 24px;
+    background: rgba(255,255,255,.8);
+    color: #2563eb;
+    box-shadow: 0 18px 36px rgba(37, 99, 235, .18);
+}
+
+.tutorial-visual i {
+    font-size: 2.6rem;
+}
+
+.tutorial-copy h3 {
+    margin: 0 0 10px;
+    color: var(--bs-emphasis-color, #0f172a);
+    font-size: 1.25rem;
+    font-weight: 850;
+}
+
+.tutorial-copy p {
+    margin: 0;
+    color: var(--bs-secondary-color, #64748b);
+    font-size: .95rem;
+    line-height: 1.7;
+}
+
+.tutorial-route-link {
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    margin-top: 16px;
+    color: #2563eb;
+    font-weight: 750;
+    text-decoration: none;
+}
+
+.tutorial-route-link:not(.d-none) {
+    display: inline-flex;
+}
+
+.tutorial-modal-footer {
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 26px 22px;
+    border-color: rgba(148, 163, 184, .2);
+}
+
+.tutorial-secondary-actions,
+.tutorial-primary-actions,
+.quick-guide-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tutorial-modal-footer .btn {
+    min-height: 42px;
+    border-radius: 11px;
+    font-weight: 750;
+}
+
+.tutorial-focus-ring {
+    position: fixed;
+    z-index: 1070;
+    display: none;
+    pointer-events: none;
+    border: 3px solid #60a5fa;
+    border-radius: 14px;
+    box-shadow: 0 0 0 7px rgba(96, 165, 250, .22), 0 16px 48px rgba(15, 23, 42, .28);
+    transition: inset .2s ease, width .2s ease, height .2s ease;
+}
+
+.tutorial-focus-ring.is-visible {
+    display: block;
+}
+
+.quick-guide {
+    margin-top: 28px;
+    padding: 22px;
+    border: 1px solid rgba(37, 99, 235, .18);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgba(239, 246, 255, .96), rgba(255, 255, 255, .98));
+    color: #172033;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, .06);
+}
+
+.quick-guide-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.quick-guide h2 {
+    margin: 6px 0 5px;
+    color: #0f172a;
+    font-size: 1.2rem;
+    font-weight: 850;
+}
+
+.quick-guide-heading p,
+.quick-guide details p {
+    margin: 0;
+    color: #64748b;
+    line-height: 1.6;
+}
+
+.quick-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.quick-guide-grid section {
+    padding: 16px;
+    border: 1px solid rgba(148, 163, 184, .2);
+    border-radius: 14px;
+    background: rgba(255,255,255,.78);
+}
+
+.quick-guide-grid h3 {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 0 0 10px;
+    color: #1e3a8a;
+    font-size: .86rem;
+    font-weight: 850;
+}
+
+.quick-guide-grid ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #475569;
+    font-size: .85rem;
+    line-height: 1.65;
+}
+
+.quick-guide details {
+    border-top: 1px solid rgba(148, 163, 184, .22);
+    padding: 8px 0;
+    font-size: .83rem;
+}
+
+.quick-guide details:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.quick-guide summary {
+    color: #334155;
+    cursor: pointer;
+    font-weight: 750;
+}
+
+.quick-guide details p {
+    padding-top: 6px;
+    font-size: .82rem;
+}
+
+[data-bs-theme="dark"] .quick-guide {
+    border-color: rgba(96, 165, 250, .25);
+    background: linear-gradient(145deg, #111c31, #172033);
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .quick-guide h2 {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .quick-guide-grid section {
+    background: rgba(15, 23, 42, .75);
+}
+
+[data-bs-theme="dark"] .quick-guide-grid h3,
+[data-bs-theme="dark"] .quick-guide summary {
+    color: #bfdbfe;
+}
+
+[data-bs-theme="dark"] .quick-guide-grid ul,
+[data-bs-theme="dark"] .quick-guide-heading p,
+[data-bs-theme="dark"] .quick-guide details p {
+    color: #cbd5e1;
+}
+
+@media (max-width: 991.98px) {
+    .quick-guide-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .quick-guide-grid section:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .tutorial-modal-body {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding-top: 8px;
+    }
+
+    .tutorial-visual {
+        min-height: 100px;
+    }
+
+    .tutorial-visual span {
+        width: 66px;
+        height: 66px;
+        border-radius: 18px;
+    }
+
+    .tutorial-visual i {
+        font-size: 2rem;
+    }
+
+    .tutorial-modal-footer,
+    .quick-guide-heading {
+        display: grid;
+    }
+
+    .tutorial-primary-actions .btn,
+    .quick-guide-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    .quick-guide-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-guide-grid section:last-child {
+        grid-column: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tutorial-progress-track span,
+    .tutorial-focus-ring {
+        transition: none;
+    }
+}

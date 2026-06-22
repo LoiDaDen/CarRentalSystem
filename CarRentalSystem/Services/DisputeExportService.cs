@@ -56,6 +56,10 @@ namespace CarRentalSystem.Services
             var digitalContract = booking.DigitalContract ?? booking.BookingTransaction?.DigitalContract;
 
             var handovers = await _context.HandoverRecords.AsNoTracking().Where(h => h.BookingID == bookingId).OrderBy(h => h.RecordDate).ToListAsync();
+            var handoverIds = handovers.Select(h => h.HandoverID).ToList();
+            var handoverInventory = await _context.HandoverInventoryItems.AsNoTracking().Where(i => handoverIds.Contains(i.HandoverID)).OrderBy(i => i.HandoverID).ThenBy(i => i.ItemName).ToListAsync();
+            var lostFound = await _context.LostFoundItems.AsNoTracking().Where(i => i.BookingID == bookingId).OrderBy(i => i.FoundAt).ToListAsync();
+            var settlements = await _context.SettlementReviews.AsNoTracking().Where(r => r.BookingID == bookingId).OrderBy(r => r.CreatedAt).ToListAsync();
             var ledger = await _context.PaymentLedgerEntries.AsNoTracking().Where(l => l.BookingID == bookingId).OrderBy(l => l.CreatedAt).ToListAsync();
             var payos = await _context.PayOSTransactions.AsNoTracking().Where(t => t.BookingID == bookingId).OrderBy(t => t.CreatedAt).ToListAsync();
             var orderCodes = payos.Select(p => (long?)p.OrderCode).ToList();
@@ -119,6 +123,9 @@ namespace CarRentalSystem.Services
                     digitalContract?.SignerIdentitySnapshotJson
                 });
                 AddJson(archive, manifest, "handover-evidence.json", handovers);
+                AddJson(archive, manifest, "handover-inventory.json", handoverInventory);
+                AddJson(archive, manifest, "lost-found.json", lostFound);
+                AddJson(archive, manifest, "settlement-reviews.json", settlements);
                 AddJson(archive, manifest, "payment-ledger.json", ledger);
                 AddJson(archive, manifest, "payos-transactions.json", BuildPayosSnapshot(payos, includeSensitive));
                 AddJson(archive, manifest, "payment-webhooks.json", BuildWebhookSnapshot(webhooks, includeSensitive));

@@ -1,0 +1,106 @@
+@using System.Globalization
+@model CarRentalSystem.ViewModels.OwnerCarDetailsViewModel
+@{
+    var mainImage = Model.ImageUrls.FirstOrDefault() ?? "/images/default-car.png";
+    var hasCoordinates = Model.Latitude.HasValue && Model.Longitude.HasValue;
+    var latitude = Model.Latitude?.ToString(CultureInfo.InvariantCulture);
+    var longitude = Model.Longitude?.ToString(CultureInfo.InvariantCulture);
+}
+
+<div class="owner-modal-detail" data-owner-car-id="@Model.CarID">
+    <div class="owner-modal-hero">
+        <img src="@mainImage" alt="@Model.DisplayName" />
+        <div>
+            <div class="owner-kicker">Chi tiết xe</div>
+            <h2>@Model.DisplayName</h2>
+            <div class="owner-car-meta">
+                <span><i class="bi bi-credit-card-2-front"></i> @Model.LicensePlate</span>
+                <span><i class="bi bi-people"></i> @Model.Seats chỗ</span>
+                <span><i class="bi bi-fuel-pump"></i> @Model.FuelType</span>
+                <span><i class="bi bi-gear"></i> @Model.Transmission</span>
+            </div>
+            <div class="owner-badges mt-3">
+                <span class="owner-badge info">@Model.ServiceLabel</span>
+                <span class="owner-badge @(Model.IsApproved ? "ok" : Model.ApprovalStatus == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected ? "danger" : "warn")">
+                    @(Model.IsApproved ? "Đã duyệt" : Model.ApprovalStatus == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected ? "Bị từ chối" : "Chờ duyệt")
+                </span>
+                @if (Model.HasPendingChange)
+                {
+                    <span class="owner-badge warn">
+                        <i class="bi bi-hourglass-split"></i>
+                        @(Model.PendingApprovalLabel ?? "Đã gửi duyệt")
+                        @if (Model.PendingChangeCreatedAt.HasValue)
+                        {
+                            <span>lúc @Model.PendingChangeCreatedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        }
+                    </span>
+                }
+                @if (Model.IsPendingDeletion)
+                {
+                    <span class="owner-badge danger"><i class="bi bi-trash"></i> Tạm ngưng booking mới</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    <section class="owner-details-kpis compact" aria-label="Giá thuê và tiền cọc">
+        <div class="owner-stat"><span>Giá khách thấy</span><strong>@Model.PricePerDay.ToString("N0")đ/ngày</strong></div>
+        <div class="owner-stat"><span>Giá thuê chủ xe nhận</span><strong class="text-success">@Model.OwnerIncomePerDay.ToString("N0")đ/ngày</strong></div>
+        <div class="owner-stat"><span>GMV booking tháng</span><strong>@Model.MonthGmv.ToString("N0")đ</strong></div>
+    </section>
+
+    <div class="owner-modal-grid">
+        <section class="owner-panel owner-details-section">
+            <h3><i class="bi bi-card-checklist"></i> Thông tin vận hành</h3>
+            <div class="owner-details-info-grid">
+                <div><span>Đăng kiểm</span><strong>@Model.InspectionStatusLabel</strong></div>
+                <div><span>GPS</span><strong>@(Model.HasGps ? $"Cập nhật {Model.LatestGpsAt?.ToLocalTime():dd/MM/yyyy HH:mm}" : "Chưa có tín hiệu")</strong></div>
+                <div><span>Hợp đồng</span><strong>@Model.ContractSigningModeLabel</strong></div>
+                <div><span>Booking đang hoạt động</span><strong>@Model.ActiveBookingCount</strong></div>
+                <div><span>Địa chỉ xe</span><strong>@(Model.CarAddress ?? "Chưa cập nhật")</strong></div>
+                <div><span>Tiêu hao</span><strong>@(string.IsNullOrWhiteSpace(Model.FuelConsumption) ? "Chưa cập nhật" : Model.FuelConsumption)</strong></div>
+            </div>
+            <div class="owner-details-description">
+                <span>Mô tả</span>
+                <p>@(string.IsNullOrWhiteSpace(Model.Description) ? "Chưa có mô tả xe." : Model.Description)</p>
+            </div>
+            <div class="owner-badges">
+                @if (Model.Amenities.Any())
+                {
+                    @foreach (var amenity in Model.Amenities)
+                    {
+                        <span class="owner-badge info"><i class="bi bi-check2-circle"></i> @amenity</span>
+                    }
+                }
+                else
+                {
+                    <span class="owner-muted">Chưa cập nhật tiện nghi.</span>
+                }
+            </div>
+        </section>
+
+        <section class="owner-panel owner-details-section">
+            <h3><i class="bi bi-list-check"></i> Việc cần làm</h3>
+            @foreach (var item in Model.ActionItems)
+            {
+                <article class="owner-action-item @item.CssClass">
+                    <i class="bi @item.Icon"></i>
+                    <div>
+                        <strong>@item.Title</strong>
+                        <p>@item.Description</p>
+                    </div>
+                </article>
+            }
+        </section>
+    </div>
+
+    @if (hasCoordinates)
+    {
+        <div class="owner-panel owner-details-section mt-3">
+            <h3><i class="bi bi-geo-alt"></i> Vị trí xe</h3>
+            <a href="https://www.openstreetmap.org/?mlat=@latitude&mlon=@longitude#map=16/@latitude/@longitude" target="_blank" rel="noopener" class="owner-pill">
+                Mở OpenStreetMap <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+    }
+</div>

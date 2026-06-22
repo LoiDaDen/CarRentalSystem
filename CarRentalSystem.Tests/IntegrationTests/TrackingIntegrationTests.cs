@@ -24,7 +24,7 @@ namespace CarRentalSystem.Tests.IntegrationTests
             var trackingRepo = new Repository<VehicleTracking>(_context);
             var alertRepo = new Repository<Alert>(_context);
 
-            _trackingService = new TrackingService(trackingRepo, alertRepo);
+            _trackingService = new TrackingService(trackingRepo, alertRepo, _context);
         }
 
         [Fact]

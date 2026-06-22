@@ -1,0 +1,1098 @@
+# Playwright Testcase Traceability
+
+- Source workbook: `committed:playwright/fixtures/testcase-matrix.json`
+- Generated at UTC: `2026-06-18T06:34:24.075Z`
+- Total traceability cases: `525`
+- Summary: `passed: 525`
+- Coverage depth: `route-smoke: 525`
+- Missing business-flow coverage: `525`
+
+## Module Summary
+
+| Module | Total | Passed | Failed | Skipped | Not Run |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| MD01 | 21 | 21 | 0 | 0 | 0 |
+| MD02 | 21 | 21 | 0 | 0 | 0 |
+| MD03 | 21 | 21 | 0 | 0 | 0 |
+| MD04 | 21 | 21 | 0 | 0 | 0 |
+| MD05 | 21 | 21 | 0 | 0 | 0 |
+| MD06 | 21 | 21 | 0 | 0 | 0 |
+| MD07 | 21 | 21 | 0 | 0 | 0 |
+| MD08 | 21 | 21 | 0 | 0 | 0 |
+| MD09 | 21 | 21 | 0 | 0 | 0 |
+| MD10 | 21 | 21 | 0 | 0 | 0 |
+| MD11 | 21 | 21 | 0 | 0 | 0 |
+| MD12 | 21 | 21 | 0 | 0 | 0 |
+| MD13 | 21 | 21 | 0 | 0 | 0 |
+| MD14 | 21 | 21 | 0 | 0 | 0 |
+| MD15 | 21 | 21 | 0 | 0 | 0 |
+| MD16 | 21 | 21 | 0 | 0 | 0 |
+| MD17 | 21 | 21 | 0 | 0 | 0 |
+| MD18 | 21 | 21 | 0 | 0 | 0 |
+| MD19 | 21 | 21 | 0 | 0 | 0 |
+| MD20 | 21 | 21 | 0 | 0 | 0 |
+| MD21 | 21 | 21 | 0 | 0 | 0 |
+| MD22 | 21 | 21 | 0 | 0 | 0 |
+| MD23 | 21 | 21 | 0 | 0 | 0 |
+| MD24 | 21 | 21 | 0 | 0 | 0 |
+| MD25 | 21 | 21 | 0 | 0 | 0 |
+
+## Results
+
+| TC | Module | Priority | Status | Depth | Route | Role | Spec | Title |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TC001 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Navbar public brand/menu/active state - luồng chính |
+| TC002 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Navbar public brand/menu/active state - validation, phân quyền và edge cases |
+| TC003 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Navbar public brand/menu/active state - layout, responsive, accessibility và console |
+| TC004 | MD01 | P0 | passed | route-smoke | / | customer | excel/MD01-layout-public.spec.js | Auth menu, avatar và cart count - luồng chính |
+| TC005 | MD01 | P0 | passed | route-smoke | / | customer | excel/MD01-layout-public.spec.js | Auth menu, avatar và cart count - validation, phân quyền và edge cases |
+| TC006 | MD01 | P1 | passed | route-smoke | / | customer | excel/MD01-layout-public.spec.js | Auth menu, avatar và cart count - layout, responsive, accessibility và console |
+| TC007 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Region selector và cookie khu vực - luồng chính |
+| TC008 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Region selector và cookie khu vực - validation, phân quyền và edge cases |
+| TC009 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Region selector và cookie khu vực - layout, responsive, accessibility và console |
+| TC010 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Mobile navbar collapse/offcanvas - luồng chính |
+| TC011 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Mobile navbar collapse/offcanvas - validation, phân quyền và edge cases |
+| TC012 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Mobile navbar collapse/offcanvas - layout, responsive, accessibility và console |
+| TC013 | MD01 | P1 | passed | route-smoke | /Home/Privacy | guest | excel/MD01-layout-public.spec.js | Footer và link pháp lý - luồng chính |
+| TC014 | MD01 | P1 | passed | route-smoke | /Home/Privacy | guest | excel/MD01-layout-public.spec.js | Footer và link pháp lý - validation, phân quyền và edge cases |
+| TC015 | MD01 | P1 | passed | route-smoke | /Home/Privacy | guest | excel/MD01-layout-public.spec.js | Footer và link pháp lý - layout, responsive, accessibility và console |
+| TC016 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Toast/TempData public chống XSS - luồng chính |
+| TC017 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Toast/TempData public chống XSS - validation, phân quyền và edge cases |
+| TC018 | MD01 | P1 | passed | route-smoke | / | guest | excel/MD01-layout-public.spec.js | Toast/TempData public chống XSS - layout, responsive, accessibility và console |
+| TC019 | MD01 | P1 | passed | route-smoke | /manifest.webmanifest | guest | excel/MD01-layout-public.spec.js | PWA manifest/offline/service worker - luồng chính |
+| TC020 | MD01 | P1 | passed | route-smoke | /manifest.webmanifest | guest | excel/MD01-layout-public.spec.js | PWA manifest/offline/service worker - validation, phân quyền và edge cases |
+| TC021 | MD01 | P1 | passed | route-smoke | /manifest.webmanifest | guest | excel/MD01-layout-public.spec.js | PWA manifest/offline/service worker - layout, responsive, accessibility và console |
+| TC022 | MD02 | P0 | passed | route-smoke | /Auth/Register | guest | excel/MD02-auth-account-session.spec.js | Đăng ký Customer với consent - luồng chính |
+| TC023 | MD02 | P0 | passed | route-smoke | /Auth/Register | guest | excel/MD02-auth-account-session.spec.js | Đăng ký Customer với consent - validation, phân quyền và edge cases |
+| TC024 | MD02 | P1 | passed | route-smoke | /Auth/Register | guest | excel/MD02-auth-account-session.spec.js | Đăng ký Customer với consent - layout, responsive, accessibility và console |
+| TC025 | MD02 | P0 | passed | route-smoke | /Auth/Register | guest | excel/MD02-auth-account-session.spec.js | Đăng ký validation tuổi/email/phone/CCCD/GPLX/password - luồng chính |
+| TC026 | MD02 | P0 | passed | route-smoke | /Auth/Register | guest | excel/MD02-auth-account-session.spec.js | Đăng ký validation tuổi/email/phone/CCCD/GPLX/password - validation, phân quyền và edge cases |
+| TC027 | MD02 | P1 | passed | route-smoke | /Auth/Register | guest | excel/MD02-auth-account-session.spec.js | Đăng ký validation tuổi/email/phone/CCCD/GPLX/password - layout, responsive, accessibility và console |
+| TC028 | MD02 | P0 | passed | route-smoke | /Auth/VerifyEmailStep1 | guest | excel/MD02-auth-account-session.spec.js | Xác thực email OTP - luồng chính |
+| TC029 | MD02 | P0 | passed | route-smoke | /Auth/VerifyEmailStep1 | guest | excel/MD02-auth-account-session.spec.js | Xác thực email OTP - validation, phân quyền và edge cases |
+| TC030 | MD02 | P1 | passed | route-smoke | /Auth/VerifyEmailStep1 | guest | excel/MD02-auth-account-session.spec.js | Xác thực email OTP - layout, responsive, accessibility và console |
+| TC031 | MD02 | P0 | passed | route-smoke | /Auth/Login | customer | excel/MD02-auth-account-session.spec.js | Đăng nhập Customer và cookie auth - luồng chính |
+| TC032 | MD02 | P0 | passed | route-smoke | /Auth/Login | customer | excel/MD02-auth-account-session.spec.js | Đăng nhập Customer và cookie auth - validation, phân quyền và edge cases |
+| TC033 | MD02 | P1 | passed | route-smoke | /Auth/Login | customer | excel/MD02-auth-account-session.spec.js | Đăng nhập Customer và cookie auth - layout, responsive, accessibility và console |
+| TC034 | MD02 | P0 | passed | route-smoke | /Auth/Login | guest | excel/MD02-auth-account-session.spec.js | Đăng nhập sai và rate limit - luồng chính |
+| TC035 | MD02 | P0 | passed | route-smoke | /Auth/Login | guest | excel/MD02-auth-account-session.spec.js | Đăng nhập sai và rate limit - validation, phân quyền và edge cases |
+| TC036 | MD02 | P1 | passed | route-smoke | /Auth/Login | guest | excel/MD02-auth-account-session.spec.js | Đăng nhập sai và rate limit - layout, responsive, accessibility và console |
+| TC037 | MD02 | P0 | passed | route-smoke | /Auth/VerifyMfa | admin | excel/MD02-auth-account-session.spec.js | MFA cho Admin/Manager/Staff - luồng chính |
+| TC038 | MD02 | P0 | passed | route-smoke | /Auth/VerifyMfa | admin | excel/MD02-auth-account-session.spec.js | MFA cho Admin/Manager/Staff - validation, phân quyền và edge cases |
+| TC039 | MD02 | P1 | passed | route-smoke | /Auth/VerifyMfa | admin | excel/MD02-auth-account-session.spec.js | MFA cho Admin/Manager/Staff - layout, responsive, accessibility và console |
+| TC040 | MD02 | P0 | passed | route-smoke | /Auth/ForgotPassword | guest | excel/MD02-auth-account-session.spec.js | Forgot/reset password - luồng chính |
+| TC041 | MD02 | P0 | passed | route-smoke | /Auth/ForgotPassword | guest | excel/MD02-auth-account-session.spec.js | Forgot/reset password - validation, phân quyền và edge cases |
+| TC042 | MD02 | P1 | passed | route-smoke | /Auth/ForgotPassword | guest | excel/MD02-auth-account-session.spec.js | Forgot/reset password - layout, responsive, accessibility và console |
+| TC043 | MD03 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | Profile hiển thị và mask PII - luồng chính |
+| TC044 | MD03 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | Profile hiển thị và mask PII - validation, phân quyền và edge cases |
+| TC045 | MD03 | P1 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | Profile hiển thị và mask PII - layout, responsive, accessibility và console |
+| TC046 | MD03 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | Cập nhật hồ sơ cá nhân - luồng chính |
+| TC047 | MD03 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | Cập nhật hồ sơ cá nhân - validation, phân quyền và edge cases |
+| TC048 | MD03 | P1 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | Cập nhật hồ sơ cá nhân - layout, responsive, accessibility và console |
+| TC049 | MD03 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | PII PIN set/verify - luồng chính |
+| TC050 | MD03 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | PII PIN set/verify - validation, phân quyền và edge cases |
+| TC051 | MD03 | P1 | passed | route-smoke | /Auth/Profile | customer | excel/MD03-profile-ekyc-pii.spec.js | PII PIN set/verify - layout, responsive, accessibility và console |
+| TC052 | MD03 | P0 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | Upload/scan CCCD và GPLX - luồng chính |
+| TC053 | MD03 | P0 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | Upload/scan CCCD và GPLX - validation, phân quyền và edge cases |
+| TC054 | MD03 | P1 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | Upload/scan CCCD và GPLX - layout, responsive, accessibility và console |
+| TC055 | MD03 | P0 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | eKYC reject file giả mạo/quá dung lượng - luồng chính |
+| TC056 | MD03 | P0 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | eKYC reject file giả mạo/quá dung lượng - validation, phân quyền và edge cases |
+| TC057 | MD03 | P1 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | eKYC reject file giả mạo/quá dung lượng - layout, responsive, accessibility và console |
+| TC058 | MD03 | P0 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | Face verification - luồng chính |
+| TC059 | MD03 | P0 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | Face verification - validation, phân quyền và edge cases |
+| TC060 | MD03 | P1 | passed | route-smoke | /Ekyc | customer | excel/MD03-profile-ekyc-pii.spec.js | Face verification - layout, responsive, accessibility và console |
+| TC061 | MD03 | P0 | passed | route-smoke | /Auth/Profile | admin | excel/MD03-profile-ekyc-pii.spec.js | SecureFile ownership - luồng chính |
+| TC062 | MD03 | P0 | passed | route-smoke | /Auth/Profile | admin | excel/MD03-profile-ekyc-pii.spec.js | SecureFile ownership - validation, phân quyền và edge cases |
+| TC063 | MD03 | P1 | passed | route-smoke | /Auth/Profile | admin | excel/MD03-profile-ekyc-pii.spec.js | SecureFile ownership - layout, responsive, accessibility và console |
+| TC064 | MD04 | P1 | passed | route-smoke | / | guest | excel/MD04-home-catalog-search.spec.js | Trang chủ xe nổi bật và CTA - luồng chính |
+| TC065 | MD04 | P1 | passed | route-smoke | / | guest | excel/MD04-home-catalog-search.spec.js | Trang chủ xe nổi bật và CTA - validation, phân quyền và edge cases |
+| TC066 | MD04 | P1 | passed | route-smoke | / | guest | excel/MD04-home-catalog-search.spec.js | Trang chủ xe nổi bật và CTA - layout, responsive, accessibility và console |
+| TC067 | MD04 | P1 | passed | route-smoke | /Car | guest | excel/MD04-home-catalog-search.spec.js | Danh sách xe filter nhiều tiêu chí - luồng chính |
+| TC068 | MD04 | P1 | passed | route-smoke | /Car | guest | excel/MD04-home-catalog-search.spec.js | Danh sách xe filter nhiều tiêu chí - validation, phân quyền và edge cases |
+| TC069 | MD04 | P1 | passed | route-smoke | /Car | guest | excel/MD04-home-catalog-search.spec.js | Danh sách xe filter nhiều tiêu chí - layout, responsive, accessibility và console |
+| TC070 | MD04 | P1 | passed | route-smoke | /Car | guest | excel/MD04-home-catalog-search.spec.js | Search text chống SQL/XSS và bỏ dấu - luồng chính |
+| TC071 | MD04 | P1 | passed | route-smoke | /Car | guest | excel/MD04-home-catalog-search.spec.js | Search text chống SQL/XSS và bỏ dấu - validation, phân quyền và edge cases |
+| TC072 | MD04 | P1 | passed | route-smoke | /Car | guest | excel/MD04-home-catalog-search.spec.js | Search text chống SQL/XSS và bỏ dấu - layout, responsive, accessibility và console |
+| TC073 | MD04 | P1 | passed | route-smoke | /Car/LoadMoreCars | guest | excel/MD04-home-catalog-search.spec.js | Load more/pagination catalog - luồng chính |
+| TC074 | MD04 | P1 | passed | route-smoke | /Car/LoadMoreCars | guest | excel/MD04-home-catalog-search.spec.js | Load more/pagination catalog - validation, phân quyền và edge cases |
+| TC075 | MD04 | P1 | passed | route-smoke | /Car/LoadMoreCars | guest | excel/MD04-home-catalog-search.spec.js | Load more/pagination catalog - layout, responsive, accessibility và console |
+| TC076 | MD04 | P1 | passed | route-smoke | /Car/MapSearch | guest | excel/MD04-home-catalog-search.spec.js | Map search marker và khoảng cách - luồng chính |
+| TC077 | MD04 | P1 | passed | route-smoke | /Car/MapSearch | guest | excel/MD04-home-catalog-search.spec.js | Map search marker và khoảng cách - validation, phân quyền và edge cases |
+| TC078 | MD04 | P1 | passed | route-smoke | /Car/MapSearch | guest | excel/MD04-home-catalog-search.spec.js | Map search marker và khoảng cách - layout, responsive, accessibility và console |
+| TC079 | MD04 | P1 | passed | route-smoke | / | guest | excel/MD04-home-catalog-search.spec.js | Delivery search phạm vi giao xe - luồng chính |
+| TC080 | MD04 | P1 | passed | route-smoke | / | guest | excel/MD04-home-catalog-search.spec.js | Delivery search phạm vi giao xe - validation, phân quyền và edge cases |
+| TC081 | MD04 | P1 | passed | route-smoke | / | guest | excel/MD04-home-catalog-search.spec.js | Delivery search phạm vi giao xe - layout, responsive, accessibility và console |
+| TC082 | MD04 | P1 | passed | route-smoke | /CarCatalog/Models | guest | excel/MD04-home-catalog-search.spec.js | Catalog models API cho dropdown - luồng chính |
+| TC083 | MD04 | P1 | passed | route-smoke | /CarCatalog/Models | guest | excel/MD04-home-catalog-search.spec.js | Catalog models API cho dropdown - validation, phân quyền và edge cases |
+| TC084 | MD04 | P1 | passed | route-smoke | /CarCatalog/Models | guest | excel/MD04-home-catalog-search.spec.js | Catalog models API cho dropdown - layout, responsive, accessibility và console |
+| TC085 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Chi tiết xe và gallery/fallback ảnh - luồng chính |
+| TC086 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Chi tiết xe và gallery/fallback ảnh - validation, phân quyền và edge cases |
+| TC087 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Chi tiết xe và gallery/fallback ảnh - layout, responsive, accessibility và console |
+| TC088 | MD05 | P1 | passed | route-smoke | /Car/BusyDates | customer | excel/MD05-car-detail-review.spec.js | Busy dates calendar - luồng chính |
+| TC089 | MD05 | P1 | passed | route-smoke | /Car/BusyDates | customer | excel/MD05-car-detail-review.spec.js | Busy dates calendar - validation, phân quyền và edge cases |
+| TC090 | MD05 | P1 | passed | route-smoke | /Car/BusyDates | customer | excel/MD05-car-detail-review.spec.js | Busy dates calendar - layout, responsive, accessibility và console |
+| TC091 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | customer | excel/MD05-car-detail-review.spec.js | Delivery fee ở detail - luồng chính |
+| TC092 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | customer | excel/MD05-car-detail-review.spec.js | Delivery fee ở detail - validation, phân quyền và edge cases |
+| TC093 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | customer | excel/MD05-car-detail-review.spec.js | Delivery fee ở detail - layout, responsive, accessibility và console |
+| TC094 | MD05 | P0 | passed | route-smoke | /Car/Details/17556 | customer | excel/MD05-car-detail-review.spec.js | Review xe sau booking completed - luồng chính |
+| TC095 | MD05 | P0 | passed | route-smoke | /Car/Details/17556 | customer | excel/MD05-car-detail-review.spec.js | Review xe sau booking completed - validation, phân quyền và edge cases |
+| TC096 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | customer | excel/MD05-car-detail-review.spec.js | Review xe sau booking completed - layout, responsive, accessibility và console |
+| TC097 | MD05 | P0 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Đặt xe từ detail theo auth/eKYC - luồng chính |
+| TC098 | MD05 | P0 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Đặt xe từ detail theo auth/eKYC - validation, phân quyền và edge cases |
+| TC099 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Đặt xe từ detail theo auth/eKYC - layout, responsive, accessibility và console |
+| TC100 | MD05 | P0 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Thêm giỏ từ detail theo auth/eKYC - luồng chính |
+| TC101 | MD05 | P0 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Thêm giỏ từ detail theo auth/eKYC - validation, phân quyền và edge cases |
+| TC102 | MD05 | P1 | passed | route-smoke | /Car/Details/17556 | guest | excel/MD05-car-detail-review.spec.js | Thêm giỏ từ detail theo auth/eKYC - layout, responsive, accessibility và console |
+| TC103 | MD05 | P0 | passed | route-smoke | /Car/Create | admin | excel/MD05-car-detail-review.spec.js | Admin-only action không lộ public - luồng chính |
+| TC104 | MD05 | P0 | passed | route-smoke | /Car/Create | admin | excel/MD05-car-detail-review.spec.js | Admin-only action không lộ public - validation, phân quyền và edge cases |
+| TC105 | MD05 | P1 | passed | route-smoke | /Car/Create | admin | excel/MD05-car-detail-review.spec.js | Admin-only action không lộ public - layout, responsive, accessibility và console |
+| TC106 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Tạo booking một xe từ detail - luồng chính |
+| TC107 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Tạo booking một xe từ detail - validation, phân quyền và edge cases |
+| TC108 | MD06 | P1 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Tạo booking một xe từ detail - layout, responsive, accessibility và console |
+| TC109 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Reject ngày nhận/trả không hợp lệ - luồng chính |
+| TC110 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Reject ngày nhận/trả không hợp lệ - validation, phân quyền và edge cases |
+| TC111 | MD06 | P1 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Reject ngày nhận/trả không hợp lệ - layout, responsive, accessibility và console |
+| TC112 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Concurrency hai user cùng xe - luồng chính |
+| TC113 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Concurrency hai user cùng xe - validation, phân quyền và edge cases |
+| TC114 | MD06 | P1 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Concurrency hai user cùng xe - layout, responsive, accessibility và console |
+| TC115 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Quote nhất quán GET/POST/payment - luồng chính |
+| TC116 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Quote nhất quán GET/POST/payment - validation, phân quyền và edge cases |
+| TC117 | MD06 | P1 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Quote nhất quán GET/POST/payment - layout, responsive, accessibility và console |
+| TC118 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Checkout bắt buộc Terms/Privacy/self-drive consent - luồng chính |
+| TC119 | MD06 | P0 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Checkout bắt buộc Terms/Privacy/self-drive consent - validation, phân quyền và edge cases |
+| TC120 | MD06 | P1 | passed | route-smoke | /Car/Details/17697 | customer | excel/MD06-booking-single-flow.spec.js | Checkout bắt buộc Terms/Privacy/self-drive consent - layout, responsive, accessibility và console |
+| TC121 | MD06 | P0 | passed | route-smoke | /api/Voucher/Check | customer | excel/MD06-booking-single-flow.spec.js | Promotion/voucher trong booking - luồng chính |
+| TC122 | MD06 | P0 | passed | route-smoke | /api/Voucher/Check | customer | excel/MD06-booking-single-flow.spec.js | Promotion/voucher trong booking - validation, phân quyền và edge cases |
+| TC123 | MD06 | P1 | passed | route-smoke | /api/Voucher/Check | customer | excel/MD06-booking-single-flow.spec.js | Promotion/voucher trong booking - layout, responsive, accessibility và console |
+| TC124 | MD06 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD06-booking-single-flow.spec.js | MyBookings, detail, cancel, pickup/return - luồng chính |
+| TC125 | MD06 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD06-booking-single-flow.spec.js | MyBookings, detail, cancel, pickup/return - validation, phân quyền và edge cases |
+| TC126 | MD06 | P1 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD06-booking-single-flow.spec.js | MyBookings, detail, cancel, pickup/return - layout, responsive, accessibility và console |
+| TC127 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Thêm xe vào giỏ và cart count - luồng chính |
+| TC128 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Thêm xe vào giỏ và cart count - validation, phân quyền và edge cases |
+| TC129 | MD07 | P1 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Thêm xe vào giỏ và cart count - layout, responsive, accessibility và console |
+| TC130 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Giỏ nhiều xe tính tổng - luồng chính |
+| TC131 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Giỏ nhiều xe tính tổng - validation, phân quyền và edge cases |
+| TC132 | MD07 | P1 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Giỏ nhiều xe tính tổng - layout, responsive, accessibility và console |
+| TC133 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Cập nhật ngày trong giỏ - luồng chính |
+| TC134 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Cập nhật ngày trong giỏ - validation, phân quyền và edge cases |
+| TC135 | MD07 | P1 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Cập nhật ngày trong giỏ - layout, responsive, accessibility và console |
+| TC136 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Toggle add-on/package/driver - luồng chính |
+| TC137 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Toggle add-on/package/driver - validation, phân quyền và edge cases |
+| TC138 | MD07 | P1 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Toggle add-on/package/driver - layout, responsive, accessibility và console |
+| TC139 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Xóa item và empty state - luồng chính |
+| TC140 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Xóa item và empty state - validation, phân quyền và edge cases |
+| TC141 | MD07 | P1 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | Xóa item và empty state - layout, responsive, accessibility và console |
+| TC142 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | CheckoutAll multi-car transaction - luồng chính |
+| TC143 | MD07 | P0 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | CheckoutAll multi-car transaction - validation, phân quyền và edge cases |
+| TC144 | MD07 | P1 | passed | route-smoke | /Cart | customer | excel/MD07-cart-multi-checkout.spec.js | CheckoutAll multi-car transaction - layout, responsive, accessibility và console |
+| TC145 | MD07 | P0 | passed | route-smoke | /Cart/ | customer | excel/MD07-cart-multi-checkout.spec.js | Cart CSRF và IDOR - luồng chính |
+| TC146 | MD07 | P0 | passed | route-smoke | /Cart/ | customer | excel/MD07-cart-multi-checkout.spec.js | Cart CSRF và IDOR - validation, phân quyền và edge cases |
+| TC147 | MD07 | P1 | passed | route-smoke | /Cart/ | customer | excel/MD07-cart-multi-checkout.spec.js | Cart CSRF và IDOR - layout, responsive, accessibility và console |
+| TC148 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | Tạo PayOS payment cho deposit/hold - luồng chính |
+| TC149 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | Tạo PayOS payment cho deposit/hold - validation, phân quyền và edge cases |
+| TC150 | MD08 | P1 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | Tạo PayOS payment cho deposit/hold - layout, responsive, accessibility và console |
+| TC151 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | PayOS webhook paid idempotent - luồng chính |
+| TC152 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | PayOS webhook paid idempotent - validation, phân quyền và edge cases |
+| TC153 | MD08 | P1 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | PayOS webhook paid idempotent - layout, responsive, accessibility và console |
+| TC154 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | Success/cancel/pending routes - luồng chính |
+| TC155 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | Success/cancel/pending routes - validation, phân quyền và edge cases |
+| TC156 | MD08 | P1 | passed | route-smoke | /Booking/MyBookings | customer | excel/MD08-payment-voucher-refund.spec.js | Success/cancel/pending routes - layout, responsive, accessibility và console |
+| TC157 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | admin | excel/MD08-payment-voucher-refund.spec.js | Manual payment confirmation - luồng chính |
+| TC158 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | admin | excel/MD08-payment-voucher-refund.spec.js | Manual payment confirmation - validation, phân quyền và edge cases |
+| TC159 | MD08 | P1 | passed | route-smoke | /Booking/MyBookings | admin | excel/MD08-payment-voucher-refund.spec.js | Manual payment confirmation - layout, responsive, accessibility và console |
+| TC160 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | admin | excel/MD08-payment-voucher-refund.spec.js | Refund request/approve/reject - luồng chính |
+| TC161 | MD08 | P0 | passed | route-smoke | /Booking/MyBookings | admin | excel/MD08-payment-voucher-refund.spec.js | Refund request/approve/reject - validation, phân quyền và edge cases |
+| TC162 | MD08 | P1 | passed | route-smoke | /Booking/MyBookings | admin | excel/MD08-payment-voucher-refund.spec.js | Refund request/approve/reject - layout, responsive, accessibility và console |
+| TC163 | MD08 | P0 | passed | route-smoke | /api/Voucher/Check | customer | excel/MD08-payment-voucher-refund.spec.js | Voucher API brute force/input - luồng chính |
+| TC164 | MD08 | P0 | passed | route-smoke | /api/Voucher/Check | customer | excel/MD08-payment-voucher-refund.spec.js | Voucher API brute force/input - validation, phân quyền và edge cases |
+| TC165 | MD08 | P1 | passed | route-smoke | /api/Voucher/Check | customer | excel/MD08-payment-voucher-refund.spec.js | Voucher API brute force/input - layout, responsive, accessibility và console |
+| TC166 | MD08 | P0 | passed | route-smoke | /Admin/Payment | admin | excel/MD08-payment-voucher-refund.spec.js | Admin Payment index/filter - luồng chính |
+| TC167 | MD08 | P0 | passed | route-smoke | /Admin/Payment | admin | excel/MD08-payment-voucher-refund.spec.js | Admin Payment index/filter - validation, phân quyền và edge cases |
+| TC168 | MD08 | P1 | passed | route-smoke | /Admin/Payment | admin | excel/MD08-payment-voucher-refund.spec.js | Admin Payment index/filter - layout, responsive, accessibility và console |
+| TC169 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Physical contract upload/classify/confirm - luồng chính |
+| TC170 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Physical contract upload/classify/confirm - validation, phân quyền và edge cases |
+| TC171 | MD09 | P1 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Physical contract upload/classify/confirm - layout, responsive, accessibility và console |
+| TC172 | MD09 | P0 | passed | route-smoke | /PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Customer xem hợp đồng đúng quyền - luồng chính |
+| TC173 | MD09 | P0 | passed | route-smoke | /PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Customer xem hợp đồng đúng quyền - validation, phân quyền và edge cases |
+| TC174 | MD09 | P1 | passed | route-smoke | /PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Customer xem hợp đồng đúng quyền - layout, responsive, accessibility và console |
+| TC175 | MD09 | P0 | passed | route-smoke | /Booking/TransactionContract | admin | excel/MD09-contract-handover.spec.js | Digital contract legacy routes - luồng chính |
+| TC176 | MD09 | P0 | passed | route-smoke | /Booking/TransactionContract | admin | excel/MD09-contract-handover.spec.js | Digital contract legacy routes - validation, phân quyền và edge cases |
+| TC177 | MD09 | P1 | passed | route-smoke | /Booking/TransactionContract | admin | excel/MD09-contract-handover.spec.js | Digital contract legacy routes - layout, responsive, accessibility và console |
+| TC178 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | customer | excel/MD09-contract-handover.spec.js | Ký hợp đồng/evidence - luồng chính |
+| TC179 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | customer | excel/MD09-contract-handover.spec.js | Ký hợp đồng/evidence - validation, phân quyền và edge cases |
+| TC180 | MD09 | P1 | passed | route-smoke | /Admin/PhysicalContracts | customer | excel/MD09-contract-handover.spec.js | Ký hợp đồng/evidence - layout, responsive, accessibility và console |
+| TC181 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover CheckIn - luồng chính |
+| TC182 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover CheckIn - validation, phân quyền và edge cases |
+| TC183 | MD09 | P1 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover CheckIn - layout, responsive, accessibility và console |
+| TC184 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover CheckOut - luồng chính |
+| TC185 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover CheckOut - validation, phân quyền và edge cases |
+| TC186 | MD09 | P1 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover CheckOut - layout, responsive, accessibility và console |
+| TC187 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover reject trạng thái/file/signature sai - luồng chính |
+| TC188 | MD09 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover reject trạng thái/file/signature sai - validation, phân quyền và edge cases |
+| TC189 | MD09 | P1 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD09-contract-handover.spec.js | Handover reject trạng thái/file/signature sai - layout, responsive, accessibility và console |
+| TC190 | MD10 | P1 | passed | route-smoke | /LongTerm | guest | excel/MD10-longterm-rentals.spec.js | Trang thuê dài hạn và gói - luồng chính |
+| TC191 | MD10 | P1 | passed | route-smoke | /LongTerm | guest | excel/MD10-longterm-rentals.spec.js | Trang thuê dài hạn và gói - validation, phân quyền và edge cases |
+| TC192 | MD10 | P1 | passed | route-smoke | /LongTerm | guest | excel/MD10-longterm-rentals.spec.js | Trang thuê dài hạn và gói - layout, responsive, accessibility và console |
+| TC193 | MD10 | P1 | passed | route-smoke | /LongTerm/RequestForm | customer | excel/MD10-longterm-rentals.spec.js | RequestForm thuê dài hạn - luồng chính |
+| TC194 | MD10 | P1 | passed | route-smoke | /LongTerm/RequestForm | customer | excel/MD10-longterm-rentals.spec.js | RequestForm thuê dài hạn - validation, phân quyền và edge cases |
+| TC195 | MD10 | P1 | passed | route-smoke | /LongTerm/RequestForm | customer | excel/MD10-longterm-rentals.spec.js | RequestForm thuê dài hạn - layout, responsive, accessibility và console |
+| TC196 | MD10 | P1 | passed | route-smoke | /LongTerm/CalculatePrice | customer | excel/MD10-longterm-rentals.spec.js | CalculatePrice/GetAvailableCars - luồng chính |
+| TC197 | MD10 | P1 | passed | route-smoke | /LongTerm/CalculatePrice | customer | excel/MD10-longterm-rentals.spec.js | CalculatePrice/GetAvailableCars - validation, phân quyền và edge cases |
+| TC198 | MD10 | P1 | passed | route-smoke | /LongTerm/CalculatePrice | customer | excel/MD10-longterm-rentals.spec.js | CalculatePrice/GetAvailableCars - layout, responsive, accessibility và console |
+| TC199 | MD10 | P0 | passed | route-smoke | /LongTerm | customer | excel/MD10-longterm-rentals.spec.js | ContractPreview thuê dài hạn - luồng chính |
+| TC200 | MD10 | P0 | passed | route-smoke | /LongTerm | customer | excel/MD10-longterm-rentals.spec.js | ContractPreview thuê dài hạn - validation, phân quyền và edge cases |
+| TC201 | MD10 | P1 | passed | route-smoke | /LongTerm | customer | excel/MD10-longterm-rentals.spec.js | ContractPreview thuê dài hạn - layout, responsive, accessibility và console |
+| TC202 | MD10 | P1 | passed | route-smoke | /LongTerm | customer | excel/MD10-longterm-rentals.spec.js | ConfirmAndDeposit thuê dài hạn - luồng chính |
+| TC203 | MD10 | P1 | passed | route-smoke | /LongTerm | customer | excel/MD10-longterm-rentals.spec.js | ConfirmAndDeposit thuê dài hạn - validation, phân quyền và edge cases |
+| TC204 | MD10 | P1 | passed | route-smoke | /LongTerm | customer | excel/MD10-longterm-rentals.spec.js | ConfirmAndDeposit thuê dài hạn - layout, responsive, accessibility và console |
+| TC205 | MD10 | P1 | passed | route-smoke | /LongTerm | admin | excel/MD10-longterm-rentals.spec.js | VehicleInspection định kỳ - luồng chính |
+| TC206 | MD10 | P1 | passed | route-smoke | /LongTerm | admin | excel/MD10-longterm-rentals.spec.js | VehicleInspection định kỳ - validation, phân quyền và edge cases |
+| TC207 | MD10 | P1 | passed | route-smoke | /LongTerm | admin | excel/MD10-longterm-rentals.spec.js | VehicleInspection định kỳ - layout, responsive, accessibility và console |
+| TC208 | MD10 | P0 | passed | route-smoke | /LongTerm | admin | excel/MD10-longterm-rentals.spec.js | Long-term maintenance/payment schedule - luồng chính |
+| TC209 | MD10 | P0 | passed | route-smoke | /LongTerm | admin | excel/MD10-longterm-rentals.spec.js | Long-term maintenance/payment schedule - validation, phân quyền và edge cases |
+| TC210 | MD10 | P1 | passed | route-smoke | /LongTerm | admin | excel/MD10-longterm-rentals.spec.js | Long-term maintenance/payment schedule - layout, responsive, accessibility và console |
+| TC211 | MD11 | P1 | passed | route-smoke | /OwnerCars | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars dashboard - luồng chính |
+| TC212 | MD11 | P1 | passed | route-smoke | /OwnerCars | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars dashboard - validation, phân quyền và edge cases |
+| TC213 | MD11 | P1 | passed | route-smoke | /OwnerCars | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars dashboard - layout, responsive, accessibility và console |
+| TC214 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars create P2P car - luồng chính |
+| TC215 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars create P2P car - validation, phân quyền và edge cases |
+| TC216 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars create P2P car - layout, responsive, accessibility và console |
+| TC217 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars validation biển số/VIN/giá/ảnh - luồng chính |
+| TC218 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars validation biển số/VIN/giá/ảnh - validation, phân quyền và edge cases |
+| TC219 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | owner | excel/MD11-owner-partner-driver.spec.js | OwnerCars validation biển số/VIN/giá/ảnh - layout, responsive, accessibility và console |
+| TC220 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | admin | excel/MD11-owner-partner-driver.spec.js | Partner chưa duyệt bị chặn đăng xe - luồng chính |
+| TC221 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | admin | excel/MD11-owner-partner-driver.spec.js | Partner chưa duyệt bị chặn đăng xe - validation, phân quyền và edge cases |
+| TC222 | MD11 | P1 | passed | route-smoke | /OwnerCars/Create | admin | excel/MD11-owner-partner-driver.spec.js | Partner chưa duyệt bị chặn đăng xe - layout, responsive, accessibility và console |
+| TC223 | MD11 | P0 | passed | route-smoke | /Admin/CarApproval | admin | excel/MD11-owner-partner-driver.spec.js | Admin duyệt/từ chối xe owner - luồng chính |
+| TC224 | MD11 | P0 | passed | route-smoke | /Admin/CarApproval | admin | excel/MD11-owner-partner-driver.spec.js | Admin duyệt/từ chối xe owner - validation, phân quyền và edge cases |
+| TC225 | MD11 | P1 | passed | route-smoke | /Admin/CarApproval | admin | excel/MD11-owner-partner-driver.spec.js | Admin duyệt/từ chối xe owner - layout, responsive, accessibility và console |
+| TC226 | MD11 | P1 | passed | route-smoke | /Driver | admin | excel/MD11-owner-partner-driver.spec.js | Driver/with-driver surface đóng an toàn - luồng chính |
+| TC227 | MD11 | P1 | passed | route-smoke | /Driver | admin | excel/MD11-owner-partner-driver.spec.js | Driver/with-driver surface đóng an toàn - validation, phân quyền và edge cases |
+| TC228 | MD11 | P1 | passed | route-smoke | /Driver | admin | excel/MD11-owner-partner-driver.spec.js | Driver/with-driver surface đóng an toàn - layout, responsive, accessibility và console |
+| TC229 | MD11 | P0 | passed | route-smoke | /OwnerCars | owner | excel/MD11-owner-partner-driver.spec.js | Partner revenue/booking visibility - luồng chính |
+| TC230 | MD11 | P0 | passed | route-smoke | /OwnerCars | owner | excel/MD11-owner-partner-driver.spec.js | Partner revenue/booking visibility - validation, phân quyền và edge cases |
+| TC231 | MD11 | P1 | passed | route-smoke | /OwnerCars | owner | excel/MD11-owner-partner-driver.spec.js | Partner revenue/booking visibility - layout, responsive, accessibility và console |
+| TC232 | MD12 | P1 | passed | route-smoke | /Membership | guest | excel/MD12-membership-selfservice.spec.js | Membership public tiers - luồng chính |
+| TC233 | MD12 | P1 | passed | route-smoke | /Membership | guest | excel/MD12-membership-selfservice.spec.js | Membership public tiers - validation, phân quyền và edge cases |
+| TC234 | MD12 | P1 | passed | route-smoke | /Membership | guest | excel/MD12-membership-selfservice.spec.js | Membership public tiers - layout, responsive, accessibility và console |
+| TC235 | MD12 | P1 | passed | route-smoke | /Membership | customer | excel/MD12-membership-selfservice.spec.js | Loyalty points/tier upgrade - luồng chính |
+| TC236 | MD12 | P1 | passed | route-smoke | /Membership | customer | excel/MD12-membership-selfservice.spec.js | Loyalty points/tier upgrade - validation, phân quyền và edge cases |
+| TC237 | MD12 | P1 | passed | route-smoke | /Membership | customer | excel/MD12-membership-selfservice.spec.js | Loyalty points/tier upgrade - layout, responsive, accessibility và console |
+| TC238 | MD12 | P0 | passed | route-smoke | /Admin/Membership | admin | excel/MD12-membership-selfservice.spec.js | Admin Membership update - luồng chính |
+| TC239 | MD12 | P0 | passed | route-smoke | /Admin/Membership | admin | excel/MD12-membership-selfservice.spec.js | Admin Membership update - validation, phân quyền và edge cases |
+| TC240 | MD12 | P1 | passed | route-smoke | /Admin/Membership | admin | excel/MD12-membership-selfservice.spec.js | Admin Membership update - layout, responsive, accessibility và console |
+| TC241 | MD12 | P1 | passed | route-smoke | /SelfService/Summary | customer | excel/MD12-membership-selfservice.spec.js | SelfService Summary - luồng chính |
+| TC242 | MD12 | P1 | passed | route-smoke | /SelfService/Summary | customer | excel/MD12-membership-selfservice.spec.js | SelfService Summary - validation, phân quyền và edge cases |
+| TC243 | MD12 | P1 | passed | route-smoke | /SelfService/Summary | customer | excel/MD12-membership-selfservice.spec.js | SelfService Summary - layout, responsive, accessibility và console |
+| TC244 | MD12 | P0 | passed | route-smoke | /Admin/Membership | admin | excel/MD12-membership-selfservice.spec.js | Membership contract toggle - luồng chính |
+| TC245 | MD12 | P0 | passed | route-smoke | /Admin/Membership | admin | excel/MD12-membership-selfservice.spec.js | Membership contract toggle - validation, phân quyền và edge cases |
+| TC246 | MD12 | P1 | passed | route-smoke | /Admin/Membership | admin | excel/MD12-membership-selfservice.spec.js | Membership contract toggle - layout, responsive, accessibility và console |
+| TC247 | MD12 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD12-membership-selfservice.spec.js | Customer tier display on profile/checkout - luồng chính |
+| TC248 | MD12 | P0 | passed | route-smoke | /Auth/Profile | customer | excel/MD12-membership-selfservice.spec.js | Customer tier display on profile/checkout - validation, phân quyền và edge cases |
+| TC249 | MD12 | P1 | passed | route-smoke | /Auth/Profile | customer | excel/MD12-membership-selfservice.spec.js | Customer tier display on profile/checkout - layout, responsive, accessibility và console |
+| TC250 | MD12 | P1 | passed | route-smoke | /SelfService/Summary | customer | excel/MD12-membership-selfservice.spec.js | SelfService empty state - luồng chính |
+| TC251 | MD12 | P1 | passed | route-smoke | /SelfService/Summary | customer | excel/MD12-membership-selfservice.spec.js | SelfService empty state - validation, phân quyền và edge cases |
+| TC252 | MD12 | P1 | passed | route-smoke | /SelfService/Summary | customer | excel/MD12-membership-selfservice.spec.js | SelfService empty state - layout, responsive, accessibility và console |
+| TC253 | MD13 | P1 | passed | route-smoke | /blog | guest | excel/MD13-blog-content-api.spec.js | Blog public list/search/category/tag - luồng chính |
+| TC254 | MD13 | P1 | passed | route-smoke | /blog | guest | excel/MD13-blog-content-api.spec.js | Blog public list/search/category/tag - validation, phân quyền và edge cases |
+| TC255 | MD13 | P1 | passed | route-smoke | /blog | guest | excel/MD13-blog-content-api.spec.js | Blog public list/search/category/tag - layout, responsive, accessibility và console |
+| TC256 | MD13 | P1 | passed | route-smoke | /blog | admin | excel/MD13-blog-content-api.spec.js | Blog detail sanitizer - luồng chính |
+| TC257 | MD13 | P1 | passed | route-smoke | /blog | admin | excel/MD13-blog-content-api.spec.js | Blog detail sanitizer - validation, phân quyền và edge cases |
+| TC258 | MD13 | P1 | passed | route-smoke | /blog | admin | excel/MD13-blog-content-api.spec.js | Blog detail sanitizer - layout, responsive, accessibility và console |
+| TC259 | MD13 | P1 | passed | route-smoke | /api/blogs | guest | excel/MD13-blog-content-api.spec.js | Blog public API - luồng chính |
+| TC260 | MD13 | P1 | passed | route-smoke | /api/blogs | guest | excel/MD13-blog-content-api.spec.js | Blog public API - validation, phân quyền và edge cases |
+| TC261 | MD13 | P1 | passed | route-smoke | /api/blogs | guest | excel/MD13-blog-content-api.spec.js | Blog public API - layout, responsive, accessibility và console |
+| TC262 | MD13 | P0 | passed | route-smoke | /Admin/Blog/Create | admin | excel/MD13-blog-content-api.spec.js | Admin Blog create/edit - luồng chính |
+| TC263 | MD13 | P0 | passed | route-smoke | /Admin/Blog/Create | admin | excel/MD13-blog-content-api.spec.js | Admin Blog create/edit - validation, phân quyền và edge cases |
+| TC264 | MD13 | P1 | passed | route-smoke | /Admin/Blog/Create | admin | excel/MD13-blog-content-api.spec.js | Admin Blog create/edit - layout, responsive, accessibility và console |
+| TC265 | MD13 | P0 | passed | route-smoke | /Admin/Blog | admin | excel/MD13-blog-content-api.spec.js | Admin Blog toggle/delete - luồng chính |
+| TC266 | MD13 | P0 | passed | route-smoke | /Admin/Blog | admin | excel/MD13-blog-content-api.spec.js | Admin Blog toggle/delete - validation, phân quyền và edge cases |
+| TC267 | MD13 | P1 | passed | route-smoke | /Admin/Blog | admin | excel/MD13-blog-content-api.spec.js | Admin Blog toggle/delete - layout, responsive, accessibility và console |
+| TC268 | MD13 | P0 | passed | route-smoke | /api/blogs | admin | excel/MD13-blog-content-api.spec.js | Blog API admin mutate RBAC - luồng chính |
+| TC269 | MD13 | P0 | passed | route-smoke | /api/blogs | admin | excel/MD13-blog-content-api.spec.js | Blog API admin mutate RBAC - validation, phân quyền và edge cases |
+| TC270 | MD13 | P1 | passed | route-smoke | /api/blogs | admin | excel/MD13-blog-content-api.spec.js | Blog API admin mutate RBAC - layout, responsive, accessibility và console |
+| TC271 | MD13 | P1 | passed | route-smoke | /blog | guest | excel/MD13-blog-content-api.spec.js | Blog related/sidebar/featured widgets - luồng chính |
+| TC272 | MD13 | P1 | passed | route-smoke | /blog | guest | excel/MD13-blog-content-api.spec.js | Blog related/sidebar/featured widgets - validation, phân quyền và edge cases |
+| TC273 | MD13 | P1 | passed | route-smoke | /blog | guest | excel/MD13-blog-content-api.spec.js | Blog related/sidebar/featured widgets - layout, responsive, accessibility và console |
+| TC274 | MD14 | P0 | passed | route-smoke | /Support/Mine | customer | excel/MD14-support-privacy-contact.spec.js | Support ticket customer create/mine - luồng chính |
+| TC275 | MD14 | P0 | passed | route-smoke | /Support/Mine | customer | excel/MD14-support-privacy-contact.spec.js | Support ticket customer create/mine - validation, phân quyền và edge cases |
+| TC276 | MD14 | P1 | passed | route-smoke | /Support/Mine | customer | excel/MD14-support-privacy-contact.spec.js | Support ticket customer create/mine - layout, responsive, accessibility và console |
+| TC277 | MD14 | P0 | passed | route-smoke | /Admin/Support | admin | excel/MD14-support-privacy-contact.spec.js | Admin Support update status - luồng chính |
+| TC278 | MD14 | P0 | passed | route-smoke | /Admin/Support | admin | excel/MD14-support-privacy-contact.spec.js | Admin Support update status - validation, phân quyền và edge cases |
+| TC279 | MD14 | P1 | passed | route-smoke | /Admin/Support | admin | excel/MD14-support-privacy-contact.spec.js | Admin Support update status - layout, responsive, accessibility và console |
+| TC280 | MD14 | P0 | passed | route-smoke | /Admin/Contacts | admin | excel/MD14-support-privacy-contact.spec.js | Contact messages admin respond/delete - luồng chính |
+| TC281 | MD14 | P0 | passed | route-smoke | /Admin/Contacts | admin | excel/MD14-support-privacy-contact.spec.js | Contact messages admin respond/delete - validation, phân quyền và edge cases |
+| TC282 | MD14 | P1 | passed | route-smoke | /Admin/Contacts | admin | excel/MD14-support-privacy-contact.spec.js | Contact messages admin respond/delete - layout, responsive, accessibility và console |
+| TC283 | MD14 | P0 | passed | route-smoke | /Faq | admin | excel/MD14-support-privacy-contact.spec.js | Privacy request export/delete - luồng chính |
+| TC284 | MD14 | P0 | passed | route-smoke | /Faq | admin | excel/MD14-support-privacy-contact.spec.js | Privacy request export/delete - validation, phân quyền và edge cases |
+| TC285 | MD14 | P1 | passed | route-smoke | /Faq | admin | excel/MD14-support-privacy-contact.spec.js | Privacy request export/delete - layout, responsive, accessibility và console |
+| TC286 | MD14 | P0 | passed | route-smoke | /Admin/Privacy | admin | excel/MD14-support-privacy-contact.spec.js | Admin privacy approve/reject/complete/retention - luồng chính |
+| TC287 | MD14 | P0 | passed | route-smoke | /Admin/Privacy | admin | excel/MD14-support-privacy-contact.spec.js | Admin privacy approve/reject/complete/retention - validation, phân quyền và edge cases |
+| TC288 | MD14 | P1 | passed | route-smoke | /Admin/Privacy | admin | excel/MD14-support-privacy-contact.spec.js | Admin privacy approve/reject/complete/retention - layout, responsive, accessibility và console |
+| TC289 | MD14 | P0 | passed | route-smoke | /Faq | customer | excel/MD14-support-privacy-contact.spec.js | Privacy request duplicate/spam guard - luồng chính |
+| TC290 | MD14 | P0 | passed | route-smoke | /Faq | customer | excel/MD14-support-privacy-contact.spec.js | Privacy request duplicate/spam guard - validation, phân quyền và edge cases |
+| TC291 | MD14 | P1 | passed | route-smoke | /Faq | customer | excel/MD14-support-privacy-contact.spec.js | Privacy request duplicate/spam guard - layout, responsive, accessibility và console |
+| TC292 | MD14 | P0 | passed | route-smoke | /Admin/Support | admin | excel/MD14-support-privacy-contact.spec.js | Support/admin privacy area/RBAC - luồng chính |
+| TC293 | MD14 | P0 | passed | route-smoke | /Admin/Support | admin | excel/MD14-support-privacy-contact.spec.js | Support/admin privacy area/RBAC - validation, phân quyền và edge cases |
+| TC294 | MD14 | P1 | passed | route-smoke | /Admin/Support | admin | excel/MD14-support-privacy-contact.spec.js | Support/admin privacy area/RBAC - layout, responsive, accessibility và console |
+| TC295 | MD15 | P1 | passed | route-smoke | /Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking Map và marker xe - luồng chính |
+| TC296 | MD15 | P1 | passed | route-smoke | /Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking Map và marker xe - validation, phân quyền và edge cases |
+| TC297 | MD15 | P1 | passed | route-smoke | /Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking Map và marker xe - layout, responsive, accessibility và console |
+| TC298 | MD15 | P1 | passed | route-smoke | /Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | IoT ReceiveData HMAC/nonce - luồng chính |
+| TC299 | MD15 | P1 | passed | route-smoke | /Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | IoT ReceiveData HMAC/nonce - validation, phân quyền và edge cases |
+| TC300 | MD15 | P1 | passed | route-smoke | /Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | IoT ReceiveData HMAC/nonce - layout, responsive, accessibility và console |
+| TC301 | MD15 | P0 | passed | route-smoke | /Admin/Tracking/GetLiveLocations | admin | excel/MD15-tracking-iot-maps.spec.js | Admin live location APIs - luồng chính |
+| TC302 | MD15 | P0 | passed | route-smoke | /Admin/Tracking/GetLiveLocations | admin | excel/MD15-tracking-iot-maps.spec.js | Admin live location APIs - validation, phân quyền và edge cases |
+| TC303 | MD15 | P1 | passed | route-smoke | /Admin/Tracking/GetLiveLocations | admin | excel/MD15-tracking-iot-maps.spec.js | Admin live location APIs - layout, responsive, accessibility và console |
+| TC304 | MD15 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking retention/legal notice - luồng chính |
+| TC305 | MD15 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking retention/legal notice - validation, phân quyền và edge cases |
+| TC306 | MD15 | P1 | passed | route-smoke | /Home/Privacy | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking retention/legal notice - layout, responsive, accessibility và console |
+| TC307 | MD15 | P1 | passed | route-smoke | /Tracking/Connect | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking connect page - luồng chính |
+| TC308 | MD15 | P1 | passed | route-smoke | /Tracking/Connect | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking connect page - validation, phân quyền và edge cases |
+| TC309 | MD15 | P1 | passed | route-smoke | /Tracking/Connect | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking connect page - layout, responsive, accessibility và console |
+| TC310 | MD15 | P1 | passed | route-smoke | /Admin/Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | Vehicle tracking stale/out-of-range data - luồng chính |
+| TC311 | MD15 | P1 | passed | route-smoke | /Admin/Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | Vehicle tracking stale/out-of-range data - validation, phân quyền và edge cases |
+| TC312 | MD15 | P1 | passed | route-smoke | /Admin/Tracking/Map | admin | excel/MD15-tracking-iot-maps.spec.js | Vehicle tracking stale/out-of-range data - layout, responsive, accessibility và console |
+| TC313 | MD15 | P0 | passed | route-smoke | /Admin/Tracking | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking route geofence/area isolation - luồng chính |
+| TC314 | MD15 | P0 | passed | route-smoke | /Admin/Tracking | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking route geofence/area isolation - validation, phân quyền và edge cases |
+| TC315 | MD15 | P1 | passed | route-smoke | /Admin/Tracking | admin | excel/MD15-tracking-iot-maps.spec.js | Tracking route geofence/area isolation - layout, responsive, accessibility và console |
+| TC316 | MD16 | P0 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | AI chat safe answer and PII redaction - luồng chính |
+| TC317 | MD16 | P0 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | AI chat safe answer and PII redaction - validation, phân quyền và edge cases |
+| TC318 | MD16 | P1 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | AI chat safe answer and PII redaction - layout, responsive, accessibility và console |
+| TC319 | MD16 | P0 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | Chat API payload/rate limit - luồng chính |
+| TC320 | MD16 | P0 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | Chat API payload/rate limit - validation, phân quyền và edge cases |
+| TC321 | MD16 | P1 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | Chat API payload/rate limit - layout, responsive, accessibility và console |
+| TC322 | MD16 | P1 | passed | route-smoke | /live | guest | excel/MD16-ai-public-apis.spec.js | Health/live/ready - luồng chính |
+| TC323 | MD16 | P1 | passed | route-smoke | /live | guest | excel/MD16-ai-public-apis.spec.js | Health/live/ready - validation, phân quyền và edge cases |
+| TC324 | MD16 | P1 | passed | route-smoke | /live | guest | excel/MD16-ai-public-apis.spec.js | Health/live/ready - layout, responsive, accessibility và console |
+| TC325 | MD16 | P1 | passed | route-smoke | /Guide | guest | excel/MD16-ai-public-apis.spec.js | Guide page - luồng chính |
+| TC326 | MD16 | P1 | passed | route-smoke | /Guide | guest | excel/MD16-ai-public-apis.spec.js | Guide page - validation, phân quyền và edge cases |
+| TC327 | MD16 | P1 | passed | route-smoke | /Guide | guest | excel/MD16-ai-public-apis.spec.js | Guide page - layout, responsive, accessibility và console |
+| TC328 | MD16 | P0 | passed | route-smoke | /Alert | admin | excel/MD16-ai-public-apis.spec.js | Alert page/user alerts - luồng chính |
+| TC329 | MD16 | P0 | passed | route-smoke | /Alert | admin | excel/MD16-ai-public-apis.spec.js | Alert page/user alerts - validation, phân quyền và edge cases |
+| TC330 | MD16 | P1 | passed | route-smoke | /Alert | admin | excel/MD16-ai-public-apis.spec.js | Alert page/user alerts - layout, responsive, accessibility và console |
+| TC331 | MD16 | P1 | passed | route-smoke | / | admin | excel/MD16-ai-public-apis.spec.js | AI tool executor boundaries - luồng chính |
+| TC332 | MD16 | P1 | passed | route-smoke | / | admin | excel/MD16-ai-public-apis.spec.js | AI tool executor boundaries - validation, phân quyền và edge cases |
+| TC333 | MD16 | P1 | passed | route-smoke | / | admin | excel/MD16-ai-public-apis.spec.js | AI tool executor boundaries - layout, responsive, accessibility và console |
+| TC334 | MD16 | P1 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | AI provider fallback Groq/Gemini - luồng chính |
+| TC335 | MD16 | P1 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | AI provider fallback Groq/Gemini - validation, phân quyền và edge cases |
+| TC336 | MD16 | P1 | passed | route-smoke | / | guest | excel/MD16-ai-public-apis.spec.js | AI provider fallback Groq/Gemini - layout, responsive, accessibility và console |
+| TC337 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin dashboard KPI/chart/notification - luồng chính |
+| TC338 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin dashboard KPI/chart/notification - validation, phân quyền và edge cases |
+| TC339 | MD17 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin dashboard KPI/chart/notification - layout, responsive, accessibility và console |
+| TC340 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin sidebar/offcanvas role menus - luồng chính |
+| TC341 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin sidebar/offcanvas role menus - validation, phân quyền và edge cases |
+| TC342 | MD17 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin sidebar/offcanvas role menus - layout, responsive, accessibility và console |
+| TC343 | MD17 | P0 | passed | route-smoke | /Admin/Enterprise | admin | excel/MD17-admin-dashboard-sre.spec.js | Enterprise Center - luồng chính |
+| TC344 | MD17 | P0 | passed | route-smoke | /Admin/Enterprise | admin | excel/MD17-admin-dashboard-sre.spec.js | Enterprise Center - validation, phân quyền và edge cases |
+| TC345 | MD17 | P1 | passed | route-smoke | /Admin/Enterprise | admin | excel/MD17-admin-dashboard-sre.spec.js | Enterprise Center - layout, responsive, accessibility và console |
+| TC346 | MD17 | P0 | passed | route-smoke | /Admin/Sre/Slo | admin | excel/MD17-admin-dashboard-sre.spec.js | SRE SLO page - luồng chính |
+| TC347 | MD17 | P0 | passed | route-smoke | /Admin/Sre/Slo | admin | excel/MD17-admin-dashboard-sre.spec.js | SRE SLO page - validation, phân quyền và edge cases |
+| TC348 | MD17 | P1 | passed | route-smoke | /Admin/Sre/Slo | admin | excel/MD17-admin-dashboard-sre.spec.js | SRE SLO page - layout, responsive, accessibility và console |
+| TC349 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin theme dark/light - luồng chính |
+| TC350 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin theme dark/light - validation, phân quyền và edge cases |
+| TC351 | MD17 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin theme dark/light - layout, responsive, accessibility và console |
+| TC352 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin badge counts - luồng chính |
+| TC353 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin badge counts - validation, phân quyền và edge cases |
+| TC354 | MD17 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin badge counts - layout, responsive, accessibility và console |
+| TC355 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin global search/topbar/profile/logout - luồng chính |
+| TC356 | MD17 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin global search/topbar/profile/logout - validation, phân quyền và edge cases |
+| TC357 | MD17 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD17-admin-dashboard-sre.spec.js | Admin global search/topbar/profile/logout - layout, responsive, accessibility và console |
+| TC358 | MD18 | P0 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area CRUD - luồng chính |
+| TC359 | MD18 | P0 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area CRUD - validation, phân quyền và edge cases |
+| TC360 | MD18 | P1 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area CRUD - layout, responsive, accessibility và console |
+| TC361 | MD18 | P0 | passed | route-smoke | /Admin/Area | manager | excel/MD18-admin-area-rbac.spec.js | Manager/Staff area isolation - luồng chính |
+| TC362 | MD18 | P0 | passed | route-smoke | /Admin/Area | manager | excel/MD18-admin-area-rbac.spec.js | Manager/Staff area isolation - validation, phân quyền và edge cases |
+| TC363 | MD18 | P1 | passed | route-smoke | /Admin/Area | manager | excel/MD18-admin-area-rbac.spec.js | Manager/Staff area isolation - layout, responsive, accessibility và console |
+| TC364 | MD18 | P0 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area location add/remove - luồng chính |
+| TC365 | MD18 | P0 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area location add/remove - validation, phân quyền và edge cases |
+| TC366 | MD18 | P1 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area location add/remove - layout, responsive, accessibility và console |
+| TC367 | MD18 | P0 | passed | route-smoke | /Admin/AreaStaff | admin | excel/MD18-admin-area-rbac.spec.js | Area staff add/update/remove - luồng chính |
+| TC368 | MD18 | P0 | passed | route-smoke | /Admin/AreaStaff | admin | excel/MD18-admin-area-rbac.spec.js | Area staff add/update/remove - validation, phân quyền và edge cases |
+| TC369 | MD18 | P1 | passed | route-smoke | /Admin/AreaStaff | admin | excel/MD18-admin-area-rbac.spec.js | Area staff add/update/remove - layout, responsive, accessibility và console |
+| TC370 | MD18 | P0 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area API GetUsers/GetLocations - luồng chính |
+| TC371 | MD18 | P0 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area API GetUsers/GetLocations - validation, phân quyền và edge cases |
+| TC372 | MD18 | P1 | passed | route-smoke | /Admin/Area | admin | excel/MD18-admin-area-rbac.spec.js | Area API GetUsers/GetLocations - layout, responsive, accessibility và console |
+| TC373 | MD18 | P0 | passed | route-smoke | /Admin/AreaDashboard | manager | excel/MD18-admin-area-rbac.spec.js | Area manager layout - luồng chính |
+| TC374 | MD18 | P0 | passed | route-smoke | /Admin/AreaDashboard | manager | excel/MD18-admin-area-rbac.spec.js | Area manager layout - validation, phân quyền và edge cases |
+| TC375 | MD18 | P1 | passed | route-smoke | /Admin/AreaDashboard | manager | excel/MD18-admin-area-rbac.spec.js | Area manager layout - layout, responsive, accessibility và console |
+| TC376 | MD18 | P0 | passed | route-smoke | /Admin/AreaManager/AllAreas | admin | excel/MD18-admin-area-rbac.spec.js | Area stats and all areas dashboard - luồng chính |
+| TC377 | MD18 | P0 | passed | route-smoke | /Admin/AreaManager/AllAreas | admin | excel/MD18-admin-area-rbac.spec.js | Area stats and all areas dashboard - validation, phân quyền và edge cases |
+| TC378 | MD18 | P1 | passed | route-smoke | /Admin/AreaManager/AllAreas | admin | excel/MD18-admin-area-rbac.spec.js | Area stats and all areas dashboard - layout, responsive, accessibility và console |
+| TC379 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin Booking index/filter/pagination - luồng chính |
+| TC380 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin Booking index/filter/pagination - validation, phân quyền và edge cases |
+| TC381 | MD19 | P1 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin Booking index/filter/pagination - layout, responsive, accessibility và console |
+| TC382 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin booking confirm/cancel/update status - luồng chính |
+| TC383 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin booking confirm/cancel/update status - validation, phân quyền và edge cases |
+| TC384 | MD19 | P1 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin booking confirm/cancel/update status - layout, responsive, accessibility và console |
+| TC385 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin start/end trip/pickup/return - luồng chính |
+| TC386 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin start/end trip/pickup/return - validation, phân quyền và edge cases |
+| TC387 | MD19 | P1 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Admin start/end trip/pickup/return - layout, responsive, accessibility và console |
+| TC388 | MD19 | P0 | passed | route-smoke | /Admin/Booking/GetRecentNotifications | admin | excel/MD19-admin-booking-ops.spec.js | Recent notifications - luồng chính |
+| TC389 | MD19 | P0 | passed | route-smoke | /Admin/Booking/GetRecentNotifications | admin | excel/MD19-admin-booking-ops.spec.js | Recent notifications - validation, phân quyền và edge cases |
+| TC390 | MD19 | P1 | passed | route-smoke | /Admin/Booking/GetRecentNotifications | admin | excel/MD19-admin-booking-ops.spec.js | Recent notifications - layout, responsive, accessibility và console |
+| TC391 | MD19 | P0 | passed | route-smoke | /Admin/Settlement | admin | excel/MD19-admin-booking-ops.spec.js | Settlement review - luồng chính |
+| TC392 | MD19 | P0 | passed | route-smoke | /Admin/Settlement | admin | excel/MD19-admin-booking-ops.spec.js | Settlement review - validation, phân quyền và edge cases |
+| TC393 | MD19 | P1 | passed | route-smoke | /Admin/Settlement | admin | excel/MD19-admin-booking-ops.spec.js | Settlement review - layout, responsive, accessibility và console |
+| TC394 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Dispute export evidence - luồng chính |
+| TC395 | MD19 | P0 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Dispute export evidence - validation, phân quyền và edge cases |
+| TC396 | MD19 | P1 | passed | route-smoke | /Admin/Booking | admin | excel/MD19-admin-booking-ops.spec.js | Dispute export evidence - layout, responsive, accessibility và console |
+| TC397 | MD19 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD19-admin-booking-ops.spec.js | Physical contracts admin index - luồng chính |
+| TC398 | MD19 | P0 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD19-admin-booking-ops.spec.js | Physical contracts admin index - validation, phân quyền và edge cases |
+| TC399 | MD19 | P1 | passed | route-smoke | /Admin/PhysicalContracts | admin | excel/MD19-admin-booking-ops.spec.js | Physical contracts admin index - layout, responsive, accessibility và console |
+| TC400 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Admin User index/filter - luồng chính |
+| TC401 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Admin User index/filter - validation, phân quyền và edge cases |
+| TC402 | MD20 | P1 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Admin User index/filter - layout, responsive, accessibility và console |
+| TC403 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | SetRole governance - luồng chính |
+| TC404 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | SetRole governance - validation, phân quyền và edge cases |
+| TC405 | MD20 | P1 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | SetRole governance - layout, responsive, accessibility và console |
+| TC406 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Toggle verify/lock/blacklist - luồng chính |
+| TC407 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Toggle verify/lock/blacklist - validation, phân quyền và edge cases |
+| TC408 | MD20 | P1 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Toggle verify/lock/blacklist - layout, responsive, accessibility và console |
+| TC409 | MD20 | P0 | passed | route-smoke | /Admin/User/PartnerRequests | admin | excel/MD20-admin-users-roles.spec.js | Partner requests approve/reject - luồng chính |
+| TC410 | MD20 | P0 | passed | route-smoke | /Admin/User/PartnerRequests | admin | excel/MD20-admin-users-roles.spec.js | Partner requests approve/reject - validation, phân quyền và edge cases |
+| TC411 | MD20 | P1 | passed | route-smoke | /Admin/User/PartnerRequests | admin | excel/MD20-admin-users-roles.spec.js | Partner requests approve/reject - layout, responsive, accessibility và console |
+| TC412 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Admin PIN verify - luồng chính |
+| TC413 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Admin PIN verify - validation, phân quyền và edge cases |
+| TC414 | MD20 | P1 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Admin PIN verify - layout, responsive, accessibility và console |
+| TC415 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | User search XSS/PII masking - luồng chính |
+| TC416 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | User search XSS/PII masking - validation, phân quyền và edge cases |
+| TC417 | MD20 | P1 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | User search XSS/PII masking - layout, responsive, accessibility và console |
+| TC418 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Privileged account SSO/MFA policy - luồng chính |
+| TC419 | MD20 | P0 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Privileged account SSO/MFA policy - validation, phân quyền và edge cases |
+| TC420 | MD20 | P1 | passed | route-smoke | /Admin/User | admin | excel/MD20-admin-users-roles.spec.js | Privileged account SSO/MFA policy - layout, responsive, accessibility và console |
+| TC421 | MD21 | P0 | passed | route-smoke | /Admin/Car/Manage | admin | excel/MD21-admin-fleet-lookups.spec.js | Admin Car Manage CRUD/filter/trash - luồng chính |
+| TC422 | MD21 | P0 | passed | route-smoke | /Admin/Car/Manage | admin | excel/MD21-admin-fleet-lookups.spec.js | Admin Car Manage CRUD/filter/trash - validation, phân quyền và edge cases |
+| TC423 | MD21 | P1 | passed | route-smoke | /Admin/Car/Manage | admin | excel/MD21-admin-fleet-lookups.spec.js | Admin Car Manage CRUD/filter/trash - layout, responsive, accessibility và console |
+| TC424 | MD21 | P0 | passed | route-smoke | /Admin/Car/Create | admin | excel/MD21-admin-fleet-lookups.spec.js | Admin Car Create/Edit validation - luồng chính |
+| TC425 | MD21 | P0 | passed | route-smoke | /Admin/Car/Create | admin | excel/MD21-admin-fleet-lookups.spec.js | Admin Car Create/Edit validation - validation, phân quyền và edge cases |
+| TC426 | MD21 | P1 | passed | route-smoke | /Admin/Car/Create | admin | excel/MD21-admin-fleet-lookups.spec.js | Admin Car Create/Edit validation - layout, responsive, accessibility và console |
+| TC427 | MD21 | P0 | passed | route-smoke | /Admin/CarApproval | admin | excel/MD21-admin-fleet-lookups.spec.js | Car Approval - luồng chính |
+| TC428 | MD21 | P0 | passed | route-smoke | /Admin/CarApproval | admin | excel/MD21-admin-fleet-lookups.spec.js | Car Approval - validation, phân quyền và edge cases |
+| TC429 | MD21 | P1 | passed | route-smoke | /Admin/CarApproval | admin | excel/MD21-admin-fleet-lookups.spec.js | Car Approval - layout, responsive, accessibility và console |
+| TC430 | MD21 | P0 | passed | route-smoke | /Admin/Maintenance | admin | excel/MD21-admin-fleet-lookups.spec.js | Maintenance logs - luồng chính |
+| TC431 | MD21 | P0 | passed | route-smoke | /Admin/Maintenance | admin | excel/MD21-admin-fleet-lookups.spec.js | Maintenance logs - validation, phân quyền và edge cases |
+| TC432 | MD21 | P1 | passed | route-smoke | /Admin/Maintenance | admin | excel/MD21-admin-fleet-lookups.spec.js | Maintenance logs - layout, responsive, accessibility và console |
+| TC433 | MD21 | P0 | passed | route-smoke | /Admin/HolidayPricing | admin | excel/MD21-admin-fleet-lookups.spec.js | Holiday pricing - luồng chính |
+| TC434 | MD21 | P0 | passed | route-smoke | /Admin/HolidayPricing | admin | excel/MD21-admin-fleet-lookups.spec.js | Holiday pricing - validation, phân quyền và edge cases |
+| TC435 | MD21 | P1 | passed | route-smoke | /Admin/HolidayPricing | admin | excel/MD21-admin-fleet-lookups.spec.js | Holiday pricing - layout, responsive, accessibility và console |
+| TC436 | MD21 | P0 | passed | route-smoke | /Admin/Lookups | admin | excel/MD21-admin-fleet-lookups.spec.js | Lookups CRUD - luồng chính |
+| TC437 | MD21 | P0 | passed | route-smoke | /Admin/Lookups | admin | excel/MD21-admin-fleet-lookups.spec.js | Lookups CRUD - validation, phân quyền và edge cases |
+| TC438 | MD21 | P1 | passed | route-smoke | /Admin/Lookups | admin | excel/MD21-admin-fleet-lookups.spec.js | Lookups CRUD - layout, responsive, accessibility và console |
+| TC439 | MD21 | P0 | passed | route-smoke | /Admin/FleetOps/Readiness | admin | excel/MD21-admin-fleet-lookups.spec.js | FleetOps readiness - luồng chính |
+| TC440 | MD21 | P0 | passed | route-smoke | /Admin/FleetOps/Readiness | admin | excel/MD21-admin-fleet-lookups.spec.js | FleetOps readiness - validation, phân quyền và edge cases |
+| TC441 | MD21 | P1 | passed | route-smoke | /Admin/FleetOps/Readiness | admin | excel/MD21-admin-fleet-lookups.spec.js | FleetOps readiness - layout, responsive, accessibility và console |
+| TC442 | MD22 | P0 | passed | route-smoke | /Admin/Promotions | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Promotions CRUD/trash/restore - luồng chính |
+| TC443 | MD22 | P0 | passed | route-smoke | /Admin/Promotions | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Promotions CRUD/trash/restore - validation, phân quyền và edge cases |
+| TC444 | MD22 | P1 | passed | route-smoke | /Admin/Promotions | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Promotions CRUD/trash/restore - layout, responsive, accessibility và console |
+| TC445 | MD22 | P0 | passed | route-smoke | /Admin/Reviews | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Review moderation - luồng chính |
+| TC446 | MD22 | P0 | passed | route-smoke | /Admin/Reviews | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Review moderation - validation, phân quyền và edge cases |
+| TC447 | MD22 | P1 | passed | route-smoke | /Admin/Reviews | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Review moderation - layout, responsive, accessibility và console |
+| TC448 | MD22 | P0 | passed | route-smoke | /Admin/Reports | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Reports index/export Excel - luồng chính |
+| TC449 | MD22 | P0 | passed | route-smoke | /Admin/Reports | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Reports index/export Excel - validation, phân quyền và edge cases |
+| TC450 | MD22 | P1 | passed | route-smoke | /Admin/Reports | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Reports index/export Excel - layout, responsive, accessibility và console |
+| TC451 | MD22 | P0 | passed | route-smoke | /Admin/AuditLog | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | AuditLog verify chain - luồng chính |
+| TC452 | MD22 | P0 | passed | route-smoke | /Admin/AuditLog | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | AuditLog verify chain - validation, phân quyền và edge cases |
+| TC453 | MD22 | P1 | passed | route-smoke | /Admin/AuditLog | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | AuditLog verify chain - layout, responsive, accessibility và console |
+| TC454 | MD22 | P0 | passed | route-smoke | /Admin/Alert | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Alerts resolve - luồng chính |
+| TC455 | MD22 | P0 | passed | route-smoke | /Admin/Alert | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Alerts resolve - validation, phân quyền và edge cases |
+| TC456 | MD22 | P1 | passed | route-smoke | /Admin/Alert | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Alerts resolve - layout, responsive, accessibility và console |
+| TC457 | MD22 | P0 | passed | route-smoke | /Admin/ApiKeys | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | API Keys create/revoke - luồng chính |
+| TC458 | MD22 | P0 | passed | route-smoke | /Admin/ApiKeys | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | API Keys create/revoke - validation, phân quyền và edge cases |
+| TC459 | MD22 | P1 | passed | route-smoke | /Admin/ApiKeys | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | API Keys create/revoke - layout, responsive, accessibility và console |
+| TC460 | MD22 | P0 | passed | route-smoke | /Admin/Snapshot | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Snapshot lifecycle - luồng chính |
+| TC461 | MD22 | P0 | passed | route-smoke | /Admin/Snapshot | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Snapshot lifecycle - validation, phân quyền và edge cases |
+| TC462 | MD22 | P1 | passed | route-smoke | /Admin/Snapshot | admin | excel/MD22-crm-audit-snapshot-apikeys.spec.js | Snapshot lifecycle - layout, responsive, accessibility và console |
+| TC463 | MD23 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD23-security-rbac-audit.spec.js | RBAC route matrix - luồng chính |
+| TC464 | MD23 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD23-security-rbac-audit.spec.js | RBAC route matrix - validation, phân quyền và edge cases |
+| TC465 | MD23 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD23-security-rbac-audit.spec.js | RBAC route matrix - layout, responsive, accessibility và console |
+| TC466 | MD23 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD23-security-rbac-audit.spec.js | CSRF toàn bộ POST/PUT/DELETE MVC - luồng chính |
+| TC467 | MD23 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD23-security-rbac-audit.spec.js | CSRF toàn bộ POST/PUT/DELETE MVC - validation, phân quyền và edge cases |
+| TC468 | MD23 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD23-security-rbac-audit.spec.js | CSRF toàn bộ POST/PUT/DELETE MVC - layout, responsive, accessibility và console |
+| TC469 | MD23 | P0 | passed | route-smoke | /Auth/Login | admin | excel/MD23-security-rbac-audit.spec.js | Rate limit và spoof X-Forwarded-For - luồng chính |
+| TC470 | MD23 | P0 | passed | route-smoke | /Auth/Login | admin | excel/MD23-security-rbac-audit.spec.js | Rate limit và spoof X-Forwarded-For - validation, phân quyền và edge cases |
+| TC471 | MD23 | P1 | passed | route-smoke | /Auth/Login | admin | excel/MD23-security-rbac-audit.spec.js | Rate limit và spoof X-Forwarded-For - layout, responsive, accessibility và console |
+| TC472 | MD23 | P0 | passed | route-smoke | / | admin | excel/MD23-security-rbac-audit.spec.js | Security headers/cookie flags - luồng chính |
+| TC473 | MD23 | P0 | passed | route-smoke | / | admin | excel/MD23-security-rbac-audit.spec.js | Security headers/cookie flags - validation, phân quyền và edge cases |
+| TC474 | MD23 | P1 | passed | route-smoke | / | admin | excel/MD23-security-rbac-audit.spec.js | Security headers/cookie flags - layout, responsive, accessibility và console |
+| TC475 | MD23 | P0 | passed | route-smoke | /Admin/Dashboard | manager | excel/MD23-security-rbac-audit.spec.js | IDOR ownership resources - luồng chính |
+| TC476 | MD23 | P0 | passed | route-smoke | /Admin/Dashboard | manager | excel/MD23-security-rbac-audit.spec.js | IDOR ownership resources - validation, phân quyền và edge cases |
+| TC477 | MD23 | P1 | passed | route-smoke | /Admin/Dashboard | manager | excel/MD23-security-rbac-audit.spec.js | IDOR ownership resources - layout, responsive, accessibility và console |
+| TC478 | MD23 | P0 | passed | route-smoke | /Admin/AuditLog | admin | excel/MD23-security-rbac-audit.spec.js | Audit log request success/fail - luồng chính |
+| TC479 | MD23 | P0 | passed | route-smoke | /Admin/AuditLog | admin | excel/MD23-security-rbac-audit.spec.js | Audit log request success/fail - validation, phân quyền và edge cases |
+| TC480 | MD23 | P1 | passed | route-smoke | /Admin/AuditLog | admin | excel/MD23-security-rbac-audit.spec.js | Audit log request success/fail - layout, responsive, accessibility và console |
+| TC481 | MD23 | P0 | passed | route-smoke | /ready | admin | excel/MD23-security-rbac-audit.spec.js | Secrets/config exposure - luồng chính |
+| TC482 | MD23 | P0 | passed | route-smoke | /ready | admin | excel/MD23-security-rbac-audit.spec.js | Secrets/config exposure - validation, phân quyền và edge cases |
+| TC483 | MD23 | P1 | passed | route-smoke | /ready | admin | excel/MD23-security-rbac-audit.spec.js | Secrets/config exposure - layout, responsive, accessibility và console |
+| TC484 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Responsive public key pages - luồng chính |
+| TC485 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Responsive public key pages - validation, phân quyền và edge cases |
+| TC486 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Responsive public key pages - layout, responsive, accessibility và console |
+| TC487 | MD24 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD24-a11y-responsive-nfr.spec.js | Responsive admin key pages - luồng chính |
+| TC488 | MD24 | P0 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD24-a11y-responsive-nfr.spec.js | Responsive admin key pages - validation, phân quyền và edge cases |
+| TC489 | MD24 | P1 | passed | route-smoke | /Admin/Dashboard | admin | excel/MD24-a11y-responsive-nfr.spec.js | Responsive admin key pages - layout, responsive, accessibility và console |
+| TC490 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Keyboard-only critical flows - luồng chính |
+| TC491 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Keyboard-only critical flows - validation, phân quyền và edge cases |
+| TC492 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Keyboard-only critical flows - layout, responsive, accessibility và console |
+| TC493 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Labels/error association forms - luồng chính |
+| TC494 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Labels/error association forms - validation, phân quyền và edge cases |
+| TC495 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Labels/error association forms - layout, responsive, accessibility và console |
+| TC496 | MD24 | P0 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Contrast AA public/admin themes - luồng chính |
+| TC497 | MD24 | P0 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Contrast AA public/admin themes - validation, phân quyền và edge cases |
+| TC498 | MD24 | P1 | passed | route-smoke | / | guest | excel/MD24-a11y-responsive-nfr.spec.js | Contrast AA public/admin themes - layout, responsive, accessibility và console |
+| TC499 | MD24 | P1 | passed | route-smoke | / | admin | excel/MD24-a11y-responsive-nfr.spec.js | Console/network smoke internal links - luồng chính |
+| TC500 | MD24 | P1 | passed | route-smoke | / | admin | excel/MD24-a11y-responsive-nfr.spec.js | Console/network smoke internal links - validation, phân quyền và edge cases |
+| TC501 | MD24 | P1 | passed | route-smoke | / | admin | excel/MD24-a11y-responsive-nfr.spec.js | Console/network smoke internal links - layout, responsive, accessibility và console |
+| TC502 | MD24 | P1 | passed | route-smoke | / | admin | excel/MD24-a11y-responsive-nfr.spec.js | Background jobs behavior - luồng chính |
+| TC503 | MD24 | P1 | passed | route-smoke | / | admin | excel/MD24-a11y-responsive-nfr.spec.js | Background jobs behavior - validation, phân quyền và edge cases |
+| TC504 | MD24 | P1 | passed | route-smoke | / | admin | excel/MD24-a11y-responsive-nfr.spec.js | Background jobs behavior - layout, responsive, accessibility và console |
+| TC505 | MD25 | P0 | passed | route-smoke | /Home/Privacy | guest | excel/MD25-legal-compliance-vn.spec.js | Privacy/Terms nội dung thật - luồng chính |
+| TC506 | MD25 | P0 | passed | route-smoke | /Home/Privacy | guest | excel/MD25-legal-compliance-vn.spec.js | Privacy/Terms nội dung thật - validation, phân quyền và edge cases |
+| TC507 | MD25 | P1 | passed | route-smoke | /Home/Privacy | guest | excel/MD25-legal-compliance-vn.spec.js | Privacy/Terms nội dung thật - layout, responsive, accessibility và console |
+| TC508 | MD25 | P0 | passed | route-smoke | /Home/Privacy | customer | excel/MD25-legal-compliance-vn.spec.js | Consent version register/eKYC/booking/cart - luồng chính |
+| TC509 | MD25 | P0 | passed | route-smoke | /Home/Privacy | customer | excel/MD25-legal-compliance-vn.spec.js | Consent version register/eKYC/booking/cart - validation, phân quyền và edge cases |
+| TC510 | MD25 | P1 | passed | route-smoke | /Home/Privacy | customer | excel/MD25-legal-compliance-vn.spec.js | Consent version register/eKYC/booking/cart - layout, responsive, accessibility và console |
+| TC511 | MD25 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | Wallet stored value disabled - luồng chính |
+| TC512 | MD25 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | Wallet stored value disabled - validation, phân quyền và edge cases |
+| TC513 | MD25 | P1 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | Wallet stored value disabled - layout, responsive, accessibility và console |
+| TC514 | MD25 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | With-driver public booking disabled - luồng chính |
+| TC515 | MD25 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | With-driver public booking disabled - validation, phân quyền và edge cases |
+| TC516 | MD25 | P1 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | With-driver public booking disabled - layout, responsive, accessibility và console |
+| TC517 | MD25 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | Payment/PayOS/refund legal evidence - luồng chính |
+| TC518 | MD25 | P0 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | Payment/PayOS/refund legal evidence - validation, phân quyền và edge cases |
+| TC519 | MD25 | P1 | passed | route-smoke | /Home/Privacy | admin | excel/MD25-legal-compliance-vn.spec.js | Payment/PayOS/refund legal evidence - layout, responsive, accessibility và console |
+| TC520 | MD25 | P0 | passed | route-smoke | /Ekyc | admin | excel/MD25-legal-compliance-vn.spec.js | eKYC biometric notice/DPA/retention - luồng chính |
+| TC521 | MD25 | P0 | passed | route-smoke | /Ekyc | admin | excel/MD25-legal-compliance-vn.spec.js | eKYC biometric notice/DPA/retention - validation, phân quyền và edge cases |
+| TC522 | MD25 | P1 | passed | route-smoke | /Ekyc | admin | excel/MD25-legal-compliance-vn.spec.js | eKYC biometric notice/DPA/retention - layout, responsive, accessibility và console |
+| TC523 | MD25 | P0 | passed | route-smoke | /Admin/Privacy/RetentionPreview | admin | excel/MD25-legal-compliance-vn.spec.js | Retention/export/delete legal hold - luồng chính |
+| TC524 | MD25 | P0 | passed | route-smoke | /Admin/Privacy/RetentionPreview | admin | excel/MD25-legal-compliance-vn.spec.js | Retention/export/delete legal hold - validation, phân quyền và edge cases |
+| TC525 | MD25 | P1 | passed | route-smoke | /Admin/Privacy/RetentionPreview | admin | excel/MD25-legal-compliance-vn.spec.js | Retention/export/delete legal hold - layout, responsive, accessibility và console |
+
+## Missing Business-Flow Coverage
+
+| TC | Module | Priority | Current Depth | Title |
+| --- | --- | --- | --- | --- |
+| TC001 | MD01 | P1 | route-smoke | Navbar public brand/menu/active state - luồng chính |
+| TC002 | MD01 | P1 | route-smoke | Navbar public brand/menu/active state - validation, phân quyền và edge cases |
+| TC003 | MD01 | P1 | route-smoke | Navbar public brand/menu/active state - layout, responsive, accessibility và console |
+| TC004 | MD01 | P0 | route-smoke | Auth menu, avatar và cart count - luồng chính |
+| TC005 | MD01 | P0 | route-smoke | Auth menu, avatar và cart count - validation, phân quyền và edge cases |
+| TC006 | MD01 | P1 | route-smoke | Auth menu, avatar và cart count - layout, responsive, accessibility và console |
+| TC007 | MD01 | P1 | route-smoke | Region selector và cookie khu vực - luồng chính |
+| TC008 | MD01 | P1 | route-smoke | Region selector và cookie khu vực - validation, phân quyền và edge cases |
+| TC009 | MD01 | P1 | route-smoke | Region selector và cookie khu vực - layout, responsive, accessibility và console |
+| TC010 | MD01 | P1 | route-smoke | Mobile navbar collapse/offcanvas - luồng chính |
+| TC011 | MD01 | P1 | route-smoke | Mobile navbar collapse/offcanvas - validation, phân quyền và edge cases |
+| TC012 | MD01 | P1 | route-smoke | Mobile navbar collapse/offcanvas - layout, responsive, accessibility và console |
+| TC013 | MD01 | P1 | route-smoke | Footer và link pháp lý - luồng chính |
+| TC014 | MD01 | P1 | route-smoke | Footer và link pháp lý - validation, phân quyền và edge cases |
+| TC015 | MD01 | P1 | route-smoke | Footer và link pháp lý - layout, responsive, accessibility và console |
+| TC016 | MD01 | P1 | route-smoke | Toast/TempData public chống XSS - luồng chính |
+| TC017 | MD01 | P1 | route-smoke | Toast/TempData public chống XSS - validation, phân quyền và edge cases |
+| TC018 | MD01 | P1 | route-smoke | Toast/TempData public chống XSS - layout, responsive, accessibility và console |
+| TC019 | MD01 | P1 | route-smoke | PWA manifest/offline/service worker - luồng chính |
+| TC020 | MD01 | P1 | route-smoke | PWA manifest/offline/service worker - validation, phân quyền và edge cases |
+| TC021 | MD01 | P1 | route-smoke | PWA manifest/offline/service worker - layout, responsive, accessibility và console |
+| TC022 | MD02 | P0 | route-smoke | Đăng ký Customer với consent - luồng chính |
+| TC023 | MD02 | P0 | route-smoke | Đăng ký Customer với consent - validation, phân quyền và edge cases |
+| TC024 | MD02 | P1 | route-smoke | Đăng ký Customer với consent - layout, responsive, accessibility và console |
+| TC025 | MD02 | P0 | route-smoke | Đăng ký validation tuổi/email/phone/CCCD/GPLX/password - luồng chính |
+| TC026 | MD02 | P0 | route-smoke | Đăng ký validation tuổi/email/phone/CCCD/GPLX/password - validation, phân quyền và edge cases |
+| TC027 | MD02 | P1 | route-smoke | Đăng ký validation tuổi/email/phone/CCCD/GPLX/password - layout, responsive, accessibility và console |
+| TC028 | MD02 | P0 | route-smoke | Xác thực email OTP - luồng chính |
+| TC029 | MD02 | P0 | route-smoke | Xác thực email OTP - validation, phân quyền và edge cases |
+| TC030 | MD02 | P1 | route-smoke | Xác thực email OTP - layout, responsive, accessibility và console |
+| TC031 | MD02 | P0 | route-smoke | Đăng nhập Customer và cookie auth - luồng chính |
+| TC032 | MD02 | P0 | route-smoke | Đăng nhập Customer và cookie auth - validation, phân quyền và edge cases |
+| TC033 | MD02 | P1 | route-smoke | Đăng nhập Customer và cookie auth - layout, responsive, accessibility và console |
+| TC034 | MD02 | P0 | route-smoke | Đăng nhập sai và rate limit - luồng chính |
+| TC035 | MD02 | P0 | route-smoke | Đăng nhập sai và rate limit - validation, phân quyền và edge cases |
+| TC036 | MD02 | P1 | route-smoke | Đăng nhập sai và rate limit - layout, responsive, accessibility và console |
+| TC037 | MD02 | P0 | route-smoke | MFA cho Admin/Manager/Staff - luồng chính |
+| TC038 | MD02 | P0 | route-smoke | MFA cho Admin/Manager/Staff - validation, phân quyền và edge cases |
+| TC039 | MD02 | P1 | route-smoke | MFA cho Admin/Manager/Staff - layout, responsive, accessibility và console |
+| TC040 | MD02 | P0 | route-smoke | Forgot/reset password - luồng chính |
+| TC041 | MD02 | P0 | route-smoke | Forgot/reset password - validation, phân quyền và edge cases |
+| TC042 | MD02 | P1 | route-smoke | Forgot/reset password - layout, responsive, accessibility và console |
+| TC043 | MD03 | P0 | route-smoke | Profile hiển thị và mask PII - luồng chính |
+| TC044 | MD03 | P0 | route-smoke | Profile hiển thị và mask PII - validation, phân quyền và edge cases |
+| TC045 | MD03 | P1 | route-smoke | Profile hiển thị và mask PII - layout, responsive, accessibility và console |
+| TC046 | MD03 | P0 | route-smoke | Cập nhật hồ sơ cá nhân - luồng chính |
+| TC047 | MD03 | P0 | route-smoke | Cập nhật hồ sơ cá nhân - validation, phân quyền và edge cases |
+| TC048 | MD03 | P1 | route-smoke | Cập nhật hồ sơ cá nhân - layout, responsive, accessibility và console |
+| TC049 | MD03 | P0 | route-smoke | PII PIN set/verify - luồng chính |
+| TC050 | MD03 | P0 | route-smoke | PII PIN set/verify - validation, phân quyền và edge cases |
+| TC051 | MD03 | P1 | route-smoke | PII PIN set/verify - layout, responsive, accessibility và console |
+| TC052 | MD03 | P0 | route-smoke | Upload/scan CCCD và GPLX - luồng chính |
+| TC053 | MD03 | P0 | route-smoke | Upload/scan CCCD và GPLX - validation, phân quyền và edge cases |
+| TC054 | MD03 | P1 | route-smoke | Upload/scan CCCD và GPLX - layout, responsive, accessibility và console |
+| TC055 | MD03 | P0 | route-smoke | eKYC reject file giả mạo/quá dung lượng - luồng chính |
+| TC056 | MD03 | P0 | route-smoke | eKYC reject file giả mạo/quá dung lượng - validation, phân quyền và edge cases |
+| TC057 | MD03 | P1 | route-smoke | eKYC reject file giả mạo/quá dung lượng - layout, responsive, accessibility và console |
+| TC058 | MD03 | P0 | route-smoke | Face verification - luồng chính |
+| TC059 | MD03 | P0 | route-smoke | Face verification - validation, phân quyền và edge cases |
+| TC060 | MD03 | P1 | route-smoke | Face verification - layout, responsive, accessibility và console |
+| TC061 | MD03 | P0 | route-smoke | SecureFile ownership - luồng chính |
+| TC062 | MD03 | P0 | route-smoke | SecureFile ownership - validation, phân quyền và edge cases |
+| TC063 | MD03 | P1 | route-smoke | SecureFile ownership - layout, responsive, accessibility và console |
+| TC064 | MD04 | P1 | route-smoke | Trang chủ xe nổi bật và CTA - luồng chính |
+| TC065 | MD04 | P1 | route-smoke | Trang chủ xe nổi bật và CTA - validation, phân quyền và edge cases |
+| TC066 | MD04 | P1 | route-smoke | Trang chủ xe nổi bật và CTA - layout, responsive, accessibility và console |
+| TC067 | MD04 | P1 | route-smoke | Danh sách xe filter nhiều tiêu chí - luồng chính |
+| TC068 | MD04 | P1 | route-smoke | Danh sách xe filter nhiều tiêu chí - validation, phân quyền và edge cases |
+| TC069 | MD04 | P1 | route-smoke | Danh sách xe filter nhiều tiêu chí - layout, responsive, accessibility và console |
+| TC070 | MD04 | P1 | route-smoke | Search text chống SQL/XSS và bỏ dấu - luồng chính |
+| TC071 | MD04 | P1 | route-smoke | Search text chống SQL/XSS và bỏ dấu - validation, phân quyền và edge cases |
+| TC072 | MD04 | P1 | route-smoke | Search text chống SQL/XSS và bỏ dấu - layout, responsive, accessibility và console |
+| TC073 | MD04 | P1 | route-smoke | Load more/pagination catalog - luồng chính |
+| TC074 | MD04 | P1 | route-smoke | Load more/pagination catalog - validation, phân quyền và edge cases |
+| TC075 | MD04 | P1 | route-smoke | Load more/pagination catalog - layout, responsive, accessibility và console |
+| TC076 | MD04 | P1 | route-smoke | Map search marker và khoảng cách - luồng chính |
+| TC077 | MD04 | P1 | route-smoke | Map search marker và khoảng cách - validation, phân quyền và edge cases |
+| TC078 | MD04 | P1 | route-smoke | Map search marker và khoảng cách - layout, responsive, accessibility và console |
+| TC079 | MD04 | P1 | route-smoke | Delivery search phạm vi giao xe - luồng chính |
+| TC080 | MD04 | P1 | route-smoke | Delivery search phạm vi giao xe - validation, phân quyền và edge cases |
+| TC081 | MD04 | P1 | route-smoke | Delivery search phạm vi giao xe - layout, responsive, accessibility và console |
+| TC082 | MD04 | P1 | route-smoke | Catalog models API cho dropdown - luồng chính |
+| TC083 | MD04 | P1 | route-smoke | Catalog models API cho dropdown - validation, phân quyền và edge cases |
+| TC084 | MD04 | P1 | route-smoke | Catalog models API cho dropdown - layout, responsive, accessibility và console |
+| TC085 | MD05 | P1 | route-smoke | Chi tiết xe và gallery/fallback ảnh - luồng chính |
+| TC086 | MD05 | P1 | route-smoke | Chi tiết xe và gallery/fallback ảnh - validation, phân quyền và edge cases |
+| TC087 | MD05 | P1 | route-smoke | Chi tiết xe và gallery/fallback ảnh - layout, responsive, accessibility và console |
+| TC088 | MD05 | P1 | route-smoke | Busy dates calendar - luồng chính |
+| TC089 | MD05 | P1 | route-smoke | Busy dates calendar - validation, phân quyền và edge cases |
+| TC090 | MD05 | P1 | route-smoke | Busy dates calendar - layout, responsive, accessibility và console |
+| TC091 | MD05 | P1 | route-smoke | Delivery fee ở detail - luồng chính |
+| TC092 | MD05 | P1 | route-smoke | Delivery fee ở detail - validation, phân quyền và edge cases |
+| TC093 | MD05 | P1 | route-smoke | Delivery fee ở detail - layout, responsive, accessibility và console |
+| TC094 | MD05 | P0 | route-smoke | Review xe sau booking completed - luồng chính |
+| TC095 | MD05 | P0 | route-smoke | Review xe sau booking completed - validation, phân quyền và edge cases |
+| TC096 | MD05 | P1 | route-smoke | Review xe sau booking completed - layout, responsive, accessibility và console |
+| TC097 | MD05 | P0 | route-smoke | Đặt xe từ detail theo auth/eKYC - luồng chính |
+| TC098 | MD05 | P0 | route-smoke | Đặt xe từ detail theo auth/eKYC - validation, phân quyền và edge cases |
+| TC099 | MD05 | P1 | route-smoke | Đặt xe từ detail theo auth/eKYC - layout, responsive, accessibility và console |
+| TC100 | MD05 | P0 | route-smoke | Thêm giỏ từ detail theo auth/eKYC - luồng chính |
+| TC101 | MD05 | P0 | route-smoke | Thêm giỏ từ detail theo auth/eKYC - validation, phân quyền và edge cases |
+| TC102 | MD05 | P1 | route-smoke | Thêm giỏ từ detail theo auth/eKYC - layout, responsive, accessibility và console |
+| TC103 | MD05 | P0 | route-smoke | Admin-only action không lộ public - luồng chính |
+| TC104 | MD05 | P0 | route-smoke | Admin-only action không lộ public - validation, phân quyền và edge cases |
+| TC105 | MD05 | P1 | route-smoke | Admin-only action không lộ public - layout, responsive, accessibility và console |
+| TC106 | MD06 | P0 | route-smoke | Tạo booking một xe từ detail - luồng chính |
+| TC107 | MD06 | P0 | route-smoke | Tạo booking một xe từ detail - validation, phân quyền và edge cases |
+| TC108 | MD06 | P1 | route-smoke | Tạo booking một xe từ detail - layout, responsive, accessibility và console |
+| TC109 | MD06 | P0 | route-smoke | Reject ngày nhận/trả không hợp lệ - luồng chính |
+| TC110 | MD06 | P0 | route-smoke | Reject ngày nhận/trả không hợp lệ - validation, phân quyền và edge cases |
+| TC111 | MD06 | P1 | route-smoke | Reject ngày nhận/trả không hợp lệ - layout, responsive, accessibility và console |
+| TC112 | MD06 | P0 | route-smoke | Concurrency hai user cùng xe - luồng chính |
+| TC113 | MD06 | P0 | route-smoke | Concurrency hai user cùng xe - validation, phân quyền và edge cases |
+| TC114 | MD06 | P1 | route-smoke | Concurrency hai user cùng xe - layout, responsive, accessibility và console |
+| TC115 | MD06 | P0 | route-smoke | Quote nhất quán GET/POST/payment - luồng chính |
+| TC116 | MD06 | P0 | route-smoke | Quote nhất quán GET/POST/payment - validation, phân quyền và edge cases |
+| TC117 | MD06 | P1 | route-smoke | Quote nhất quán GET/POST/payment - layout, responsive, accessibility và console |
+| TC118 | MD06 | P0 | route-smoke | Checkout bắt buộc Terms/Privacy/self-drive consent - luồng chính |
+| TC119 | MD06 | P0 | route-smoke | Checkout bắt buộc Terms/Privacy/self-drive consent - validation, phân quyền và edge cases |
+| TC120 | MD06 | P1 | route-smoke | Checkout bắt buộc Terms/Privacy/self-drive consent - layout, responsive, accessibility và console |
+| TC121 | MD06 | P0 | route-smoke | Promotion/voucher trong booking - luồng chính |
+| TC122 | MD06 | P0 | route-smoke | Promotion/voucher trong booking - validation, phân quyền và edge cases |
+| TC123 | MD06 | P1 | route-smoke | Promotion/voucher trong booking - layout, responsive, accessibility và console |
+| TC124 | MD06 | P0 | route-smoke | MyBookings, detail, cancel, pickup/return - luồng chính |
+| TC125 | MD06 | P0 | route-smoke | MyBookings, detail, cancel, pickup/return - validation, phân quyền và edge cases |
+| TC126 | MD06 | P1 | route-smoke | MyBookings, detail, cancel, pickup/return - layout, responsive, accessibility và console |
+| TC127 | MD07 | P0 | route-smoke | Thêm xe vào giỏ và cart count - luồng chính |
+| TC128 | MD07 | P0 | route-smoke | Thêm xe vào giỏ và cart count - validation, phân quyền và edge cases |
+| TC129 | MD07 | P1 | route-smoke | Thêm xe vào giỏ và cart count - layout, responsive, accessibility và console |
+| TC130 | MD07 | P0 | route-smoke | Giỏ nhiều xe tính tổng - luồng chính |
+| TC131 | MD07 | P0 | route-smoke | Giỏ nhiều xe tính tổng - validation, phân quyền và edge cases |
+| TC132 | MD07 | P1 | route-smoke | Giỏ nhiều xe tính tổng - layout, responsive, accessibility và console |
+| TC133 | MD07 | P0 | route-smoke | Cập nhật ngày trong giỏ - luồng chính |
+| TC134 | MD07 | P0 | route-smoke | Cập nhật ngày trong giỏ - validation, phân quyền và edge cases |
+| TC135 | MD07 | P1 | route-smoke | Cập nhật ngày trong giỏ - layout, responsive, accessibility và console |
+| TC136 | MD07 | P0 | route-smoke | Toggle add-on/package/driver - luồng chính |
+| TC137 | MD07 | P0 | route-smoke | Toggle add-on/package/driver - validation, phân quyền và edge cases |
+| TC138 | MD07 | P1 | route-smoke | Toggle add-on/package/driver - layout, responsive, accessibility và console |
+| TC139 | MD07 | P0 | route-smoke | Xóa item và empty state - luồng chính |
+| TC140 | MD07 | P0 | route-smoke | Xóa item và empty state - validation, phân quyền và edge cases |
+| TC141 | MD07 | P1 | route-smoke | Xóa item và empty state - layout, responsive, accessibility và console |
+| TC142 | MD07 | P0 | route-smoke | CheckoutAll multi-car transaction - luồng chính |
+| TC143 | MD07 | P0 | route-smoke | CheckoutAll multi-car transaction - validation, phân quyền và edge cases |
+| TC144 | MD07 | P1 | route-smoke | CheckoutAll multi-car transaction - layout, responsive, accessibility và console |
+| TC145 | MD07 | P0 | route-smoke | Cart CSRF và IDOR - luồng chính |
+| TC146 | MD07 | P0 | route-smoke | Cart CSRF và IDOR - validation, phân quyền và edge cases |
+| TC147 | MD07 | P1 | route-smoke | Cart CSRF và IDOR - layout, responsive, accessibility và console |
+| TC148 | MD08 | P0 | route-smoke | Tạo PayOS payment cho deposit/hold - luồng chính |
+| TC149 | MD08 | P0 | route-smoke | Tạo PayOS payment cho deposit/hold - validation, phân quyền và edge cases |
+| TC150 | MD08 | P1 | route-smoke | Tạo PayOS payment cho deposit/hold - layout, responsive, accessibility và console |
+| TC151 | MD08 | P0 | route-smoke | PayOS webhook paid idempotent - luồng chính |
+| TC152 | MD08 | P0 | route-smoke | PayOS webhook paid idempotent - validation, phân quyền và edge cases |
+| TC153 | MD08 | P1 | route-smoke | PayOS webhook paid idempotent - layout, responsive, accessibility và console |
+| TC154 | MD08 | P0 | route-smoke | Success/cancel/pending routes - luồng chính |
+| TC155 | MD08 | P0 | route-smoke | Success/cancel/pending routes - validation, phân quyền và edge cases |
+| TC156 | MD08 | P1 | route-smoke | Success/cancel/pending routes - layout, responsive, accessibility và console |
+| TC157 | MD08 | P0 | route-smoke | Manual payment confirmation - luồng chính |
+| TC158 | MD08 | P0 | route-smoke | Manual payment confirmation - validation, phân quyền và edge cases |
+| TC159 | MD08 | P1 | route-smoke | Manual payment confirmation - layout, responsive, accessibility và console |
+| TC160 | MD08 | P0 | route-smoke | Refund request/approve/reject - luồng chính |
+| TC161 | MD08 | P0 | route-smoke | Refund request/approve/reject - validation, phân quyền và edge cases |
+| TC162 | MD08 | P1 | route-smoke | Refund request/approve/reject - layout, responsive, accessibility và console |
+| TC163 | MD08 | P0 | route-smoke | Voucher API brute force/input - luồng chính |
+| TC164 | MD08 | P0 | route-smoke | Voucher API brute force/input - validation, phân quyền và edge cases |
+| TC165 | MD08 | P1 | route-smoke | Voucher API brute force/input - layout, responsive, accessibility và console |
+| TC166 | MD08 | P0 | route-smoke | Admin Payment index/filter - luồng chính |
+| TC167 | MD08 | P0 | route-smoke | Admin Payment index/filter - validation, phân quyền và edge cases |
+| TC168 | MD08 | P1 | route-smoke | Admin Payment index/filter - layout, responsive, accessibility và console |
+| TC169 | MD09 | P0 | route-smoke | Physical contract upload/classify/confirm - luồng chính |
+| TC170 | MD09 | P0 | route-smoke | Physical contract upload/classify/confirm - validation, phân quyền và edge cases |
+| TC171 | MD09 | P1 | route-smoke | Physical contract upload/classify/confirm - layout, responsive, accessibility và console |
+| TC172 | MD09 | P0 | route-smoke | Customer xem hợp đồng đúng quyền - luồng chính |
+| TC173 | MD09 | P0 | route-smoke | Customer xem hợp đồng đúng quyền - validation, phân quyền và edge cases |
+| TC174 | MD09 | P1 | route-smoke | Customer xem hợp đồng đúng quyền - layout, responsive, accessibility và console |
+| TC175 | MD09 | P0 | route-smoke | Digital contract legacy routes - luồng chính |
+| TC176 | MD09 | P0 | route-smoke | Digital contract legacy routes - validation, phân quyền và edge cases |
+| TC177 | MD09 | P1 | route-smoke | Digital contract legacy routes - layout, responsive, accessibility và console |
+| TC178 | MD09 | P0 | route-smoke | Ký hợp đồng/evidence - luồng chính |
+| TC179 | MD09 | P0 | route-smoke | Ký hợp đồng/evidence - validation, phân quyền và edge cases |
+| TC180 | MD09 | P1 | route-smoke | Ký hợp đồng/evidence - layout, responsive, accessibility và console |
+| TC181 | MD09 | P0 | route-smoke | Handover CheckIn - luồng chính |
+| TC182 | MD09 | P0 | route-smoke | Handover CheckIn - validation, phân quyền và edge cases |
+| TC183 | MD09 | P1 | route-smoke | Handover CheckIn - layout, responsive, accessibility và console |
+| TC184 | MD09 | P0 | route-smoke | Handover CheckOut - luồng chính |
+| TC185 | MD09 | P0 | route-smoke | Handover CheckOut - validation, phân quyền và edge cases |
+| TC186 | MD09 | P1 | route-smoke | Handover CheckOut - layout, responsive, accessibility và console |
+| TC187 | MD09 | P0 | route-smoke | Handover reject trạng thái/file/signature sai - luồng chính |
+| TC188 | MD09 | P0 | route-smoke | Handover reject trạng thái/file/signature sai - validation, phân quyền và edge cases |
+| TC189 | MD09 | P1 | route-smoke | Handover reject trạng thái/file/signature sai - layout, responsive, accessibility và console |
+| TC190 | MD10 | P1 | route-smoke | Trang thuê dài hạn và gói - luồng chính |
+| TC191 | MD10 | P1 | route-smoke | Trang thuê dài hạn và gói - validation, phân quyền và edge cases |
+| TC192 | MD10 | P1 | route-smoke | Trang thuê dài hạn và gói - layout, responsive, accessibility và console |
+| TC193 | MD10 | P1 | route-smoke | RequestForm thuê dài hạn - luồng chính |
+| TC194 | MD10 | P1 | route-smoke | RequestForm thuê dài hạn - validation, phân quyền và edge cases |
+| TC195 | MD10 | P1 | route-smoke | RequestForm thuê dài hạn - layout, responsive, accessibility và console |
+| TC196 | MD10 | P1 | route-smoke | CalculatePrice/GetAvailableCars - luồng chính |
+| TC197 | MD10 | P1 | route-smoke | CalculatePrice/GetAvailableCars - validation, phân quyền và edge cases |
+| TC198 | MD10 | P1 | route-smoke | CalculatePrice/GetAvailableCars - layout, responsive, accessibility và console |
+| TC199 | MD10 | P0 | route-smoke | ContractPreview thuê dài hạn - luồng chính |
+| TC200 | MD10 | P0 | route-smoke | ContractPreview thuê dài hạn - validation, phân quyền và edge cases |
+| TC201 | MD10 | P1 | route-smoke | ContractPreview thuê dài hạn - layout, responsive, accessibility và console |
+| TC202 | MD10 | P1 | route-smoke | ConfirmAndDeposit thuê dài hạn - luồng chính |
+| TC203 | MD10 | P1 | route-smoke | ConfirmAndDeposit thuê dài hạn - validation, phân quyền và edge cases |
+| TC204 | MD10 | P1 | route-smoke | ConfirmAndDeposit thuê dài hạn - layout, responsive, accessibility và console |
+| TC205 | MD10 | P1 | route-smoke | VehicleInspection định kỳ - luồng chính |
+| TC206 | MD10 | P1 | route-smoke | VehicleInspection định kỳ - validation, phân quyền và edge cases |
+| TC207 | MD10 | P1 | route-smoke | VehicleInspection định kỳ - layout, responsive, accessibility và console |
+| TC208 | MD10 | P0 | route-smoke | Long-term maintenance/payment schedule - luồng chính |
+| TC209 | MD10 | P0 | route-smoke | Long-term maintenance/payment schedule - validation, phân quyền và edge cases |
+| TC210 | MD10 | P1 | route-smoke | Long-term maintenance/payment schedule - layout, responsive, accessibility và console |
+| TC211 | MD11 | P1 | route-smoke | OwnerCars dashboard - luồng chính |
+| TC212 | MD11 | P1 | route-smoke | OwnerCars dashboard - validation, phân quyền và edge cases |
+| TC213 | MD11 | P1 | route-smoke | OwnerCars dashboard - layout, responsive, accessibility và console |
+| TC214 | MD11 | P1 | route-smoke | OwnerCars create P2P car - luồng chính |
+| TC215 | MD11 | P1 | route-smoke | OwnerCars create P2P car - validation, phân quyền và edge cases |
+| TC216 | MD11 | P1 | route-smoke | OwnerCars create P2P car - layout, responsive, accessibility và console |
+| TC217 | MD11 | P1 | route-smoke | OwnerCars validation biển số/VIN/giá/ảnh - luồng chính |
+| TC218 | MD11 | P1 | route-smoke | OwnerCars validation biển số/VIN/giá/ảnh - validation, phân quyền và edge cases |
+| TC219 | MD11 | P1 | route-smoke | OwnerCars validation biển số/VIN/giá/ảnh - layout, responsive, accessibility và console |
+| TC220 | MD11 | P1 | route-smoke | Partner chưa duyệt bị chặn đăng xe - luồng chính |
+| TC221 | MD11 | P1 | route-smoke | Partner chưa duyệt bị chặn đăng xe - validation, phân quyền và edge cases |
+| TC222 | MD11 | P1 | route-smoke | Partner chưa duyệt bị chặn đăng xe - layout, responsive, accessibility và console |
+| TC223 | MD11 | P0 | route-smoke | Admin duyệt/từ chối xe owner - luồng chính |
+| TC224 | MD11 | P0 | route-smoke | Admin duyệt/từ chối xe owner - validation, phân quyền và edge cases |
+| TC225 | MD11 | P1 | route-smoke | Admin duyệt/từ chối xe owner - layout, responsive, accessibility và console |
+| TC226 | MD11 | P1 | route-smoke | Driver/with-driver surface đóng an toàn - luồng chính |
+| TC227 | MD11 | P1 | route-smoke | Driver/with-driver surface đóng an toàn - validation, phân quyền và edge cases |
+| TC228 | MD11 | P1 | route-smoke | Driver/with-driver surface đóng an toàn - layout, responsive, accessibility và console |
+| TC229 | MD11 | P0 | route-smoke | Partner revenue/booking visibility - luồng chính |
+| TC230 | MD11 | P0 | route-smoke | Partner revenue/booking visibility - validation, phân quyền và edge cases |
+| TC231 | MD11 | P1 | route-smoke | Partner revenue/booking visibility - layout, responsive, accessibility và console |
+| TC232 | MD12 | P1 | route-smoke | Membership public tiers - luồng chính |
+| TC233 | MD12 | P1 | route-smoke | Membership public tiers - validation, phân quyền và edge cases |
+| TC234 | MD12 | P1 | route-smoke | Membership public tiers - layout, responsive, accessibility và console |
+| TC235 | MD12 | P1 | route-smoke | Loyalty points/tier upgrade - luồng chính |
+| TC236 | MD12 | P1 | route-smoke | Loyalty points/tier upgrade - validation, phân quyền và edge cases |
+| TC237 | MD12 | P1 | route-smoke | Loyalty points/tier upgrade - layout, responsive, accessibility và console |
+| TC238 | MD12 | P0 | route-smoke | Admin Membership update - luồng chính |
+| TC239 | MD12 | P0 | route-smoke | Admin Membership update - validation, phân quyền và edge cases |
+| TC240 | MD12 | P1 | route-smoke | Admin Membership update - layout, responsive, accessibility và console |
+| TC241 | MD12 | P1 | route-smoke | SelfService Summary - luồng chính |
+| TC242 | MD12 | P1 | route-smoke | SelfService Summary - validation, phân quyền và edge cases |
+| TC243 | MD12 | P1 | route-smoke | SelfService Summary - layout, responsive, accessibility và console |
+| TC244 | MD12 | P0 | route-smoke | Membership contract toggle - luồng chính |
+| TC245 | MD12 | P0 | route-smoke | Membership contract toggle - validation, phân quyền và edge cases |
+| TC246 | MD12 | P1 | route-smoke | Membership contract toggle - layout, responsive, accessibility và console |
+| TC247 | MD12 | P0 | route-smoke | Customer tier display on profile/checkout - luồng chính |
+| TC248 | MD12 | P0 | route-smoke | Customer tier display on profile/checkout - validation, phân quyền và edge cases |
+| TC249 | MD12 | P1 | route-smoke | Customer tier display on profile/checkout - layout, responsive, accessibility và console |
+| TC250 | MD12 | P1 | route-smoke | SelfService empty state - luồng chính |
+| TC251 | MD12 | P1 | route-smoke | SelfService empty state - validation, phân quyền và edge cases |
+| TC252 | MD12 | P1 | route-smoke | SelfService empty state - layout, responsive, accessibility và console |
+| TC253 | MD13 | P1 | route-smoke | Blog public list/search/category/tag - luồng chính |
+| TC254 | MD13 | P1 | route-smoke | Blog public list/search/category/tag - validation, phân quyền và edge cases |
+| TC255 | MD13 | P1 | route-smoke | Blog public list/search/category/tag - layout, responsive, accessibility và console |
+| TC256 | MD13 | P1 | route-smoke | Blog detail sanitizer - luồng chính |
+| TC257 | MD13 | P1 | route-smoke | Blog detail sanitizer - validation, phân quyền và edge cases |
+| TC258 | MD13 | P1 | route-smoke | Blog detail sanitizer - layout, responsive, accessibility và console |
+| TC259 | MD13 | P1 | route-smoke | Blog public API - luồng chính |
+| TC260 | MD13 | P1 | route-smoke | Blog public API - validation, phân quyền và edge cases |
+| TC261 | MD13 | P1 | route-smoke | Blog public API - layout, responsive, accessibility và console |
+| TC262 | MD13 | P0 | route-smoke | Admin Blog create/edit - luồng chính |
+| TC263 | MD13 | P0 | route-smoke | Admin Blog create/edit - validation, phân quyền và edge cases |
+| TC264 | MD13 | P1 | route-smoke | Admin Blog create/edit - layout, responsive, accessibility và console |
+| TC265 | MD13 | P0 | route-smoke | Admin Blog toggle/delete - luồng chính |
+| TC266 | MD13 | P0 | route-smoke | Admin Blog toggle/delete - validation, phân quyền và edge cases |
+| TC267 | MD13 | P1 | route-smoke | Admin Blog toggle/delete - layout, responsive, accessibility và console |
+| TC268 | MD13 | P0 | route-smoke | Blog API admin mutate RBAC - luồng chính |
+| TC269 | MD13 | P0 | route-smoke | Blog API admin mutate RBAC - validation, phân quyền và edge cases |
+| TC270 | MD13 | P1 | route-smoke | Blog API admin mutate RBAC - layout, responsive, accessibility và console |
+| TC271 | MD13 | P1 | route-smoke | Blog related/sidebar/featured widgets - luồng chính |
+| TC272 | MD13 | P1 | route-smoke | Blog related/sidebar/featured widgets - validation, phân quyền và edge cases |
+| TC273 | MD13 | P1 | route-smoke | Blog related/sidebar/featured widgets - layout, responsive, accessibility và console |
+| TC274 | MD14 | P0 | route-smoke | Support ticket customer create/mine - luồng chính |
+| TC275 | MD14 | P0 | route-smoke | Support ticket customer create/mine - validation, phân quyền và edge cases |
+| TC276 | MD14 | P1 | route-smoke | Support ticket customer create/mine - layout, responsive, accessibility và console |
+| TC277 | MD14 | P0 | route-smoke | Admin Support update status - luồng chính |
+| TC278 | MD14 | P0 | route-smoke | Admin Support update status - validation, phân quyền và edge cases |
+| TC279 | MD14 | P1 | route-smoke | Admin Support update status - layout, responsive, accessibility và console |
+| TC280 | MD14 | P0 | route-smoke | Contact messages admin respond/delete - luồng chính |
+| TC281 | MD14 | P0 | route-smoke | Contact messages admin respond/delete - validation, phân quyền và edge cases |
+| TC282 | MD14 | P1 | route-smoke | Contact messages admin respond/delete - layout, responsive, accessibility và console |
+| TC283 | MD14 | P0 | route-smoke | Privacy request export/delete - luồng chính |
+| TC284 | MD14 | P0 | route-smoke | Privacy request export/delete - validation, phân quyền và edge cases |
+| TC285 | MD14 | P1 | route-smoke | Privacy request export/delete - layout, responsive, accessibility và console |
+| TC286 | MD14 | P0 | route-smoke | Admin privacy approve/reject/complete/retention - luồng chính |
+| TC287 | MD14 | P0 | route-smoke | Admin privacy approve/reject/complete/retention - validation, phân quyền và edge cases |
+| TC288 | MD14 | P1 | route-smoke | Admin privacy approve/reject/complete/retention - layout, responsive, accessibility và console |
+| TC289 | MD14 | P0 | route-smoke | Privacy request duplicate/spam guard - luồng chính |
+| TC290 | MD14 | P0 | route-smoke | Privacy request duplicate/spam guard - validation, phân quyền và edge cases |
+| TC291 | MD14 | P1 | route-smoke | Privacy request duplicate/spam guard - layout, responsive, accessibility và console |
+| TC292 | MD14 | P0 | route-smoke | Support/admin privacy area/RBAC - luồng chính |
+| TC293 | MD14 | P0 | route-smoke | Support/admin privacy area/RBAC - validation, phân quyền và edge cases |
+| TC294 | MD14 | P1 | route-smoke | Support/admin privacy area/RBAC - layout, responsive, accessibility và console |
+| TC295 | MD15 | P1 | route-smoke | Tracking Map và marker xe - luồng chính |
+| TC296 | MD15 | P1 | route-smoke | Tracking Map và marker xe - validation, phân quyền và edge cases |
+| TC297 | MD15 | P1 | route-smoke | Tracking Map và marker xe - layout, responsive, accessibility và console |
+| TC298 | MD15 | P1 | route-smoke | IoT ReceiveData HMAC/nonce - luồng chính |
+| TC299 | MD15 | P1 | route-smoke | IoT ReceiveData HMAC/nonce - validation, phân quyền và edge cases |
+| TC300 | MD15 | P1 | route-smoke | IoT ReceiveData HMAC/nonce - layout, responsive, accessibility và console |
+| TC301 | MD15 | P0 | route-smoke | Admin live location APIs - luồng chính |
+| TC302 | MD15 | P0 | route-smoke | Admin live location APIs - validation, phân quyền và edge cases |
+| TC303 | MD15 | P1 | route-smoke | Admin live location APIs - layout, responsive, accessibility và console |
+| TC304 | MD15 | P0 | route-smoke | Tracking retention/legal notice - luồng chính |
+| TC305 | MD15 | P0 | route-smoke | Tracking retention/legal notice - validation, phân quyền và edge cases |
+| TC306 | MD15 | P1 | route-smoke | Tracking retention/legal notice - layout, responsive, accessibility và console |
+| TC307 | MD15 | P1 | route-smoke | Tracking connect page - luồng chính |
+| TC308 | MD15 | P1 | route-smoke | Tracking connect page - validation, phân quyền và edge cases |
+| TC309 | MD15 | P1 | route-smoke | Tracking connect page - layout, responsive, accessibility và console |
+| TC310 | MD15 | P1 | route-smoke | Vehicle tracking stale/out-of-range data - luồng chính |
+| TC311 | MD15 | P1 | route-smoke | Vehicle tracking stale/out-of-range data - validation, phân quyền và edge cases |
+| TC312 | MD15 | P1 | route-smoke | Vehicle tracking stale/out-of-range data - layout, responsive, accessibility và console |
+| TC313 | MD15 | P0 | route-smoke | Tracking route geofence/area isolation - luồng chính |
+| TC314 | MD15 | P0 | route-smoke | Tracking route geofence/area isolation - validation, phân quyền và edge cases |
+| TC315 | MD15 | P1 | route-smoke | Tracking route geofence/area isolation - layout, responsive, accessibility và console |
+| TC316 | MD16 | P0 | route-smoke | AI chat safe answer and PII redaction - luồng chính |
+| TC317 | MD16 | P0 | route-smoke | AI chat safe answer and PII redaction - validation, phân quyền và edge cases |
+| TC318 | MD16 | P1 | route-smoke | AI chat safe answer and PII redaction - layout, responsive, accessibility và console |
+| TC319 | MD16 | P0 | route-smoke | Chat API payload/rate limit - luồng chính |
+| TC320 | MD16 | P0 | route-smoke | Chat API payload/rate limit - validation, phân quyền và edge cases |
+| TC321 | MD16 | P1 | route-smoke | Chat API payload/rate limit - layout, responsive, accessibility và console |
+| TC322 | MD16 | P1 | route-smoke | Health/live/ready - luồng chính |
+| TC323 | MD16 | P1 | route-smoke | Health/live/ready - validation, phân quyền và edge cases |
+| TC324 | MD16 | P1 | route-smoke | Health/live/ready - layout, responsive, accessibility và console |
+| TC325 | MD16 | P1 | route-smoke | Guide page - luồng chính |
+| TC326 | MD16 | P1 | route-smoke | Guide page - validation, phân quyền và edge cases |
+| TC327 | MD16 | P1 | route-smoke | Guide page - layout, responsive, accessibility và console |
+| TC328 | MD16 | P0 | route-smoke | Alert page/user alerts - luồng chính |
+| TC329 | MD16 | P0 | route-smoke | Alert page/user alerts - validation, phân quyền và edge cases |
+| TC330 | MD16 | P1 | route-smoke | Alert page/user alerts - layout, responsive, accessibility và console |
+| TC331 | MD16 | P1 | route-smoke | AI tool executor boundaries - luồng chính |
+| TC332 | MD16 | P1 | route-smoke | AI tool executor boundaries - validation, phân quyền và edge cases |
+| TC333 | MD16 | P1 | route-smoke | AI tool executor boundaries - layout, responsive, accessibility và console |
+| TC334 | MD16 | P1 | route-smoke | AI provider fallback Groq/Gemini - luồng chính |
+| TC335 | MD16 | P1 | route-smoke | AI provider fallback Groq/Gemini - validation, phân quyền và edge cases |
+| TC336 | MD16 | P1 | route-smoke | AI provider fallback Groq/Gemini - layout, responsive, accessibility và console |
+| TC337 | MD17 | P0 | route-smoke | Admin dashboard KPI/chart/notification - luồng chính |
+| TC338 | MD17 | P0 | route-smoke | Admin dashboard KPI/chart/notification - validation, phân quyền và edge cases |
+| TC339 | MD17 | P1 | route-smoke | Admin dashboard KPI/chart/notification - layout, responsive, accessibility và console |
+| TC340 | MD17 | P0 | route-smoke | Admin sidebar/offcanvas role menus - luồng chính |
+| TC341 | MD17 | P0 | route-smoke | Admin sidebar/offcanvas role menus - validation, phân quyền và edge cases |
+| TC342 | MD17 | P1 | route-smoke | Admin sidebar/offcanvas role menus - layout, responsive, accessibility và console |
+| TC343 | MD17 | P0 | route-smoke | Enterprise Center - luồng chính |
+| TC344 | MD17 | P0 | route-smoke | Enterprise Center - validation, phân quyền và edge cases |
+| TC345 | MD17 | P1 | route-smoke | Enterprise Center - layout, responsive, accessibility và console |
+| TC346 | MD17 | P0 | route-smoke | SRE SLO page - luồng chính |
+| TC347 | MD17 | P0 | route-smoke | SRE SLO page - validation, phân quyền và edge cases |
+| TC348 | MD17 | P1 | route-smoke | SRE SLO page - layout, responsive, accessibility và console |
+| TC349 | MD17 | P0 | route-smoke | Admin theme dark/light - luồng chính |
+| TC350 | MD17 | P0 | route-smoke | Admin theme dark/light - validation, phân quyền và edge cases |
+| TC351 | MD17 | P1 | route-smoke | Admin theme dark/light - layout, responsive, accessibility và console |
+| TC352 | MD17 | P0 | route-smoke | Admin badge counts - luồng chính |
+| TC353 | MD17 | P0 | route-smoke | Admin badge counts - validation, phân quyền và edge cases |
+| TC354 | MD17 | P1 | route-smoke | Admin badge counts - layout, responsive, accessibility và console |
+| TC355 | MD17 | P0 | route-smoke | Admin global search/topbar/profile/logout - luồng chính |
+| TC356 | MD17 | P0 | route-smoke | Admin global search/topbar/profile/logout - validation, phân quyền và edge cases |
+| TC357 | MD17 | P1 | route-smoke | Admin global search/topbar/profile/logout - layout, responsive, accessibility và console |
+| TC358 | MD18 | P0 | route-smoke | Area CRUD - luồng chính |
+| TC359 | MD18 | P0 | route-smoke | Area CRUD - validation, phân quyền và edge cases |
+| TC360 | MD18 | P1 | route-smoke | Area CRUD - layout, responsive, accessibility và console |
+| TC361 | MD18 | P0 | route-smoke | Manager/Staff area isolation - luồng chính |
+| TC362 | MD18 | P0 | route-smoke | Manager/Staff area isolation - validation, phân quyền và edge cases |
+| TC363 | MD18 | P1 | route-smoke | Manager/Staff area isolation - layout, responsive, accessibility và console |
+| TC364 | MD18 | P0 | route-smoke | Area location add/remove - luồng chính |
+| TC365 | MD18 | P0 | route-smoke | Area location add/remove - validation, phân quyền và edge cases |
+| TC366 | MD18 | P1 | route-smoke | Area location add/remove - layout, responsive, accessibility và console |
+| TC367 | MD18 | P0 | route-smoke | Area staff add/update/remove - luồng chính |
+| TC368 | MD18 | P0 | route-smoke | Area staff add/update/remove - validation, phân quyền và edge cases |
+| TC369 | MD18 | P1 | route-smoke | Area staff add/update/remove - layout, responsive, accessibility và console |
+| TC370 | MD18 | P0 | route-smoke | Area API GetUsers/GetLocations - luồng chính |
+| TC371 | MD18 | P0 | route-smoke | Area API GetUsers/GetLocations - validation, phân quyền và edge cases |
+| TC372 | MD18 | P1 | route-smoke | Area API GetUsers/GetLocations - layout, responsive, accessibility và console |
+| TC373 | MD18 | P0 | route-smoke | Area manager layout - luồng chính |
+| TC374 | MD18 | P0 | route-smoke | Area manager layout - validation, phân quyền và edge cases |
+| TC375 | MD18 | P1 | route-smoke | Area manager layout - layout, responsive, accessibility và console |
+| TC376 | MD18 | P0 | route-smoke | Area stats and all areas dashboard - luồng chính |
+| TC377 | MD18 | P0 | route-smoke | Area stats and all areas dashboard - validation, phân quyền và edge cases |
+| TC378 | MD18 | P1 | route-smoke | Area stats and all areas dashboard - layout, responsive, accessibility và console |
+| TC379 | MD19 | P0 | route-smoke | Admin Booking index/filter/pagination - luồng chính |
+| TC380 | MD19 | P0 | route-smoke | Admin Booking index/filter/pagination - validation, phân quyền và edge cases |
+| TC381 | MD19 | P1 | route-smoke | Admin Booking index/filter/pagination - layout, responsive, accessibility và console |
+| TC382 | MD19 | P0 | route-smoke | Admin booking confirm/cancel/update status - luồng chính |
+| TC383 | MD19 | P0 | route-smoke | Admin booking confirm/cancel/update status - validation, phân quyền và edge cases |
+| TC384 | MD19 | P1 | route-smoke | Admin booking confirm/cancel/update status - layout, responsive, accessibility và console |
+| TC385 | MD19 | P0 | route-smoke | Admin start/end trip/pickup/return - luồng chính |
+| TC386 | MD19 | P0 | route-smoke | Admin start/end trip/pickup/return - validation, phân quyền và edge cases |
+| TC387 | MD19 | P1 | route-smoke | Admin start/end trip/pickup/return - layout, responsive, accessibility và console |
+| TC388 | MD19 | P0 | route-smoke | Recent notifications - luồng chính |
+| TC389 | MD19 | P0 | route-smoke | Recent notifications - validation, phân quyền và edge cases |
+| TC390 | MD19 | P1 | route-smoke | Recent notifications - layout, responsive, accessibility và console |
+| TC391 | MD19 | P0 | route-smoke | Settlement review - luồng chính |
+| TC392 | MD19 | P0 | route-smoke | Settlement review - validation, phân quyền và edge cases |
+| TC393 | MD19 | P1 | route-smoke | Settlement review - layout, responsive, accessibility và console |
+| TC394 | MD19 | P0 | route-smoke | Dispute export evidence - luồng chính |
+| TC395 | MD19 | P0 | route-smoke | Dispute export evidence - validation, phân quyền và edge cases |
+| TC396 | MD19 | P1 | route-smoke | Dispute export evidence - layout, responsive, accessibility và console |
+| TC397 | MD19 | P0 | route-smoke | Physical contracts admin index - luồng chính |
+| TC398 | MD19 | P0 | route-smoke | Physical contracts admin index - validation, phân quyền và edge cases |
+| TC399 | MD19 | P1 | route-smoke | Physical contracts admin index - layout, responsive, accessibility và console |
+| TC400 | MD20 | P0 | route-smoke | Admin User index/filter - luồng chính |
+| TC401 | MD20 | P0 | route-smoke | Admin User index/filter - validation, phân quyền và edge cases |
+| TC402 | MD20 | P1 | route-smoke | Admin User index/filter - layout, responsive, accessibility và console |
+| TC403 | MD20 | P0 | route-smoke | SetRole governance - luồng chính |
+| TC404 | MD20 | P0 | route-smoke | SetRole governance - validation, phân quyền và edge cases |
+| TC405 | MD20 | P1 | route-smoke | SetRole governance - layout, responsive, accessibility và console |
+| TC406 | MD20 | P0 | route-smoke | Toggle verify/lock/blacklist - luồng chính |
+| TC407 | MD20 | P0 | route-smoke | Toggle verify/lock/blacklist - validation, phân quyền và edge cases |
+| TC408 | MD20 | P1 | route-smoke | Toggle verify/lock/blacklist - layout, responsive, accessibility và console |
+| TC409 | MD20 | P0 | route-smoke | Partner requests approve/reject - luồng chính |
+| TC410 | MD20 | P0 | route-smoke | Partner requests approve/reject - validation, phân quyền và edge cases |
+| TC411 | MD20 | P1 | route-smoke | Partner requests approve/reject - layout, responsive, accessibility và console |
+| TC412 | MD20 | P0 | route-smoke | Admin PIN verify - luồng chính |
+| TC413 | MD20 | P0 | route-smoke | Admin PIN verify - validation, phân quyền và edge cases |
+| TC414 | MD20 | P1 | route-smoke | Admin PIN verify - layout, responsive, accessibility và console |
+| TC415 | MD20 | P0 | route-smoke | User search XSS/PII masking - luồng chính |
+| TC416 | MD20 | P0 | route-smoke | User search XSS/PII masking - validation, phân quyền và edge cases |
+| TC417 | MD20 | P1 | route-smoke | User search XSS/PII masking - layout, responsive, accessibility và console |
+| TC418 | MD20 | P0 | route-smoke | Privileged account SSO/MFA policy - luồng chính |
+| TC419 | MD20 | P0 | route-smoke | Privileged account SSO/MFA policy - validation, phân quyền và edge cases |
+| TC420 | MD20 | P1 | route-smoke | Privileged account SSO/MFA policy - layout, responsive, accessibility và console |
+| TC421 | MD21 | P0 | route-smoke | Admin Car Manage CRUD/filter/trash - luồng chính |
+| TC422 | MD21 | P0 | route-smoke | Admin Car Manage CRUD/filter/trash - validation, phân quyền và edge cases |
+| TC423 | MD21 | P1 | route-smoke | Admin Car Manage CRUD/filter/trash - layout, responsive, accessibility và console |
+| TC424 | MD21 | P0 | route-smoke | Admin Car Create/Edit validation - luồng chính |
+| TC425 | MD21 | P0 | route-smoke | Admin Car Create/Edit validation - validation, phân quyền và edge cases |
+| TC426 | MD21 | P1 | route-smoke | Admin Car Create/Edit validation - layout, responsive, accessibility và console |
+| TC427 | MD21 | P0 | route-smoke | Car Approval - luồng chính |
+| TC428 | MD21 | P0 | route-smoke | Car Approval - validation, phân quyền và edge cases |
+| TC429 | MD21 | P1 | route-smoke | Car Approval - layout, responsive, accessibility và console |
+| TC430 | MD21 | P0 | route-smoke | Maintenance logs - luồng chính |
+| TC431 | MD21 | P0 | route-smoke | Maintenance logs - validation, phân quyền và edge cases |
+| TC432 | MD21 | P1 | route-smoke | Maintenance logs - layout, responsive, accessibility và console |
+| TC433 | MD21 | P0 | route-smoke | Holiday pricing - luồng chính |
+| TC434 | MD21 | P0 | route-smoke | Holiday pricing - validation, phân quyền và edge cases |
+| TC435 | MD21 | P1 | route-smoke | Holiday pricing - layout, responsive, accessibility và console |
+| TC436 | MD21 | P0 | route-smoke | Lookups CRUD - luồng chính |
+| TC437 | MD21 | P0 | route-smoke | Lookups CRUD - validation, phân quyền và edge cases |
+| TC438 | MD21 | P1 | route-smoke | Lookups CRUD - layout, responsive, accessibility và console |
+| TC439 | MD21 | P0 | route-smoke | FleetOps readiness - luồng chính |
+| TC440 | MD21 | P0 | route-smoke | FleetOps readiness - validation, phân quyền và edge cases |
+| TC441 | MD21 | P1 | route-smoke | FleetOps readiness - layout, responsive, accessibility và console |
+| TC442 | MD22 | P0 | route-smoke | Promotions CRUD/trash/restore - luồng chính |
+| TC443 | MD22 | P0 | route-smoke | Promotions CRUD/trash/restore - validation, phân quyền và edge cases |
+| TC444 | MD22 | P1 | route-smoke | Promotions CRUD/trash/restore - layout, responsive, accessibility và console |
+| TC445 | MD22 | P0 | route-smoke | Review moderation - luồng chính |
+| TC446 | MD22 | P0 | route-smoke | Review moderation - validation, phân quyền và edge cases |
+| TC447 | MD22 | P1 | route-smoke | Review moderation - layout, responsive, accessibility và console |
+| TC448 | MD22 | P0 | route-smoke | Reports index/export Excel - luồng chính |
+| TC449 | MD22 | P0 | route-smoke | Reports index/export Excel - validation, phân quyền và edge cases |
+| TC450 | MD22 | P1 | route-smoke | Reports index/export Excel - layout, responsive, accessibility và console |
+| TC451 | MD22 | P0 | route-smoke | AuditLog verify chain - luồng chính |
+| TC452 | MD22 | P0 | route-smoke | AuditLog verify chain - validation, phân quyền và edge cases |
+| TC453 | MD22 | P1 | route-smoke | AuditLog verify chain - layout, responsive, accessibility và console |
+| TC454 | MD22 | P0 | route-smoke | Alerts resolve - luồng chính |
+| TC455 | MD22 | P0 | route-smoke | Alerts resolve - validation, phân quyền và edge cases |
+| TC456 | MD22 | P1 | route-smoke | Alerts resolve - layout, responsive, accessibility và console |
+| TC457 | MD22 | P0 | route-smoke | API Keys create/revoke - luồng chính |
+| TC458 | MD22 | P0 | route-smoke | API Keys create/revoke - validation, phân quyền và edge cases |
+| TC459 | MD22 | P1 | route-smoke | API Keys create/revoke - layout, responsive, accessibility và console |
+| TC460 | MD22 | P0 | route-smoke | Snapshot lifecycle - luồng chính |
+| TC461 | MD22 | P0 | route-smoke | Snapshot lifecycle - validation, phân quyền và edge cases |
+| TC462 | MD22 | P1 | route-smoke | Snapshot lifecycle - layout, responsive, accessibility và console |
+| TC463 | MD23 | P0 | route-smoke | RBAC route matrix - luồng chính |
+| TC464 | MD23 | P0 | route-smoke | RBAC route matrix - validation, phân quyền và edge cases |
+| TC465 | MD23 | P1 | route-smoke | RBAC route matrix - layout, responsive, accessibility và console |
+| TC466 | MD23 | P0 | route-smoke | CSRF toàn bộ POST/PUT/DELETE MVC - luồng chính |
+| TC467 | MD23 | P0 | route-smoke | CSRF toàn bộ POST/PUT/DELETE MVC - validation, phân quyền và edge cases |
+| TC468 | MD23 | P1 | route-smoke | CSRF toàn bộ POST/PUT/DELETE MVC - layout, responsive, accessibility và console |
+| TC469 | MD23 | P0 | route-smoke | Rate limit và spoof X-Forwarded-For - luồng chính |
+| TC470 | MD23 | P0 | route-smoke | Rate limit và spoof X-Forwarded-For - validation, phân quyền và edge cases |
+| TC471 | MD23 | P1 | route-smoke | Rate limit và spoof X-Forwarded-For - layout, responsive, accessibility và console |
+| TC472 | MD23 | P0 | route-smoke | Security headers/cookie flags - luồng chính |
+| TC473 | MD23 | P0 | route-smoke | Security headers/cookie flags - validation, phân quyền và edge cases |
+| TC474 | MD23 | P1 | route-smoke | Security headers/cookie flags - layout, responsive, accessibility và console |
+| TC475 | MD23 | P0 | route-smoke | IDOR ownership resources - luồng chính |
+| TC476 | MD23 | P0 | route-smoke | IDOR ownership resources - validation, phân quyền và edge cases |
+| TC477 | MD23 | P1 | route-smoke | IDOR ownership resources - layout, responsive, accessibility và console |
+| TC478 | MD23 | P0 | route-smoke | Audit log request success/fail - luồng chính |
+| TC479 | MD23 | P0 | route-smoke | Audit log request success/fail - validation, phân quyền và edge cases |
+| TC480 | MD23 | P1 | route-smoke | Audit log request success/fail - layout, responsive, accessibility và console |
+| TC481 | MD23 | P0 | route-smoke | Secrets/config exposure - luồng chính |
+| TC482 | MD23 | P0 | route-smoke | Secrets/config exposure - validation, phân quyền và edge cases |
+| TC483 | MD23 | P1 | route-smoke | Secrets/config exposure - layout, responsive, accessibility và console |
+| TC484 | MD24 | P1 | route-smoke | Responsive public key pages - luồng chính |
+| TC485 | MD24 | P1 | route-smoke | Responsive public key pages - validation, phân quyền và edge cases |
+| TC486 | MD24 | P1 | route-smoke | Responsive public key pages - layout, responsive, accessibility và console |
+| TC487 | MD24 | P0 | route-smoke | Responsive admin key pages - luồng chính |
+| TC488 | MD24 | P0 | route-smoke | Responsive admin key pages - validation, phân quyền và edge cases |
+| TC489 | MD24 | P1 | route-smoke | Responsive admin key pages - layout, responsive, accessibility và console |
+| TC490 | MD24 | P1 | route-smoke | Keyboard-only critical flows - luồng chính |
+| TC491 | MD24 | P1 | route-smoke | Keyboard-only critical flows - validation, phân quyền và edge cases |
+| TC492 | MD24 | P1 | route-smoke | Keyboard-only critical flows - layout, responsive, accessibility và console |
+| TC493 | MD24 | P1 | route-smoke | Labels/error association forms - luồng chính |
+| TC494 | MD24 | P1 | route-smoke | Labels/error association forms - validation, phân quyền và edge cases |
+| TC495 | MD24 | P1 | route-smoke | Labels/error association forms - layout, responsive, accessibility và console |
+| TC496 | MD24 | P0 | route-smoke | Contrast AA public/admin themes - luồng chính |
+| TC497 | MD24 | P0 | route-smoke | Contrast AA public/admin themes - validation, phân quyền và edge cases |
+| TC498 | MD24 | P1 | route-smoke | Contrast AA public/admin themes - layout, responsive, accessibility và console |
+| TC499 | MD24 | P1 | route-smoke | Console/network smoke internal links - luồng chính |
+| TC500 | MD24 | P1 | route-smoke | Console/network smoke internal links - validation, phân quyền và edge cases |
+| TC501 | MD24 | P1 | route-smoke | Console/network smoke internal links - layout, responsive, accessibility và console |
+| TC502 | MD24 | P1 | route-smoke | Background jobs behavior - luồng chính |
+| TC503 | MD24 | P1 | route-smoke | Background jobs behavior - validation, phân quyền và edge cases |
+| TC504 | MD24 | P1 | route-smoke | Background jobs behavior - layout, responsive, accessibility và console |
+| TC505 | MD25 | P0 | route-smoke | Privacy/Terms nội dung thật - luồng chính |
+| TC506 | MD25 | P0 | route-smoke | Privacy/Terms nội dung thật - validation, phân quyền và edge cases |
+| TC507 | MD25 | P1 | route-smoke | Privacy/Terms nội dung thật - layout, responsive, accessibility và console |
+| TC508 | MD25 | P0 | route-smoke | Consent version register/eKYC/booking/cart - luồng chính |
+| TC509 | MD25 | P0 | route-smoke | Consent version register/eKYC/booking/cart - validation, phân quyền và edge cases |
+| TC510 | MD25 | P1 | route-smoke | Consent version register/eKYC/booking/cart - layout, responsive, accessibility và console |
+| TC511 | MD25 | P0 | route-smoke | Wallet stored value disabled - luồng chính |
+| TC512 | MD25 | P0 | route-smoke | Wallet stored value disabled - validation, phân quyền và edge cases |
+| TC513 | MD25 | P1 | route-smoke | Wallet stored value disabled - layout, responsive, accessibility và console |
+| TC514 | MD25 | P0 | route-smoke | With-driver public booking disabled - luồng chính |
+| TC515 | MD25 | P0 | route-smoke | With-driver public booking disabled - validation, phân quyền và edge cases |
+| TC516 | MD25 | P1 | route-smoke | With-driver public booking disabled - layout, responsive, accessibility và console |
+| TC517 | MD25 | P0 | route-smoke | Payment/PayOS/refund legal evidence - luồng chính |
+| TC518 | MD25 | P0 | route-smoke | Payment/PayOS/refund legal evidence - validation, phân quyền và edge cases |
+| TC519 | MD25 | P1 | route-smoke | Payment/PayOS/refund legal evidence - layout, responsive, accessibility và console |
+| TC520 | MD25 | P0 | route-smoke | eKYC biometric notice/DPA/retention - luồng chính |
+| TC521 | MD25 | P0 | route-smoke | eKYC biometric notice/DPA/retention - validation, phân quyền và edge cases |
+| TC522 | MD25 | P1 | route-smoke | eKYC biometric notice/DPA/retention - layout, responsive, accessibility và console |
+| TC523 | MD25 | P0 | route-smoke | Retention/export/delete legal hold - luồng chính |
+| TC524 | MD25 | P0 | route-smoke | Retention/export/delete legal hold - validation, phân quyền và edge cases |
+| TC525 | MD25 | P1 | route-smoke | Retention/export/delete legal hold - layout, responsive, accessibility và console |

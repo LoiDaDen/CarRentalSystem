@@ -1,60 +1,90 @@
 @model IEnumerable<CarRentalSystem.Models.PrivacyRequest>
-
+@using CarRentalSystem.Models
 @{
-    ViewData["Title"] = "Privacy Requests";
+    ViewData["Title"] = "Yêu cầu quyền riêng tư";
+    var requests = Model?.ToList() ?? new List<PrivacyRequest>();
+    var pending = requests.Count(request => request.Status == PrivacyRequestStatusConstants.PendingReview);
+    var approved = requests.Count(request => request.Status == PrivacyRequestStatusConstants.Approved);
+    var completed = requests.Count(request => request.Status == PrivacyRequestStatusConstants.Completed);
+    string Tone(string? status) => status switch
+    {
+        PrivacyRequestStatusConstants.Completed => "admin-status-success",
+        PrivacyRequestStatusConstants.Approved => "admin-status-info",
+        PrivacyRequestStatusConstants.PendingReview => "admin-status-warning",
+        PrivacyRequestStatusConstants.Rejected => "admin-status-danger",
+        _ => "admin-status-neutral"
+    };
 }
 
-<h1>Privacy Requests</h1>
+<div class="page-header">
+    <div>
+        <h2>Yêu cầu quyền riêng tư</h2>
+        <p>Xử lý yêu cầu xuất, xóa và rà soát lưu trữ dữ liệu cá nhân theo quy trình kiểm soát.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="RetentionPreview"><i class="bi bi-shield-check"></i> Xem retention preview</a>
+</div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>User</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>Reason</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var request in Model)
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-inboxes-fill"></i></span><div class="admin-kpi-value">@requests.Count</div><div class="admin-kpi-label">Tổng yêu cầu</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-hourglass-split"></i></span><div class="admin-kpi-value">@pending</div><div class="admin-kpi-label">Chờ duyệt</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-check2-circle"></i></span><div class="admin-kpi-value">@approved</div><div class="admin-kpi-label">Đã duyệt</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-shield-lock-fill"></i></span><div class="admin-kpi-value">@completed</div><div class="admin-kpi-label">Hoàn tất</div></div></div>
+</div>
+
+@if (requests.Count == 0)
+{
+    <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel
     {
-        <tr>
-            <td>@request.PrivacyRequestID</td>
-            <td>@(request.User?.Email ?? request.UserID.ToString())</td>
-            <td>@request.RequestType</td>
-            <td>@request.Status</td>
-            <td>@request.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-            <td>@request.Reason</td>
-            <td>
-                @if (request.Status == CarRentalSystem.Models.PrivacyRequestStatusConstants.PendingReview)
+        Icon = "bi-person-lock",
+        Title = "Chưa có yêu cầu quyền riêng tư",
+        Message = "Các yêu cầu mới của người dùng sẽ xuất hiện tại đây."
+    })" />
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Yêu cầu</th><th>Người dùng</th><th>Loại</th><th>Lý do</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+                <tbody>
+                @foreach (var request in requests)
                 {
-                    <form asp-action="Approve" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@request.PrivacyRequestID" />
-                        <input type="hidden" name="reason" value="Approved from admin privacy queue." />
-                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                    </form>
-                    <form asp-action="Reject" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@request.PrivacyRequestID" />
-                        <input type="hidden" name="reason" value="Rejected from admin privacy queue." />
-                        <button type="submit" class="btn btn-sm btn-danger">Reject</button>
-                    </form>
+                    <tr>
+                        <td><strong>#@request.PrivacyRequestID</strong></td>
+                        <td><strong>@(request.User?.Name ?? $"User #{request.UserID}")</strong><small class="d-block text-muted">@(request.User?.Email ?? "Email được bảo vệ")</small></td>
+                        <td>@UiLabels.PrivacyRequestType(request.RequestType)</td>
+                        <td><div class="admin-table-description">@request.Reason</div></td>
+                        <td><span class="admin-status-badge @Tone(request.Status)">@UiLabels.PrivacyRequestStatus(request.Status)</span></td>
+                        <td>@request.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <div class="d-flex gap-1 flex-wrap">
+                            @if (request.Status == PrivacyRequestStatusConstants.PendingReview)
+                            {
+                                <form asp-action="Approve" method="post">
+                                    <input type="hidden" name="id" value="@request.PrivacyRequestID" />
+                                    <input type="hidden" name="reason" value="Đã duyệt từ hàng đợi quyền riêng tư admin." />
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check2"></i> Duyệt</button>
+                                </form>
+                                <form asp-action="Reject" method="post">
+                                    <input type="hidden" name="id" value="@request.PrivacyRequestID" />
+                                    <input type="hidden" name="reason" value="Đã từ chối từ hàng đợi quyền riêng tư admin." />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Từ chối</button>
+                                </form>
+                            }
+                            @if (request.Status == PrivacyRequestStatusConstants.Approved)
+                            {
+                                <form asp-action="Complete" method="post">
+                                    <input type="hidden" name="id" value="@request.PrivacyRequestID" />
+                                    <input type="hidden" name="reason" value="Đã hoàn tất từ hàng đợi quyền riêng tư admin." />
+                                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check2-all"></i> Hoàn tất</button>
+                                </form>
+                            }
+                            </div>
+                        </td>
+                    </tr>
                 }
-                @if (request.Status == CarRentalSystem.Models.PrivacyRequestStatusConstants.Approved)
-                {
-                    <form asp-action="Complete" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@request.PrivacyRequestID" />
-                        <input type="hidden" name="reason" value="Completed from admin privacy queue." />
-                        <button type="submit" class="btn btn-sm btn-primary">Complete</button>
-                    </form>
-                }
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

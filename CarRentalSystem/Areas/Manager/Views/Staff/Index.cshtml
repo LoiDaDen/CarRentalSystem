@@ -1,0 +1,12 @@
+@model IReadOnlyList<ManagerStaffRowViewModel>
+@{
+    ViewData["Title"] = "Quản lý nhân viên";
+    var areas = ViewBag.Areas as IReadOnlyList<Area> ?? Array.Empty<Area>();
+    var available = ViewBag.AvailableStaff as IReadOnlyList<User> ?? Array.Empty<User>();
+    var selectedArea = areas.FirstOrDefault();
+}
+<div class="d-flex justify-content-between flex-wrap gap-3 mb-4"><div><h1 class="portal-page-title h3">Quản lý nhân viên</h1><p class="text-muted">Chỉ phân công tài khoản có system role Staff.</p></div>
+@if(selectedArea != null){<form asp-action="Add" method="post" class="d-flex gap-2"><input type="hidden" name="areaId" value="@selectedArea.AreaID"/><select name="userId" class="form-select"><option value="">Chọn Staff</option>@foreach(var person in available){<option value="@person.UserID">@person.Name</option>}</select><button class="btn btn-primary">Thêm</button></form>}</div>
+<div class="portal-card"><div class="table-responsive"><table class="table portal-table"><thead><tr><th>Nhân viên</th><th>Email</th><th>Khu vực</th><th>Booking phụ trách</th><th></th></tr></thead><tbody>
+@foreach(var item in Model){<tr><td>@item.Name</td><td>@item.Email</td><td>@item.AreaName</td><td>@item.AssignedBookingCount</td><td><form asp-action="Remove" method="post"><input type="hidden" name="areaId" value="@item.AreaID"/><input type="hidden" name="userId" value="@item.UserID"/><button class="btn btn-sm btn-outline-danger">Gỡ</button></form></td></tr>}
+</tbody></table></div></div>

@@ -29,7 +29,7 @@ namespace CarRentalSystem.Tests.IntegrationTests
                 await setup.SaveChangesAsync();
             }
 
-            var start = new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+            var start = DateTime.UtcNow.AddDays(7);
             var end = start.AddDays(1);
 
             var first = CreateHoldSafelyAsync(options, userId: 2, start, end);

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CarRentalSystem.Models;
 using CarRentalSystem.Services.Ai;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,6 +23,15 @@ public class AiController : ControllerBase
         if (request == null || (string.IsNullOrWhiteSpace(request.Message) && string.IsNullOrWhiteSpace(request.ConfirmationId)))
             return BadRequest(new { error = "Message or confirmationId is required." });
 
+        if (IsOpsMode(request))
+        {
+            if (User.Identity?.IsAuthenticated != true)
+                return Unauthorized(new { error = "Operations copilot requires an internal staff account." });
+
+            if (!HasInternalStaffRole())
+                return Forbid();
+        }
+
         var response = await _aiService.ChatAsync(request, BuildUserContext(), cancellationToken);
         return Ok(response);
     }
@@ -39,4 +49,12 @@ public class AiController : ControllerBase
             UserName = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.Email)
         };
     }
+
+    private static bool IsOpsMode(AiChatRequest request) =>
+        string.Equals(request.Mode, "ops", StringComparison.OrdinalIgnoreCase);
+
+    private bool HasInternalStaffRole() =>
+        User.IsInRole(UserRoleConstants.Admin) ||
+        User.IsInRole(UserRoleConstants.Manager) ||
+        User.IsInRole(UserRoleConstants.Staff);
 }

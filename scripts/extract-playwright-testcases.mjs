@@ -1,0 +1,217 @@
+import ExcelJS from 'exceljs';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const workbookPath = process.env.TESTCASE_XLSX?.trim() || '';
+const repoRoot = process.cwd();
+const fixturePath = path.join(repoRoot, 'playwright', 'fixtures', 'testcase-matrix.json');
+const excelSpecDir = path.join(repoRoot, 'playwright', 'e2e', 'excel');
+
+const expectedIds = Array.from({ length: 525 }, (_, index) => `TC${String(index + 1).padStart(3, '0')}`);
+
+const slugify = (value) => value
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '');
+
+const cellText = (cell) => {
+  if (!cell) return '';
+  if (cell.text) return String(cell.text).trim();
+  const value = cell.value;
+  if (value == null) return '';
+  if (typeof value === 'object') {
+    if (value.text) return String(value.text).trim();
+    if (Array.isArray(value.richText)) return value.richText.map((part) => part.text || '').join('').trim();
+    if (value.result != null) return String(value.result).trim();
+  }
+  return String(value).trim();
+};
+
+const parseNote = (note) => {
+  const result = {};
+  for (const part of String(note || '').split('|')) {
+    const [rawKey, ...rawValue] = part.split(':');
+    const key = rawKey?.trim();
+    const value = rawValue.join(':').trim();
+    if (key && value) result[key] = value;
+  }
+  return result;
+};
+
+const validateMatrix = (matrix) => {
+  const ids = matrix.cases?.map((testCase) => testCase.id) || [];
+  const missingIds = expectedIds.filter((id) => !ids.includes(id));
+  const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+
+  if (matrix.totalCases !== 525 || ids.length !== 525 || missingIds.length || duplicateIds.length) {
+    throw new Error(
+      `Expected 525 unique Playwright test cases TC001-TC525. ` +
+      `Found=${ids.length} Missing=${missingIds.join(',')} Duplicates=${duplicateIds.join(',')}`,
+    );
+  }
+
+  if (!Array.isArray(matrix.modules) || matrix.modules.length !== 25) {
+    throw new Error(`Expected 25 Playwright modules, found ${matrix.modules?.length ?? 0}.`);
+  }
+
+  for (const module of matrix.modules) {
+    if (module.caseCount !== 21) {
+      throw new Error(`Expected ${module.code} to contain 21 cases, found ${module.caseCount}.`);
+    }
+  }
+
+  if (JSON.stringify(ids) !== JSON.stringify(expectedIds)) {
+    throw new Error('Playwright testcase ids must be ordered exactly TC001-TC525.');
+  }
+};
+
+async function loadMatrixFromWorkbook(sourceWorkbook) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(sourceWorkbook);
+
+  const modules = [];
+  const cases = [];
+
+  for (const ws of workbook.worksheets.filter((sheet) => /^MD\d+/.test(sheet.name))) {
+    const moduleCode = ws.name.match(/^(MD\d+)/)?.[1];
+    const moduleName = cellText(ws.getRow(4).getCell(2)) || ws.name;
+    const requirement = cellText(ws.getRow(5).getCell(2));
+    const moduleCases = [];
+
+    for (let rowIndex = 1; rowIndex <= ws.rowCount; rowIndex += 1) {
+      const row = ws.getRow(rowIndex);
+      const id = cellText(row.getCell(1));
+      if (!/^TC\d{3}$/.test(id)) continue;
+
+      const parsedNote = parseNote(cellText(row.getCell(7)));
+      const testCase = {
+        id,
+        numericId: Number(id.replace('TC', '')),
+        moduleCode,
+        moduleName,
+        requirement,
+        sheetName: ws.name,
+        title: cellText(row.getCell(2)),
+        steps: cellText(row.getCell(3)),
+        expected: cellText(row.getCell(4)),
+        role: parsedNote.Role || '',
+        priority: parsedNote.Priority || 'P1',
+        source: parsedNote.Source || '',
+        routeApi: parsedNote['Route/API'] || '',
+        row: rowIndex,
+      };
+
+      cases.push(testCase);
+      moduleCases.push(testCase);
+    }
+
+    modules.push({
+      code: moduleCode,
+      name: moduleName,
+      sheetName: ws.name,
+      requirement,
+      caseCount: moduleCases.length,
+      firstCaseId: moduleCases[0]?.id,
+      lastCaseId: moduleCases.at(-1)?.id,
+    });
+  }
+
+  cases.sort((a, b) => a.numericId - b.numericId);
+  return {
+    sourceWorkbook,
+    generatedAtUtc: new Date().toISOString(),
+    totalCases: cases.length,
+    modules,
+    cases,
+  };
+}
+
+function loadCommittedMatrix() {
+  if (!fs.existsSync(fixturePath)) {
+    throw new Error('TESTCASE_XLSX was not supplied and committed Playwright testcase fixture is missing.');
+  }
+
+  const matrix = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+  matrix.sourceWorkbook = matrix.sourceWorkbook || 'committed:playwright/fixtures/testcase-matrix.json';
+  matrix.generatedAtUtc = new Date().toISOString();
+  return matrix;
+}
+
+function writeMatrix(matrix) {
+  fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
+  fs.writeFileSync(fixturePath, `${JSON.stringify(matrix, null, 2)}\n`, 'utf8');
+}
+
+function writeSpecs(matrix) {
+  fs.rmSync(excelSpecDir, { recursive: true, force: true });
+  fs.mkdirSync(excelSpecDir, { recursive: true });
+
+  const guardSpec = `// Generated by scripts/extract-playwright-testcases.mjs. Do not edit manually.
+import { test, expect } from '@playwright/test';
+import { loadTestcaseMatrix } from '../../support/test-app.js';
+
+const expectedIds = Array.from({ length: 525 }, (_, index) => \`TC\${String(index + 1).padStart(3, '0')}\`);
+
+test('workbook traceability implements exactly TC001-TC525', async () => {
+  const matrix = loadTestcaseMatrix();
+  const ids = matrix.cases.map((testCase) => testCase.id);
+  expect(matrix.totalCases).toBe(525);
+  expect(ids).toEqual(expectedIds);
+  expect(new Set(ids).size).toBe(525);
+  expect(matrix.modules).toHaveLength(25);
+  for (const module of matrix.modules) {
+    expect(module.caseCount, module.code).toBe(21);
+  }
+});
+`;
+  fs.writeFileSync(path.join(excelSpecDir, '00-workbook-traceability.spec.js'), guardSpec, 'utf8');
+
+  for (const module of matrix.modules) {
+    const suffix = slugify(module.name.replace(/^MD\d+\s*-\s*/, '')) || module.code.toLowerCase();
+    const specName = `${module.code}-${suffix}.spec.js`;
+    const moduleCases = matrix.cases.filter((testCase) => testCase.moduleCode === module.code);
+    const testBlocks = moduleCases.map((testCase) => {
+      const title = `[${testCase.id}][${testCase.moduleCode}][${testCase.priority}] ${testCase.title}`;
+      return `test(${JSON.stringify(title)}, async ({ page, request }) => {
+  await runWorkbookTestCase({ page, request, testCase: casesById.get(${JSON.stringify(testCase.id)}) });
+});`;
+    }).join('\n\n');
+
+    const specContent = `// Generated by scripts/extract-playwright-testcases.mjs. Do not edit manually.
+import { test } from '@playwright/test';
+import { loadTestcaseMatrix, resetDatabase, runWorkbookTestCase } from '../../support/test-app.js';
+
+const matrix = loadTestcaseMatrix();
+const casesById = new Map(matrix.cases.map((testCase) => [testCase.id, testCase]));
+
+test.describe('[${module.code}] ${module.name.replace(/'/g, "\\'")} workbook cases', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test.beforeAll(async ({ request }) => {
+    await resetDatabase(request);
+  });
+
+${testBlocks.split('\n').map((line) => `  ${line}`).join('\n')}
+});
+`;
+    fs.writeFileSync(path.join(excelSpecDir, specName), specContent, 'utf8');
+  }
+}
+
+const matrix = workbookPath && fs.existsSync(workbookPath)
+  ? await loadMatrixFromWorkbook(workbookPath)
+  : loadCommittedMatrix();
+
+validateMatrix(matrix);
+writeMatrix(matrix);
+writeSpecs(matrix);
+
+const sourceLabel = workbookPath && fs.existsSync(workbookPath)
+  ? workbookPath
+  : 'committed:playwright/fixtures/testcase-matrix.json';
+
+console.log(`Validated ${matrix.totalCases} Playwright test cases from ${sourceLabel}`);
+console.log(`Wrote ${fixturePath}`);
+console.log(`Generated ${matrix.modules.length + 1} Playwright specs in ${excelSpecDir}`);

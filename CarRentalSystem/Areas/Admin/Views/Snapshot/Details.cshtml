@@ -88,7 +88,7 @@
                     }
                     <i class="bi bi-circle-fill fs-1 @statusColor"></i>
                 </div>
-                <h4 class="fw-bolder mb-0 @statusColor">@Model.Status</h4>
+                <h4 class="fw-bolder mb-0 @statusColor">@UiLabels.SnapshotStatus(Model.Status)</h4>
                 <small class="text-muted fw-bold">Trạng thái</small>
             </div>
         </div>
@@ -132,7 +132,7 @@
                 <div class="col-md-4">
                     <div class="d-flex align-items-center gap-2">
                         <i class="bi bi-code-square text-muted"></i>
-                        <span class="text-muted">App version:</span>
+                        <span class="text-muted">Phiên bản app:</span>
                         <span class="fw-bold">@Model.AppVersion</span>
                     </div>
                 </div>

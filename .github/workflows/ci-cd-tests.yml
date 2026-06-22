@@ -299,10 +299,10 @@ jobs:
         fi
 
   # ============================================================
-  # 🌐 CYPRESS E2E TESTS
+  # 🌐 PLAYWRIGHT E2E TESTS
   # ============================================================
-  cypress-e2e:
-    name: "🌐 Cypress E2E Tests"
+  playwright-e2e:
+    name: "🌐 Playwright E2E Tests"
     runs-on: ubuntu-latest
     needs: build-test-sonar
 
@@ -344,8 +344,10 @@ jobs:
       with:
         node-version: 20
 
-    - name: "📦 Install Cypress"
-      run: npm ci
+    - name: "📦 Install Playwright"
+      run: |
+        npm ci
+        npx playwright install --with-deps chromium
       working-directory: .
 
     - name: "🚀 Start .NET App"
@@ -363,30 +365,35 @@ jobs:
         ASPNETCORE_ENVIRONMENT: "Development"
         ConnectionStrings__DefaultConnection: "Server=127.0.0.1,1433;Database=CarRentalDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;MultipleActiveResultSets=true"
 
-    - name: "🌐 Run Cypress E2E Tests"
-      run: npx cypress run --config baseUrl=http://localhost:5168
+    - name: "🌐 Run Playwright E2E Tests"
+      run: |
+        npm run testcases:extract
+        npm run test:e2e:smoke -- --project=chromium
+        npm run testcases:report
       working-directory: .
+      env:
+        PLAYWRIGHT_BASE_URL: http://localhost:5168
 
-    - name: "📥 Upload Cypress Screenshots & Videos"
+    - name: "📥 Upload Playwright Screenshots & Videos"
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: cypress-results
+        name: playwright-results
         path: |
-          cypress/screenshots/
-          cypress/videos/
+          playwright/reports/
+          test-results/
         retention-days: 14
 
-    - name: "📋 Cypress Results Summary"
+    - name: "📋 Playwright Results Summary"
       if: always()
       shell: bash
       run: |
-        echo "## 🌐 Cypress E2E Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "## 🌐 Playwright E2E Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "📅 Thời gian: $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -d "cypress/screenshots" ] && [ "$(ls -A cypress/screenshots 2>/dev/null)" ]; then
+        if [ -d "playwright/screenshots" ] && [ "$(ls -A playwright/screenshots 2>/dev/null)" ]; then
           echo "### ❌ Có lỗi — Screenshots đã được upload lên Artifacts" >> $GITHUB_STEP_SUMMARY
         else
-          echo "### ✅ Tất cả Cypress E2E tests PASSED!" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Tất cả Playwright E2E tests PASSED!" >> $GITHUB_STEP_SUMMARY
         fi

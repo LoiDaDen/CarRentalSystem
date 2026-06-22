@@ -1,0 +1,15 @@
+@model IReadOnlyList<SupportTicket>
+@{
+    ViewData["Title"] = "Hỗ trợ khách hàng";
+}
+<h1 class="portal-page-title h3 mb-4">Ticket hỗ trợ</h1>
+<div class="portal-card"><div class="table-responsive"><table class="table portal-table">
+    <thead><tr><th>Ticket</th><th>Ưu tiên</th><th>Chủ đề</th><th>Trạng thái</th><th>Xử lý</th></tr></thead>
+    <tbody>
+    @foreach (var item in Model) {
+        <tr><td>#@item.SupportTicketID</td><td>@item.Priority</td><td>@item.Subject</td><td>@item.Status</td><td>
+            <form asp-action="UpdateStatus" method="post" class="d-flex gap-2"><input type="hidden" name="id" value="@item.SupportTicketID" /><input type="hidden" name="status" value="InProgress" /><button class="btn btn-sm btn-outline-primary">Nhận xử lý</button></form>
+        </td></tr>
+    }
+    </tbody>
+</table></div></div>

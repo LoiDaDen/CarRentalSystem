@@ -5,197 +5,421 @@
 }
 
 <div class="modal fade" id="ekycQuickModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <form asp-controller="Ekyc" asp-action="Submit" method="post" enctype="multipart/form-data" id="ekycQuickForm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="returnUrl" value="@returnUrl" />
-                <div class="modal-header border-0 bg-primary bg-opacity-10 rounded-top-4 ekyc-readable">
-                    <div>
-                        <h5 class="modal-title fw-bold"><i class="bi bi-shield-check text-primary me-2"></i>Cần xác thực eKYC trước khi thuê xe</h5>
-                        <div class="small text-muted">Tải ảnh CCCD, GPLX và chụp selfie bằng camera để hệ thống cập nhật hồ sơ của bạn.</div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-0 rounded-top-4 ekyc-modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-check text-primary me-2"></i>Cần xác thực eKYC trước khi thuê xe</h5>
+                    <div class="small text-muted">Chọn làm trên máy tính hoặc quét QR để chụp giấy tờ bằng điện thoại.</div>
                 </div>
-                <div class="modal-body p-4 ekyc-readable">
-                    <div class="alert alert-info border-0 rounded-3 mb-3 d-flex gap-2">
-                        <i class="bi bi-info-circle-fill text-primary mt-1"></i>
-                        <div>
-                            <div class="fw-bold">Checkout đang được tạm dừng để bảo vệ tài khoản.</div>
-                            <div class="small text-muted">Sau khi gửi eKYC thành công, bạn sẽ quay lại đúng trang hiện tại để tiếp tục thuê xe.</div>
-                        </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+
+            <div class="modal-body p-4 ekyc-readable">
+                <div class="alert alert-info border-0 rounded-3 mb-3 d-flex gap-2">
+                    <i class="bi bi-info-circle-fill text-primary mt-1"></i>
+                    <div>
+                        <div class="fw-bold">Checkout đang được tạm dừng để bảo vệ tài khoản.</div>
+                        <div class="small text-muted">Sau khi gửi eKYC thành công, bạn sẽ quay lại đúng trang hiện tại để tiếp tục thuê xe.</div>
+                    </div>
+                </div>
+
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger rounded-3">
+                        <div class="fw-bold mb-1">@TempData["ErrorMessage"]</div>
+                        @if (warnings.Length > 0)
+                        {
+                            <ul class="mb-0 ps-3">
+                                @foreach (var warning in warnings)
+                                {
+                                    <li>@warning</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+                @if (TempData["WarningMessage"] != null)
+                {
+                    <div class="alert alert-warning rounded-3">
+                        <div class="fw-bold mb-1">@TempData["WarningMessage"]</div>
+                        @if (warnings.Length > 0)
+                        {
+                            <ul class="mb-0 ps-3">
+                                @foreach (var warning in warnings)
+                                {
+                                    <li>@warning</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+
+                <ul class="nav nav-pills row g-2 mb-3" role="tablist">
+                    <li class="nav-item col-md-6" role="presentation">
+                        <button class="nav-link active w-100 text-start fw-bold" data-bs-toggle="pill" data-bs-target="#quickDesktopPane" type="button" role="tab">
+                            <i class="bi bi-laptop me-2"></i>Sử dụng máy tính này
+                            <span class="d-block small fw-normal opacity-75">Tải ảnh giấy tờ và chụp selfie ngay tại đây.</span>
+                        </button>
+                    </li>
+                    <li class="nav-item col-md-6" role="presentation">
+                        <button class="nav-link w-100 text-start fw-bold" data-bs-toggle="pill" data-bs-target="#quickMobilePane" type="button" role="tab">
+                            <i class="bi bi-qr-code-scan me-2"></i>Quét QR bằng điện thoại
+                            <span class="d-block small fw-normal opacity-75">Dùng camera điện thoại để ảnh rõ hơn.</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="quickDesktopPane" role="tabpanel">
+                        <form asp-controller="Ekyc" asp-action="Submit" method="post" enctype="multipart/form-data" id="ekycQuickForm" novalidate>
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                            <div class="border rounded-3 p-3 bg-light mb-3">
+                                <div class="fw-bold mb-2">Xác nhận xử lý dữ liệu eKYC</div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="EkycPrivacyConsent" value="true" id="QuickEkycPrivacyConsent" required />
+                                    <label class="form-check-label" for="QuickEkycPrivacyConsent">
+                                        Tôi đồng ý để DriveGo xử lý ảnh CCCD/GPLX, thông tin định danh và gửi dữ liệu cần thiết cho FPT.AI nhằm xác minh điều kiện thuê xe.
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="EkycBiometricConsent" value="true" id="QuickEkycBiometricConsent" required />
+                                    <label class="form-check-label" for="QuickEkycBiometricConsent">
+                                        Tôi đồng ý xử lý ảnh khuôn mặt/sinh trắc học để đối chiếu selfie với CCCD/GPLX trong quy trình eKYC.
+                                    </label>
+                                </div>
+                                <div class="text-danger small mt-2 d-none" id="quickConsentError">
+                                    Vui lòng đồng ý cả hai nội dung xử lý dữ liệu trước khi gửi eKYC.
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">CCCD mặt trước</label>
+                                    <input type="file" name="idFront" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required />
+                                    <div class="quick-file-preview d-none" data-ekyc-file-preview>
+                                        <img class="d-none" alt="Preview" data-ekyc-file-preview-image />
+                                        <div class="small">
+                                            <strong data-ekyc-file-preview-name></strong>
+                                            <span class="text-muted" data-ekyc-file-preview-size></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">CCCD mặt sau</label>
+                                    <input type="file" name="idBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required />
+                                    <div class="quick-file-preview d-none" data-ekyc-file-preview>
+                                        <img class="d-none" alt="Preview" data-ekyc-file-preview-image />
+                                        <div class="small">
+                                            <strong data-ekyc-file-preview-name></strong>
+                                            <span class="text-muted" data-ekyc-file-preview-size></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">GPLX mặt trước</label>
+                                    <input type="file" name="license" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required />
+                                    <div class="quick-file-preview d-none" data-ekyc-file-preview>
+                                        <img class="d-none" alt="Preview" data-ekyc-file-preview-image />
+                                        <div class="small">
+                                            <strong data-ekyc-file-preview-name></strong>
+                                            <span class="text-muted" data-ekyc-file-preview-size></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">GPLX mặt sau</label>
+                                    <input type="file" name="licenseBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required />
+                                    <div class="quick-file-preview d-none" data-ekyc-file-preview>
+                                        <img class="d-none" alt="Preview" data-ekyc-file-preview-image />
+                                        <div class="small">
+                                            <strong data-ekyc-file-preview-name></strong>
+                                            <span class="text-muted" data-ekyc-file-preview-size></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Ảnh selfie rõ mặt</label>
+                                    <div class="ekyc-face-capture quick-face-capture" data-ekyc-face-capture>
+                                        <input type="file" name="face" id="quickFaceInput" class="d-none" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-face-input required />
+                                        <div class="quick-camera-stage mb-3">
+                                            <div class="text-center text-white-50 px-3">
+                                                <i class="bi bi-camera-video fs-2 d-block mb-2"></i>
+                                                <div class="fw-semibold">Chụp selfie bằng camera</div>
+                                            </div>
+                                            <video class="d-none" autoplay playsinline muted data-ekyc-face-video></video>
+                                            <canvas class="d-none" data-ekyc-face-canvas></canvas>
+                                            <img class="d-none" alt="Ảnh selfie xem trước" data-ekyc-face-preview />
+                                            <div class="quick-face-frame"></div>
+                                            <div class="quick-face-hint" data-ekyc-face-status>Đưa mặt vào khung, nhìn thẳng camera và giữ yên.</div>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" data-ekyc-face-start>Mở camera</button>
+                                            <button type="button" class="btn btn-primary btn-sm rounded-pill d-none" data-ekyc-face-capture-btn>Chụp ảnh</button>
+                                            <button type="button" class="btn btn-light btn-sm rounded-pill d-none" data-ekyc-face-retake>Chụp lại</button>
+                                        </div>
+                                        <div class="form-text mt-2 text-center">Bắt buộc dùng camera thật, chụp rõ mặt, không upload ảnh selfie có sẵn.</div>
+                                        <div class="text-danger small mt-2 d-none text-center" data-ekyc-face-error id="quickFaceError"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-danger small mt-3 d-none" id="quickFormError"></div>
+                            <div class="d-flex justify-content-end gap-2 pt-4">
+                                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Quay lại</button>
+                                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                                    <i class="bi bi-cloud-upload me-2"></i>Gửi xác thực
+                                </button>
+                            </div>
+                        </form>
                     </div>
 
-                    @if (TempData["ErrorMessage"] != null)
-                    {
-                        <div class="alert alert-danger rounded-3">
-                            <div class="fw-bold mb-1">@TempData["ErrorMessage"]</div>
-                            @if (warnings.Length > 0)
-                            {
-                                <ul class="mb-0 ps-3">
-                                    @foreach (var warning in warnings)
-                                    {
-                                        <li>@warning</li>
-                                    }
-                                </ul>
-                            }
-                        </div>
-                    }
-                    @if (TempData["WarningMessage"] != null)
-                    {
-                        <div class="alert alert-warning rounded-3">
-                            <div class="fw-bold mb-1">@TempData["WarningMessage"]</div>
-                            @if (warnings.Length > 0)
-                            {
-                                <ul class="mb-0 ps-3">
-                                    @foreach (var warning in warnings)
-                                    {
-                                        <li>@warning</li>
-                                    }
-                                </ul>
-                            }
-                        </div>
-                    }
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">CCCD mặt trước</label>
-                            <input type="file" name="idFront" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">CCCD mặt sau</label>
-                            <input type="file" name="idBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">GPLX mặt trước</label>
-                            <input type="file" name="license" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">GPLX mặt sau</label>
-                            <input type="file" name="licenseBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" required />
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Ảnh selfie rõ mặt</label>
-                            <input type="file" name="face" id="quickFaceInput" class="d-none" accept=".jpg,.jpeg,.png,.webp,image/*" required />
-                            <div class="border rounded-3 p-3 bg-light text-center">
-                                <video id="quickFaceCamera" class="w-100 rounded-3 d-none" autoplay playsinline muted style="max-height:260px;object-fit:cover;"></video>
-                                <canvas id="quickFaceCanvas" class="d-none"></canvas>
-                                <img id="quickFacePreview" class="rounded-3 d-none mb-2" alt="Selfie preview" style="max-height:260px;max-width:100%;object-fit:cover;" />
-                                <div class="d-flex gap-2 justify-content-center">
-                                    <button type="button" class="btn btn-outline-primary btn-sm" id="quickStartCameraBtn">Mở camera</button>
-                                    <button type="button" class="btn btn-primary btn-sm d-none" id="quickCaptureFaceBtn">Chụp ảnh</button>
-                                    <button type="button" class="btn btn-light btn-sm d-none" id="quickRetakeFaceBtn">Chụp lại</button>
+                    <div class="tab-pane fade" id="quickMobilePane" role="tabpanel">
+                        <div class="quick-qr-box" data-ekyc-mobile-session data-create-url="/Ekyc/CreateMobileSession" data-status-url="/Ekyc/MobileSessionStatus" data-return-url="@returnUrl">
+                            @Html.AntiForgeryToken()
+                            <div class="row g-4 align-items-center">
+                                <div class="col-lg-5 text-center">
+                                    <img class="quick-qr-image d-none" alt="Mã QR eKYC" data-ekyc-qr-image />
+                                    <a class="small fw-semibold mt-3 d-none" href="#" target="_blank" rel="noopener" data-ekyc-mobile-url></a>
                                 </div>
-                                <div class="form-text mt-2">Bắt buộc dùng camera thật, chụp rõ mặt, không upload ảnh selfie có sẵn.</div>
-                                <div class="text-danger small mt-2 d-none" id="quickFaceError">Vui lòng chụp selfie bằng camera.</div>
+                                <div class="col-lg-7">
+                                    <h5 class="fw-bold mb-2">Làm eKYC trên điện thoại</h5>
+                                    <p class="text-muted small">Mã QR có hiệu lực 15 phút, gắn với tài khoản đang checkout và chỉ dùng một lần.</p>
+                                    <ol class="small text-muted ps-3">
+                                        <li>Tạo mã QR và quét bằng camera điện thoại.</li>
+                                        <li>Chụp CCCD, GPLX và selfie trên điện thoại.</li>
+                                        <li>Máy tính sẽ tự cập nhật khi hồ sơ được gửi.</li>
+                                    </ol>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 my-3">
+                                        <button type="button" class="btn btn-primary rounded-pill fw-bold px-4" data-ekyc-create-mobile>Tạo mã QR</button>
+                                        <span class="quick-status" data-ekyc-mobile-status>Chưa tạo mã</span>
+                                        <span class="badge rounded-pill bg-light text-dark">Còn lại: <span data-ekyc-mobile-countdown>15:00</span></span>
+                                    </div>
+                                    <div class="alert alert-info rounded-4 border-0 d-none" data-ekyc-mobile-message></div>
+                                    <ul class="alert alert-warning rounded-4 ps-4 d-none" data-ekyc-mobile-warnings></ul>
+                                </div>
                             </div>
                         </div>
+                        <div class="d-flex justify-content-end pt-4">
+                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4 pt-0">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Quay lại</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
-                        <i class="bi bi-cloud-upload me-2"></i>Gửi xác thực
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
 <style>
+    #ekycQuickModal .ekyc-modal-header {
+        color: #f8fafc !important;
+        background: #0f172a !important;
+    }
+
+    #ekycQuickModal .ekyc-modal-header .modal-title { color: #f8fafc !important; }
+    #ekycQuickModal .ekyc-modal-header .text-muted { color: #cbd5e1 !important; }
+    #ekycQuickModal .ekyc-modal-header .text-primary { color: #60a5fa !important; }
+    #ekycQuickModal .ekyc-modal-header .btn-close { filter: brightness(0) invert(1); opacity: .75; }
     #ekycQuickModal .ekyc-readable,
-    #ekycQuickModal .ekyc-readable .modal-title,
     #ekycQuickModal .ekyc-readable .form-label,
-    #ekycQuickModal .ekyc-readable .small {
-        color: #111827 !important;
-    }
-
+    #ekycQuickModal .ekyc-readable .small { color: #111827 !important; }
     #ekycQuickModal .form-text,
-    #ekycQuickModal .text-muted {
-        color: #4b5563 !important;
+    #ekycQuickModal .text-muted { color: #4b5563 !important; }
+
+    #ekycQuickModal .nav-pills .nav-link {
+        border: 1px solid #dbeafe;
+        color: #1e3a8a;
+        border-radius: 14px;
+        background: #f8fafc;
     }
 
-    [data-bs-theme="dark"] #ekycQuickModal .modal-content {
+    #ekycQuickModal .nav-pills .nav-link.active {
+        color: #fff;
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .quick-file-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+        padding: 9px;
+        border: 1px solid #dbeafe;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .quick-file-preview img {
+        width: 70px;
+        height: 50px;
+        border-radius: 9px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+    }
+
+    .quick-file-preview strong,
+    .quick-file-preview span {
+        display: block;
+        overflow-wrap: anywhere;
+    }
+
+    .quick-camera-stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 18px;
+        background: #0f172a;
+        aspect-ratio: 16 / 9;
+        min-height: 210px;
+        max-height: 320px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .quick-camera-stage video,
+    .quick-camera-stage img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 18px;
+    }
+
+    .quick-face-frame {
+        position: absolute;
+        width: min(40%, 170px);
+        aspect-ratio: 3 / 4;
+        border: 3px solid rgba(96, 165, 250, .95);
+        border-radius: 50%;
+        box-shadow: 0 0 0 999px rgba(15, 23, 42, .42), 0 0 28px rgba(96, 165, 250, .45);
+        pointer-events: none;
+    }
+
+    .quick-face-hint {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, .72);
+        color: #e0f2fe;
+        padding: 8px 10px;
+        font-size: .82rem;
+    }
+
+    .quick-qr-box {
+        border: 1px solid #bfdbfe;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #eff6ff, #fff);
+        padding: 22px;
+    }
+
+    .quick-qr-image {
+        width: min(240px, 100%);
+        background: #fff;
+        border-radius: 18px;
+        padding: 12px;
+        border: 1px solid #dbeafe;
+    }
+
+    .quick-status {
+        display: inline-flex;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-weight: 700;
+        font-size: .85rem;
+    }
+
+    .quick-status[data-state="Verified"] { background: #dcfce7; color: #166534; }
+    .quick-status[data-state="PendingReview"] { background: #fef9c3; color: #854d0e; }
+    .quick-status[data-state="Rejected"],
+    .quick-status[data-state="Expired"] { background: #fee2e2; color: #991b1b; }
+
+    [data-bs-theme="dark"] #ekycQuickModal .modal-content,
+    [data-bs-theme="dark"] #ekycQuickModal .modal-footer {
         background: #f8fafc;
         color: #111827;
     }
 </style>
 
+<script src="~/js/ekyc-camera.js" asp-append-version="true"></script>
+<script src="~/js/ekyc-file-preview.js" asp-append-version="true"></script>
+<script src="~/js/ekyc-mobile-session.js" asp-append-version="true"></script>
 <script>
     (() => {
         const form = document.getElementById('ekycQuickForm');
-        const input = document.getElementById('quickFaceInput');
-        const video = document.getElementById('quickFaceCamera');
-        const canvas = document.getElementById('quickFaceCanvas');
-        const preview = document.getElementById('quickFacePreview');
-        const startBtn = document.getElementById('quickStartCameraBtn');
-        const captureBtn = document.getElementById('quickCaptureFaceBtn');
-        const retakeBtn = document.getElementById('quickRetakeFaceBtn');
-        const error = document.getElementById('quickFaceError');
-        let stream = null;
+        const privacyConsent = document.getElementById('QuickEkycPrivacyConsent');
+        const biometricConsent = document.getElementById('QuickEkycBiometricConsent');
+        const consentError = document.getElementById('quickConsentError');
+        const formError = document.getElementById('quickFormError');
+        const faceInput = document.getElementById('quickFaceInput');
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const maxSize = 5 * 1024 * 1024;
 
-        if (!form || !input || !video || !canvas || !preview || !startBtn || !captureBtn || !retakeBtn) return;
+        if (!form) return;
 
-        async function startCamera() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                error.classList.remove('d-none');
-                error.textContent = 'Trình duyệt không hỗ trợ camera.';
-                return;
-            }
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-            video.srcObject = stream;
-            video.classList.remove('d-none');
-            preview.classList.add('d-none');
-            captureBtn.classList.remove('d-none');
+        function showError(element, message) {
+            if (!element) return;
+            element.textContent = message;
+            element.classList.remove('d-none');
         }
 
-        function stopCamera() {
-            if (stream) stream.getTracks().forEach(track => track.stop());
-            stream = null;
-            video.srcObject = null;
+        function hideError(element) {
+            if (!element) return;
+            element.textContent = '';
+            element.classList.add('d-none');
         }
 
-        startBtn.addEventListener('click', async () => {
-            try { await startCamera(); }
-            catch {
-                error.classList.remove('d-none');
-                error.textContent = 'Không mở được camera. Vui lòng cấp quyền camera.';
+        function validateConsents() {
+            const ok = Boolean(privacyConsent?.checked && biometricConsent?.checked);
+            consentError?.classList.toggle('d-none', ok);
+            return ok;
+        }
+
+        privacyConsent?.addEventListener('change', validateConsents);
+        biometricConsent?.addEventListener('change', validateConsents);
+        form.querySelectorAll('[data-ekyc-file-input]').forEach(input => {
+            input.addEventListener('change', () => validateFileInput(input));
+        });
+
+        function validateFileInput(input) {
+            const file = input.files?.[0];
+            if (!file) return true;
+            if (!allowedTypes.includes(file.type) || file.size > maxSize) {
+                input.value = '';
+                window.DriveGoEkycFilePreview?.update(input);
+                showError(formError, file.size > maxSize
+                    ? 'Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 5MB.'
+                    : 'Định dạng ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG hoặc WEBP.');
+                return false;
             }
-        });
-
-        captureBtn.addEventListener('click', () => {
-            if (!video.videoWidth || !video.videoHeight) return;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(blob => {
-                if (!blob) return;
-                const file = new File([blob], 'face-camera.jpg', { type: 'image/jpeg' });
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                input.files = dt.files;
-                preview.src = URL.createObjectURL(file);
-                preview.classList.remove('d-none');
-                error.classList.add('d-none');
-                stopCamera();
-                video.classList.add('d-none');
-                captureBtn.classList.add('d-none');
-                retakeBtn.classList.remove('d-none');
-            }, 'image/jpeg', 0.92);
-        });
-
-        retakeBtn.addEventListener('click', async () => {
-            input.value = '';
-            retakeBtn.classList.add('d-none');
-            await startCamera();
-        });
+            hideError(formError);
+            return true;
+        }
 
         form.addEventListener('submit', event => {
-            if (!input.files.length) {
+            hideError(formError);
+            let valid = validateConsents();
+
+            form.querySelectorAll('input[type="file"]').forEach(input => {
+                if (!input.files.length) valid = false;
+                else if (input.matches('[data-ekyc-file-input]') && !validateFileInput(input)) valid = false;
+            });
+
+            if (!faceInput?.files?.length) {
+                valid = false;
+                showError(document.getElementById('quickFaceError'), 'Vui lòng chụp selfie bằng camera.');
+            }
+
+            if (!valid) {
                 event.preventDefault();
-                error.classList.remove('d-none');
-                error.textContent = 'Vui lòng chụp selfie bằng camera.';
+                event.stopPropagation();
+                showError(formError, 'Vui lòng tải đủ CCCD, GPLX, chụp selfie và đồng ý các nội dung eKYC.');
             }
         });
     })();

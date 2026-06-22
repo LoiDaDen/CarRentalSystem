@@ -256,19 +256,12 @@
 </div>
 
 @section Scripts {
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         $(document).ready(function() {
             @if(car.Latitude.HasValue && car.Longitude.HasValue)
             {
                 <text>
-                var map = L.map('map').setView([@mapLatitude, @mapLongitude], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
-                L.marker([@mapLatitude, @mapLongitude]).addTo(map)
-                    .bindPopup('@car.CarBrand?.Name @car.CarName')
-                    .openPopup();
+                SmartMap.initStaticMap('map', @mapLatitude, @mapLongitude, @Html.Raw(System.Text.Json.JsonSerializer.Serialize($"{car.CarBrand?.Name} {car.CarName}".Trim())));
                 </text>
             }
         });

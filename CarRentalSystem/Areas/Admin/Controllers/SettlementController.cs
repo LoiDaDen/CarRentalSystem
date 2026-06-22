@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using System.Security.Claims;
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class SettlementController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -27,6 +28,7 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             var query = _context.SettlementReviews
                 .Include(r => r.Booking).ThenInclude(b => b!.User)
                 .Include(r => r.Booking).ThenInclude(b => b!.Car)
+                .Include(r => r.HandoverRecord)
                 .OrderByDescending(r => r.CreatedAt)
                 .AsQueryable();
 

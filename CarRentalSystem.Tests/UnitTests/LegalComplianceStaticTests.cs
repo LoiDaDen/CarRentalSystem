@@ -30,6 +30,19 @@ namespace CarRentalSystem.Tests.UnitTests
         }
 
         [Fact]
+        public void QuickEkycModal_RequiresPrivacyAndBiometricConsents()
+        {
+            var content = ReadProjectFile("Views", "Shared", "_EkycModal.cshtml");
+
+            content.Should().Contain("name=\"EkycPrivacyConsent\"");
+            content.Should().Contain("id=\"QuickEkycPrivacyConsent\"");
+            content.Should().Contain("name=\"EkycBiometricConsent\"");
+            content.Should().Contain("id=\"QuickEkycBiometricConsent\"");
+            content.Should().Contain("quickConsentError");
+            content.Should().Contain("Vui lòng đồng ý cả hai nội dung xử lý dữ liệu trước khi gửi eKYC.");
+        }
+
+        [Fact]
         public void BookingLegalLinks_DoNotUseDeadHashLinks()
         {
             var checkout = ReadProjectFile("Views", "Booking", "Checkout.cshtml");

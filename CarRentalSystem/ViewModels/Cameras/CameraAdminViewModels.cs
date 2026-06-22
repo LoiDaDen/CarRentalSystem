@@ -31,16 +31,16 @@ namespace CarRentalSystem.ViewModels.Cameras
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (!AreaID.HasValue)
-                yield return new ValidationResult("Phai chon khu vuc truoc khi chon dia diem.", new[] { nameof(AreaID) });
+                yield return new ValidationResult("Phải chọn khu vực trước khi chọn địa điểm.", new[] { nameof(AreaID) });
 
             if (!new[] { CameraGateDirectionConstants.In, CameraGateDirectionConstants.Out, CameraGateDirectionConstants.Unknown }.Contains(DefaultDirection))
-                yield return new ValidationResult("Huong cong khong hop le.", new[] { nameof(DefaultDirection) });
+                yield return new ValidationResult("Hướng cổng không hợp lệ.", new[] { nameof(DefaultDirection) });
 
             if (!new[] { CameraDeviceStatusConstants.Active, CameraDeviceStatusConstants.Inactive }.Contains(Status))
-                yield return new ValidationResult("Trang thai camera khong hop le.", new[] { nameof(Status) });
+                yield return new ValidationResult("Trạng thái camera không hợp lệ.", new[] { nameof(Status) });
 
             if (!string.IsNullOrWhiteSpace(LiveViewUrl) && !Uri.TryCreate(LiveViewUrl, UriKind.Absolute, out _))
-                yield return new ValidationResult("Live link NVR phai la URL tuyet doi.", new[] { nameof(LiveViewUrl) });
+                yield return new ValidationResult("Live link NVR phải là URL tuyệt đối.", new[] { nameof(LiveViewUrl) });
         }
     }
 

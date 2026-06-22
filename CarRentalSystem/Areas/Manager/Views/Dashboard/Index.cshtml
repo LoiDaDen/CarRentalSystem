@@ -1,0 +1,14 @@
+@model ManagerDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+<div class="d-flex justify-content-between align-items-start mb-4"><div><h1 class="portal-page-title h3">KPI vận hành</h1><p class="text-muted">Tổng quan khu vực được phân công.</p></div><a class="btn btn-primary" asp-area="Manager" asp-controller="Booking" asp-action="Index">Duyệt booking</a></div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-2"><div class="portal-card portal-kpi"><div class="label">Booking hôm nay</div><div class="value">@Model.Snapshot.TodayBookings</div></div></div>
+    <div class="col-6 col-xl-2"><div class="portal-card portal-kpi"><div class="label">GMV booking hôm nay</div><div class="value fs-5">@Model.Snapshot.TodayRevenue.ToString("N0")</div></div></div>
+    <div class="col-6 col-xl-2"><div class="portal-card portal-kpi"><div class="label">Xe đang thuê</div><div class="value">@Model.Snapshot.ActiveRentals</div></div></div>
+    <div class="col-6 col-xl-2"><div class="portal-card portal-kpi"><div class="label">Xe sắp trả</div><div class="value">@Model.Snapshot.DueReturns</div></div></div>
+    <div class="col-6 col-xl-2"><div class="portal-card portal-kpi"><div class="label">Ticket mở</div><div class="value">@Model.Snapshot.OpenTickets</div></div></div>
+    <div class="col-6 col-xl-2"><div class="portal-card portal-kpi"><div class="label">Tỷ lệ hủy</div><div class="value">@Model.Snapshot.CancellationRate%</div></div></div>
+</div>
+<section class="portal-card manager-alert-card"><div class="portal-card-body"><h2 class="h5 fw-bold mb-0">Cảnh báo nghiệp vụ</h2></div>@await Html.PartialAsync("_PortalBookingTable", Model.Alerts)</section>

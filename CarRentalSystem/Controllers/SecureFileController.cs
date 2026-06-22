@@ -15,6 +15,7 @@ namespace CarRentalSystem.Controllers
         {
             "eKyc",
             "Handovers",
+            "LostFound",
             "Contracts",
             "OwnerSignatures",
             "PhysicalContracts"
@@ -23,12 +24,16 @@ namespace CarRentalSystem.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ApplicationDbContext _context;
         private readonly IAuditTrailService _auditTrail;
+        private readonly IAreaService _areaService;
+        private readonly IPiiAccessService _piiAccess;
 
-        public SecureFileController(IWebHostEnvironment env, ApplicationDbContext context, IAuditTrailService auditTrail)
+        public SecureFileController(IWebHostEnvironment env, ApplicationDbContext context, IAuditTrailService auditTrail, IAreaService areaService, IPiiAccessService piiAccess)
         {
             _env = env;
             _context = context;
             _auditTrail = auditTrail;
+            _areaService = areaService;
+            _piiAccess = piiAccess;
         }
 
         [HttpGet]
@@ -85,14 +90,31 @@ namespace CarRentalSystem.Controllers
 
             var normalizedFileName = fileName!.Replace('\\', '/');
             var parts = normalizedFileName.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 2 || !int.TryParse(parts[0], out var fileOwnerId))
-                return SecureFileValidation.Invalid(NotFound("Invalid file path"));
-
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdClaim, out var currentUserId))
                 return SecureFileValidation.Invalid(Unauthorized());
 
+            if (string.Equals(folder, "eKyc", StringComparison.OrdinalIgnoreCase) &&
+                !_piiAccess.HasActiveGrant(HttpContext))
+            {
+                await _piiAccess.RecordDeniedAsync(HttpContext, null, "Secure eKYC file requested without an active PII grant.");
+                return SecureFileValidation.Invalid(Forbid());
+            }
+
+            var parsedOwnerId = 0;
+            var hasOwnerPrefix = parts.Length >= 2 && int.TryParse(parts[0], out parsedOwnerId);
+            var fileOwnerId = parsedOwnerId;
+            var evidenceOwnerId = await TryResolveEvidenceFileOwnerAsync(folder!, normalizedFileName, currentUserId);
+            if (!hasOwnerPrefix)
+            {
+                if (!evidenceOwnerId.HasValue)
+                    return SecureFileValidation.Invalid(NotFound("Invalid file path"));
+
+                fileOwnerId = evidenceOwnerId.Value;
+            }
+
             if (fileOwnerId != currentUserId && !User.IsInRole("Admin") &&
+                !evidenceOwnerId.HasValue &&
                 !await CanAccessOwnerSignatureFromContractAsync(folder!, normalizedFileName, currentUserId))
                 return SecureFileValidation.Invalid(Forbid());
 
@@ -137,6 +159,55 @@ namespace CarRentalSystem.Controllers
                 c.OwnerSignatureUrl.Contains(normalizedFileName) &&
                 ((c.Booking != null && c.Booking.UserID == currentUserId) ||
                  (c.BookingTransaction != null && c.BookingTransaction.UserID == currentUserId)));
+        }
+
+        private async Task<int?> TryResolveEvidenceFileOwnerAsync(string folder, string normalizedFileName, int currentUserId)
+        {
+            if (string.Equals(folder, "Handovers", StringComparison.OrdinalIgnoreCase))
+            {
+                var handover = await _context.HandoverRecords
+                    .Include(h => h.Booking)
+                    .ThenInclude(b => b!.Car)
+                    .FirstOrDefaultAsync(h =>
+                        (h.FrontImgUrl != null && h.FrontImgUrl.Contains(normalizedFileName)) ||
+                        (h.BackImgUrl != null && h.BackImgUrl.Contains(normalizedFileName)) ||
+                        (h.LeftImgUrl != null && h.LeftImgUrl.Contains(normalizedFileName)) ||
+                        (h.RightImgUrl != null && h.RightImgUrl.Contains(normalizedFileName)) ||
+                        (h.InsideImgUrl != null && h.InsideImgUrl.Contains(normalizedFileName)) ||
+                        (h.SignatureUrl != null && h.SignatureUrl.Contains(normalizedFileName)));
+
+                if (handover?.Booking != null && await CanAccessBookingEvidenceAsync(handover.Booking, currentUserId))
+                    return handover.Booking.UserID;
+            }
+
+            if (string.Equals(folder, "LostFound", StringComparison.OrdinalIgnoreCase))
+            {
+                var item = await _context.LostFoundItems
+                    .Include(i => i.Booking)
+                    .ThenInclude(b => b!.Car)
+                    .FirstOrDefaultAsync(i => i.PhotoUrl != null && i.PhotoUrl.Contains(normalizedFileName));
+
+                if (item?.Booking != null && await CanAccessBookingEvidenceAsync(item.Booking, currentUserId))
+                    return item.Booking.UserID;
+            }
+
+            return null;
+        }
+
+        private async Task<bool> CanAccessBookingEvidenceAsync(Booking booking, int currentUserId)
+        {
+            if (booking.UserID == currentUserId) return true;
+            if (booking.Car?.OwnerID == currentUserId) return true;
+            if (User.IsInRole(UserRoleConstants.Admin)) return true;
+            if (!User.IsInRole(UserRoleConstants.Manager) && !User.IsInRole(UserRoleConstants.Staff))
+                return false;
+
+            var locationId = booking.PickupLocationID > 0 ? booking.PickupLocationID : booking.Car?.LocationID;
+            if (!locationId.HasValue || locationId.Value <= 0)
+                return false;
+
+            var areaId = await _areaService.GetAreaIdForLocationAsync(locationId.Value);
+            return areaId.HasValue && await _areaService.IsAreaAllowedForUserAsync(currentUserId, areaId.Value);
         }
 
         private async Task WriteAuditLogAsync(string action, string? folder, int fileOwnerId, string fileName)

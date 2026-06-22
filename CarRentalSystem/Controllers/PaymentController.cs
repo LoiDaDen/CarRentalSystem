@@ -36,15 +36,9 @@ namespace CarRentalSystem.Controllers
             _logger = logger;
         }
 
-        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> Hold(long orderCode)
         {
-            var reconcile = await _payOSPaymentService.ReconcilePaymentAsync(orderCode, "return-hold");
-
-            if (User.Identity?.IsAuthenticated != true)
-                return RedirectToAction("Login", "Auth", new { returnUrl = CurrentReturnUrl() });
-
             if (!TryGetCurrentUserId(out int userId)) return Unauthorized();
 
             var transaction = await _context.PayOSTransactions
@@ -55,6 +49,8 @@ namespace CarRentalSystem.Controllers
 
             if (transaction == null)
                 return NotFound();
+
+            var reconcile = ReadOnlyPaymentStatus(transaction);
 
             if (HasCompletedHoldPayment(reconcile, transaction))
             {
@@ -117,18 +113,12 @@ namespace CarRentalSystem.Controllers
         [ActionName(nameof(CancelHold))]
         public async Task<IActionResult> CancelHoldReturn(long orderCode)
         {
-            return await CancelHoldCore(orderCode);
+            return await RenderCancelReturnAsync(orderCode);
         }
 
-        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> Transaction(long orderCode)
         {
-            var reconcile = await _payOSPaymentService.ReconcilePaymentAsync(orderCode, "return-cart");
-
-            if (User.Identity?.IsAuthenticated != true)
-                return RedirectToAction("Login", "Auth", new { returnUrl = CurrentReturnUrl() });
-
             if (!TryGetCurrentUserId(out int userId)) return Unauthorized();
 
             var transaction = await _context.PayOSTransactions
@@ -138,6 +128,8 @@ namespace CarRentalSystem.Controllers
 
             if (transaction?.BookingTransaction == null)
                 return NotFound();
+
+            var reconcile = ReadOnlyPaymentStatus(transaction);
 
             if (HasCompletedCartPayment(reconcile, transaction))
             {
@@ -198,7 +190,7 @@ namespace CarRentalSystem.Controllers
         [ActionName(nameof(CancelTransaction))]
         public async Task<IActionResult> CancelTransactionReturn(long orderCode)
         {
-            return await CancelTransactionCore(orderCode, renderCancelPage: true);
+            return await RenderCancelReturnAsync(orderCode);
         }
 
         [HttpPost]
@@ -246,13 +238,9 @@ namespace CarRentalSystem.Controllers
             return Ok(new { message = "success", bookingId = result.BookingId, paid = result.IsPaid });
         }
 
-        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> Success(int bookingId)
         {
-            if (User.Identity?.IsAuthenticated != true)
-                return RedirectToAction("Login", "Auth", new { returnUrl = CurrentReturnUrl() });
-
             var booking = await _bookingService.GetBookingByIdAsync(bookingId);
             if (booking == null)
                 return NotFound();
@@ -266,7 +254,7 @@ namespace CarRentalSystem.Controllers
                 .FirstOrDefaultAsync();
             if (transaction != null)
             {
-                var reconcile = await _payOSPaymentService.ReconcilePaymentAsync(transaction.OrderCode, "return-booking");
+                var reconcile = ReadOnlyPaymentStatus(transaction);
                 TempData["Success"] = reconcile.IsPaid
                     ? "PayOS đã xác nhận thanh toán giữ chỗ."
                     : "Thanh toán đã được gửi về PayOS. Hệ thống sẽ cập nhật đơn khi webhook xác nhận tiền đã vào.";
@@ -276,27 +264,8 @@ namespace CarRentalSystem.Controllers
                 TempData["Success"] = "Thanh toán đã được gửi về PayOS. Hệ thống sẽ cập nhật đơn khi webhook xác nhận tiền đã vào.";
             }
 
-            var latestTransaction = await _context.PayOSTransactions
-                .Where(t => t.BookingID == bookingId)
-                .OrderByDescending(t => t.CreatedAt)
-                .FirstOrDefaultAsync();
-            if (latestTransaction?.Status == PaymentStatusConstants.Paid || booking.Payment?.PaymentStatus == PaymentStatusConstants.Paid)
-            {
-                try
-                {
-                    await _digitalContractService.EnsureForBookingAsync(booking.BookingID, booking.UserID, "GET /Payment/Success");
-                }
-                catch (InvalidOperationException ex)
-                {
-                    TempData["Warning"] = "Đơn đã thanh toán nhưng hợp đồng số chưa tạo được. Chủ xe cần kiểm tra hồ sơ chữ ký số trước khi khách nhận xe.";
-                    _logger.LogWarning(ex, "Could not create digital contract for booking {BookingId} on payment success page.", booking.BookingID);
-                }
-
-                booking = await _bookingService.GetBookingByIdAsync(bookingId) ?? booking;
-            }
-
-            ViewBag.PaidAmount = latestTransaction?.Amount ?? booking.Payment?.Amount ?? booking.ReservationFee;
-            ViewBag.PayOSStatus = latestTransaction?.Status ?? booking.Payment?.PaymentStatus;
+            ViewBag.PaidAmount = transaction?.Amount ?? booking.Payment?.Amount ?? booking.ReservationFee;
+            ViewBag.PayOSStatus = transaction?.Status ?? booking.Payment?.PaymentStatus;
 
             return View(booking);
         }
@@ -323,27 +292,6 @@ namespace CarRentalSystem.Controllers
                 .FirstOrDefaultAsync();
             ViewBag.PaidAmount = payOSTransaction?.Amount ?? transaction.Bookings.Sum(b => b.Payment?.Amount ?? b.ReservationFee);
             ViewBag.PayOSStatus = payOSTransaction?.Status ?? transaction.Status;
-
-            if ((payOSTransaction?.Status == PaymentStatusConstants.Paid || transaction.Status == PaymentStatusConstants.Paid || transaction.Status == BookingStatusConstants.Confirmed) &&
-                transaction.Bookings.Any())
-            {
-                try
-                {
-                    await _digitalContractService.EnsureForTransactionAsync(transaction.TransactionID, transaction.UserID, "GET /Payment/SuccessTransaction");
-                }
-                catch (InvalidOperationException ex)
-                {
-                    TempData["Warning"] = "Giỏ hàng đã thanh toán nhưng hợp đồng số chưa tạo được. Chủ xe cần kiểm tra hồ sơ chữ ký số trước khi khách nhận xe.";
-                    _logger.LogWarning(ex, "Could not create digital contract for transaction {TransactionId} on payment success page.", transaction.TransactionID);
-                }
-
-                transaction = await _context.BookingTransactions
-                    .Include(t => t.DigitalContract)
-                    .Include(t => t.Bookings).ThenInclude(b => b.BookingStatus)
-                    .Include(t => t.Bookings).ThenInclude(b => b.Payment)
-                    .Include(t => t.Bookings).ThenInclude(b => b.Car).ThenInclude(c => c!.CarBrand)
-                    .FirstAsync(t => t.TransactionID == transactionId);
-            }
 
             return View(transaction);
         }
@@ -396,6 +344,20 @@ namespace CarRentalSystem.Controllers
                 : RedirectToAction("Index", "Cart");
         }
 
+        private async Task<IActionResult> RenderCancelReturnAsync(long orderCode)
+        {
+            if (!TryGetCurrentUserId(out int userId)) return Unauthorized();
+
+            var transaction = await _context.PayOSTransactions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.OrderCode == orderCode &&
+                    (t.UserID == userId || User.IsInRole("Admin")));
+            if (transaction == null)
+                return NotFound();
+
+            return View("CancelHold", transaction);
+        }
+
         private bool TryGetCurrentUserId(out int userId)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -424,6 +386,12 @@ namespace CarRentalSystem.Controllers
                 || transaction.Status == PaymentStatusConstants.Paid
                 || transaction.BookingTransaction?.Status == PaymentStatusConstants.Paid
                 || transaction.BookingTransaction?.Status == BookingStatusConstants.Confirmed;
+        }
+
+        private static PayOSWebhookResult ReadOnlyPaymentStatus(PayOSTransaction transaction)
+        {
+            var paid = string.Equals(transaction.Status, PaymentStatusConstants.Paid, StringComparison.OrdinalIgnoreCase);
+            return new PayOSWebhookResult(true, paid, "Read-only return page", transaction.BookingID, transaction.Amount);
         }
 
         private static string BuildReconcileErrorMessage(PayOSWebhookResult reconcile)

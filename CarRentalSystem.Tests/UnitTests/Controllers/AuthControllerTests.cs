@@ -39,6 +39,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
         private readonly Mock<IReferralService> _mockReferralService;
         private readonly Mock<IAuditTrailService> _mockAuditTrail;
         private readonly Mock<ILegalComplianceService> _mockLegalCompliance;
+        private readonly Mock<IFileUploadValidationService> _mockFileUploadValidation;
         private readonly Mock<ILogger<AuthController>> _mockLogger;
         private readonly Mock<IAuthenticationService> _mockAuthenticationService;
         private readonly ApplicationDbContext _context;
@@ -54,6 +55,7 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             _mockReferralService = new Mock<IReferralService>();
             _mockAuditTrail = new Mock<IAuditTrailService>();
             _mockLegalCompliance = new Mock<ILegalComplianceService>();
+            _mockFileUploadValidation = new Mock<IFileUploadValidationService>();
             _mockLogger = new Mock<ILogger<AuthController>>();
             _mockEmailService
                 .Setup(s => s.SendOtpEmailAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -113,6 +115,10 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 configuration,
                 _mockAuditTrail.Object,
                 _mockLegalCompliance.Object,
+                _mockFileUploadValidation.Object,
+                new IdentityHashService(configuration),
+                new PasswordHashService(),
+                Mock.Of<IPiiAccessService>(),
                 _mockLogger.Object);
             var httpContext = new DefaultHttpContext
             {
@@ -240,11 +246,10 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 .Setup(s => s.VerifyAsync(It.IsAny<string>(), "login"))
                 .ReturnsAsync(new RecaptchaVerifyResult { Success = true });
 
-            var result = await controller.Login(user.Email, "pass", null, rememberMe: true) as RedirectToActionResult;
+            var result = await controller.Login(user.Email, "pass", null, rememberMe: true) as RedirectResult;
 
             result.Should().NotBeNull();
-            result!.ActionName.Should().Be("Index");
-            result.ControllerName.Should().Be("AreaDashboard");
+            result!.Url.Should().Be("/Manager/Dashboard");
             _mockAuditTrail.Verify(s => s.RecordAsync(
                 It.Is<AuditLog>(log => log.Action == "PrivilegedMfaSkipped" && log.UserId == user.UserID),
                 It.IsAny<CancellationToken>()), Times.Once);
@@ -274,15 +279,59 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 .Setup(s => s.VerifyAsync(It.IsAny<string>(), "login"))
                 .ReturnsAsync(new RecaptchaVerifyResult { Success = true });
 
-            var result = await controller.Login(user.Email, "pass", null, rememberMe: true) as RedirectToActionResult;
+            var result = await controller.Login(user.Email, "pass", null, rememberMe: true) as RedirectResult;
 
             result.Should().NotBeNull();
-            result!.ActionName.Should().Be("Index");
-            result.ControllerName.Should().Be("Dashboard");
-            result.RouteValues.Should().ContainKey("area").WhoseValue.Should().Be("Admin");
+            result!.Url.Should().Be("/Admin/Dashboard");
             _mockAuditTrail.Verify(s => s.RecordAsync(
                 It.Is<AuditLog>(log => log.Action == "PrivilegedMfaSkipped" && log.UserId == user.UserID),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(UserRoleConstants.Manager, "Manager")]
+        [InlineData(UserRoleConstants.Staff, "Staff")]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Regression")]
+        public async Task Login_Post_InternalPortalRole_RedirectsToItsOwnDashboard(string role, string expectedArea)
+        {
+            var user = new User
+            {
+                UserID = 20,
+                Email = $"{role.ToLowerInvariant()}@test.com",
+                Name = role,
+                PasswordHash = "x",
+                Role = role,
+                IsEmailVerified = true
+            };
+            _mockAuthService.Setup(s => s.AuthenticateAsync(user.Email, "pass")).ReturnsAsync(user);
+
+            var result = await _controller.Login(user.Email, "pass", null) as RedirectResult;
+
+            result.Should().NotBeNull();
+            result!.Url.Should().Be($"/{expectedArea}/Dashboard");
+        }
+
+        [Fact]
+        [Trait("Module", "Auth")]
+        [Trait("Type", "Security")]
+        public async Task Login_Post_ManagerWithAdminReturnUrl_RedirectsToManagerDashboard()
+        {
+            var user = new User
+            {
+                UserID = 21,
+                Email = "manager-return-url@test.com",
+                Name = "Manager",
+                PasswordHash = "x",
+                Role = UserRoleConstants.Manager,
+                IsEmailVerified = true
+            };
+            _mockAuthService.Setup(s => s.AuthenticateAsync(user.Email, "pass")).ReturnsAsync(user);
+
+            var result = await _controller.Login(user.Email, "pass", null, returnUrl: "/Admin/Dashboard") as RedirectResult;
+
+            result.Should().NotBeNull();
+            result!.Url.Should().Be("/Manager/Dashboard");
         }
 
         // =============================================
@@ -388,6 +437,31 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             memberNames.Should().Contain(nameof(RegisterViewModel.Phone));
             memberNames.Should().Contain(nameof(RegisterViewModel.CitizenId));
             memberNames.Should().Contain(nameof(RegisterViewModel.DrivingLicenseNumber));
+        }
+
+        [Theory]
+        [InlineData("short")]
+        [InlineData("alllowercase1!")]
+        [InlineData("ALLUPPERCASE1!")]
+        [InlineData("NoNumber!")]
+        [InlineData("NoSpecial1")]
+        public void RegisterViewModel_RejectsWeakPasswords(string password)
+        {
+            var model = new RegisterViewModel { Password = password };
+            var property = new ValidationContext(model) { MemberName = nameof(RegisterViewModel.Password) };
+            var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+            Validator.TryValidateProperty(model.Password, property, results).Should().BeFalse();
+        }
+
+        [Fact]
+        public void RegisterViewModel_AcceptsStrongPassword()
+        {
+            var model = new RegisterViewModel { Password = "Strong@123" };
+            var property = new ValidationContext(model) { MemberName = nameof(RegisterViewModel.Password) };
+            var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+            Validator.TryValidateProperty(model.Password, property, results).Should().BeTrue();
         }
 
         [Fact]

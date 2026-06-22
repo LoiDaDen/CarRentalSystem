@@ -47,6 +47,62 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
 
         [Fact]
         [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Finance")]
+        public async Task Index_ExposesOwnerRentalAmountWithoutPlatformDeduction()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (ownCar, _) = await SeedOwnerPortalDataAsync(context);
+            var controller = CreateController(context, userId: 2);
+
+            var result = await controller.Index();
+
+            var model = result.Should().BeOfType<ViewResult>().Which.Model
+                .Should().BeOfType<OwnerCarsDashboardViewModel>().Subject;
+            var card = model.Cars.Should().ContainSingle(c => c.CarID == ownCar.CarID).Subject;
+            card.CommissionRate.Should().Be(0m);
+            card.CommissionAmountPerDay.Should().Be(0m);
+            card.OwnerIncomePerDay.Should().Be(1000000m);
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Security")]
+        public async Task Details_AllowsPendingCarOwnedByCurrentUser()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (ownCar, _) = await SeedOwnerPortalDataAsync(context);
+            ownCar.IsApproved = false;
+            ownCar.ApprovalStatus = CarApprovalStatusConstants.Pending;
+            await context.SaveChangesAsync();
+            var controller = CreateController(context, userId: 2);
+
+            var result = await controller.Details(ownCar.CarID);
+
+            var model = result.Should().BeOfType<ViewResult>().Which.Model
+                .Should().BeOfType<OwnerCarDetailsViewModel>().Subject;
+            model.CarID.Should().Be(ownCar.CarID);
+            model.IsApproved.Should().BeFalse();
+            model.CommissionAmountPerDay.Should().Be(0m);
+            model.OwnerIncomePerDay.Should().Be(1000000m);
+            model.ActionItems.Should().NotBeEmpty();
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Security")]
+        public async Task Details_OtherOwnersCar_ReturnsNotFound()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (_, otherCar) = await SeedOwnerPortalDataAsync(context);
+            var controller = CreateController(context, userId: 2);
+
+            var result = await controller.Details(otherCar.CarID);
+
+            result.Should().BeOfType<NotFoundResult>();
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
         [Trait("Type", "Security")]
         public async Task Calendar_OnlyShowsBookingsForCurrentOwnersCars()
         {
@@ -60,6 +116,90 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 .Should().BeOfType<OwnerCalendarViewModel>().Subject;
             model.Bookings.Should().ContainSingle();
             model.Bookings.Single().CarID.Should().Be(ownCar.CarID);
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Security")]
+        public async Task Bookings_OnlyShowsBookingsForCurrentOwnersCars()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (ownCar, otherCar) = await SeedOwnerPortalDataAsync(context);
+            var pending = await context.BookingStatuses.SingleAsync(s => s.Name == BookingStatusConstants.Pending);
+            var ownPending = AddBooking(context, ownCar.CarID, pending.BookingStatusID, 750000m);
+            AddBooking(context, otherCar.CarID, pending.BookingStatusID, 650000m);
+            var controller = CreateController(context, userId: 2);
+
+            var result = await controller.Bookings();
+
+            var model = result.Should().BeOfType<ViewResult>().Which.Model
+                .Should().BeOfType<OwnerBookingsViewModel>().Subject;
+            model.PendingBookings.Should().ContainSingle(b => b.BookingID == ownPending.BookingID);
+            model.PendingBookings.Should().OnlyContain(b => b.CarID == ownCar.CarID);
+            model.HistoryBookings.Should().OnlyContain(b => b.CarID == ownCar.CarID);
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Security")]
+        public async Task BookingDetails_OtherOwnersBooking_ReturnsNotFound()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (_, otherCar) = await SeedOwnerPortalDataAsync(context);
+            var otherBookingId = await context.Bookings
+                .Where(b => b.CarID == otherCar.CarID)
+                .Select(b => b.BookingID)
+                .FirstAsync();
+            var controller = CreateController(context, userId: 2);
+
+            var result = await controller.BookingDetails(otherBookingId);
+
+            result.Should().BeOfType<NotFoundResult>();
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Security")]
+        public async Task ApproveBooking_ForOwnPendingBooking_CallsOwnerTransition()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (ownCar, _) = await SeedOwnerPortalDataAsync(context);
+            var pending = await context.BookingStatuses.SingleAsync(s => s.Name == BookingStatusConstants.Pending);
+            var ownPending = AddBooking(context, ownCar.CarID, pending.BookingStatusID, 750000m);
+            var transitions = new Mock<IBookingTransitionService>();
+            transitions
+                .Setup(t => t.TransitionAsync(
+                    ownPending.BookingID,
+                    BookingStatusConstants.Confirmed,
+                    2,
+                    UserRoleConstants.Partner,
+                    It.IsAny<string?>()))
+                .ReturnsAsync(new BookingTransitionResult(true, null));
+            var controller = CreateController(context, userId: 2, bookingTransitions: transitions.Object);
+
+            var result = await controller.ApproveBooking(ownPending.BookingID);
+
+            result.Should().BeOfType<RedirectToActionResult>()
+                .Which.ActionName.Should().Be(nameof(OwnerCarsController.BookingDetails));
+            transitions.VerifyAll();
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Security")]
+        public async Task ApproveBooking_ForOtherOwnersBooking_ReturnsNotFound()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (_, otherCar) = await SeedOwnerPortalDataAsync(context);
+            var pending = await context.BookingStatuses.SingleAsync(s => s.Name == BookingStatusConstants.Pending);
+            var otherPending = AddBooking(context, otherCar.CarID, pending.BookingStatusID, 650000m);
+            var transitions = new Mock<IBookingTransitionService>(MockBehavior.Strict);
+            var controller = CreateController(context, userId: 2, bookingTransitions: transitions.Object);
+
+            var result = await controller.ApproveBooking(otherPending.BookingID);
+
+            result.Should().BeOfType<NotFoundResult>();
+            transitions.VerifyNoOtherCalls();
         }
 
         [Fact]
@@ -143,7 +283,52 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             (await context.Cars.FindAsync(ownCar.CarID))!.ContractSigningMode.Should().Be(CarContractSigningModes.Digital);
         }
 
-        private static OwnerCarsController CreateController(CarRentalSystem.Data.ApplicationDbContext context, int userId)
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Regression")]
+        public async Task Create_WithDuplicateLicensePlate_ReturnsFormError()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            await SeedOwnerPortalDataAsync(context);
+            var controller = CreateController(context, userId: 2);
+            var beforeCount = await context.Cars.CountAsync();
+            var model = CreateValidCreateModel(" 51a-own01 ", "NEWVIN00000000001");
+
+            var result = await controller.Create(model);
+
+            result.Should().BeOfType<ViewResult>()
+                .Which.Model.Should().BeSameAs(model);
+            controller.ModelState[nameof(OwnerCarCreateViewModel.LicensePlate)]!.Errors
+                .Should().Contain(e => e.ErrorMessage.Contains("Biển số xe này đã tồn tại"));
+            controller.ViewData["InitialStep"].Should().Be(1);
+            (await context.Cars.CountAsync()).Should().Be(beforeCount);
+        }
+
+        [Fact]
+        [Trait("Module", "OwnerPortal")]
+        [Trait("Type", "Regression")]
+        public async Task Create_WithDuplicateVin_ReturnsFormError()
+        {
+            using var context = MockRepositoryHelper.CreateSeededDbContext();
+            var (ownCar, _) = await SeedOwnerPortalDataAsync(context);
+            var controller = CreateController(context, userId: 2);
+            var beforeCount = await context.Cars.CountAsync();
+            var model = CreateValidCreateModel("51A-NEW01", $" {ownCar.VIN!.ToLowerInvariant()} ");
+
+            var result = await controller.Create(model);
+
+            result.Should().BeOfType<ViewResult>()
+                .Which.Model.Should().BeSameAs(model);
+            controller.ModelState[nameof(OwnerCarCreateViewModel.VIN)]!.Errors
+                .Should().Contain(e => e.ErrorMessage.Contains("Số VIN này đã tồn tại"));
+            controller.ViewData["InitialStep"].Should().Be(1);
+            (await context.Cars.CountAsync()).Should().Be(beforeCount);
+        }
+
+        private static OwnerCarsController CreateController(
+            CarRentalSystem.Data.ApplicationDbContext context,
+            int userId,
+            IBookingTransitionService? bookingTransitions = null)
         {
             var env = new Mock<IWebHostEnvironment>();
             env.Setup(e => e.ContentRootPath).Returns(Path.GetTempPath());
@@ -151,6 +336,8 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
                 context,
                 Mock.Of<IFileUploadValidationService>(),
                 Mock.Of<IAuditTrailService>(),
+                Mock.Of<ICarChangeRequestService>(),
+                bookingTransitions ?? Mock.Of<IBookingTransitionService>(),
                 env.Object);
             var httpContext = new DefaultHttpContext
             {
@@ -163,6 +350,65 @@ namespace CarRentalSystem.Tests.UnitTests.Controllers
             controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
             controller.TempData = new TempDataDictionary(httpContext, Mock.Of<ITempDataProvider>());
             return controller;
+        }
+
+        private static Booking AddBooking(
+            CarRentalSystem.Data.ApplicationDbContext context,
+            int carId,
+            int statusId,
+            decimal totalPrice)
+        {
+            var booking = new Booking
+            {
+                UserID = 1,
+                CarID = carId,
+                StartDate = DateTime.Today.AddDays(3),
+                EndDate = DateTime.Today.AddDays(4),
+                BookingStatusID = statusId,
+                PickupLocationID = 1,
+                ReturnLocationID = 1,
+                TotalHours = 24,
+                TotalPrice = totalPrice,
+                DepositAmount = 500000m
+            };
+            context.Bookings.Add(booking);
+            context.SaveChanges();
+            return booking;
+        }
+
+        private static OwnerCarCreateViewModel CreateValidCreateModel(string licensePlate, string? vin)
+        {
+            return new OwnerCarCreateViewModel
+            {
+                LicensePlate = licensePlate,
+                VIN = vin,
+                BrandID = 1,
+                CarModelID = 1,
+                Seats = 5,
+                Transmission = "Tự động",
+                FuelType = "Xăng",
+                NextInspectionDate = DateTime.Today.AddMonths(12),
+                ServiceTypeID = 1,
+                PricePerDay = 900000m,
+                CarAddress = "123 Nguyen Hue, Quan 1, TP.HCM",
+                CityOrProvince = "TP. Hồ Chí Minh",
+                Latitude = 10.7769,
+                Longitude = 106.7009,
+                ImageFiles = Enumerable.Range(1, 4)
+                    .Select(i => CreateFakeImage($"car-{i}.jpg"))
+                    .ToList()
+            };
+        }
+
+        private static IFormFile CreateFakeImage(string fileName)
+        {
+            var bytes = new byte[] { 1, 2, 3, 4 };
+            var stream = new MemoryStream(bytes);
+            return new FormFile(stream, 0, bytes.Length, "ImageFiles", fileName)
+            {
+                Headers = new HeaderDictionary(),
+                ContentType = "image/jpeg"
+            };
         }
 
         private static async Task<(Car OwnCar, Car OtherCar)> SeedOwnerPortalDataAsync(CarRentalSystem.Data.ApplicationDbContext context)

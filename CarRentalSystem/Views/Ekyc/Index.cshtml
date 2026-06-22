@@ -1,67 +1,162 @@
 @model CarRentalSystem.Models.User
 @{
     ViewData["Title"] = "Định danh eKYC";
-}
-
-@section Styles {
-    <style>
-        @@keyframes spin { to { transform: rotate(360deg); } }
-    </style>
+    var status = (ViewBag.Status as string) ?? Model.VerificationStatus;
+    var currentReturnUrl = (Context.Request.Path + Context.Request.QueryString).ToString();
 }
 
 <style>
-    .ekyc-header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 40px 0; border-radius: 16px; margin-bottom: 30px; }
-    .ekyc-card { border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,0.05); padding: 24px; background: white; margin-bottom: 24px; transition: 0.3s; }
-    .ekyc-card:hover { border-color: #3b82f6; }
-    .upload-zone {
-        border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc;
-        padding: 30px 20px; text-align: center; cursor: pointer; position: relative; overflow: hidden;
-        transition: all 0.2s; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    @@keyframes ekycSpin { to { transform: rotate(360deg); } }
+
+    .ekyc-hero {
+        background: linear-gradient(135deg, #0f172a, #1d4ed8);
+        color: #fff;
+        border-radius: 24px;
+        padding: 34px;
+        margin-bottom: 24px;
+        box-shadow: 0 24px 70px rgba(37, 99, 235, .22);
     }
-    .upload-zone:hover { border-color: #3b82f6; background: #eff6ff; }
-    .upload-zone i { font-size: 3rem; color: #94a3b8; margin-bottom: 10px; transition: 0.2s; }
-    .upload-zone:hover i { color: #3b82f6; transform: scale(1.1); }
-    .upload-zone .preview-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: none; z-index: 2; }
-    .upload-zone.has-preview i, .upload-zone.has-preview span { display: none; }
-    .upload-zone.has-preview .ocr-status { display: none; }
-    .clear-btn { position: absolute; top: 5px; right: 5px; z-index: 3; background: rgba(239,68,68,0.9); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; display: none; font-size: 0.8rem; }
-    .upload-zone.has-preview .clear-btn { display: flex; align-items: center; justify-content: center; }
-    .status-badge { padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; }
 
-    .ocr-loading { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 4; display: none; align-items: center; justify-content: center; flex-direction: column; color: white; border-radius: 12px; }
-    .ocr-loading.active { display: flex; }
-    .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 8px; }
+    .ekyc-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        background: #fff;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
+        padding: 22px;
+        margin-bottom: 20px;
+    }
 
-    .ocr-result-card { border-radius: 12px; border: 1px solid #d1fae5; background: #f0fdf4; padding: 16px; margin-top: 12px; }
-    .ocr-result-card.error { border-color: #fca5a5; background: #fef2f2; }
-    .ocr-field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #d1fae5; font-size: 0.9rem; }
-    .ocr-field:last-child { border-bottom: none; }
-    .ocr-field-label { color: #6b7280; font-weight: 500; }
-    .ocr-field-value { color: #065f46; font-weight: 600; text-align: right; max-width: 60%; word-break: break-all; }
-    .ocr-field-value.empty { color: #9ca3af; font-style: italic; }
+    .ekyc-mode-tabs .nav-link {
+        border: 1px solid #dbeafe;
+        border-radius: 16px;
+        color: #1e3a8a;
+        font-weight: 700;
+        padding: 14px 18px;
+    }
 
-    .ocr-section-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #3b82f6; margin-bottom: 8px; }
+    .ekyc-mode-tabs .nav-link.active {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+        box-shadow: 0 12px 30px rgba(37, 99, 235, .26);
+    }
 
-    .scan-btn { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; border-radius: 8px; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .scan-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
-    .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-    .scan-btn.scanning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .ekyc-upload-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #f8fafc;
+        padding: 16px;
+        height: 100%;
+    }
 
-    /* Validation error states */
-    .upload-zone .validation-error {
-        display: none;
-        color: #dc2626;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-top: 4px;
+    .ekyc-file-preview {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
+        padding: 10px;
+        border: 1px solid #dbeafe;
+        border-radius: 14px;
+        background: #fff;
+    }
+
+    .ekyc-file-preview img {
+        width: 76px;
+        height: 54px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+    }
+
+    .ekyc-file-preview strong,
+    .ekyc-file-preview span {
+        display: block;
+        overflow-wrap: anywhere;
+    }
+
+    .ekyc-face-capture {
+        border: 1px solid #dbeafe;
+        border-radius: 22px;
+        background: linear-gradient(180deg, #eff6ff, #fff);
+        padding: 18px;
+    }
+
+    .ekyc-camera-stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 22px;
+        background: #0f172a;
+        aspect-ratio: 16 / 9;
+        min-height: 260px;
+        max-height: 420px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ekyc-camera-stage video,
+    .ekyc-camera-stage img {
         width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 22px;
     }
-    .upload-zone.is-invalid {
-        border-color: #dc2626 !important;
-        background: #fef2f2;
+
+    .ekyc-face-frame {
+        position: absolute;
+        width: min(40%, 210px);
+        aspect-ratio: 3 / 4;
+        border: 3px solid rgba(96, 165, 250, .95);
+        border-radius: 50%;
+        box-shadow: 0 0 0 999px rgba(15, 23, 42, .42), 0 0 35px rgba(96, 165, 250, .45);
+        pointer-events: none;
     }
-    .upload-zone.is-invalid i,
-    .upload-zone.is-invalid span { color: #dc2626 !important; }
+
+    .ekyc-face-hint {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, .72);
+        color: #e0f2fe;
+        padding: 10px 12px;
+        font-size: .88rem;
+    }
+
+    .ekyc-qr-box {
+        border: 1px solid #bfdbfe;
+        border-radius: 24px;
+        background: linear-gradient(180deg, #eff6ff, #fff);
+        padding: 24px;
+    }
+
+    .ekyc-qr-image {
+        width: min(280px, 100%);
+        background: #fff;
+        border-radius: 20px;
+        padding: 14px;
+        border: 1px solid #dbeafe;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, .12);
+    }
+
+    [data-ekyc-mobile-status] {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-weight: 700;
+    }
+
+    [data-ekyc-mobile-status][data-state="Verified"] { background: #dcfce7; color: #166534; }
+    [data-ekyc-mobile-status][data-state="PendingReview"] { background: #fef9c3; color: #854d0e; }
+    [data-ekyc-mobile-status][data-state="Rejected"],
+    [data-ekyc-mobile-status][data-state="Expired"] { background: #fee2e2; color: #991b1b; }
+
     .ekyc-submit-overlay {
         position: fixed;
         inset: 0;
@@ -69,18 +164,20 @@
         display: none;
         align-items: center;
         justify-content: center;
-        background: rgba(15, 23, 42, 0.72);
+        background: rgba(15, 23, 42, .72);
         backdrop-filter: blur(3px);
     }
+
     .ekyc-submit-overlay.active { display: flex; }
     .ekyc-submit-panel {
-        width: min(420px, calc(100vw - 32px));
-        border-radius: 16px;
-        background: white;
+        width: min(430px, calc(100vw - 32px));
+        border-radius: 18px;
+        background: #fff;
         padding: 28px;
         text-align: center;
-        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.35);
+        box-shadow: 0 24px 80px rgba(15, 23, 42, .35);
     }
+
     .ekyc-submit-spinner {
         width: 54px;
         height: 54px;
@@ -88,7 +185,7 @@
         border-radius: 50%;
         border: 5px solid #dbeafe;
         border-top-color: #2563eb;
-        animation: spin 0.8s linear infinite;
+        animation: ekycSpin .8s linear infinite;
     }
 </style>
 
@@ -101,729 +198,476 @@
         </div>
     </div>
 
-    <div class="ekyc-header text-center">
-        <h1><i class="bi bi-shield-check me-2"></i>Hồ sơ eKYC</h1>
-        <p class="mb-0 text-white-50">Quét CCCD/GPLX bằng FPT.AI OCR — thông tin sẽ được tự động điền</p>
-    </div>
+    <section class="ekyc-hero">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div>
+                <div class="text-uppercase small fw-bold text-white-50 mb-2">DriveGo Identity</div>
+                <h1 class="fw-black mb-2"><i class="bi bi-shield-check me-2"></i>Xác thực eKYC</h1>
+                <p class="mb-0 text-white-50">Bạn có thể làm trực tiếp trên máy tính hoặc quét QR để hoàn tất bằng điện thoại.</p>
+            </div>
+            <span class="badge rounded-pill bg-light text-primary px-3 py-2">Trạng thái: @status</span>
+        </div>
+    </section>
 
     @if (TempData["ErrorMessage"] != null)
     {
         var errors = (TempData["EkycWarnings"] as string)?.Split('|', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-        <div class="alert alert-danger shadow-sm rounded-4 d-flex align-items-start">
-            <i class="bi bi-x-octagon-fill me-2 mt-1"></i>
-            <div>
-                <strong>@TempData["ErrorMessage"]</strong>
-                @if (errors.Length > 0)
-                {
-                    <ul class="mb-0 mt-2 ps-3">
-                        @foreach (var e in errors)
-                        {
-                            <li>@e</li>
-                        }
-                    </ul>
-                }
-            </div>
+        <div class="alert alert-danger rounded-4 shadow-sm">
+            <strong>@TempData["ErrorMessage"]</strong>
+            @if (errors.Length > 0)
+            {
+                <ul class="mb-0 mt-2">
+                    @foreach (var error in errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            }
         </div>
     }
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success shadow-sm rounded-4"><i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]</div>
-    }
+
     @if (TempData["WarningMessage"] != null)
     {
         var warnings = (TempData["EkycWarnings"] as string)?.Split('|', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-        <div class="alert alert-warning shadow-sm rounded-4 d-flex align-items-start">
-            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
-            <div>
-                <strong>@TempData["WarningMessage"]</strong>
-                @if (warnings.Length > 0)
-                {
-                    <ul class="mb-0 mt-2 ps-3">
-                        @foreach (var w in warnings)
-                        {
-                            <li>@w</li>
-                        }
-                    </ul>
-                }
-            </div>
+        <div class="alert alert-warning rounded-4 shadow-sm">
+            <strong>@TempData["WarningMessage"]</strong>
+            @if (warnings.Length > 0)
+            {
+                <ul class="mb-0 mt-2">
+                    @foreach (var warning in warnings)
+                    {
+                        <li>@warning</li>
+                    }
+                </ul>
+            }
         </div>
     }
 
-    <form asp-action="Submit" method="post" enctype="multipart/form-data" id="ekycForm">
-        @Html.AntiForgeryToken()
-
-        <!-- === PHAN 1: QUET CCCD === -->
-        <div class="ekyc-card">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h5 class="fw-bold mb-1"><i class="bi bi-credit-card-2-front text-primary me-2"></i>Căn Cước Công Dân (CCCD)</h5>
-                    <p class="text-muted small mb-0">Tải lên ảnh CCCD mặt trước và mặt sau, hệ thống sẽ tự động quét thông tin.</p>
-                </div>
-                <button type="button" class="scan-btn" id="scanCccdBtn" onclick="scanCccd()">
-                    <i class="bi bi-search me-1"></i>Quét CCCD
-                </button>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold small text-muted ocr-section-title">1. CCCD Mặt Trước</label>
-                    <label class="upload-zone w-100 @(Model.IdCardFrontUrl == null ? "is-invalid" : "")" id="idFrontZone">
-                        <i class="bi bi-credit-card-2-front"></i>
-                        <span class="fw-bold text-dark">Click để chọn ảnh</span>
-                        <input type="file" name="idFront" id="idFront" class="d-none" accept="image/jpeg,image/png,image/webp" onchange="handleIdCardUpload(this, 'idFrontZone', 'idFrontPreview', 'scanCccdBtn')">
-                        <img id="idFrontPreview" class="preview-img" alt="Preview">
-                        <button type="button" class="clear-btn" onclick="clearImage(event, 'idFront', 'idFrontZone', 'idFrontPreview')"><i class="bi bi-x"></i></button>
-                        <div class="ocr-status small text-muted mt-1">JPG, PNG, WEBP, tối đa 5MB</div>
-                        <div class="ocr-loading" id="idFrontLoading">
-                            <div class="spinner"></div>
-                            <small>Đang quét CCCD...</small>
-                        </div>
-                        <div class="validation-error" id="idFrontError">
-                            <i class="bi bi-exclamation-circle me-1"></i>Vui lòng tải lên ảnh CCCD mặt trước
-                        </div>
-                    </label>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold small text-muted ocr-section-title">2. CCCD Mặt Sau</label>
-                    <label class="upload-zone w-100 @(Model.IdCardBackUrl == null ? "is-invalid" : "")" id="idBackZone">
-                        <i class="bi bi-credit-card-2-back"></i>
-                        <span class="fw-bold text-dark">Click để chọn ảnh</span>
-                        <input type="file" name="idBack" id="idBack" class="d-none" accept="image/jpeg,image/png,image/webp" onchange="handleIdCardUpload(this, 'idBackZone', 'idBackPreview', 'scanCccdBtn')">
-                        <img id="idBackPreview" class="preview-img" alt="Preview">
-                        <button type="button" class="clear-btn" onclick="clearImage(event, 'idBack', 'idBackZone', 'idBackPreview')"><i class="bi bi-x"></i></button>
-                        <div class="ocr-status small text-muted mt-1">JPG, PNG, WEBP, tối đa 5MB</div>
-                        <div class="ocr-loading" id="idBackLoading">
-                            <div class="spinner"></div>
-                            <small>Đang quét CCCD...</small>
-                        </div>
-                        <div class="validation-error" id="idBackError">
-                            <i class="bi bi-exclamation-circle me-1"></i>Vui lòng tải lên ảnh CCCD mặt sau
-                        </div>
-                    </label>
-                </div>
-            </div>
-
-            <!-- CCCD OCR Result -->
-            <div id="cccdResult" class="mt-3"></div>
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success rounded-4 shadow-sm">
+            <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
         </div>
+    }
 
-        <!-- === PHAN 2: QUET GPLX === -->
-        <div class="ekyc-card">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h5 class="fw-bold mb-1"><i class="bi bi-card-text text-info me-2"></i>Giấy Phép Lái Xe (GPLX)</h5>
-                    <p class="text-muted small mb-0">Tải lên ảnh GPLX mặt trước để quét thông tin.</p>
-                </div>
-                <button type="button" class="scan-btn" id="scanLicenseBtn" onclick="scanLicense()">
-                    <i class="bi bi-search me-1"></i>Quét GPLX
-                </button>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold small text-muted ocr-section-title">3. GPLX Mặt Trước</label>
-                    <label class="upload-zone w-100 @(Model.DrivingLicenseUrl == null ? "is-invalid" : "")" id="licenseZone">
-                        <i class="bi bi-card-text"></i>
-                        <span class="fw-bold text-dark">Click để chọn ảnh</span>
-                        <input type="file" name="license" id="license" class="d-none" accept="image/jpeg,image/png,image/webp" onchange="handleLicenseUpload(this, 'licenseZone', 'licensePreview')">
-                        <img id="licensePreview" class="preview-img" alt="Preview">
-                        <button type="button" class="clear-btn" onclick="clearImage(event, 'license', 'licenseZone', 'licensePreview')"><i class="bi bi-x"></i></button>
-                        <div class="ocr-status small text-muted mt-1">JPG, PNG, WEBP, tối đa 5MB</div>
-                        <div class="ocr-loading" id="licenseLoading">
-                            <div class="spinner"></div>
-                            <small>Đang quét GPLX...</small>
-                        </div>
-                        <div class="validation-error" id="licenseError">
-                            <i class="bi bi-exclamation-circle me-1"></i>Vui lòng tải lên ảnh GPLX mặt trước
-                        </div>
-                    </label>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold small text-muted ocr-section-title">4. GPLX Mặt Sau</label>
-                    <label class="upload-zone w-100 @(Model.DrivingLicenseBackUrl == null ? "is-invalid" : "")" id="licenseBackZone">
-                        <i class="bi bi-card-text"></i>
-                        <span class="fw-bold text-dark">Click để chọn ảnh</span>
-                        <input type="file" name="licenseBack" id="licenseBack" class="d-none" accept="image/jpeg,image/png,image/webp" onchange="handleLicenseUpload(this, 'licenseBackZone', 'licenseBackPreview')">
-                        <img id="licenseBackPreview" class="preview-img" alt="Preview">
-                        <button type="button" class="clear-btn" onclick="clearImage(event, 'licenseBack', 'licenseBackZone', 'licenseBackPreview')"><i class="bi bi-x"></i></button>
-                        <div class="ocr-status small text-muted mt-1">JPG, PNG, WEBP, tối đa 5MB</div>
-                        <div class="validation-error" id="licenseBackError">
-                            <i class="bi bi-exclamation-circle me-1"></i>Vui lòng tải lên ảnh GPLX mặt sau
-                        </div>
-                    </label>
-                </div>
-            </div>
-
-            <!-- License OCR Result -->
-            <div id="licenseResult" class="mt-3"></div>
-        </div>
-
-        <!-- === PHAN 3: ANH CHAN DUNG === -->
-        <div class="ekyc-card">
-            <h5 class="fw-bold mb-3"><i class="bi bi-person-bounding-box text-dark me-2"></i>Ảnh Chân Dung (Selfie)</h5>
-            <p class="text-muted small mb-3">Chụp selfie để xác minh khuôn mặt khớp với CCCD.</p>
-            <div class="row">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold small text-muted ocr-section-title">5. Selfie</label>
-                    <div class="upload-zone w-100 @(Model.FaceUrl == null ? "is-invalid" : "") camera-zone" id="faceZone">
-                        <i class="bi bi-camera-video"></i>
-                        <span class="fw-bold text-dark">Chụp khuôn mặt bằng camera</span>
-                        <input type="file" name="face" id="face" class="d-none" accept="image/jpeg,image/png,image/webp">
-                        <video id="faceCamera" class="w-100 rounded-3 mt-2 d-none" autoplay playsinline muted></video>
-                        <canvas id="faceCanvas" class="d-none"></canvas>
-                        <img id="facePreview" class="preview-img" alt="Preview">
-                        <div class="d-flex gap-2 justify-content-center mt-2">
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="startFaceCameraBtn">Mở camera</button>
-                            <button type="button" class="btn btn-sm btn-primary d-none" id="captureFaceBtn">Chụp ảnh</button>
-                            <button type="button" class="btn btn-sm btn-light d-none" id="retakeFaceBtn">Chụp lại</button>
-                        </div>
-                        <div class="ocr-status small text-muted mt-1">Bắt buộc dùng camera thật, chụp rõ mặt, không đeo kính.</div>
-                        <div class="ocr-loading" id="faceLoading">
-                            <div class="spinner"></div>
-                            <small>Đang so sánh khuôn mặt...</small>
-                        </div>
-                        <div class="validation-error" id="faceError">
-                            <i class="bi bi-exclamation-circle me-1"></i>Vui lòng chụp ảnh selfie bằng camera
-                        </div>
-                    </div>
-                    <button type="button" class="scan-btn mt-2 w-100" id="verifyFaceBtn" onclick="verifyFace()" disabled>
-                        <i class="bi bi-person-check me-1"></i>Xác minh khuôn mặt
-                    </button>
-                    <div id="faceResult" class="mt-3"></div>
-                </div>
-                <div class="col-md-6 d-flex align-items-center justify-content-center">
-                    <div class="text-center">
-                        <img src="https://img.icons8.com/color/96/verified-account.png" alt="Face verify" class="mb-3" style="opacity:0.5">
-                        <p class="text-muted small">Sau khi upload CCCD & ảnh selfie,<br>bấm "Xác minh khuôn mặt" để kiểm tra khớp</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- === PHAN 4: GUI HONG SO === -->
-        <div class="ekyc-card">
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" name="EkycPrivacyConsent" value="true" id="EkycPrivacyConsent" required>
-                <label class="form-check-label" for="EkycPrivacyConsent">
-                    Tôi đồng ý để CarRental xử lý ảnh CCCD/GPLX, thông tin định danh và gửi dữ liệu cần thiết cho FPT.AI nhằm xác minh điều kiện thuê xe.
-                    Xem <a asp-controller="Home" asp-action="Privacy" class="fw-semibold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
-                </label>
-            </div>
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" name="EkycBiometricConsent" value="true" id="EkycBiometricConsent" required>
-                <label class="form-check-label" for="EkycBiometricConsent">
-                    Tôi đồng ý xử lý ảnh khuôn mặt/sinh trắc học để đối chiếu selfie với CCCD/GPLX trong quy trình eKYC.
-                </label>
-            </div>
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-                <label class="form-check-label" for="agreeTerms">
-                    Tôi xác nhận các giấy tờ tải lên là chính xác. Hệ thống sẽ tự động xác minh.
-                </label>
-            </div>
-            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm" id="ekycSubmitBtn">
-                <i class="bi bi-send me-2"></i>Gửi &amp; Xác thực ngay
+    <ul class="nav nav-pills ekyc-mode-tabs row g-3 mb-4" id="ekycModeTabs" role="tablist">
+        <li class="nav-item col-md-6" role="presentation">
+            <button class="nav-link active w-100 text-start" id="desktop-tab" data-bs-toggle="pill" data-bs-target="#desktop-pane" type="button" role="tab">
+                <i class="bi bi-laptop me-2"></i>Sử dụng máy tính này
+                <div class="small fw-normal opacity-75 mt-1">Tải ảnh giấy tờ và chụp selfie ngay trên trình duyệt.</div>
             </button>
+        </li>
+        <li class="nav-item col-md-6" role="presentation">
+            <button class="nav-link w-100 text-start" id="mobile-tab" data-bs-toggle="pill" data-bs-target="#mobile-pane" type="button" role="tab">
+                <i class="bi bi-qr-code-scan me-2"></i>Quét QR bằng điện thoại
+                <div class="small fw-normal opacity-75 mt-1">Dùng camera điện thoại để chụp giấy tờ và khuôn mặt rõ hơn.</div>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="desktop-pane" role="tabpanel" aria-labelledby="desktop-tab">
+            <form asp-action="Submit" method="post" enctype="multipart/form-data" id="ekycForm" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@currentReturnUrl" />
+
+                <div class="ekyc-card">
+                    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1"><i class="bi bi-credit-card-2-front text-primary me-2"></i>Căn cước công dân</h5>
+                            <p class="text-muted small mb-0">Tải đủ mặt trước và mặt sau CCCD để DriveGo đọc thông tin định danh.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary rounded-pill fw-semibold" id="scanCccdBtn">
+                            <i class="bi bi-search me-1"></i>Quét CCCD
+                        </button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="ekyc-upload-card">
+                                <label class="form-label fw-semibold">CCCD mặt trước</label>
+                                <input type="file" name="idFront" id="idFront" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required>
+                                <div class="ekyc-file-preview d-none" data-ekyc-file-preview>
+                                    <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                                    <div class="small">
+                                        <strong data-ekyc-file-preview-name></strong>
+                                        <span class="text-muted" data-ekyc-file-preview-size></span>
+                                    </div>
+                                </div>
+                                <div class="form-text">JPG, PNG hoặc WEBP, tối đa 5MB.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="ekyc-upload-card">
+                                <label class="form-label fw-semibold">CCCD mặt sau</label>
+                                <input type="file" name="idBack" id="idBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required>
+                                <div class="ekyc-file-preview d-none" data-ekyc-file-preview>
+                                    <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                                    <div class="small">
+                                        <strong data-ekyc-file-preview-name></strong>
+                                        <span class="text-muted" data-ekyc-file-preview-size></span>
+                                    </div>
+                                </div>
+                                <div class="form-text">Ảnh rõ 4 góc, không lóa sáng.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="cccdResult" class="mt-3" aria-live="polite"></div>
+                </div>
+
+                <div class="ekyc-card">
+                    <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1"><i class="bi bi-card-text text-info me-2"></i>Giấy phép lái xe</h5>
+                            <p class="text-muted small mb-0">Tải đủ hai mặt GPLX để đối chiếu điều kiện thuê xe tự lái.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary rounded-pill fw-semibold" id="scanLicenseBtn">
+                            <i class="bi bi-search me-1"></i>Quét GPLX
+                        </button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="ekyc-upload-card">
+                                <label class="form-label fw-semibold">GPLX mặt trước</label>
+                                <input type="file" name="license" id="license" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required>
+                                <div class="ekyc-file-preview d-none" data-ekyc-file-preview>
+                                    <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                                    <div class="small">
+                                        <strong data-ekyc-file-preview-name></strong>
+                                        <span class="text-muted" data-ekyc-file-preview-size></span>
+                                    </div>
+                                </div>
+                                <div class="form-text">Ảnh rõ số GPLX và hạng bằng.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="ekyc-upload-card">
+                                <label class="form-label fw-semibold">GPLX mặt sau</label>
+                                <input type="file" name="licenseBack" id="licenseBack" class="form-control" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-file-input required>
+                                <div class="ekyc-file-preview d-none" data-ekyc-file-preview>
+                                    <img class="d-none" alt="Preview" data-ekyc-file-preview-image>
+                                    <div class="small">
+                                        <strong data-ekyc-file-preview-name></strong>
+                                        <span class="text-muted" data-ekyc-file-preview-size></span>
+                                    </div>
+                                </div>
+                                <div class="form-text">Bổ sung mặt sau để hồ sơ đầy đủ.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="licenseResult" class="mt-3" aria-live="polite"></div>
+                </div>
+
+                <div class="ekyc-card">
+                    <h5 class="fw-bold mb-1"><i class="bi bi-person-bounding-box text-primary me-2"></i>Quét khuôn mặt</h5>
+                    <p class="text-muted small mb-3">Chụp selfie trực tiếp bằng camera, nhìn thẳng và giữ mặt trong khung.</p>
+                    <div class="row g-4 align-items-start">
+                        <div class="col-lg-7">
+                            <div class="ekyc-face-capture" data-ekyc-face-capture>
+                                <input type="file" name="face" id="face" class="d-none" accept=".jpg,.jpeg,.png,.webp,image/*" data-ekyc-face-input required>
+                                <div class="ekyc-camera-stage mb-3">
+                                    <div class="text-center text-white-50 px-3">
+                                        <i class="bi bi-camera-video fs-1 d-block mb-2"></i>
+                                        <div class="fw-semibold">Camera selfie bảo mật</div>
+                                        <small>Ảnh chỉ dùng cho quy trình eKYC.</small>
+                                    </div>
+                                    <video class="d-none" autoplay playsinline muted data-ekyc-face-video></video>
+                                    <canvas class="d-none" data-ekyc-face-canvas></canvas>
+                                    <img class="d-none" alt="Ảnh selfie xem trước" data-ekyc-face-preview>
+                                    <div class="ekyc-face-frame"></div>
+                                    <div class="ekyc-face-hint" data-ekyc-face-status>Đưa mặt vào khung, nhìn thẳng camera và giữ yên.</div>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-outline-primary rounded-pill" data-ekyc-face-start>Mở camera</button>
+                                    <button type="button" class="btn btn-primary rounded-pill d-none" data-ekyc-face-capture-btn>Chụp selfie</button>
+                                    <button type="button" class="btn btn-light rounded-pill d-none" data-ekyc-face-retake>Chụp lại</button>
+                                    <button type="button" class="btn btn-outline-success rounded-pill ms-lg-auto" id="verifyFaceBtn" disabled>
+                                        <i class="bi bi-person-check me-1"></i>Xác minh khuôn mặt
+                                    </button>
+                                </div>
+                                <div class="text-danger small mt-2 d-none" data-ekyc-face-error></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-5">
+                            <div class="alert alert-info rounded-4 border-0">
+                                <div class="fw-bold mb-2">Mẹo để ảnh đạt chuẩn</div>
+                                <ul class="mb-0 ps-3 small">
+                                    <li>Đứng nơi đủ sáng, tránh ngược sáng.</li>
+                                    <li>Không đội nón, không đeo kính che mắt.</li>
+                                    <li>Giữ mặt trong khung và nhìn thẳng camera.</li>
+                                </ul>
+                            </div>
+                            <div id="faceResult" aria-live="polite"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ekyc-card">
+                    <h5 class="fw-bold mb-3">Xác nhận xử lý dữ liệu</h5>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="EkycPrivacyConsent" value="true" id="EkycPrivacyConsent" required>
+                        <label class="form-check-label" for="EkycPrivacyConsent">
+                            Tôi đồng ý để DriveGo xử lý ảnh CCCD/GPLX, thông tin định danh và gửi dữ liệu cần thiết cho FPT.AI nhằm xác minh điều kiện thuê xe.
+                            Xem <a asp-controller="Home" asp-action="Privacy" class="fw-semibold text-decoration-none">Thông báo xử lý dữ liệu cá nhân</a>.
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="EkycBiometricConsent" value="true" id="EkycBiometricConsent" required>
+                        <label class="form-check-label" for="EkycBiometricConsent">
+                            Tôi đồng ý xử lý ảnh khuôn mặt/sinh trắc học để đối chiếu selfie với CCCD/GPLX trong quy trình eKYC.
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                        <label class="form-check-label" for="agreeTerms">
+                            Tôi xác nhận giấy tờ tải lên là chính xác và thuộc về tôi.
+                        </label>
+                    </div>
+                    <div class="text-danger small d-none mb-3" id="ekycFormError"></div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm" id="ekycSubmitBtn">
+                        <i class="bi bi-send me-2"></i>Gửi xác thực
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
+
+        <div class="tab-pane fade" id="mobile-pane" role="tabpanel" aria-labelledby="mobile-tab">
+            <div class="ekyc-qr-box" data-ekyc-mobile-session data-create-url="/Ekyc/CreateMobileSession" data-status-url="/Ekyc/MobileSessionStatus" data-return-url="@currentReturnUrl">
+                @Html.AntiForgeryToken()
+                <div class="row g-4 align-items-center">
+                    <div class="col-lg-5 text-center">
+                        <img class="ekyc-qr-image d-none" alt="Mã QR eKYC trên điện thoại" data-ekyc-qr-image>
+                        <div class="mt-3">
+                            <a class="small fw-semibold d-none" href="#" target="_blank" rel="noopener" data-ekyc-mobile-url></a>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <h4 class="fw-bold mb-2">Quét QR để xác thực bằng điện thoại</h4>
+                        <p class="text-muted">Mã QR có hiệu lực 15 phút và chỉ dùng một lần cho tài khoản của bạn.</p>
+                        <ol class="small text-muted ps-3">
+                            <li>Bấm “Tạo mã QR”.</li>
+                            <li>Dùng camera điện thoại quét mã và mở liên kết DriveGo.</li>
+                            <li>Chụp giấy tờ, selfie rồi gửi hồ sơ. Máy tính sẽ tự cập nhật trạng thái.</li>
+                        </ol>
+                        <div class="d-flex flex-wrap align-items-center gap-3 my-3">
+                            <button type="button" class="btn btn-primary rounded-pill fw-bold px-4" data-ekyc-create-mobile>Tạo mã QR</button>
+                            <span data-ekyc-mobile-status>Chưa tạo mã</span>
+                            <span class="badge rounded-pill bg-light text-dark">Còn lại: <span data-ekyc-mobile-countdown>15:00</span></span>
+                        </div>
+                        <div class="alert alert-info rounded-4 border-0 d-none" data-ekyc-mobile-message></div>
+                        <ul class="alert alert-warning rounded-4 ps-4 d-none" data-ekyc-mobile-warnings></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-<script>
-    let hasCccdOcr = false;
-    let hasLicenseOcr = false;
+    <script src="~/js/ekyc-camera.js" asp-append-version="true"></script>
+    <script src="~/js/ekyc-file-preview.js" asp-append-version="true"></script>
+    <script src="~/js/ekyc-mobile-session.js" asp-append-version="true"></script>
+    <script>
+        (() => {
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            const maxSize = 5 * 1024 * 1024;
+            const form = document.getElementById('ekycForm');
+            const formError = document.getElementById('ekycFormError');
 
-    // --- Image Upload Handlers ---
-    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+            document.getElementById('scanCccdBtn')?.addEventListener('click', scanCccd);
+            document.getElementById('scanLicenseBtn')?.addEventListener('click', scanLicense);
+            document.getElementById('verifyFaceBtn')?.addEventListener('click', verifyFace);
 
-    function showZoneError(zoneId, errorId) {
-        const zone = document.getElementById(zoneId);
-        const errEl = document.getElementById(errorId);
-        if (zone) zone.classList.add('is-invalid');
-        if (errEl) errEl.style.display = 'block';
-    }
+            ['idFront', 'idBack', 'license', 'licenseBack', 'face'].forEach(id => {
+                document.getElementById(id)?.addEventListener('change', () => {
+                    validateFileInput(id);
+                    updateFaceButton();
+                });
+            });
 
-    function clearZoneError(zoneId, errorId) {
-        const zone = document.getElementById(zoneId);
-        const errEl = document.getElementById(errorId);
-        if (zone) zone.classList.remove('is-invalid');
-        if (errEl) errEl.style.display = 'none';
-    }
-
-    function previewImage(input, zoneId, previewId, errorId) {
-        const file = input.files[0];
-        const zone = document.getElementById(zoneId);
-        const preview = document.getElementById(previewId);
-        if (!file || !zone || !preview) return;
-
-        // Validate format
-        if (!ALLOWED_TYPES.includes(file.type)) {
-            alert('Định dạng không hợp lệ. Chỉ chấp nhận: JPG, JPEG, PNG, WEBP.');
-            input.value = '';
-            return;
-        }
-
-        // Validate file size (5MB)
-        if (file.size > MAX_SIZE) {
-            alert('File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.');
-            input.value = '';
-            return;
-        }
-
-        // Clear error state
-        clearZoneError(zoneId, errorId);
-
-        const url = URL.createObjectURL(file);
-        preview.src = url;
-        preview.style.display = 'block';
-        zone.classList.add('has-preview');
-    }
-
-    function handleIdCardUpload(input, zoneId, previewId, scanBtnId) {
-        const errorId = zoneId.replace('Zone', 'Error');
-        previewImage(input, zoneId, previewId, errorId);
-        hasCccdOcr = false;
-        updateScanButton(scanBtnId);
-        const faceInput = document.getElementById('face');
-        const verifyFaceBtn = document.getElementById('verifyFaceBtn');
-        if (faceInput && verifyFaceBtn) verifyFaceBtn.disabled = !(input.files.length > 0 && faceInput.files.length > 0);
-        document.getElementById('cccdResult').innerHTML = '';
-        document.getElementById('extractedInfoCard').style.display = 'none';
-    }
-
-    function handleLicenseUpload(input, zoneId, previewId) {
-        const errorId = zoneId.replace('Zone', 'Error');
-        previewImage(input, zoneId, previewId, errorId);
-        hasLicenseOcr = false;
-        updateScanButton('scanLicenseBtn');
-        document.getElementById('licenseResult').innerHTML = '';
-    }
-
-    function handleFaceUpload(input, zoneId, previewId) {
-        const errorId = zoneId.replace('Zone', 'Error');
-        previewImage(input, zoneId, previewId, errorId);
-        // Enable face verify if both face and idFront are uploaded
-        const verifyBtn = document.getElementById('verifyFaceBtn');
-        const idFrontInput = document.getElementById('idFront');
-        verifyBtn.disabled = !(idFrontInput.files.length > 0 && input.files.length > 0);
-        document.getElementById('faceResult').innerHTML = '';
-    }
-
-    function initFaceCameraCapture() {
-        const input = document.getElementById('face');
-        const video = document.getElementById('faceCamera');
-        const canvas = document.getElementById('faceCanvas');
-        const preview = document.getElementById('facePreview');
-        const startBtn = document.getElementById('startFaceCameraBtn');
-        const captureBtn = document.getElementById('captureFaceBtn');
-        const retakeBtn = document.getElementById('retakeFaceBtn');
-        const zone = document.getElementById('faceZone');
-        const error = document.getElementById('faceError');
-        let stream = null;
-
-        if (!input || !video || !canvas || !preview || !startBtn || !captureBtn || !retakeBtn) return;
-
-        async function startCamera() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                if (error) {
-                    error.style.display = 'block';
-                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Trình duyệt không hỗ trợ camera.';
-                }
-                return;
-            }
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-            video.srcObject = stream;
-            video.classList.remove('d-none');
-            preview.style.display = 'none';
-            captureBtn.classList.remove('d-none');
-            retakeBtn.classList.add('d-none');
-        }
-
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            video.srcObject = null;
-        }
-
-        startBtn.addEventListener('click', async () => {
-            try {
-                await startCamera();
-            } catch {
-                if (error) {
-                    error.style.display = 'block';
-                    error.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Không mở được camera. Vui lòng cấp quyền camera.';
-                }
-            }
-        });
-
-        captureBtn.addEventListener('click', () => {
-            if (!video.videoWidth || !video.videoHeight) return;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(blob => {
-                if (!blob) return;
-                const file = new File([blob], 'face-camera.jpg', { type: 'image/jpeg' });
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                input.files = dt.files;
-                preview.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-                zone.classList.add('has-preview');
-                clearZoneError('faceZone', 'faceError');
-                const idFrontInput = document.getElementById('idFront');
-                document.getElementById('verifyFaceBtn').disabled = !(idFrontInput.files.length > 0 && input.files.length > 0);
-                document.getElementById('faceResult').innerHTML = '';
-                stopCamera();
-                video.classList.add('d-none');
-                captureBtn.classList.add('d-none');
-                retakeBtn.classList.remove('d-none');
-            }, 'image/jpeg', 0.92);
-        });
-
-        retakeBtn.addEventListener('click', async () => {
-            input.value = '';
-            zone.classList.remove('has-preview');
-            await startCamera();
-        });
-    }
-
-    function clearImage(event, inputName, zoneId, previewId) {
-        event.preventDefault();
-        event.stopPropagation();
-        const input = document.getElementById(inputName) || document.querySelector(`input[name="${inputName}"]`);
-        const zone = document.getElementById(zoneId);
-        const preview = document.getElementById(previewId);
-        if (!input || !zone || !preview) return;
-
-        input.value = '';
-        preview.src = '';
-        preview.style.display = 'none';
-        zone.classList.remove('has-preview');
-
-        // Re-apply error state (mark as invalid since cleared)
-        const errorId = zoneId.replace('Zone', 'Error');
-        showZoneError(zoneId, errorId);
-    }
-
-    function updateScanButton(btnId) {
-        const btn = document.getElementById(btnId);
-        if (!btn) return;
-        const hasImages = document.getElementById('idFront').files.length > 0 || document.getElementById('idBack').files.length > 0;
-        btn.disabled = !hasImages;
-    }
-
-    function validateEkycConsents() {
-        const privacy = document.getElementById('EkycPrivacyConsent');
-        const biometric = document.getElementById('EkycBiometricConsent');
-        if (!privacy?.checked || !biometric?.checked) {
-            alert('Vui lòng đồng ý thông báo xử lý dữ liệu cá nhân và xử lý sinh trắc học trước khi dùng eKYC.');
-            return false;
-        }
-        return true;
-    }
-
-    function appendEkycConsentFields(formData) {
-        formData.append('EkycPrivacyConsent', document.getElementById('EkycPrivacyConsent')?.checked ? 'true' : 'false');
-        formData.append('EkycBiometricConsent', document.getElementById('EkycBiometricConsent')?.checked ? 'true' : 'false');
-    }
-
-    // --- Form validation before submit ---
-    function validateAllZones() {
-        const required = [
-            { inputId: 'idFront', zoneId: 'idFrontZone', errorId: 'idFrontError', label: 'CCCD mat truoc' },
-            { inputId: 'idBack', zoneId: 'idBackZone', errorId: 'idBackError', label: 'CCCD mat sau' },
-            { inputId: 'license', zoneId: 'licenseZone', errorId: 'licenseError', label: 'GPLX mat truoc' },
-            { inputId: 'licenseBack', zoneId: 'licenseBackZone', errorId: 'licenseBackError', label: 'GPLX mat sau' },
-            { inputId: 'face', zoneId: 'faceZone', errorId: 'faceError', label: 'Anh selfie' },
-        ];
-
-        let hasErrors = false;
-        required.forEach(function(item) {
-            const input = document.getElementById(item.inputId);
-            const file = input ? input.files[0] : null;
-
-            if (!file) {
-                showZoneError(item.zoneId, item.errorId);
-                hasErrors = true;
-            } else {
-                clearZoneError(item.zoneId, item.errorId);
-                // Double-check format & size
-                if (!ALLOWED_TYPES.includes(file.type)) {
-                    alert('Định dạng ảnh ' + item.label + ' không hợp lệ. Chỉ chấp nhận: JPG, JPEG, PNG, WEBP.');
-                    hasErrors = true;
-                }
-                if (file.size > MAX_SIZE) {
-                    alert('Anh ' + item.label + ' qua lon (>5MB).');
-                    hasErrors = true;
-                }
-            }
-        });
-
-        if (hasErrors) {
-            // Scroll to first error
-            const firstError = document.querySelector('.upload-zone.is-invalid');
-            if (firstError) {
-                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            alert('Vui lòng tải lên đầy đủ 5 ảnh theo yêu cầu.');
-            return false;
-        }
-        return true;
-    }
-
-    // Hook into form submit
-    document.addEventListener('DOMContentLoaded', function() {
-        updateScanButton('scanCccdBtn');
-
-        var form = document.getElementById('ekycForm');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                if (!validateEkycConsents() || !validateAllZones()) {
-                    e.preventDefault();
-                    resetEkycSubmitLoading();
+            form?.addEventListener('submit', event => {
+                const errors = validateDesktopForm();
+                if (errors.length) {
+                    event.preventDefault();
+                    showFormError(errors.join(' '));
                     return;
                 }
-                showEkycSubmitLoading();
+                document.getElementById('ekycSubmitOverlay')?.classList.add('active');
             });
-        }
 
-        window.addEventListener('pageshow', resetEkycSubmitLoading);
-    });
+            function token() {
+                return document.querySelector('#ekycForm input[name="__RequestVerificationToken"]')?.value || '';
+            }
 
-    function showEkycSubmitLoading() {
-        const overlay = document.getElementById('ekycSubmitOverlay');
-        const btn = document.getElementById('ekycSubmitBtn');
-        if (overlay) overlay.classList.add('active');
-        if (btn) {
-            btn.disabled = true;
-            btn.dataset.originalHtml = btn.dataset.originalHtml || btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Đang xác thực...';
-        }
-    }
+            function showFormError(message) {
+                if (!formError) return;
+                formError.textContent = message;
+                formError.classList.remove('d-none');
+            }
 
-    function resetEkycSubmitLoading() {
-        const overlay = document.getElementById('ekycSubmitOverlay');
-        const btn = document.getElementById('ekycSubmitBtn');
-        if (overlay) overlay.classList.remove('active');
-        if (btn) {
-            btn.disabled = false;
-            if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
-        }
-    }
+            function clearFormError() {
+                formError?.classList.add('d-none');
+            }
 
-    // --- CCCD OCR ---
-    async function scanCccd() {
-        const idFront = document.getElementById('idFront').files[0];
-        const idBack = document.getElementById('idBack').files[0];
-        if (!validateEkycConsents()) return;
-        if (!idFront && !idBack) {
-            alert('Vui lòng tải lên ít nhất 1 ảnh CCCD.');
-            return;
-        }
-
-        const btn = document.getElementById('scanCccdBtn');
-        const frontLoading = document.getElementById('idFrontLoading');
-        const backLoading = document.getElementById('idBackLoading');
-
-        btn.disabled = true;
-        btn.classList.add('scanning');
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang quét...';
-        if (frontLoading) frontLoading.classList.add('active');
-        if (backLoading && idBack) backLoading.classList.add('active');
-
-        const formData = new FormData();
-        if (idFront) formData.append('idFront', idFront);
-        if (idBack) formData.append('idBack', idBack);
-        appendEkycConsentFields(formData);
-
-        try {
-            const response = await fetch('/Ekyc/ScanIdCard', {
-                method: 'POST',
-                headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value },
-                body: formData
-            });
-            const result = await response.json();
-
-            const resultDiv = document.getElementById('cccdResult');
-            if (result.success) {
-                hasCccdOcr = true;
-                resultDiv.innerHTML = `
-                    <div class="ocr-result-card">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            <strong class="text-success">Đã quét thành công</strong>
-                            <small class="text-muted ms-auto">${result.message || ''}</small>
-                        </div>
-                        <div class="row">
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Số CCCD</span><span class="ocr-field-value">${result.citizenId || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Họ tên</span><span class="ocr-field-value">${result.fullName || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Ngày sinh</span><span class="ocr-field-value">${result.dateOfBirth || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Giới tính</span><span class="ocr-field-value">${result.gender || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Quốc tịch</span><span class="ocr-field-value">${result.nationality || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Nơi cấp</span><span class="ocr-field-value">${result.issueLocation || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-12"><div class="ocr-field"><span class="ocr-field-label">Địa chỉ</span><span class="ocr-field-value">${result.address || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                        </div>
-                    </div>`;
-
-                // Auto-fill form fields
-                document.getElementById('extractedInfoCard').style.display = 'block';
-                if (result.citizenId) document.getElementById('citizenIdInput').value = result.citizenId;
-                if (result.fullName) document.getElementById('fullNameInput').value = result.fullName;
-                if (result.dateOfBirth) {
-                    const parts = result.dateOfBirth.split('/');
-                    if (parts.length === 3) document.getElementById('dobInput').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            function validateFileInput(id) {
+                const input = document.getElementById(id);
+                const file = input?.files?.[0];
+                if (!file) return true;
+                if (!allowedTypes.includes(file.type)) {
+                    input.value = '';
+                    window.DriveGoEkycFilePreview?.update(input);
+                    showFormError('Định dạng ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG hoặc WEBP.');
+                    return false;
                 }
-                if (result.gender) document.getElementById('genderInput').value = result.gender;
-                if (result.nationality) document.getElementById('nationalityInput').value = result.nationality;
-                if (result.address) document.getElementById('addressInput').value = result.address;
-
-                // Update hidden fields
-                document.getElementById('hCitizenId').value = result.citizenId || '';
-                document.getElementById('hFullName').value = result.fullName || '';
-                document.getElementById('hDateOfBirth').value = result.dateOfBirth ? `${parts[2]}-${parts[1]}-${parts[0]}` : '';
-                document.getElementById('hGender').value = result.gender || '';
-                document.getElementById('hNationality').value = result.nationality || '';
-                document.getElementById('hAddress').value = result.address || '';
-            } else {
-                resultDiv.innerHTML = `<div class="ocr-result-card error"><i class="bi bi-exclamation-circle text-danger me-2"></i><strong>Lỗi quét CCCD:</strong> ${result.message}</div>`;
-            }
-        } catch (err) {
-            document.getElementById('cccdResult').innerHTML = `<div class="ocr-result-card error"><i class="bi bi-exclamation-circle text-danger me-2"></i><strong>Lỗi:</strong> ${err.message}</div>`;
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove('scanning');
-            btn.innerHTML = '<i class="bi bi-search me-1"></i>Quét CCCD';
-            if (frontLoading) frontLoading.classList.remove('active');
-            if (backLoading) backLoading.classList.remove('active');
-        }
-    }
-
-    // --- License OCR ---
-    async function scanLicense() {
-        const license = document.getElementById('license').files[0];
-        if (!validateEkycConsents()) return;
-        if (!license) {
-            alert('Vui lòng tải lên ảnh GPLX mặt trước.');
-            return;
-        }
-
-        const btn = document.getElementById('scanLicenseBtn');
-        const loading = document.getElementById('licenseLoading');
-
-        btn.disabled = true;
-        btn.classList.add('scanning');
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang quét...';
-        if (loading) loading.classList.add('active');
-
-        const formData = new FormData();
-        formData.append('license', license);
-        appendEkycConsentFields(formData);
-
-        try {
-            const response = await fetch('/Ekyc/ScanLicense', {
-                method: 'POST',
-                headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value },
-                body: formData
-            });
-            const result = await response.json();
-
-            const resultDiv = document.getElementById('licenseResult');
-            if (result.success) {
-                hasLicenseOcr = true;
-                resultDiv.innerHTML = `
-                    <div class="ocr-result-card">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            <strong class="text-success">Đã quét thành công</strong>
-                            <small class="text-muted ms-auto">${result.message || ''}</small>
-                        </div>
-                        <div class="row">
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Số GPLX</span><span class="ocr-field-value">${result.licenseNumber || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Hạng</span><span class="ocr-field-value">${result.licenseClass || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Họ tên</span><span class="ocr-field-value">${result.fullName || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-6"><div class="ocr-field"><span class="ocr-field-label">Ngày sinh</span><span class="ocr-field-value">${result.dateOfBirth || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                            <div class="col-12"><div class="ocr-field"><span class="ocr-field-label">Địa chỉ</span><span class="ocr-field-value">${result.address || '<span class="empty">Không phát hiện</span>'}</span></div></div>
-                        </div>
-                    </div>`;
-
-                document.getElementById('extractedInfoCard').style.display = 'block';
-                if (result.licenseNumber) document.getElementById('licenseNumberInput').value = result.licenseNumber;
-                if (result.licenseClass) document.getElementById('licenseClassInput').value = result.licenseClass;
-                if (!document.getElementById('fullNameInput').value && result.fullName) document.getElementById('fullNameInput').value = result.fullName;
-                if (!document.getElementById('addressInput').value && result.address) document.getElementById('addressInput').value = result.address;
-
-                document.getElementById('hLicenseNumber').value = result.licenseNumber || '';
-                document.getElementById('hLicenseClass').value = result.licenseClass || '';
-            } else {
-                resultDiv.innerHTML = `<div class="ocr-result-card error"><i class="bi bi-exclamation-circle text-danger me-2"></i><strong>Lỗi quét GPLX:</strong> ${result.message}</div>`;
-            }
-        } catch (err) {
-            document.getElementById('licenseResult').innerHTML = `<div class="ocr-result-card error"><i class="bi bi-exclamation-circle text-danger me-2"></i><strong>Lỗi:</strong> ${err.message}</div>`;
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove('scanning');
-            btn.innerHTML = '<i class="bi bi-search me-1"></i>Quét GPLX';
-            if (loading) loading.classList.remove('active');
-        }
-    }
-
-    // --- Face Verification ---
-    async function verifyFace() {
-        const face = document.getElementById('face').files[0];
-        const idFront = document.getElementById('idFront').files[0];
-        if (!validateEkycConsents()) return;
-        if (!face || !idFront) {
-            alert('Vui lòng tải lên cả ảnh CCCD mặt trước và ảnh selfie.');
-            return;
-        }
-
-        const btn = document.getElementById('verifyFaceBtn');
-        const loading = document.getElementById('faceLoading');
-
-        btn.disabled = true;
-        btn.classList.add('scanning');
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang xác minh...';
-        if (loading) loading.classList.add('active');
-
-        const formData = new FormData();
-        formData.append('face', face);
-        formData.append('idCard', idFront);
-        appendEkycConsentFields(formData);
-
-        try {
-            const response = await fetch('/Ekyc/VerifyFace', {
-                method: 'POST',
-                headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value },
-                body: formData
-            });
-            const result = await response.json();
-
-            const resultDiv = document.getElementById('faceResult');
-            if (result.success) {
-                const isMatch = result.isMatch;
-                const similarity = result.similarity ? result.similarity.toFixed(1) : '?';
-                if (isMatch) {
-                    resultDiv.innerHTML = `<div class="ocr-result-card"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Khớp khuôn mặt!</strong> Độ tương đồng: ${similarity}% — ${result.message || ''}</div>`;
-                } else {
-                    resultDiv.innerHTML = `<div class="ocr-result-card error"><i class="bi bi-exclamation-triangle text-warning me-2"></i><strong>Cảnh báo:</strong> Khuôn mặt không khớp (${similarity}%). Vui lòng chụp lại selfie rõ ràng hơn.</div>`;
+                if (file.size > maxSize) {
+                    input.value = '';
+                    window.DriveGoEkycFilePreview?.update(input);
+                    showFormError('Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn 5MB.');
+                    return false;
                 }
-            } else {
-                resultDiv.innerHTML = `<div class="ocr-result-card error"><i class="bi bi-exclamation-circle text-danger me-2"></i><strong>Lỗi xác minh:</strong> ${result.message}</div>`;
+                clearFormError();
+                return true;
             }
-        } catch (err) {
-            document.getElementById('faceResult').innerHTML = `<div class="ocr-result-card error"><i class="bi bi-exclamation-circle text-danger me-2"></i><strong>Lỗi:</strong> ${err.message}</div>`;
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove('scanning');
-            btn.innerHTML = '<i class="bi bi-person-check me-1"></i>Xác minh khuôn mặt';
-            if (loading) loading.classList.remove('active');
-        }
-    }
 
-    initFaceCameraCapture();
-</script>
+            function validateDesktopForm() {
+                const errors = [];
+                const labels = {
+                    idFront: 'CCCD mặt trước',
+                    idBack: 'CCCD mặt sau',
+                    license: 'GPLX mặt trước',
+                    licenseBack: 'GPLX mặt sau',
+                    face: 'Ảnh selfie'
+                };
+
+                Object.keys(labels).forEach(id => {
+                    const input = document.getElementById(id);
+                    if (!input?.files?.length) errors.push(`${labels[id]} là bắt buộc.`);
+                    else validateFileInput(id);
+                });
+
+                if (!document.getElementById('EkycPrivacyConsent')?.checked || !document.getElementById('EkycBiometricConsent')?.checked)
+                    errors.push('Bạn cần đồng ý đầy đủ các nội dung xử lý dữ liệu eKYC.');
+                if (!document.getElementById('agreeTerms')?.checked)
+                    errors.push('Bạn cần xác nhận giấy tờ tải lên là chính xác.');
+
+                return errors;
+            }
+
+            function updateFaceButton() {
+                const hasFace = Boolean(document.getElementById('face')?.files?.length);
+                const hasIdFront = Boolean(document.getElementById('idFront')?.files?.length);
+                const button = document.getElementById('verifyFaceBtn');
+                if (button) button.disabled = !(hasFace && hasIdFront);
+            }
+
+            function appendConsents(formData) {
+                formData.append('EkycPrivacyConsent', document.getElementById('EkycPrivacyConsent')?.checked ? 'true' : 'false');
+                formData.append('EkycBiometricConsent', document.getElementById('EkycBiometricConsent')?.checked ? 'true' : 'false');
+            }
+
+            function ensureConsents() {
+                if (document.getElementById('EkycPrivacyConsent')?.checked && document.getElementById('EkycBiometricConsent')?.checked) return true;
+                showFormError('Vui lòng đồng ý thông báo xử lý dữ liệu cá nhân và xử lý sinh trắc học trước khi dùng eKYC.');
+                return false;
+            }
+
+            async function scanCccd() {
+                if (!ensureConsents()) return;
+                const idFront = document.getElementById('idFront')?.files?.[0];
+                const idBack = document.getElementById('idBack')?.files?.[0];
+                if (!idFront || !idBack) {
+                    showFormError('Vui lòng tải đủ CCCD mặt trước và mặt sau.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('idFront', idFront);
+                formData.append('idBack', idBack);
+                appendConsents(formData);
+                await postOcr('/Ekyc/ScanIdCard', formData, 'cccdResult', renderCccdResult);
+            }
+
+            async function scanLicense() {
+                if (!ensureConsents()) return;
+                const license = document.getElementById('license')?.files?.[0];
+                if (!license) {
+                    showFormError('Vui lòng tải ảnh GPLX mặt trước.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('license', license);
+                appendConsents(formData);
+                await postOcr('/Ekyc/ScanLicense', formData, 'licenseResult', renderLicenseResult);
+            }
+
+            async function verifyFace() {
+                if (!ensureConsents()) return;
+                const face = document.getElementById('face')?.files?.[0];
+                const idCard = document.getElementById('idFront')?.files?.[0];
+                if (!face || !idCard) {
+                    showFormError('Vui lòng chụp selfie và tải CCCD mặt trước trước khi xác minh khuôn mặt.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('face', face);
+                formData.append('idCard', idCard);
+                appendConsents(formData);
+                await postOcr('/Ekyc/VerifyFace', formData, 'faceResult', renderFaceResult);
+            }
+
+            async function postOcr(url, formData, resultId, renderer) {
+                const resultBox = document.getElementById(resultId);
+                resultBox.innerHTML = '<div class="alert alert-info rounded-4">Đang xử lý...</div>';
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { RequestVerificationToken: token() },
+                        body: formData
+                    });
+                    const result = await response.json();
+                    resultBox.innerHTML = renderer(result);
+                } catch {
+                    resultBox.innerHTML = '<div class="alert alert-danger rounded-4">Không thể xử lý lúc này. Vui lòng thử lại.</div>';
+                }
+            }
+
+            function renderCccdResult(result) {
+                if (!result.success) return renderError('Lỗi quét CCCD', result.message);
+                return renderSuccess('Đã quét CCCD', [
+                    ['Số CCCD', result.citizenId],
+                    ['Họ tên', result.fullName],
+                    ['Ngày sinh', result.dateOfBirth],
+                    ['Giới tính', result.gender],
+                    ['Địa chỉ', result.address]
+                ]);
+            }
+
+            function renderLicenseResult(result) {
+                if (!result.success) return renderError('Lỗi quét GPLX', result.message);
+                return renderSuccess('Đã quét GPLX', [
+                    ['Số GPLX', result.licenseNumber],
+                    ['Hạng', result.licenseClass],
+                    ['Họ tên', result.fullName],
+                    ['Ngày sinh', result.dateOfBirth]
+                ]);
+            }
+
+            function renderFaceResult(result) {
+                if (!result.success) return renderError('Lỗi xác minh khuôn mặt', result.message);
+                const similarity = Number.isFinite(result.similarity) ? `${result.similarity.toFixed(1)}%` : 'đang cập nhật';
+                return result.isMatch
+                    ? `<div class="alert alert-success rounded-4"><strong>Khuôn mặt khớp.</strong> Độ tương đồng: ${similarity}.</div>`
+                    : `<div class="alert alert-warning rounded-4"><strong>Chưa khớp khuôn mặt.</strong> Độ tương đồng: ${similarity}. Vui lòng chụp lại rõ hơn.</div>`;
+            }
+
+            function renderSuccess(title, rows) {
+                return `<div class="alert alert-success rounded-4"><strong>${title}</strong><div class="row g-2 mt-2">${rows.map(([label, value]) => `<div class="col-md-6 small"><span class="text-muted">${label}:</span> <span class="fw-semibold">${value || 'Không phát hiện'}</span></div>`).join('')}</div></div>`;
+            }
+
+            function renderError(title, message) {
+                return `<div class="alert alert-danger rounded-4"><strong>${title}:</strong> ${message || 'Không thể xử lý ảnh.'}</div>`;
+            }
+        })();
+    </script>
 }

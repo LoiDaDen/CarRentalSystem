@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class TrackingController : Controller
     {
         private readonly ITrackingService _trackingService;
@@ -23,14 +24,20 @@ namespace CarRentalSystem.Areas.Admin.Controllers
             return View();
         }
 
+        public IActionResult Map()
+        {
+            return View();
+        }
+
         [HttpPost]
         public async Task<IActionResult> ReceiveData([FromBody] VehicleTracking tracking)
         {
             tracking.Timestamp = DateTime.UtcNow;
+            tracking.Source = string.IsNullOrWhiteSpace(tracking.Source) ? "AdminDevice" : tracking.Source;
             await _trackingService.AddTrackingAsync(tracking);
             
             // Trigger alert check
-            await _trackingService.CheckForAlertsAsync(tracking.CarID, tracking.Latitude, tracking.Longitude);
+            await _trackingService.CheckForAlertsAsync(tracking.CarID, tracking.Latitude, tracking.Longitude, tracking.Speed);
             
             return Ok();
         }

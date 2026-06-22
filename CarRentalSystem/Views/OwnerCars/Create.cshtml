@@ -21,18 +21,21 @@
         </div>
     </section>
 
-<form asp-action="Create" method="post" enctype="multipart/form-data" class="mioto-form owner-create-premium" id="ownerCarForm">
+<form asp-action="Create" method="post" enctype="multipart/form-data" class="mioto-form owner-create-premium" id="ownerCarForm" novalidate>
     @Html.AntiForgeryToken()
     <div class="steps">
         <button type="button" class="step @(initialStep == 1 ? "active" : "")" data-step="1"><span>1</span>Thông tin</button>
         <button type="button" class="step @(initialStep == 2 ? "active" : "")" data-step="2"><span>2</span>Cho thuê</button>
         <button type="button" class="step @(initialStep == 3 ? "active" : "")" data-step="3"><span>3</span>Hình ảnh</button>
     </div>
+    <div id="stepValidationSummary" class="step-validation-summary d-none" role="alert" aria-live="assertive"></div>
 
     <section class="panel step-panel @(initialStep == 1 ? "" : "d-none")" data-panel="1">
         <h2>Biển số xe</h2>
         <p class="note">Lưu ý: Biển số sẽ không thể thay đổi sau khi đăng ký.</p>
         <input asp-for="LicensePlate" class="input short" required />
+        <span asp-validation-for="LicensePlate" class="field-error"></span>
+        <span id="licensePlateLiveFeedback" class="field-error d-none"></span>
         <h2>Hạn đăng kiểm</h2>
         <p class="note">Xe phải còn hạn đăng kiểm để được duyệt và cho thuê.</p>
         <input asp-for="NextInspectionDate" type="date" class="input short" required />
@@ -72,6 +75,29 @@
                 <select asp-for="FuelType"><option>Xăng</option><option>Dầu</option><option>Điện</option><option>Hybrid</option></select>
             </label>
         </div>
+        <div class="ai-suggestion-card" id="aiSuggestionCard" aria-live="polite">
+            <div class="ai-suggestion-head">
+                <div>
+                    <span class="ai-kicker">AI gợi ý</span>
+                    <strong id="aiSuggestionTitle">Chọn hãng và mẫu xe để nhận gợi ý</strong>
+                </div>
+                <button type="button" class="ai-apply-btn" id="applyAiSpecs" disabled>
+                    <i class="bi bi-stars"></i> Áp dụng thông số
+                </button>
+            </div>
+            <p id="aiSuggestionText">Hệ thống sẽ đề xuất số ghế, nhiên liệu, truyền động, giá thuê và mô tả dựa trên mẫu xe bạn chọn.</p>
+            <div class="ai-suggestion-grid">
+                <span>Số ghế <strong id="aiSeats">--</strong></span>
+                <span>Năm SX <select id="aiYearSelect" class="ai-year-select" disabled><option>--</option></select></span>
+                <span>Nhiên liệu <strong id="aiFuel">--</strong></span>
+                <span>Truyền động <strong id="aiTransmission">--</strong></span>
+                <span>Giá/ngày <strong id="aiPrice">--</strong></span>
+            </div>
+            <div class="ai-suggestion-actions">
+                <button type="button" class="ai-link-btn" id="applyAiPrice" disabled>Áp dụng giá</button>
+                <button type="button" class="ai-link-btn" id="applyAiDescription" disabled>Viết mô tả</button>
+            </div>
+        </div>
         <h2>Mức tiêu thụ nhiên liệu</h2>
         <p class="muted">Số lít nhiên liệu cho quãng đường 100km.</p>
         <input asp-for="FuelConsumption" class="input short" placeholder="10" />
@@ -93,7 +119,25 @@
     <section class="panel step-panel @(initialStep == 2 ? "" : "d-none")" data-panel="2">
         <h2>Đơn giá thuê mặc định</h2>
         <p class="muted">Giá đề xuất: <span id="suggestedPrice">440K</span></p>
-        <div class="money-row"><input asp-for="PricePerDay" type="number" min="100000" value="440000" required /><span>đ/ngày</span></div>
+        <div class="money-row"><input asp-for="PricePerDay" type="number" min="100000" required /><span>đ/ngày</span></div>
+        <div class="commission-explainer" id="commissionExplainer" aria-live="polite">
+            <div>
+                <span>Giá khách thấy</span>
+                <strong id="customerPricePreview">440.000đ/ngày</strong>
+            </div>
+            <div>
+                <span>Tiền cọc hệ thống giữ</span>
+                <strong class="commission-fee" id="depositPreview">@((Model.PricePerDay * 0.2m).ToString("N0"))đ</strong>
+            </div>
+            <div>
+                <span>Giá thuê chủ xe nhận</span>
+                <strong class="commission-income" id="ownerIncomePreview">440.000đ/ngày</strong>
+            </div>
+            <p>
+                <i class="bi bi-info-circle"></i>
+                Đây là ước tính theo đơn giá một ngày. Giá thuê và tiền cọc được trình bày riêng để đối soát hoàn/khấu trừ khi trả xe.
+            </p>
+        </div>
 
         <h2>Loại dịch vụ</h2>
         <select asp-for="ServiceTypeID">
@@ -399,6 +443,111 @@
         font-size: 22px;
     }
 
+    .ai-suggestion-card {
+        margin-top: 18px;
+        padding: 16px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #f8fbff;
+    }
+
+    .ai-suggestion-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 10px;
+    }
+
+    .ai-kicker {
+        display: block;
+        color: #2563eb;
+        font-size: .72rem;
+        font-weight: 850;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .ai-suggestion-head strong {
+        display: block;
+        margin-top: 2px;
+        color: #0f172a;
+        font-size: 1rem;
+    }
+
+    .ai-suggestion-card p {
+        margin: 0 0 12px;
+        color: #475569;
+        font-size: .9rem;
+        line-height: 1.55;
+    }
+
+    .ai-suggestion-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .ai-suggestion-grid span {
+        min-width: 0;
+        padding: 10px;
+        border: 1px solid #d9e2ec;
+        border-radius: 8px;
+        background: #fff;
+        color: #64748b;
+        font-size: .78rem;
+        font-weight: 750;
+    }
+
+    .ai-suggestion-grid strong {
+        display: block;
+        margin-top: 4px;
+        color: #0f172a;
+        font-size: .98rem;
+        overflow-wrap: anywhere;
+    }
+
+    .ai-year-select {
+        width: 100%;
+        min-height: 32px;
+        margin-top: 4px;
+        padding: 5px 8px;
+        border-radius: 8px;
+        font-size: .95rem;
+        font-weight: 850;
+    }
+
+    .ai-suggestion-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .ai-apply-btn,
+    .ai-link-btn {
+        min-height: 38px;
+        border: 1px solid #2563eb;
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: #2563eb;
+        color: #fff;
+        font-weight: 850;
+    }
+
+    .ai-link-btn {
+        background: #fff;
+        color: #1d4ed8;
+    }
+
+    .ai-apply-btn:disabled,
+    .ai-link-btn:disabled {
+        border-color: #cbd5e1;
+        background: #f1f5f9;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
     .money-row,
     .address-row {
         display: flex;
@@ -408,6 +557,58 @@
 
     .money-row input {
         max-width: 240px;
+    }
+
+    .commission-explainer {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+        padding: 14px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #f8fbff;
+    }
+
+    .commission-explainer > div {
+        min-width: 0;
+        padding: 12px;
+        border: 1px solid #d9e2ec;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .commission-explainer span,
+    .commission-explainer strong {
+        display: block;
+    }
+
+    .commission-explainer span {
+        color: #64748b;
+        font-size: .78rem;
+        font-weight: 750;
+    }
+
+    .commission-explainer strong {
+        margin-top: 6px;
+        color: #0f172a;
+        font-size: 1rem;
+        overflow-wrap: anywhere;
+    }
+
+    .commission-explainer .commission-fee {
+        color: #b91c1c;
+    }
+
+    .commission-explainer .commission-income {
+        color: #15803d;
+    }
+
+    .commission-explainer p {
+        grid-column: 1 / -1;
+        margin: 2px 0 0;
+        color: #475569;
+        font-size: .82rem;
     }
 
     .toggle-row {
@@ -495,8 +696,43 @@
         margin-top: 7px;
     }
 
-    .field-error.d-none {
+    .field-error.d-none,
+    .field-ok.d-none,
+    .field-hint.d-none {
         display: none;
+    }
+
+    .field-ok {
+        display: block;
+        color: #15803d;
+        font-size: 13px;
+        margin-top: 7px;
+    }
+
+    .field-hint {
+        display: block;
+        color: #64748b;
+        font-size: 13px;
+        margin-top: 7px;
+    }
+
+    .owner-create-premium input.is-invalid,
+    .owner-create-premium select.is-invalid,
+    .owner-create-premium textarea.is-invalid,
+    .owner-create-premium .image-dropzone.is-invalid {
+        border-color: #dc2626;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
+    }
+
+    .step-validation-summary {
+        margin: 0 0 16px;
+        padding: 12px 14px;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        background: #fef2f2;
+        color: #991b1b;
+        font-size: .92rem;
+        font-weight: 750;
     }
 
     .image-dropzone {
@@ -609,8 +845,15 @@
         .owner-create-hero,
         .grid-2,
         .grid-3,
-        .amenities {
+        .amenities,
+        .ai-suggestion-grid,
+        .commission-explainer {
             grid-template-columns: 1fr;
+        }
+
+        .ai-suggestion-head {
+            align-items: stretch;
+            flex-direction: column;
         }
 
         .steps {
@@ -641,6 +884,485 @@ const steps = document.querySelectorAll('.step');
 const btnBack = document.getElementById('btnBack');
 const btnNext = document.getElementById('btnNext');
 const btnSubmit = document.getElementById('btnSubmit');
+const stepValidationSummary = document.getElementById('stepValidationSummary');
+const ownerCarForm = document.getElementById('ownerCarForm');
+const pricePerDayInput = document.getElementById('PricePerDay');
+const licensePlateInput = document.getElementById('LicensePlate');
+const licensePlateLiveFeedback = document.getElementById('licensePlateLiveFeedback');
+const brandSelect = document.getElementById('brandSelect');
+const modelSelect = document.getElementById('modelSelect');
+const seatsSelect = document.getElementById('Seats');
+const manufactureYearSelect = document.getElementById('ManufactureYear');
+const transmissionSelect = document.getElementById('Transmission');
+const fuelTypeSelect = document.getElementById('FuelType');
+const descriptionInput = document.getElementById('Description');
+const suggestedPrice = document.getElementById('suggestedPrice');
+const aiSuggestionTitle = document.getElementById('aiSuggestionTitle');
+const aiSuggestionText = document.getElementById('aiSuggestionText');
+const aiSeats = document.getElementById('aiSeats');
+const aiYearSelect = document.getElementById('aiYearSelect');
+const aiFuel = document.getElementById('aiFuel');
+const aiTransmission = document.getElementById('aiTransmission');
+const aiPrice = document.getElementById('aiPrice');
+const applyAiSpecs = document.getElementById('applyAiSpecs');
+const applyAiPrice = document.getElementById('applyAiPrice');
+const applyAiDescription = document.getElementById('applyAiDescription');
+const initialCarModelId = '@(Model.CarModelID?.ToString() ?? "")';
+let currentAiSuggestion = null;
+let priceTouched = Boolean(pricePerDayInput?.value && Number(pricePerDayInput.value) !== 440000);
+let licensePlateCheckTimer = null;
+let licensePlateAbortController = null;
+let licensePlateIsDuplicate = false;
+const formatCurrency = value => `${new Intl.NumberFormat('vi-VN').format(Math.max(0, Math.round(value || 0)))}đ`;
+const normalizePlateForClient = value => (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const normalizeText = value => (value || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+function selectedText(select){
+    return select?.selectedOptions?.[0]?.textContent?.trim() || '';
+}
+
+function setSelectValue(select, value){
+    if(!select || value === null || value === undefined || value === '') return;
+    const wanted = normalizeText(value);
+    const option = [...select.options].find(item =>
+        normalizeText(item.value) === wanted || normalizeText(item.textContent) === wanted);
+    if(option){
+        select.value = option.value;
+        select.dispatchEvent(new Event('change'));
+    }
+}
+
+function roundToStep(value, step){
+    return Math.round(value / step) * step;
+}
+
+function inferSeats(modelName){
+    const key = normalizeText(modelName);
+    if(/transit|sprinter|solati|hiace|coaster|county/.test(key)) return 16;
+    if(/limousine|starex|caravelle|tourneo/.test(key)) return 9;
+    if(/innova|fortuner|everest|xpander|ertiga|xl7|avanza|rush|santa fe|sorento|carnival|land cruiser|pajero|mux|mu-x|cr-v|crv|outlander|x-trail|trailblazer|explorer|cx-8|cx8|tang/.test(key)) return 7;
+    if(/morning|i10|spark|wigo|fadil|fortwo/.test(key)) return 4;
+    return 5;
+}
+
+function normalizeFuel(value, brandName, modelName){
+    const key = `${normalizeText(value)} ${normalizeText(brandName)} ${normalizeText(modelName)}`;
+    if(/hybrid|phev|hev/.test(key)) return 'Hybrid';
+    if(/electric|ev|tesla|byd|dolphin|atto|seal|han|marvel/.test(key)) return 'Điện';
+    if(/diesel|dau|d-max|qkr|transit|everest|fortuner|pajero|hiace|solati|sprinter/.test(key)) return 'Dầu';
+    return 'Xăng';
+}
+
+function normalizeTransmission(value, modelName){
+    const key = `${normalizeText(value)} ${normalizeText(modelName)}`;
+    if(/manual|so san|carry|qkr/.test(key)) return 'Số sàn';
+    return 'Tự động';
+}
+
+function getSuggestedYearRange(option){
+    const currentYear = new Date().getFullYear();
+    let fromYear = Number(option?.dataset?.fromYear || 0);
+    let toYear = Number(option?.dataset?.toYear || 0);
+    if(!fromYear) fromYear = currentYear - 12;
+    if(!toYear) toYear = currentYear;
+    fromYear = Math.max(1990, Math.min(fromYear, currentYear));
+    toYear = Math.max(fromYear, Math.min(toYear, currentYear));
+    return { fromYear, toYear };
+}
+
+function buildSuggestedYears(range){
+    const years = [];
+    for(let year = range.toYear; year >= range.fromYear; year--){
+        years.push(year);
+    }
+    return years;
+}
+
+function clampYear(year, years){
+    if(!years.length) return new Date().getFullYear();
+    if(years.includes(year)) return year;
+    return years[0];
+}
+
+function calculateSuggestedPrice(brandName, modelName, seats, fuelType, manufactureYear){
+    const seatBase = { 4: 450000, 5: 560000, 7: 780000, 9: 1050000, 16: 1450000 };
+    const brandKey = normalizeText(brandName);
+    const modelKey = normalizeText(modelName);
+    const brandFactor =
+        /porsche|mercedes|land rover/.test(brandKey) ? 2.1 :
+        /bmw|audi|lexus|tesla|volvo/.test(brandKey) ? 1.65 :
+        /subaru|volkswagen|peugeot|byd|mini/.test(brandKey) ? 1.12 :
+        /toyota|honda|mazda/.test(brandKey) ? 1.02 :
+        /kia|hyundai|mitsubishi|suzuki|nissan|mg/.test(brandKey) ? .96 :
+        1;
+    const modelFactor =
+        /s-class|7 series|a8|panamera|rangerover|range rover|model s|model x/.test(modelKey) ? 1.55 :
+        /e-class|5 series|a6|rx|gle|x5|q7|land cruiser|carnival|model y/.test(modelKey) ? 1.28 :
+        /camry|accord|cx-8|cx8|santa fe|sorento|everest|fortuner|legacy|outback|model 3|seal/.test(modelKey) ? 1.1 :
+        /morning|i10|spark|wigo|fadil/.test(modelKey) ? .82 :
+        1;
+    const year = Number(manufactureYear) || new Date().getFullYear();
+    const age = Math.max(0, new Date().getFullYear() - year);
+    const ageFactor = age <= 1 ? 1.14 : age <= 3 ? 1.06 : age <= 6 ? 1 : age <= 10 ? .88 : .74;
+    const fuelFactor = fuelType === 'Điện' ? 1.12 : fuelType === 'Hybrid' ? 1.08 : 1;
+    return Math.min(3500000, Math.max(300000, roundToStep((seatBase[seats] || 560000) * brandFactor * modelFactor * ageFactor * fuelFactor, 10000)));
+}
+
+function buildAiDescription(suggestion){
+    const useCase = suggestion.seats >= 7
+        ? 'phù hợp gia đình, nhóm bạn hoặc chuyến đi nhiều hành lý'
+        : 'phù hợp di chuyển trong phố, công tác hoặc du lịch ngắn ngày';
+    return `${suggestion.brandName} ${suggestion.modelName} ${suggestion.manufactureYear}, ${suggestion.seats} chỗ, ${suggestion.transmission.toLowerCase()}, nhiên liệu ${suggestion.fuelType.toLowerCase()}. Xe được giữ sạch, vận hành ổn định, ${useCase}. Chủ xe hỗ trợ giao nhận đúng hẹn và kiểm tra xe rõ ràng trước mỗi chuyến.`;
+}
+
+function buildAiSuggestion(){
+    const option = modelSelect?.selectedOptions?.[0];
+    if(!option || !option.value) return null;
+
+    const brandName = selectedText(brandSelect);
+    const modelName = option.textContent.trim();
+    const seats = Number(option.dataset.seats) || inferSeats(modelName);
+    const fuelType = normalizeFuel(option.dataset.fuel, brandName, modelName);
+    const transmission = normalizeTransmission(option.dataset.transmission, modelName);
+    const suggestedYears = buildSuggestedYears(getSuggestedYearRange(option));
+    const manufactureYear = clampYear(Number(manufactureYearSelect?.value) || new Date().getFullYear(), suggestedYears);
+    const price = calculateSuggestedPrice(brandName, modelName, seats, fuelType, manufactureYear);
+
+    return {
+        brandName,
+        modelName,
+        seats,
+        suggestedYears,
+        fuelType,
+        transmission,
+        manufactureYear,
+        price,
+        description: buildAiDescription({ brandName, modelName, seats, fuelType, transmission, manufactureYear })
+    };
+}
+
+function renderAiSuggestion(){
+    currentAiSuggestion = buildAiSuggestion();
+    const enabled = Boolean(currentAiSuggestion);
+    applyAiSpecs.disabled = !enabled;
+    applyAiPrice.disabled = !enabled;
+    applyAiDescription.disabled = !enabled;
+
+    if(!enabled){
+        aiSuggestionTitle.textContent = 'Chọn hãng và mẫu xe để nhận gợi ý';
+        aiSuggestionText.textContent = 'Hệ thống sẽ đề xuất số ghế, nhiên liệu, truyền động, giá thuê và mô tả dựa trên mẫu xe bạn chọn.';
+        aiSeats.textContent = '--';
+        aiYearSelect.innerHTML = '<option>--</option>';
+        aiYearSelect.disabled = true;
+        aiFuel.textContent = '--';
+        aiTransmission.textContent = '--';
+        aiPrice.textContent = '--';
+        suggestedPrice.textContent = '440K';
+        return;
+    }
+
+    aiSuggestionTitle.textContent = `${currentAiSuggestion.brandName} ${currentAiSuggestion.modelName}`;
+    aiSuggestionText.textContent = 'Gợi ý này dùng dữ liệu catalog và luật định giá nội bộ, bạn vẫn có thể chỉnh lại trước khi gửi duyệt.';
+    aiSeats.textContent = `${currentAiSuggestion.seats} chỗ`;
+    aiYearSelect.disabled = false;
+    aiYearSelect.innerHTML = currentAiSuggestion.suggestedYears
+        .map(year => `<option value="${year}">${year}</option>`)
+        .join('');
+    aiYearSelect.value = currentAiSuggestion.manufactureYear;
+    aiFuel.textContent = currentAiSuggestion.fuelType;
+    aiTransmission.textContent = currentAiSuggestion.transmission;
+    aiPrice.textContent = `${formatCurrency(currentAiSuggestion.price)}/ngày`;
+    suggestedPrice.textContent = `${Math.round(currentAiSuggestion.price / 1000)}K`;
+
+    if(!priceTouched || !pricePerDayInput.value || Number(pricePerDayInput.value) === 440000){
+        applySuggestedPrice();
+    }
+}
+
+function applySuggestedSpecs(){
+    if(!currentAiSuggestion) return;
+    setSelectValue(seatsSelect, currentAiSuggestion.seats);
+    setSelectValue(manufactureYearSelect, currentAiSuggestion.manufactureYear);
+    setSelectValue(fuelTypeSelect, currentAiSuggestion.fuelType);
+    setSelectValue(transmissionSelect, currentAiSuggestion.transmission);
+}
+
+function applySuggestedPrice(){
+    if(!currentAiSuggestion || !pricePerDayInput) return;
+    pricePerDayInput.value = currentAiSuggestion.price;
+    updateCommissionPreview();
+}
+
+function applySuggestedDescription(){
+    if(!currentAiSuggestion || !descriptionInput) return;
+    if(!descriptionInput.value.trim() || confirm('Mô tả hiện tại sẽ được thay bằng mô tả AI gợi ý. Tiếp tục?')){
+        descriptionInput.value = currentAiSuggestion.description;
+    }
+}
+
+async function loadModels(brandId, selectedModelId = ''){
+    if(!brandId){
+        modelSelect.innerHTML = '<option value="">Chọn hãng xe trước</option>';
+        renderAiSuggestion();
+        return;
+    }
+
+    modelSelect.innerHTML = '<option value="">Đang tải...</option>';
+    try {
+        const res = await fetch(`/CarCatalog/Models?brandId=${encodeURIComponent(brandId)}`);
+        if(!res.ok) throw new Error('Cannot load models');
+        const models = await res.json();
+        modelSelect.innerHTML = '<option value="">Chọn mẫu xe</option>' + models.map(m=>`<option value="${m.id}" data-seats="${m.seatCount||''}" data-fuel="${m.fuelType||''}" data-transmission="${m.transmission||''}" data-from-year="${m.fromYear||''}" data-to-year="${m.toYear||''}">${m.name}</option>`).join('');
+        if(selectedModelId){
+            modelSelect.value = selectedModelId;
+        }
+    } catch {
+        modelSelect.innerHTML = '<option value="">Không tải được mẫu xe</option>';
+    }
+    renderAiSuggestion();
+}
+
+function updateCommissionPreview(){
+    const price = Number(pricePerDayInput?.value || 0);
+    const deposit = Math.round(price * 0.2);
+    const ownerIncome = price;
+    document.getElementById('customerPricePreview').textContent = `${formatCurrency(price)}/ngày`;
+    document.getElementById('depositPreview').textContent = `${formatCurrency(deposit)}`;
+    document.getElementById('ownerIncomePreview').textContent = `${formatCurrency(ownerIncome)}/ngày`;
+}
+
+pricePerDayInput?.addEventListener('input', ()=>{
+    priceTouched = true;
+    updateCommissionPreview();
+});
+
+const validationLabels = {
+    LicensePlate: 'biển số xe',
+    NextInspectionDate: 'hạn đăng kiểm',
+    BrandID: 'hãng xe',
+    CarModelID: 'mẫu xe',
+    PricePerDay: 'đơn giá thuê',
+    CarAddress: 'địa chỉ xe',
+    ImageFiles: 'ảnh xe'
+};
+
+function getValidationKey(field){
+    return field?.getAttribute('name') || field?.id || '';
+}
+
+function getValidationLabel(field){
+    return validationLabels[getValidationKey(field)] || 'thông tin này';
+}
+
+function getValidationMessageElement(field){
+    const key = getValidationKey(field);
+    if(!key) return null;
+
+    let element = document.querySelector(`[data-valmsg-for="${key}"], [data-client-valmsg-for="${key}"]`);
+    if(element) return element;
+
+    element = document.createElement('span');
+    element.className = 'field-error d-none';
+    element.dataset.clientValmsgFor = key;
+
+    const label = field.closest('label');
+    if(label && label.contains(field)){
+        label.appendChild(element);
+        return element;
+    }
+
+    const row = field.closest('.money-row, .address-row, .image-dropzone');
+    if(row){
+        row.insertAdjacentElement('afterend', element);
+        return element;
+    }
+
+    field.insertAdjacentElement('afterend', element);
+    return element;
+}
+
+function setFieldError(field, message){
+    if(!field) return;
+    const text = message || '';
+    field.setCustomValidity(text);
+    field.classList.toggle('is-invalid', Boolean(text));
+    const messageElement = getValidationMessageElement(field);
+    if(messageElement){
+        messageElement.textContent = text;
+        messageElement.classList.add('field-error');
+        messageElement.classList.toggle('d-none', !text);
+    }
+}
+
+function getFieldErrorMessage(field){
+    const label = getValidationLabel(field);
+    const value = field.type === 'file' ? field.files?.length : field.value?.trim();
+
+    if(field.required && !value){
+        return field.tagName === 'SELECT'
+            ? `Vui lòng chọn ${label}.`
+            : `Vui lòng nhập ${label}.`;
+    }
+
+    if(field.type === 'number' && value && field.min !== '' && Number(value) < Number(field.min)){
+        const minText = field.name === 'PricePerDay' ? formatCurrency(Number(field.min)) : field.min;
+        return `${label.charAt(0).toUpperCase()}${label.slice(1)} phải từ ${minText} trở lên.`;
+    }
+
+    field.setCustomValidity('');
+    if(!field.validity.valid){
+        return field.validationMessage || `Vui lòng kiểm tra ${label}.`;
+    }
+
+    return '';
+}
+
+function validateField(field, showMessage = true){
+    if(!field || field.disabled) return true;
+    const message = getFieldErrorMessage(field);
+    if(showMessage || !message){
+        setFieldError(field, message);
+    }
+    return !message;
+}
+
+function validatePanelFields(step, showMessage = true){
+    const panel = document.querySelector(`.step-panel[data-panel="${step}"]`);
+    const fields = [...(panel?.querySelectorAll('input[required], select[required], textarea[required]') || [])]
+        .filter(field => field.type !== 'file');
+    const messages = [];
+    let firstInvalid = null;
+
+    fields.forEach(field => {
+        if(!validateField(field, showMessage)){
+            firstInvalid ??= field;
+            messages.push(getFieldErrorMessage(field));
+        }
+    });
+
+    return {
+        valid: messages.length === 0,
+        firstInvalid,
+        message: messages[0] || ''
+    };
+}
+
+function showValidationSummary(message){
+    if(!stepValidationSummary) return;
+    stepValidationSummary.textContent = message || '';
+    stepValidationSummary.classList.toggle('d-none', !message);
+}
+
+function focusFirstInvalid(step, fallback){
+    const panel = document.querySelector(`.step-panel[data-panel="${step}"]`);
+    const firstInvalid = fallback || panel?.querySelector('.is-invalid, input:invalid, select:invalid, textarea:invalid');
+    if(firstInvalid && typeof firstInvalid.focus === 'function'){
+        firstInvalid.focus({ preventScroll: true });
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if(stepValidationSummary && !stepValidationSummary.classList.contains('d-none')){
+        stepValidationSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function setLicensePlateFeedback(type, message){
+    if(!licensePlateLiveFeedback) return;
+    licensePlateLiveFeedback.textContent = message || '';
+    licensePlateLiveFeedback.classList.toggle('d-none', !message);
+    licensePlateLiveFeedback.classList.toggle('field-ok', type === 'ok');
+    licensePlateLiveFeedback.classList.toggle('field-error', type === 'error');
+    licensePlateLiveFeedback.classList.toggle('field-hint', type !== 'ok' && type !== 'error');
+    licensePlateInput?.classList.toggle('is-invalid', type === 'error');
+    licensePlateInput?.setAttribute('aria-invalid', type === 'error' ? 'true' : 'false');
+}
+
+async function checkLicensePlateNow(showBlockingError = false){
+    const value = licensePlateInput?.value?.trim() || '';
+    const normalizedValue = normalizePlateForClient(value);
+    licensePlateIsDuplicate = false;
+    if(!value){
+        setLicensePlateFeedback('', '');
+        if(showBlockingError){
+            setFieldError(licensePlateInput, 'Vui lòng nhập biển số xe.');
+        }
+        return false;
+    }
+    if(normalizedValue.length < 5){
+        const message = 'Nhập tiếp biển số để hệ thống kiểm tra trùng.';
+        setLicensePlateFeedback(showBlockingError ? 'error' : '', message);
+        if(showBlockingError){
+            setFieldError(licensePlateInput, message);
+        }
+        return false;
+    }
+
+    const requestPlate = normalizedValue;
+    if(licensePlateAbortController){
+        licensePlateAbortController.abort();
+    }
+    licensePlateAbortController = new AbortController();
+    setLicensePlateFeedback('', 'Đang kiểm tra biển số...');
+    try {
+        const res = await fetch(`/OwnerCars/CheckLicensePlate?licensePlate=${encodeURIComponent(value)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: licensePlateAbortController.signal
+        });
+        if(!res.ok) throw new Error('Cannot check license plate');
+        const data = await res.json();
+        if(normalizePlateForClient(licensePlateInput?.value?.trim() || '') !== requestPlate){
+            return true;
+        }
+        licensePlateIsDuplicate = Boolean(data.exists);
+        const message = data.message || '';
+        setLicensePlateFeedback(licensePlateIsDuplicate ? 'error' : 'ok', message);
+        setFieldError(licensePlateInput, licensePlateIsDuplicate ? message : '');
+        return !licensePlateIsDuplicate;
+    } catch (error) {
+        if(error?.name === 'AbortError'){
+            return true;
+        }
+        setLicensePlateFeedback('error', 'Chưa kiểm tra được biển số. Hệ thống vẫn sẽ kiểm tra lại khi gửi duyệt.');
+        return true;
+    }
+}
+
+licensePlateInput?.addEventListener('input', ()=>{
+    licensePlateIsDuplicate = false;
+    setFieldError(licensePlateInput, '');
+    clearTimeout(licensePlateCheckTimer);
+    const normalizedValue = normalizePlateForClient(licensePlateInput.value);
+    if(!licensePlateInput.value.trim()){
+        setLicensePlateFeedback('', '');
+    } else if(normalizedValue.length < 5){
+        setLicensePlateFeedback('', 'Nhập tiếp biển số để hệ thống kiểm tra trùng.');
+    } else {
+        setLicensePlateFeedback('', 'Đang kiểm tra biển số...');
+    }
+    licensePlateCheckTimer = setTimeout(checkLicensePlateNow, 150);
+});
+
+licensePlateInput?.addEventListener('blur', ()=>{
+    clearTimeout(licensePlateCheckTimer);
+    checkLicensePlateNow();
+});
+
+document.querySelectorAll('#ownerCarForm input, #ownerCarForm select, #ownerCarForm textarea').forEach(field => {
+    if(field.type === 'hidden' || field.type === 'file') return;
+    const clearIfValid = () => {
+        showValidationSummary('');
+        if(field.id === 'carAddressInput'){
+            validateLocation(false);
+            return;
+        }
+        validateField(field, false);
+    };
+    field.addEventListener('input', clearIfValid);
+    field.addEventListener('change', clearIfValid);
+});
+
 function showStep(step){
     currentStep = step;
     panels.forEach(p=>p.classList.toggle('d-none', p.dataset.panel != step));
@@ -649,24 +1371,37 @@ function showStep(step){
     btnNext.classList.toggle('d-none', step === 3);
     btnSubmit.classList.toggle('d-none', step !== 3);
 }
-btnBack.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
-btnNext.addEventListener('click',()=>{
-    if(currentStep === 2 && !validateLocation(true)) return;
-    showStep(Math.min(3,currentStep+1));
+btnBack.addEventListener('click',()=>{
+    showValidationSummary('');
+    showStep(Math.max(1,currentStep-1));
 });
-steps.forEach(s=>s.addEventListener('click',()=>{
-    const targetStep = Number(s.dataset.step);
-    if(currentStep === 2 && targetStep > 2 && !validateLocation(true)) return;
-    showStep(targetStep);
+btnNext.addEventListener('click', async ()=>{
+    await goToStep(Math.min(3,currentStep+1));
+});
+steps.forEach(s=>s.addEventListener('click', async ()=>{
+    await goToStep(Number(s.dataset.step));
 }));
 
-document.getElementById('brandSelect').addEventListener('change', async function(){
-    const modelSelect = document.getElementById('modelSelect');
-    modelSelect.innerHTML = '<option value="">Đang tải...</option>';
-    const res = await fetch(`/CarCatalog/Models?brandId=${this.value}`);
-    const models = await res.json();
-    modelSelect.innerHTML = '<option value="">Chọn mẫu xe</option>' + models.map(m=>`<option value="${m.id}" data-seats="${m.seatCount||''}" data-fuel="${m.fuelType||''}" data-transmission="${m.transmission||''}">${m.name}</option>`).join('');
+brandSelect.addEventListener('change', function(){
+    loadModels(this.value);
 });
+
+modelSelect.addEventListener('change', ()=>{
+    renderAiSuggestion();
+    applySuggestedSpecs();
+});
+
+manufactureYearSelect?.addEventListener('change', renderAiSuggestion);
+aiYearSelect?.addEventListener('change', ()=>{
+    setSelectValue(manufactureYearSelect, aiYearSelect.value);
+    renderAiSuggestion();
+});
+applyAiSpecs?.addEventListener('click', applySuggestedSpecs);
+applyAiPrice?.addEventListener('click', ()=>{
+    priceTouched = false;
+    applySuggestedPrice();
+});
+applyAiDescription?.addEventListener('click', applySuggestedDescription);
 
 function validateLocation(showMessage){
     const addressInput = document.getElementById('carAddressInput');
@@ -674,11 +1409,87 @@ function validateLocation(showMessage){
     const lngInput = document.getElementById('lngInput');
     const locationError = document.getElementById('locationError');
     const isValid = Boolean(addressInput.value.trim() && latInput.value && lngInput.value);
+    const message = 'Vui lòng nhập địa chỉ và chọn vị trí xe trên bản đồ.';
     if(locationError){
         locationError.classList.toggle('d-none', isValid || !showMessage);
     }
     addressInput.classList.toggle('is-invalid', !isValid && showMessage);
+    if(showMessage || isValid){
+        setFieldError(addressInput, isValid ? '' : message);
+    }
     return isValid;
+}
+
+function validateImages(showMessage){
+    const count = imageInput?.files?.length || 0;
+    const isValid = count >= 4;
+    const message = `Vui lòng upload tối thiểu 4 ảnh xe. Hiện tại mới có ${count}/4 ảnh.`;
+    imageDropzone?.classList.toggle('is-invalid', !isValid && showMessage);
+    if(showMessage || isValid){
+        setFieldError(imageInput, isValid ? '' : message);
+    }
+    return isValid;
+}
+
+async function validateStep(step, showMessage = true){
+    showValidationSummary('');
+    const fieldsResult = validatePanelFields(step, showMessage);
+
+    if(step === 1){
+        if(!fieldsResult.valid){
+            if(showMessage) showValidationSummary(fieldsResult.message);
+            focusFirstInvalid(step, fieldsResult.firstInvalid);
+            return false;
+        }
+
+        if(!(await checkLicensePlateNow(showMessage))){
+            if(showMessage) showValidationSummary('Vui lòng kiểm tra lại biển số xe trước khi qua bước tiếp theo.');
+            focusFirstInvalid(step, licensePlateInput);
+            return false;
+        }
+
+        return true;
+    }
+
+    if(step === 2){
+        const locationValid = validateLocation(showMessage);
+        if(!fieldsResult.valid || !locationValid){
+            if(showMessage){
+                showValidationSummary(fieldsResult.message || 'Vui lòng nhập địa chỉ và chọn vị trí xe trên bản đồ.');
+            }
+            focusFirstInvalid(step, fieldsResult.firstInvalid || document.getElementById('carAddressInput'));
+            return false;
+        }
+
+        return true;
+    }
+
+    if(step === 3){
+        if(!validateImages(showMessage)){
+            if(showMessage) showValidationSummary('Vui lòng upload tối thiểu 4 ảnh xe trước khi gửi duyệt.');
+            focusFirstInvalid(step, imageDropzone);
+            return false;
+        }
+
+        return true;
+    }
+
+    return true;
+}
+
+async function goToStep(targetStep){
+    if(targetStep <= currentStep){
+        showValidationSummary('');
+        showStep(targetStep);
+        return;
+    }
+
+    while(currentStep < targetStep){
+        if(!(await validateStep(currentStep, true))){
+            return;
+        }
+        showStep(currentStep + 1);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function(){
@@ -732,6 +1543,7 @@ function renderImagePreviews(){
     });
     imageCount.textContent = `${selectedImageFiles.length}/4 ảnh bắt buộc`;
     imageCount.style.color = selectedImageFiles.length >= 4 ? '#15803d' : '#b91c1c';
+    validateImages(false);
 }
 
 function addImageFiles(files){
@@ -774,22 +1586,37 @@ imageDropzone.addEventListener('drop', function(e){
     addImageFiles(e.dataTransfer.files);
 });
 
-document.getElementById('ownerCarForm').addEventListener('submit', function(e){
-    if(!validateLocation(true)){
-        e.preventDefault();
-        showStep(2);
-        return;
+let ownerCarFormSubmitting = false;
+ownerCarForm.addEventListener('submit', async function(e){
+    if(ownerCarFormSubmitting) return;
+    e.preventDefault();
+
+    for(let step = 1; step <= 3; step++){
+        showStep(step);
+        if(!(await validateStep(step, true))){
+            return;
+        }
     }
 
-    const count = imageInput.files.length;
-    if(count < 4){
-        e.preventDefault();
-        alert('Vui lòng upload tối thiểu 4 ảnh xe.');
-        showStep(3);
-    }
+    ownerCarFormSubmitting = true;
+    showValidationSummary('');
+    this.submit();
 });
 
+if(brandSelect?.value){
+    loadModels(brandSelect.value, initialCarModelId).then(()=>{
+        if(modelSelect.value){
+            applySuggestedSpecs();
+        }
+    });
+} else {
+    renderAiSuggestion();
+}
 showStep(currentStep);
 renderImagePreviews();
+updateCommissionPreview();
+if(licensePlateInput?.value?.trim()){
+    checkLicensePlateNow();
+}
 </script>
 }

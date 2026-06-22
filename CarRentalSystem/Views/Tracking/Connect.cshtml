@@ -1,165 +1,457 @@
 @model IEnumerable<CarRentalSystem.Models.Car>
 @{
-    ViewData["Title"] = "Giao diện Kết nối GPS";
+    ViewData["Title"] = "Mobile GPS Tracker";
 }
 
 <style>
-    body {
-        background: radial-gradient(circle at top right, #1e293b, #0f172a);
-        color: #fff;
-    }
-    .mobile-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 40px;
-        padding: 40px 30px;
-        box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.5);
-    }
-    .pulse-btn {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: #3b82f6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .tracker-shell {
+        max-width: 620px;
         margin: 0 auto;
-        border: none;
-        color: white;
-        font-size: 2.5rem;
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-        animation: pulse 2s infinite;
-        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 18px 12px 32px;
     }
-    .pulse-btn.active {
-        background: #ef4444;
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-        animation: pulse-red 2s infinite;
+
+    .tracker-surface {
+        background: #0f172a;
+        color: #f8fafc;
+        border-radius: 26px;
+        padding: 24px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
     }
-    @@keyframes pulse {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 30px rgba(59, 130, 246, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+
+    .tracker-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 22px;
     }
-    @@keyframes pulse-red {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 30px rgba(239, 68, 68, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+
+    .tracker-title {
+        font-size: 1.45rem;
+        font-weight: 800;
+        margin: 0;
     }
-    .stat-card {
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 24px;
-        padding: 20px;
+
+    .tracker-pill {
+        border: 1px solid rgba(255, 255, 255, .14);
+        background: rgba(255, 255, 255, .08);
+        color: #cbd5e1;
+        border-radius: 999px;
+        padding: 7px 11px;
+        font-size: .78rem;
+        white-space: nowrap;
+    }
+
+    .tracker-field label {
+        display: block;
+        color: #94a3b8;
+        font-size: .78rem;
+        font-weight: 700;
+        margin-bottom: 7px;
+    }
+
+    .tracker-field select {
+        width: 100%;
+        min-height: 48px;
+        border: 1px solid rgba(255, 255, 255, .12);
+        background: rgba(255, 255, 255, .08);
+        color: #fff;
+        border-radius: 14px;
+        padding: 0 14px;
+        outline: none;
+    }
+
+    .tracker-field option {
+        color: #111827;
+    }
+
+    .tracker-button {
+        width: 132px;
+        height: 132px;
+        border-radius: 999px;
+        border: 0;
+        margin: 24px auto 12px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: #2563eb;
+        font-size: 42px;
+        box-shadow: 0 0 0 14px rgba(37, 99, 235, .15);
+        transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+    }
+
+    .tracker-button:active {
+        transform: scale(.97);
+    }
+
+    .tracker-button.active {
+        background: #dc2626;
+        box-shadow: 0 0 0 14px rgba(220, 38, 38, .14);
+    }
+
+    .tracker-status {
+        min-height: 24px;
         text-align: center;
+        font-weight: 800;
+        color: #93c5fd;
+        margin-bottom: 18px;
+    }
+
+    .tracker-status.active {
+        color: #fecaca;
+    }
+
+    .tracker-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .tracker-stat {
+        min-height: 82px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, .1);
+        background: rgba(255, 255, 255, .07);
+        padding: 12px;
+    }
+
+    .tracker-stat.wide {
+        grid-column: 1 / -1;
+    }
+
+    .tracker-stat span {
+        display: block;
+        color: #94a3b8;
+        font-size: .76rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .tracker-stat strong {
+        display: block;
+        color: #fff;
+        font-size: 1.05rem;
+        word-break: break-word;
+    }
+
+    .tracker-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+    }
+
+    .tracker-log {
+        max-height: 190px;
+        overflow: auto;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, .1);
+        background: rgba(15, 23, 42, .66);
+        padding: 12px;
+        margin-top: 16px;
+        color: #cbd5e1;
+        font-size: .82rem;
+    }
+
+    .tracker-log div + div {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    @@media (max-width: 480px) {
+        .tracker-surface {
+            padding: 20px;
+            border-radius: 22px;
+        }
+
+        .tracker-header {
+            display: block;
+        }
+
+        .tracker-pill {
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .tracker-button {
+            width: 118px;
+            height: 118px;
+        }
     }
 </style>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-5">
-            <div class="mobile-card text-center animate__animated animate__zoomIn">
-                <div class="mb-5">
-                    <h2 class="fw-800 mb-2">Smart Tracker</h2>
-                    <p class="text-white-50">Hệ thống đồng bộ hóa vệ tinh</p>
-                </div>
-
-                <div class="mb-5">
-                    <button id="toggleTracking" class="pulse-btn">
-                        <i class="bi bi-power"></i>
-                    </button>
-                    <p id="statusTxt" class="mt-4 fw-bold text-primary">SẴN SÀNG KẾT NỐI</p>
-                </div>
-
-                <div class="mb-4 text-start">
-                    <label class="form-label small fw-bold text-white-50 ms-2 mb-2">ĐỊNH DANH PHƯƠNG TIỆN</label>
-                    <select id="carIdSelect" class="form-select bg-white bg-opacity-10 border-0 text-white py-3 px-4 rounded-4 shadow-none">
-                        @if (Model != null)
-                        {
-                            foreach (var car in Model)
-                            {
-                                <option value="@car.CarID" class="bg-dark text-white">@car.CarBrand?.Name @car.CarName (@car.LicensePlate)</option>
-                            }
-                        }
-                    </select>
-                </div>
-
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="stat-card">
-                            <small class="text-white-50 d-block mb-1">Tốc độ</small>
-                            <span id="speedVal" class="fw-800 fs-4">0.0</span> <small>km/h</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="stat-card">
-                            <small class="text-white-50 d-block mb-1">Lat/Lng</small>
-                            <span id="posVal" class="small fw-bold">0.0, 0.0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-5">
-                    <p class="small text-white-50"><i class="bi bi-broadcast me-2"></i> Signal: Excellent</p>
-                </div>
+<div class="container tracker-shell">
+    <div class="tracker-surface">
+        <div class="tracker-header">
+            <div>
+                <h1 class="tracker-title">Mobile GPS Tracker</h1>
+                <div class="text-white-50 small">Điện thoại đóng vai trò thiết bị định vị cho xe</div>
             </div>
+            <div id="secureBadge" class="tracker-pill">Đang kiểm tra GPS</div>
+        </div>
+
+        <div class="tracker-field">
+            <label for="carIdSelect">Phương tiện</label>
+            <select id="carIdSelect">
+                <option value="">Chọn xe cần theo dõi</option>
+                @if (Model != null)
+                {
+                    foreach (var car in Model)
+                    {
+                        <option value="@car.CarID">@car.CarBrand?.Name @car.CarName (@car.LicensePlate)</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <button type="button" id="toggleTracking" class="tracker-button" aria-label="Bật hoặc tắt tracker">
+            <i class="bi bi-power"></i>
+        </button>
+        <div id="statusText" class="tracker-status">Sẵn sàng kết nối</div>
+
+        <div class="tracker-grid">
+            <div class="tracker-stat">
+                <span>Tốc độ</span>
+                <strong><span id="speedText" style="display:inline;color:#fff;font-size:1.05rem;margin:0;">0.0</span> km/h</strong>
+            </div>
+            <div class="tracker-stat">
+                <span>Độ chính xác</span>
+                <strong><span id="accuracyText" style="display:inline;color:#fff;font-size:1.05rem;margin:0;">-</span> m</strong>
+            </div>
+            <div class="tracker-stat">
+                <span>Pin điện thoại</span>
+                <strong id="batteryText">-</strong>
+            </div>
+            <div class="tracker-stat">
+                <span>Cập nhật cuối</span>
+                <strong id="lastSentText">-</strong>
+            </div>
+            <div class="tracker-stat wide">
+                <span>Tọa độ</span>
+                <strong id="coordText">-</strong>
+            </div>
+        </div>
+
+        <div class="tracker-actions">
+            <a asp-controller="Tracking" asp-action="Map" class="btn btn-outline-light rounded-3">
+                <i class="bi bi-map me-1"></i>Bản đồ
+            </a>
+            <a asp-controller="Tracking" asp-action="History" class="btn btn-outline-light rounded-3">
+                <i class="bi bi-clock-history me-1"></i>Lịch sử
+            </a>
+            <a asp-controller="Alert" asp-action="Index" class="btn btn-outline-light rounded-3">
+                <i class="bi bi-exclamation-triangle me-1"></i>Cảnh báo
+            </a>
+        </div>
+
+        <div id="statusLog" class="tracker-log">
+            <div>Chưa gửi dữ liệu GPS.</div>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        var watchId = null;
-        var isActive = false;
+        const sendIntervalMs = 5000;
+        let watchId = null;
+        let isActive = false;
+        let lastSentAt = 0;
+        let lastPosition = null;
+        let batteryManager = null;
 
-        $(document).ready(function() {
-            $('#toggleTracking').click(function() {
-                if (!isActive) {
-                    startTracking();
-                } else {
-                    stopTracking();
-                }
+        const carSelect = document.getElementById('carIdSelect');
+        const toggleButton = document.getElementById('toggleTracking');
+        const statusText = document.getElementById('statusText');
+        const statusLog = document.getElementById('statusLog');
+
+        function log(message, isError) {
+            const row = document.createElement('div');
+            row.className = isError ? 'text-danger' : '';
+            row.textContent = `[${new Date().toLocaleTimeString('vi-VN')}] ${message}`;
+            if (statusLog.children.length === 1 && statusLog.children[0].textContent.includes('Chưa gửi')) {
+                statusLog.innerHTML = '';
+            }
+            statusLog.prepend(row);
+            while (statusLog.children.length > 12) {
+                statusLog.removeChild(statusLog.lastChild);
+            }
+        }
+
+        function setStatus(message, active) {
+            statusText.textContent = message;
+            statusText.classList.toggle('active', !!active);
+            toggleButton.classList.toggle('active', !!active);
+        }
+
+        function updateSecureBadge() {
+            const badge = document.getElementById('secureBadge');
+            if (window.isSecureContext || location.hostname === 'localhost') {
+                badge.textContent = 'GPS khả dụng';
+                badge.style.color = '#bbf7d0';
+                return;
+            }
+
+            badge.textContent = 'Cần HTTPS để dùng GPS';
+            badge.style.color = '#fecaca';
+        }
+
+        async function initBattery() {
+            if (!navigator.getBattery) {
+                document.getElementById('batteryText').textContent = 'Không hỗ trợ';
+                return;
+            }
+
+            batteryManager = await navigator.getBattery();
+            const render = () => {
+                const pct = Math.round(batteryManager.level * 100);
+                document.getElementById('batteryText').textContent = `${pct}%${batteryManager.charging ? ' - đang sạc' : ''}`;
+            };
+
+            batteryManager.addEventListener('levelchange', render);
+            batteryManager.addEventListener('chargingchange', render);
+            render();
+        }
+
+        function getBatteryLevel() {
+            return batteryManager ? Math.round(batteryManager.level * 100) : null;
+        }
+
+        function getIsCharging() {
+            return batteryManager ? batteryManager.charging : null;
+        }
+
+        function haversineKm(a, b) {
+            const toRad = value => value * Math.PI / 180;
+            const r = 6371;
+            const dLat = toRad(b.latitude - a.latitude);
+            const dLng = toRad(b.longitude - a.longitude);
+            const lat1 = toRad(a.latitude);
+            const lat2 = toRad(b.latitude);
+            const h = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+            return 2 * r * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+        }
+
+        function resolveSpeedKmh(position) {
+            if (typeof position.coords.speed === 'number' && position.coords.speed >= 0) {
+                return position.coords.speed * 3.6;
+            }
+
+            if (!lastPosition) return 0;
+
+            const previous = {
+                latitude: lastPosition.coords.latitude,
+                longitude: lastPosition.coords.longitude
+            };
+            const current = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            };
+            const elapsedHours = (position.timestamp - lastPosition.timestamp) / 3600000;
+            if (elapsedHours <= 0) return 0;
+
+            return haversineKm(previous, current) / elapsedHours;
+        }
+
+        function renderPosition(position, speedKmh) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            document.getElementById('speedText').textContent = speedKmh.toFixed(1);
+            document.getElementById('accuracyText').textContent = Math.round(position.coords.accuracy || 0);
+            document.getElementById('coordText').textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        }
+
+        async function sendPosition(position) {
+            const now = Date.now();
+            const speedKmh = resolveSpeedKmh(position);
+            renderPosition(position, speedKmh);
+
+            if (now - lastSentAt < sendIntervalMs) {
+                lastPosition = position;
+                return;
+            }
+
+            lastSentAt = now;
+            lastPosition = position;
+
+            const response = await fetch('/Tracking/StaffMobileUpdate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    carId: Number(carSelect.value),
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    speed: speedKmh,
+                    accuracyMeters: position.coords.accuracy || null,
+                    heading: position.coords.heading || null,
+                    batteryLevel: getBatteryLevel(),
+                    isCharging: getIsCharging(),
+                    deviceLabel: navigator.userAgent
+                })
             });
 
-            function startTracking() {
-                if (!navigator.geolocation) return alert("Trình duyệt không hỗ trợ GPS hoặc đang chặn do không có HTTPS.");
-                
-                isActive = true;
-                $('#toggleTracking').addClass('active');
-                $('#statusTxt').text('ĐANG TRUYỀN DỮ LIỆU...').removeClass('text-primary').addClass('text-danger');
-                $('#carIdSelect').attr('disabled', true);
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Không gửi được GPS');
+            }
 
-                watchId = navigator.geolocation.watchPosition(function(position) {
-                    var lat = position.coords.latitude;
-                    var lng = position.coords.longitude;
-                    var speed = position.coords.speed ? (position.coords.speed * 3.6) : 0;
+            document.getElementById('lastSentText').textContent = new Date().toLocaleTimeString('vi-VN');
+            log(`Đã gửi vị trí cho xe #${carSelect.value} - ${speedKmh.toFixed(1)} km/h`);
+        }
 
-                    $('#speedVal').text(speed.toFixed(1));
-                    $('#posVal').text(lat.toFixed(3) + ", " + lng.toFixed(3));
+        function startTracking() {
+            if (!carSelect.value) {
+                alert('Vui lòng chọn xe trước khi bật tracker.');
+                return;
+            }
 
-                    fetch('/Tracking/ReceiveData', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            CarID: parseInt($('#carIdSelect').val()),
-                            Latitude: lat,
-                            Longitude: lng,
-                            Speed: speed
-                        })
+            if (!navigator.geolocation) {
+                alert('Trình duyệt không hỗ trợ GPS.');
+                return;
+            }
+
+            isActive = true;
+            carSelect.disabled = true;
+            lastSentAt = 0;
+            lastPosition = null;
+            setStatus('Đang gửi GPS realtime', true);
+            log(`Bắt đầu tracker cho xe #${carSelect.value}`);
+
+            watchId = navigator.geolocation.watchPosition(
+                position => {
+                    sendPosition(position).catch(error => {
+                        log(error.message, true);
                     });
-                }, function(error) {
-                    alert('Lỗi GPS: ' + error.message + '\\n(Vui lòng cấp quyền Vị trí, bật GPS hoặc sử dụng HTTPS)');
+                },
+                error => {
+                    log(`Lỗi GPS: ${error.message}`, true);
                     stopTracking();
-                }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+                },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
+        }
+
+        function stopTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
             }
 
-            function stopTracking() {
-                isActive = false;
-                if (watchId) navigator.geolocation.clearWatch(watchId);
-                $('#toggleTracking').removeClass('active');
-                $('#statusTxt').text('SẴN SÀNG KẾT NỐI').removeClass('text-danger').addClass('text-primary');
-                $('#carIdSelect').attr('disabled', false);
-            }
+            watchId = null;
+            isActive = false;
+            carSelect.disabled = false;
+            setStatus('Sẵn sàng kết nối', false);
+            log('Đã tắt tracker');
+        }
+
+        toggleButton.addEventListener('click', () => {
+            if (isActive) stopTracking();
+            else startTracking();
+        });
+
+        updateSecureBadge();
+        initBattery().catch(() => {
+            document.getElementById('batteryText').textContent = 'Không hỗ trợ';
         });
     </script>
 }

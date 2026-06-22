@@ -221,14 +221,14 @@ else
                                         {
                                             @if (cardCheckInRecord == null)
                                             {
-                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Can tao bien ban nhan xe truoc">
-                                                    <i class="bi bi-key me-1"></i>Nhan xe
+                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Cần tạo biên bản nhận xe trước">
+                                                    <i class="bi bi-key me-1"></i>Nhận xe
                                                 </button>
                                             }
                                             else if (requiresDigitalContract && !hasSignedDigitalContract)
                                             {
-                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Can ky hop dong so truoc">
-                                                    <i class="bi bi-key me-1"></i>Nhan xe
+                                                <button class="btn btn-light btn-sm rounded-pill px-3 text-muted" disabled title="Cần ký hợp đồng số trước">
+                                                    <i class="bi bi-key me-1"></i>Nhận xe
                                                 </button>
                                             }
                                             else
@@ -237,7 +237,7 @@ else
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="id" value="@booking.BookingID" />
                                                     <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm fw-bold">
-                                                        <i class="bi bi-key me-1"></i>NHAN XE NGAY
+                                                        <i class="bi bi-key me-1"></i>NHẬN XE NGAY
                                                     </button>
                                                 </form>
                                             }
@@ -260,7 +260,7 @@ else
                                         @if (statusName == "Pending" || statusName == "Confirmed")
                                         {
                                             <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#cancelModal-@booking.BookingID">
-                                                <i class="bi bi-x-circle me-1"></i>Huy
+                                                <i class="bi bi-x-circle me-1"></i>Hủy
                                             </button>
                                         }
                                         @* Hợp đồng vật lý do chủ xe tự chuẩn bị và tự lưu ngoài hệ thống. *@
@@ -348,7 +348,7 @@ else
                                     <i class="bi bi-telephone-fill me-3 ms-2 fs-5"></i>Gọi Cảnh sát (113)
                                 </a>
                                 <a href="tel:19001234" class="btn btn-outline-warning btn-lg w-100 mb-3 fw-bold rounded-pill text-start text-dark shadow-sm pt-3 pb-3">
-                                    <i class="bi bi-tools me-3 ms-2 fs-5"></i>Cuu ho Roadside Assistance
+                                    <i class="bi bi-tools me-3 ms-2 fs-5"></i>Cứu hộ Roadside Assistance
                                 </a>
                                 <a href="tel:19001234" class="btn btn-outline-primary btn-lg w-100 fw-bold rounded-pill text-start shadow-sm pt-3 pb-3">
                                     <i class="bi bi-headset fs-5 me-3 ms-2 text-primary"></i>Tổng đài SmartRental (Hotline)
@@ -390,7 +390,7 @@ else
                                         <div class="d-flex align-items-center">
                                             <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
                                             <div>
-                                                <h6 class="mb-1 fw-bold">Ban can tao bien ban tra xe truoc!</h6>
+                                                <h6 class="mb-1 fw-bold">Bạn cần tạo biên bản trả xe trước!</h6>
                                                 <p class="mb-0 small opacity-75">Vui lòng chụp ảnh xe và điền thông tin biên bản trả xe trước khi xác nhận trả xe.</p>
                                             </div>
                                         </div>
@@ -411,7 +411,7 @@ else
 
                                         <div class="d-grid gap-2">
                                             <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold pt-3 pb-3 shadow-sm">Xác nhận trả xe <i class="bi bi-chevron-right ms-2 small"></i></button>
-                                            <button type="button" class="btn btn-link text-muted text-decoration-none fw-600" data-bs-dismiss="modal">De sau</button>
+                                            <button type="button" class="btn btn-link text-muted text-decoration-none fw-600" data-bs-dismiss="modal">Để sau</button>
                                         </div>
                                     </form>
                                 }
@@ -435,8 +435,9 @@ else
                     var bookingId = @booking.BookingID;
                     var mapEl = document.getElementById(mapId);
                     if (!mapEl) return;
-                    var map = L.map(mapId, { zoomControl: false, attributionControl: false }).setView([10.7769, 106.7009], 14);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    var baseMap = SmartMap.createMap(mapId, 10.7769, 106.7009, 14, { zoomControl: false, attributionControl: false });
+                    if (!baseMap) return;
+                    var map = baseMap.map;
                     
                     var marker;
                     function updatePos() {

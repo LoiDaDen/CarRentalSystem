@@ -54,7 +54,7 @@ public class RoleAuthorizeAttribute : ActionFilterAttribute
         {
             var logger = context.HttpContext.RequestServices.GetService<ILogger<RoleAuthorizeAttribute>>();
             var environment = context.HttpContext.RequestServices.GetService<IHostEnvironment>();
-            if (environment?.IsEnvironment("Cypress") == true)
+            if (environment?.IsEnvironment("Playwright") == true)
             {
                 logger?.LogDebug(
                     "Access denied to {Controller}.{Action} for user {User} with role {Role}. Required: [{RequiredRoles}]",

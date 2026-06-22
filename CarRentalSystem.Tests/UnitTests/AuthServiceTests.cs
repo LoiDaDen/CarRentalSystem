@@ -2,6 +2,7 @@ using CarRentalSystem.Models;
 using CarRentalSystem.Services;
 using CarRentalSystem.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -59,6 +60,8 @@ namespace CarRentalSystem.Tests.UnitTests
             _authService = new AuthService(
                 userRepo.Object,
                 piiEncryption.Object,
+                new IdentityHashService(new ConfigurationBuilder().Build()),
+                new PasswordHashService(),
                 Mock.Of<Microsoft.Extensions.Logging.ILogger<AuthService>>());
         }
 
@@ -142,7 +145,8 @@ namespace CarRentalSystem.Tests.UnitTests
             // Assert
             result.Should().NotBeNull();
             result.PasswordHash.Should().NotBe(plainPassword, "vì mật khẩu phải được hash trước khi lưu");
-            BCrypt.Net.BCrypt.Verify(plainPassword, result.PasswordHash).Should().BeTrue("vì hash phải xác minh được với mật khẩu gốc");
+            result.PasswordHash.Should().StartWith("$argon2id$");
+            new PasswordHashService().Verify(plainPassword, result.PasswordHash).Success.Should().BeTrue("password hash must verify with the original password");
         }
 
         [Fact]

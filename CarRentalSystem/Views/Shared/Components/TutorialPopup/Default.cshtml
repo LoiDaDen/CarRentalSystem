@@ -1,0 +1,65 @@
+@model TutorialPopupViewModel
+
+<div class="tutorial-root"
+     data-tutorial-root
+     data-panel="@Model.Panel"
+     data-get-url="@Url.Action("GetTutorial", "Tutorial", new { area = "" })"
+     data-update-url="@Url.Action("UpdateProgress", "Tutorial", new { area = "" })">
+    <form class="d-none" data-tutorial-antiforgery>
+        @Html.AntiForgeryToken()
+    </form>
+
+    <div class="tutorial-focus-ring" data-tutorial-focus-ring aria-hidden="true"></div>
+
+    <div class="modal fade tutorial-modal"
+         id="tutorialModal-@Model.Panel"
+         tabindex="-1"
+         aria-labelledby="tutorialTitle-@Model.Panel"
+         aria-hidden="true"
+         data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="tutorial-progress-track" aria-hidden="true">
+                    <span data-tutorial-progress-bar></span>
+                </div>
+                <div class="modal-header tutorial-modal-header">
+                    <div>
+                        <span class="tutorial-eyebrow" data-tutorial-role>@Model.Panel</span>
+                        <h2 class="modal-title" id="tutorialTitle-@Model.Panel" data-tutorial-title>Hướng dẫn sử dụng</h2>
+                    </div>
+                    <span class="tutorial-step-count" data-tutorial-step-count>1 / 1</span>
+                </div>
+                <div class="modal-body tutorial-modal-body">
+                    <div class="tutorial-visual" aria-hidden="true">
+                        <span><i class="bi bi-compass" data-tutorial-icon></i></span>
+                    </div>
+                    <div class="tutorial-copy">
+                        <h3 data-tutorial-step-title></h3>
+                        <p data-tutorial-step-description></p>
+                        <a class="tutorial-route-link d-none" data-tutorial-route>
+                            <i class="bi bi-box-arrow-up-right"></i>
+                            Mở chức năng này
+                        </a>
+                    </div>
+                </div>
+                <div class="modal-footer tutorial-modal-footer">
+                    <div class="tutorial-secondary-actions">
+                        <button type="button" class="btn btn-link text-secondary" data-tutorial-skip>Bỏ qua</button>
+                        <button type="button" class="btn btn-link text-secondary" data-tutorial-never>Không hiển thị lại</button>
+                        <a class="btn btn-link text-secondary" href="@Model.DetailUrl">
+                            <i class="bi bi-book"></i> Hướng dẫn chi tiết
+                        </a>
+                    </div>
+                    <div class="tutorial-primary-actions">
+                        <button type="button" class="btn btn-outline-secondary" data-tutorial-back>
+                            <i class="bi bi-arrow-left"></i> Quay lại
+                        </button>
+                        <button type="button" class="btn btn-primary" data-tutorial-next>
+                            Tiếp theo <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

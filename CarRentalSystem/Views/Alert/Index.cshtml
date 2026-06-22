@@ -1,53 +1,273 @@
 @model IEnumerable<CarRentalSystem.Models.Alert>
 @{
-    ViewData["Title"] = "Security Alerts";
+    ViewData["Title"] = "Canh bao GPS";
     Layout = "_AdminLayout";
+    var alerts = Model?.ToList() ?? new List<CarRentalSystem.Models.Alert>();
+    var cars = ViewBag.Cars as IEnumerable<CarRentalSystem.Models.Car> ?? Enumerable.Empty<CarRentalSystem.Models.Car>();
+    var selectedCarId = ViewBag.SelectedCarId as int?;
+    var selectedType = ViewBag.SelectedType as string ?? "all";
+    var selectedStatus = ViewBag.SelectedStatus as string ?? "all";
+    var from = ViewBag.From as string;
+    var to = ViewBag.To as string;
 }
 
-<h2 class="mb-4 text-danger"><i class="bi bi-exclamation-triangle-fill"></i> System Alerts</h2>
+<style>
+    .alert-filter {
+        display: grid;
+        grid-template-columns: minmax(210px, 1.5fr) minmax(150px, 1fr) minmax(130px, .8fr) minmax(140px, .8fr) minmax(140px, .8fr) auto;
+        gap: 10px;
+        align-items: end;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        padding: 14px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+        margin-bottom: 16px;
+    }
 
-@if (!Model.Any())
-{
-    <partial name="_EmptyState" model="@(new EmptyStateViewModel
-    {
-        Icon = "bi-shield-check",
-        Title = "No active alerts",
-        Message = "The fleet is safe right now."
-    })" />
-}
-else
-{
-<div class="table-responsive bg-white shadow-sm rounded">
-    <table class="table table-hover align-middle mb-0">
-        <thead class="table-dark">
-            <tr>
-                <th>Time</th>
-                <th>Car</th>
-                <th>Alert Type</th>
-                <th>Description</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var alert in Model)
-            {
-                <tr>
-                    <td>@alert.AlertTime.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td class="fw-bold">@alert.Car?.CarBrand?.Name @alert.Car?.CarName</td>
-                    <td>
-                        <span class="badge bg-danger fs-6">@alert.AlertType</span>
-                    </td>
-                    <td>@alert.Description</td>
-                    <td>
-                        <form asp-action="Resolve" method="post" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@alert.AlertID" />
-                            <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check2-all"></i> Mark Resolved</button>
-                        </form>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    .alert-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(130px, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .alert-summary {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        padding: 13px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+    }
+
+    .alert-summary span {
+        display: block;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .alert-summary strong {
+        font-size: 1.35rem;
+    }
+
+    .alert-table-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+    }
+
+    @@media (max-width: 1199.98px) {
+        .alert-filter {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .alert-filter,
+        .alert-summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+    <div>
+        <div class="text-uppercase fw-bold text-danger mb-1" style="font-size:.72rem;letter-spacing:.08em;">Cảnh báo GPS</div>
+        <h2 class="fw-800 mb-1">Bảng cảnh báo định vị</h2>
+        <p class="text-muted mb-0">Lọc cảnh báo theo xe, loại, trạng thái và ngày; mở nhanh lịch sử GPS từ từng cảnh báo.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Tracking" asp-action="Map" class="btn btn-outline-secondary rounded-3">
+            <i class="bi bi-map me-1"></i> Bản đồ realtime
+        </a>
+        <a asp-controller="Tracking" asp-action="History" class="btn btn-outline-primary rounded-3">
+            <i class="bi bi-clock-history me-1"></i> Lịch sử GPS
+        </a>
+    </div>
 </div>
+
+<form method="get" class="alert-filter">
+    <div>
+        <label for="carId" class="form-label fw-bold">Xe</label>
+        <select id="carId" name="carId" class="form-select">
+            <option value="">Tất cả xe</option>
+            @foreach (var car in cars)
+            {
+                <option value="@car.CarID" selected="@(selectedCarId == car.CarID)">
+                    @car.CarBrand?.Name @car.CarName (@car.LicensePlate)
+                </option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="type" class="form-label fw-bold">Loại cảnh báo</label>
+        <select id="type" name="type" class="form-select">
+            <option value="all" selected="@(selectedType == "all")">Tất cả</option>
+            <option value="OverSpeed" selected="@(selectedType == "OverSpeed")">Quá tốc độ</option>
+            <option value="GpsLost" selected="@(selectedType == "GpsLost")">Mất tín hiệu GPS</option>
+            <option value="OffRoute" selected="@(selectedType == "OffRoute")">Rời khỏi khu vực</option>
+            <option value="SuspiciousStop" selected="@(selectedType == "SuspiciousStop")">Dừng lâu bất thường</option>
+        </select>
+    </div>
+    <div>
+        <label for="status" class="form-label fw-bold">Trạng thái</label>
+        <select id="status" name="status" class="form-select">
+            <option value="all" selected="@(selectedStatus == "all")">Tất cả</option>
+            <option value="New" selected="@(selectedStatus == "New")">Mới</option>
+            <option value="Active" selected="@(selectedStatus == "Active")">Đang theo dõi</option>
+            <option value="Critical" selected="@(selectedStatus == "Critical")">Khẩn cấp</option>
+            <option value="Resolved" selected="@(selectedStatus == "Resolved")">Đã xử lý</option>
+        </select>
+    </div>
+    <div>
+        <label for="from" class="form-label fw-bold">Từ ngày</label>
+        <input id="from" name="from" type="date" value="@from" class="form-control" />
+    </div>
+    <div>
+        <label for="to" class="form-label fw-bold">Đến ngày</label>
+        <input id="to" name="to" type="date" value="@to" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-funnel me-1"></i> Lọc
+    </button>
+</form>
+
+<div class="alert-summary-grid">
+    <div class="alert-summary">
+        <span>Tổng kết quả</span>
+        <strong>@alerts.Count</strong>
+    </div>
+    <div class="alert-summary">
+        <span>Đang mở</span>
+        <strong class="text-warning">@alerts.Count(a => a.Status != "Resolved")</strong>
+    </div>
+    <div class="alert-summary">
+        <span>Quá tốc độ</span>
+        <strong class="text-danger">@alerts.Count(a => a.AlertType == "OverSpeed")</strong>
+    </div>
+    <div class="alert-summary">
+        <span>Mất GPS</span>
+        <strong class="text-danger">@alerts.Count(a => a.AlertType == "GpsLost")</strong>
+    </div>
+</div>
+
+<div class="alert-table-card">
+    @if (!alerts.Any())
+    {
+        <div class="p-5 text-center text-muted">
+            <i class="bi bi-shield-check display-5 d-block mb-3"></i>
+            Không có cảnh báo phù hợp bộ lọc.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th class="ps-3">Thời gian</th>
+                        <th>Xe</th>
+                        <th>Loại</th>
+                        <th>Trạng thái</th>
+                        <th>Mô tả</th>
+                        <th class="text-end pe-3">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var alert in alerts)
+                    {
+                        var historyDate = GetHistoryDate(alert.AlertTime);
+                        <tr>
+                            <td class="ps-3">@GetLọcalText(alert.AlertTime)</td>
+                            <td>
+                                <strong>@alert.Car?.CarBrand?.Name @alert.Car?.CarName</strong><br />
+                                <small class="text-muted">@alert.Car?.LicensePlate</small>
+                            </td>
+                            <td><span class="badge @GetAlertBadgeClass(alert.AlertType)">@GetAlertTypeLabel(alert.AlertType)</span></td>
+                            <td><span class="badge @GetStatusBadgeClass(alert.Status)">@GetAlertStatusLabel(alert.Status)</span></td>
+                            <td><small class="text-muted">@alert.Description</small></td>
+                            <td class="text-end pe-3">
+                                <a asp-controller="Tracking" asp-action="History" asp-route-carId="@alert.CarID" asp-route-date="@historyDate" class="btn btn-sm btn-outline-primary rounded-pill">
+                                    <i class="bi bi-clock-history me-1"></i> Xem lịch sử
+                                </a>
+                                @if (alert.Status != "Resolved")
+                                {
+                                    <form asp-action="Resolve" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@alert.AlertID" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success rounded-pill">
+                                            <i class="bi bi-check2-all me-1"></i> Xử lý
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@functions {
+    private static DateTime ToVnLọcal(DateTime utc)
+    {
+        try
+        {
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        }
+        catch
+        {
+            return utc.AddHours(7);
+        }
+    }
+
+    private static string GetLọcalText(DateTime utc) => ToVnLọcal(utc).ToString("HH:mm - dd/MM/yyyy");
+    private static string GetHistoryDate(DateTime utc) => ToVnLọcal(utc).ToString("yyyy-MM-dd");
+
+    private static string GetAlertTypeLabel(string alertType) => alertType switch
+    {
+        "OverSpeed" => "Quá tốc độ",
+        "GpsLost" => "Mất GPS",
+        "OffRoute" => "Rời khỏi khu vực",
+        "SuspiciousStop" => "Dừng lâu bất thường",
+        "TheftRisk" => "Nguy co mat trom",
+        "OverdueReturn" => "Qua han tra xe",
+        "MaintenanceDue" => "Bao duong",
+        "OilChangeDue" => "Thay dau",
+        "InspectionExpiring" => "Dang kiem",
+        _ => alertType
+    };
+
+    private static string GetAlertStatusLabel(string status) => status switch
+    {
+        "New" => "Mới",
+        "Active" => "Đang theo dõi",
+        "Critical" => "Khẩn cấp",
+        "Resolved" => "Đã xử lý",
+        _ => status
+    };
+
+    private static string GetAlertBadgeClass(string alertType) => alertType switch
+    {
+        "OverSpeed" => "bg-danger",
+        "GpsLost" => "bg-dark",
+        "OffRoute" => "bg-warning text-dark",
+        "SuspiciousStop" => "bg-secondary",
+        _ => "bg-primary"
+    };
+
+    private static string GetStatusBadgeClass(string status) => status switch
+    {
+        "Resolved" => "bg-success",
+        "Critical" => "bg-danger",
+        "Active" => "bg-warning text-dark",
+        "New" => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
 }

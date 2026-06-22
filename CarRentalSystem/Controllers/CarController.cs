@@ -46,7 +46,8 @@ namespace CarRentalSystem.Controllers
             DateTime? endDate,
             string sort,
             int? contractId,
-            int page = 1)
+            int page = 1,
+            string? q = null)
         {
             const int pageSize = 12;
             var carsQuery = _context.Cars
@@ -57,9 +58,18 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarBrand)
                 .Include(c => c.Reviews)
-                .Where(c => c.CarStatus!.Name == "Available")
+                .WhereSelfDriveRentable()
                 .AsSplitQuery()
                 .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var searchTerm = q.Trim();
+                carsQuery = carsQuery.Where(c =>
+                    c.CarName.Contains(searchTerm) ||
+                    (c.CarBrand != null && c.CarBrand.Name.Contains(searchTerm)) ||
+                    (c.LicensePlate != null && c.LicensePlate.Contains(searchTerm)));
+            }
 
             var regionCookie = HttpContext.Request.Cookies["RegionID"];
             if (!string.IsNullOrEmpty(regionCookie) && int.TryParse(regionCookie, out int parsedRegionId))
@@ -156,6 +166,7 @@ namespace CarRentalSystem.Controllers
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = totalPages;
             ViewBag.PageSize = pageSize;
+            ViewBag.SearchQuery = q;
 
             return View(cars);
         }
@@ -163,7 +174,7 @@ namespace CarRentalSystem.Controllers
         public async Task<IActionResult> Details(int id, string startDate = null, string endDate = null, int? duration = null, int? contractId = null)
         {
             var car = await _carService.GetCarByIdAsync(id);
-            if (car == null) return NotFound();
+            if (!CarRentabilityPolicy.IsSelfDriveRentable(car)) return NotFound();
 
             ViewBag.StartDate = startDate;
             ViewBag.EndDate = endDate;
@@ -185,12 +196,17 @@ namespace CarRentalSystem.Controllers
                     // Kiểm tra user đã thuê xe này chưa (booking đã hoàn thành)
                     var hasRentedThisCar = await _context.Bookings
                         .AsNoTracking()
-                        .AnyAsync(b => b.UserID == userId && b.CarID == id && b.BookingStatus != null && b.BookingStatus.Name == "Completed");
+                        .AnyAsync(b => b.UserID == userId && b.CarID == id && b.BookingStatus != null && b.BookingStatus.Name == BookingStatusConstants.Completed);
                     ViewBag.HasRentedThisCar = hasRentedThisCar;
 
                     // Kiểm tra user đã đánh giá xe này chưa
-                    var hasReviewedThisCar = await _context.Reviews.AsNoTracking().AnyAsync(r => r.UserID == userId && r.CarID == id);
-                    ViewBag.HasReviewedThisCar = hasReviewedThisCar;
+                    var currentUserReview = await _context.Reviews
+                        .AsNoTracking()
+                        .Where(r => r.UserID == userId && r.CarID == id)
+                        .OrderByDescending(r => r.CreatedAt)
+                        .FirstOrDefaultAsync();
+                    ViewBag.HasReviewedThisCar = currentUserReview != null;
+                    ViewBag.CurrentUserReview = currentUserReview;
                 }
             }
 
@@ -217,7 +233,7 @@ namespace CarRentalSystem.Controllers
                     Price12h = _selfDrivePricingService.Calculate(car, quoteStart, quoteStart.AddHours(12)).BaseRentalAmount,
                     Price24h = _selfDrivePricingService.Calculate(car, quoteStart, quoteStart.AddHours(24)).BaseRentalAmount,
                     DiscountPercent = 0,
-                    DepositAmount = car.DefaultDeposit,
+                    DepositAmount = DepositPolicy.Calculate(_selfDrivePricingService.Calculate(car, quoteStart, quoteStart.AddHours(24)).BaseRentalAmount),
                     InsuranceFee = 0
                 }
             };
@@ -281,6 +297,7 @@ namespace CarRentalSystem.Controllers
                     car.IsWithDriverAllowed = true;
                     car.TransportPermitStatus = string.IsNullOrWhiteSpace(car.TransportPermitStatus) ? "Pending" : car.TransportPermitStatus;
                     car.IsApproved = false;
+                    car.ApprovalStatus = CarApprovalStatusConstants.Pending;
                 }
                 else
                 {
@@ -291,6 +308,8 @@ namespace CarRentalSystem.Controllers
                     car.BadgeType = null;
                     car.BadgeExpiryDate = null;
                     car.IsApproved = true;
+                    car.ApprovalStatus = CarApprovalStatusConstants.Approved;
+                    car.ApprovalRejectionReason = null;
                 }
 
                 await _carService.AddCarAsync(car);
@@ -373,10 +392,11 @@ namespace CarRentalSystem.Controllers
                 UserID = userId,
                 Rating = rating,
                 Comment = comment?.Trim() ?? string.Empty,
+                IsApproved = true,
                 CreatedAt = DateTime.UtcNow
             };
             await _carService.AddReviewAsync(review);
-            TempData["SuccessMessage"] = "Cảm ơn bạn đã để lại đánh giá!";
+            TempData["SuccessMessage"] = "Cảm ơn bạn đã đánh giá. Đánh giá của bạn đã được hiển thị công khai.";
             return RedirectToAction(nameof(Details), new { id = carId });
         }
 
@@ -385,15 +405,17 @@ namespace CarRentalSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> BusyDates(int carId)
         {
+            if (carId <= 0)
+                return BadRequest(new { message = "carId must be a positive integer." });
+
+            if (!await _context.Cars.AsNoTracking().AnyAsync(car => car.CarID == carId))
+                return NotFound(new { message = "Car not found." });
+
             var bookings = await _context.Bookings
                 .AsNoTracking()
                 .Where(b => b.CarID == carId &&
                     b.BookingStatus != null &&
-                    (b.BookingStatus.Name == BookingStatusConstants.Confirmed ||
-                     b.BookingStatus.Name == BookingStatusConstants.Pending ||
-                     b.BookingStatus.Name == BookingStatusConstants.Active ||
-                     b.BookingStatus.Name == BookingStatusConstants.Unpaid ||
-                     b.BookingStatus.Name == BookingStatusConstants.Draft))
+                    BookingStatusConstants.AvailabilityBlocking.Contains(b.BookingStatus.Name))
                 .Select(b => new { b.StartDate, b.EndDate })
                 .ToListAsync();
 
@@ -419,7 +441,7 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CarType)
                 .Include(c => c.CarImages)
                 .Include(c => c.Reviews)
-                .Where(c => c.CarStatus!.Name == "Available");
+                .WhereSelfDriveRentable();
 
             var regionCookie = HttpContext.Request.Cookies["RegionID"];
             if (!string.IsNullOrEmpty(regionCookie) && int.TryParse(regionCookie, out int parsedRegionId))
@@ -470,9 +492,14 @@ namespace CarRentalSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> CalculateDelivery(int carId, double customerLat, double customerLng)
         {
+            if (carId <= 0 || !IsValidCoordinate(customerLat, customerLng))
+                return BadRequest(new { success = false, message = "Invalid carId or customer coordinates." });
+
             var car = await _context.Cars
                 .AsNoTracking()
                 .Include(c => c.Location)
+                .Include(c => c.CarStatus)
+                .WhereSelfDriveRentable()
                 .FirstOrDefaultAsync(c => c.CarID == carId);
 
             if (car == null)
@@ -485,7 +512,11 @@ namespace CarRentalSystem.Controllers
             var carLat = car.Latitude ?? car.Location?.Latitude ?? 10.7769;
             var carLng = car.Longitude ?? car.Location?.Longitude ?? 106.7009;
 
-            var deliveryScope = HttpContext.RequestServices.GetRequiredService<IDeliveryScopeService>();
+            var deliveryScope = HttpContext.RequestServices.GetService<IDeliveryScopeService>();
+            var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
+            if (deliveryScope == null || deliveryService == null)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { success = false, message = "Delivery service is temporarily unavailable." });
+
             var scope = deliveryScope.CheckScope(car.CarAddress ?? car.Location?.Name, carLat, carLng, customerLat, customerLng);
             if (!scope.IsWithinScope)
             {
@@ -500,8 +531,15 @@ namespace CarRentalSystem.Controllers
             }
 
             // Tính delivery
-            var deliveryService = HttpContext.RequestServices.GetService<IDeliveryService>();
-            var deliveryInfo = await deliveryService!.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
+            DeliveryInfo deliveryInfo;
+            try
+            {
+                deliveryInfo = await deliveryService.CalculateDeliveryAsync(carLat, carLng, customerLat, customerLng);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { success = false, message = "Delivery service is temporarily unavailable." });
+            }
             if (car.MaxDeliveryDistanceKm > 0 && (decimal)deliveryInfo.DistanceKm > car.MaxDeliveryDistanceKm)
             {
                 return Json(new
@@ -537,6 +575,9 @@ namespace CarRentalSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllCarsWithDistance(double customerLat, double customerLng)
         {
+            if (!IsValidCoordinate(customerLat, customerLng))
+                return BadRequest(new { success = false, message = "Invalid customer coordinates." });
+
             var cars = await _context.Cars
                 .AsNoTracking()
                 .Include(c => c.Location)
@@ -545,7 +586,8 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CarImages)
                 .Include(c => c.Reviews)
                 .Include(c => c.CarStatus)
-                .Where(c => c.CarStatus != null && c.CarStatus.Name == "Available" && c.DeliveryEnabled)
+                .WhereSelfDriveRentable()
+                .Where(c => c.DeliveryEnabled)
                 .OrderByDescending(c => c.IsPremium)
                 .ThenByDescending(c => c.CreatedAt)
                 .Take(50)
@@ -553,6 +595,13 @@ namespace CarRentalSystem.Controllers
 
             var deliveryService = HttpContext.RequestServices.GetRequiredService<IDeliveryService>();
             var deliveryScope = HttpContext.RequestServices.GetRequiredService<IDeliveryScopeService>();
+            cars = cars
+                .OrderBy(car => deliveryService.CalculateHaversineDistance(
+                    car.Latitude ?? car.Location?.Latitude ?? 10.7769,
+                    car.Longitude ?? car.Location?.Longitude ?? 106.7009,
+                    customerLat,
+                    customerLng))
+                .ToList();
             var result = new List<object>();
 
             foreach (var car in cars)
@@ -605,6 +654,16 @@ namespace CarRentalSystem.Controllers
             return Json(new { success = true, cars = result });
         }
 
+        private static bool IsValidCoordinate(double latitude, double longitude)
+        {
+            return double.IsFinite(latitude) &&
+                double.IsFinite(longitude) &&
+                latitude >= -90 &&
+                latitude <= 90 &&
+                longitude >= -180 &&
+                longitude <= 180;
+        }
+
         // API: Load more cars (JSON)
         [HttpGet]
         public async Task<IActionResult> LoadMoreCars(
@@ -618,7 +677,8 @@ namespace CarRentalSystem.Controllers
             int? contractId,
             decimal? minPrice,
             decimal? maxPrice,
-            int page = 2)
+            int page = 2,
+            string? q = null)
         {
             const int pageSize = 12;
             var carsQuery = _context.Cars
@@ -629,9 +689,18 @@ namespace CarRentalSystem.Controllers
                 .Include(c => c.CarStatus)
                 .Include(c => c.CarBrand)
                 .Include(c => c.Reviews)
-                .Where(c => c.CarStatus!.Name == "Available")
+                .WhereSelfDriveRentable()
                 .AsSplitQuery()
                 .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var searchTerm = q.Trim();
+                carsQuery = carsQuery.Where(c =>
+                    c.CarName.Contains(searchTerm) ||
+                    (c.CarBrand != null && c.CarBrand.Name.Contains(searchTerm)) ||
+                    (c.LicensePlate != null && c.LicensePlate.Contains(searchTerm)));
+            }
 
             var regionCookie = HttpContext.Request.Cookies["RegionID"];
             if (!string.IsNullOrEmpty(regionCookie) && int.TryParse(regionCookie, out int parsedRegionId))

@@ -1,14 +1,59 @@
 /**
  * SmartRental Map Library
  * A standard Leaflet wrapper for the entire Car Rental System
- * Uses CartoDB Voyager as the main beautiful tile layer.
+ * Uses OpenStreetMap tiles and Nominatim geocoding.
  */
 const SmartMap = {
     // Shared configurations
     defaultLat: 10.7769,
     defaultLng: 106.7009,
-    tileUrl: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    tileAttr: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    tileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    tileAttr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    geocodingBaseUrl: 'https://nominatim.openstreetmap.org',
+
+    addTileLayer: function(map) {
+        const tileLayer = L.tileLayer(this.tileUrl, {
+            attribution: this.tileAttr,
+            maxZoom: 19
+        });
+        tileLayer.on('tileerror', () => document.dispatchEvent(new CustomEvent('smartrental:tileerror')));
+        tileLayer.addTo(map);
+        return tileLayer;
+    },
+
+    createMap: function(containerId, lat, lng, zoom = 14, mapOptions = {}) {
+        const el = document.getElementById(containerId);
+        if (!el || typeof L === 'undefined') return null;
+
+        const resolvedLat = Number.isFinite(Number(lat)) ? Number(lat) : this.defaultLat;
+        const resolvedLng = Number.isFinite(Number(lng)) ? Number(lng) : this.defaultLng;
+        const map = L.map(containerId, mapOptions).setView([resolvedLat, resolvedLng], zoom);
+        const tileLayer = this.addTileLayer(map);
+        return { map, tileLayer };
+    },
+
+    reverseGeocode: function(lat, lng) {
+        const url = `${this.geocodingBaseUrl}/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
+        return fetch(url).then(response => {
+            if (!response.ok) throw new Error('Reverse geocoding failed.');
+            return response.json();
+        });
+    },
+
+    forwardGeocode: function(query) {
+        const url = `${this.geocodingBaseUrl}/search?format=json&q=${encodeURIComponent(query)}&countrycodes=vn&limit=1`;
+        return fetch(url).then(response => {
+            if (!response.ok) throw new Error('Forward geocoding failed.');
+            return response.json();
+        });
+    },
+
+    getOpenStreetMapUrl: function(lat, lng, zoom = 16) {
+        const resolvedLat = Number(lat);
+        const resolvedLng = Number(lng);
+        if (!Number.isFinite(resolvedLat) || !Number.isFinite(resolvedLng)) return '#';
+        return `https://www.openstreetmap.org/?mlat=${resolvedLat}&mlon=${resolvedLng}#map=${zoom}/${resolvedLat}/${resolvedLng}`;
+    },
 
     // Generic Icon (car icon)
     getCarIcon: function() {
@@ -22,11 +67,9 @@ const SmartMap = {
 
     // 1. Static Map (For displaying single location, e.g. Car Details, MyBookings)
     initStaticMap: function(containerId, lat, lng, popupHtml = '') {
-        const el = document.getElementById(containerId);
-        if (!el || typeof L === 'undefined') return null;
-
-        const map = L.map(containerId).setView([lat || this.defaultLat, lng || this.defaultLng], 15);
-        L.tileLayer(this.tileUrl, { attribution: this.tileAttr }).addTo(map);
+        const baseMap = this.createMap(containerId, lat, lng, 15);
+        if (!baseMap) return null;
+        const { map, tileLayer } = baseMap;
 
         const marker = L.marker([lat || this.defaultLat, lng || this.defaultLng], { icon: this.getCarIcon() }).addTo(map);
         if (popupHtml) {
@@ -35,7 +78,7 @@ const SmartMap = {
 
         // Fix rendering issue in hidden tabs/modals
         setTimeout(() => map.invalidateSize(), 500);
-        return { map, marker };
+        return { map, marker, tileLayer };
     },
 
     // 2. Map Picker (For Add/Edit Car where user drags marker to select location)
@@ -61,8 +104,9 @@ const SmartMap = {
         const startLat = (latInput && latInput.value) ? parseFloat(latInput.value) : this.defaultLat;
         const startLng = (lngInput && lngInput.value) ? parseFloat(lngInput.value) : this.defaultLng;
 
-        const map = L.map(opts.containerId).setView([startLat, startLng], 14);
-        L.tileLayer(this.tileUrl, { attribution: this.tileAttr }).addTo(map);
+        const baseMap = this.createMap(opts.containerId, startLat, startLng, 14);
+        if (!baseMap) return null;
+        const { map, tileLayer } = baseMap;
 
         const marker = L.marker([startLat, startLng], { draggable: true }).addTo(map);
 
@@ -74,8 +118,7 @@ const SmartMap = {
 
             if (doGeocode && addressInput) {
                 // Reverse Geocoding via Nominatim
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
-                    .then(res => res.json())
+                this.reverseGeocode(lat, lng)
                     .then(data => {
                         if (data && data.display_name) {
                             addressInput.value = data.display_name;
@@ -124,8 +167,7 @@ const SmartMap = {
                 const query = this.value.trim();
                 if (query.length > 3) {
                     // Try to search Vietnam specifically, makes results more accurate
-                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=vn&limit=1`)
-                        .then(res => res.json())
+                    SmartMap.forwardGeocode(query)
                         .then(data => {
                             if (data && data.length > 0) {
                                 const lat = parseFloat(data[0].lat);
@@ -179,17 +221,15 @@ const SmartMap = {
         
         // Modal fixing
         setTimeout(() => map.invalidateSize(), 500);
-        return { map, marker, updateLocation };
+        return { map, marker, tileLayer, updateLocation };
     },
 
     // 3. Cluster Map (For Search Page with multiple cars)
     initClusterMap: function(containerId, carsData, onMarkerClick) {
-        const el = document.getElementById(containerId);
-        if (!el || typeof L === 'undefined') return null;
-
-        const map = L.map(containerId, { zoomControl: false }).setView([this.defaultLat, this.defaultLng], 13);
+        const baseMap = this.createMap(containerId, this.defaultLat, this.defaultLng, 13, { zoomControl: false });
+        if (!baseMap) return null;
+        const { map, tileLayer } = baseMap;
         L.control.zoom({ position: 'bottomright' }).addTo(map);
-        L.tileLayer(this.tileUrl, { attribution: this.tileAttr }).addTo(map);
 
         let activeMarkers = [];
         let markerMap = {};
@@ -240,7 +280,7 @@ const SmartMap = {
         }
 
         renderMarkers(carsData);
-        return { map, renderMarkers, markerMap };
+        return { map, tileLayer, renderMarkers, markerMap };
     }
 };
 

@@ -1,9 +1,8 @@
-@model IEnumerable<CarRentalSystem.Models.Car>
+@model CarRentalSystem.ViewModels.HomeIndexViewModel
 @{
     ViewData["Title"] = "CarRental - Thuê xe tự lái 24/7";
-    var availableCars = (ViewBag.AvailableCars as IEnumerable<CarRentalSystem.Models.Car>)?.ToList()
-        ?? new List<CarRentalSystem.Models.Car>();
-    var premiumCars = Model?.Take(6).ToList() ?? new List<CarRentalSystem.Models.Car>();
+    var availableCars = Model.AvailableCars;
+    var premiumCars = Model.PremiumCars;
 }
 
 <style>
@@ -192,7 +191,7 @@
 <div class="home-premium">
     <section class="home-hero">
         <div class="container">
-            <div class="pt-eyebrow text-white-50 mb-3">Premium self-drive rental</div>
+            <div class="pt-eyebrow text-white-50 mb-3">Thuê xe tự lái cao cấp</div>
             <h1>Thuê xe tự lái minh bạch, nhanh và an tâm.</h1>
             <p class="home-hero-copy mt-3 mb-0">
                 Chọn xe theo khu vực, giữ xe bằng đặt cọc trực tuyến, nhận xe linh hoạt và theo dõi đầy đủ chi phí trước chuyến đi.
@@ -324,7 +323,7 @@
         <div class="container">
             <div class="pt-page-header">
                 <div>
-                    <div class="pt-eyebrow mb-2">Why CarRental</div>
+                    <div class="pt-eyebrow mb-2">Vì sao chọn CarRental</div>
                     <h2 class="pt-title mb-1">Trải nghiệm thuê xe tự lái theo chuẩn cao cấp</h2>
                     <p class="pt-subtitle">Tập trung vào minh bạch, an toàn và tốc độ đặt xe thay vì chỉ hiển thị danh sách xe.</p>
                 </div>
@@ -358,7 +357,7 @@
         <div class="container">
             <div class="pt-page-header">
                 <div>
-                    <div class="pt-eyebrow mb-2">Available now</div>
+                    <div class="pt-eyebrow mb-2">Có sẵn ngay</div>
                     <h2 class="pt-title mb-1">Xe có ngay</h2>
                     <p class="pt-subtitle">Các mẫu xe sẵn sàng phục vụ trong khu vực bạn chọn.</p>
                 </div>
@@ -372,30 +371,26 @@
                 <div class="row g-4">
                     @foreach (var car in availableCars.Take(8))
                     {
-                        var carReviews = car.Reviews?.Where(r => r.IsApproved).ToList() ?? new List<CarRentalSystem.Models.Review>();
-                        var carAvgRating = carReviews.Any() ? carReviews.Average(r => r.Rating) : 5.0;
-                        var firstImage = car.CarImages?.OrderBy(i => i.ImageID).FirstOrDefault()?.ImageUrl ?? car.ImageURL;
-
                         <div class="col-xl-3 col-lg-4 col-sm-6">
                             <a href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="pt-car-card">
                                 <article class="card h-100 overflow-hidden">
                                     <div class="position-relative">
-                                        <img src="@firstImage" class="pt-car-card-img" alt="@car.CarName"
+                                        <img src="@car.ImageUrl" class="pt-car-card-img" alt="@car.CarName"
                                              onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=800'"
                                              loading="lazy" decoding="async">
                                         <span class="badge bg-success position-absolute top-0 start-0 m-2">Sẵn sàng</span>
                                     </div>
                                     <div class="card-body">
-                                        <div class="small text-muted fw-bold text-uppercase">@car.CarBrand?.Name</div>
+                                        <div class="small text-muted fw-bold text-uppercase">@car.BrandName</div>
                                         <h5 class="mb-2 text-truncate">@car.CarName</h5>
                                         <div class="d-flex flex-wrap gap-3 small text-muted mb-3">
                                             <span><i class="bi bi-gear me-1"></i>@car.Transmission</span>
                                             <span><i class="bi bi-people me-1"></i>@car.Seats chỗ</span>
-                                            <span><i class="bi bi-geo-alt me-1"></i>@car.Location?.Name</span>
+                                            <span><i class="bi bi-geo-alt me-1"></i>@car.LocationName</span>
                                         </div>
                                         <div class="d-flex align-items-center justify-content-between">
                                             <div><span class="pt-price">@((car.PricePerDay / 1000).ToString("N0"))K</span><span class="text-muted"> /24h</span></div>
-                                            <div class="small fw-bold text-warning"><i class="bi bi-star-fill"></i> @carAvgRating.ToString("0.0")</div>
+                                            <div class="small fw-bold text-warning"><i class="bi bi-star-fill"></i> @car.AverageRating.ToString("0.0")</div>
                                         </div>
                                     </div>
                                 </article>
@@ -419,7 +414,7 @@
         <div class="container">
             <div class="pt-page-header">
                 <div>
-                    <div class="pt-eyebrow mb-2">Premium fleet</div>
+                    <div class="pt-eyebrow mb-2">Dàn xe cao cấp</div>
                     <h2 class="pt-title mb-1">Xe sang và xe cao cấp</h2>
                     <p class="pt-subtitle">Dành cho công việc, sự kiện hoặc chuyến đi cần trải nghiệm tốt hơn.</p>
                 </div>
@@ -433,16 +428,15 @@
                 <div class="row g-4">
                     @foreach (var car in premiumCars)
                     {
-                        var firstImage = car.CarImages?.OrderBy(i => i.ImageID).FirstOrDefault()?.ImageUrl ?? car.ImageURL;
                         <div class="col-lg-4 col-md-6">
                             <a href="@Url.Action("Details", "Car", new { id = car.CarID, duration = 24 })" class="pt-car-card">
                                 <article class="card h-100 overflow-hidden">
-                                    <img src="@firstImage" class="pt-car-card-img" alt="@car.CarName"
+                                    <img src="@car.ImageUrl" class="pt-car-card-img" alt="@car.CarName"
                                          onerror="this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=900'"
                                          loading="lazy" decoding="async">
                                     <div class="card-body">
                                         <span class="badge bg-dark mb-2"><i class="bi bi-gem text-warning me-1"></i>Premium</span>
-                                        <h5>@car.CarBrand?.Name @car.CarName</h5>
+                                        <h5>@car.BrandName @car.CarName</h5>
                                         <div class="d-flex justify-content-between align-items-center mt-3">
                                             <span class="text-muted small">@car.Seats chỗ · @car.Transmission</span>
                                             <span class="pt-price">@((car.PricePerDay / 1000).ToString("N0"))K</span>
@@ -460,7 +454,7 @@
     <section class="home-section">
         <div class="container">
             <div class="text-center mb-4">
-                <div class="pt-eyebrow mb-2">How it works</div>
+                <div class="pt-eyebrow mb-2">Quy trình thuê xe</div>
                 <h2 class="pt-title">3 bước đặt xe rõ ràng</h2>
             </div>
             <div class="row g-4">

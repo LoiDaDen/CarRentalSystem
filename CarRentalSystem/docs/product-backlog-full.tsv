@@ -148,4 +148,4 @@ PB37	Voucher	Khách hàng	Đổi mã voucher khi thanh toán	Tôi có thể sử
 PB38	Hoàn thiện	Hệ thống	Tối ưu hóa hiệu suất và kiểm tra tải	Tôi có thể đảm bảo hệ thống xử lý được lưu lượng truy cập	POL01	2	High	6	Mới	Redis caching, tối ưu hóa truy vấn	5
 PB38	Hoàn thiện	Khách hàng	Giao diện responsive trên di động cho tất cả các trang	Tôi có thể sử dụng hệ thống trên thiết bị di động	POL02	2	Medium	6	Mới	Tối ưu hóa di động	5
 PB38	Hoàn thiện	Quản trị viên	Tối ưu hóa SEO cho các trang công khai	Tôi có thể cải thiện khả năng hiển thị trên công cụ tìm kiếm	POL03	3	Low	6	Mới	Thẻ meta, sitemap, robots.txt	2
-PB38	Hoàn thiện	Hệ thống	Kiểm thử end-to-end toàn diện	Tôi có thể đảm bảo chất lượng trước khi phát hành	POL04	1	High	6	Mới	Kiểm thử E2E Cypress cho các luồng quan trọng	8
+PB38	Hoàn thiện	Hệ thống	Kiểm thử end-to-end toàn diện	Tôi có thể đảm bảo chất lượng trước khi phát hành	POL04	1	High	6	Mới	Kiểm thử E2E Playwright cho các luồng quan trọng	8

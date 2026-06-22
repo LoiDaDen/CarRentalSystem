@@ -1,0 +1,18 @@
+@model StaffDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div><h1 class="portal-page-title h3 mb-1">Công việc hôm nay</h1><p class="text-muted mb-0">Tập trung vào các booking và tác vụ cần xử lý.</p></div>
+    <a class="btn btn-primary" asp-area="Staff" asp-controller="Booking" asp-action="Index">Xử lý booking</a>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><div class="portal-card portal-kpi"><div class="label">Booking hôm nay</div><div class="value">@Model.TodayBookings</div></div></div>
+    <div class="col-6 col-xl-3"><div class="portal-card portal-kpi"><div class="label">Cần bàn giao</div><div class="value">@Model.HandoverDue</div></div></div>
+    <div class="col-6 col-xl-3"><div class="portal-card portal-kpi"><div class="label">Cần nhận trả</div><div class="value">@Model.ReturnDue</div></div></div>
+    <div class="col-6 col-xl-3"><div class="portal-card portal-kpi"><div class="label">Ticket chờ xử lý</div><div class="value">@Model.OpenTickets</div></div></div>
+</div>
+<section class="portal-card staff-task-board">
+    <div class="portal-card-body"><h2 class="h5 fw-bold mb-0">Tác vụ được phân công</h2></div>
+    @await Html.PartialAsync("_PortalBookingTable", Model.AssignedTasks)
+</section>

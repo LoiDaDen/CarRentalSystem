@@ -155,14 +155,9 @@ namespace CarRentalSystem.Controllers
                 return Json(new { success = false, message = "Xe không tồn tại." });
             }
 
-            if (car.CarStatus?.Name != "Available")
+            if (!CarRentabilityPolicy.IsSelfDriveRentable(car))
             {
-                return Json(new { success = false, message = "Xe này hiện không có sẵn để thuê." });
-            }
-
-            if (!car.IsSelfDriveAllowed || car.IsWithDriverAllowed)
-            {
-                return Json(new { success = false, message = "Xe này không thuộc luồng thuê xe tự lái." });
+                return Json(new { success = false, message = CarRentabilityPolicy.GetUnavailableReason(car) });
             }
 
             var availability = await _reservationService.CheckCarAvailabilityAsync(carId, startDate, endDate);
@@ -605,7 +600,7 @@ namespace CarRentalSystem.Controllers
                     addonTotal = quote.AddOnFee,
                     addonDetails = quote.AddOns,
                     totalPrice = quote.TotalPrice,
-                    defaultDeposit = quote.CollateralAmount,
+                    defaultDeposit = quote.HoldingFee,
                     contractSigningMode = CarContractSigningModes.Normalize(item.Car?.ContractSigningMode),
                     termsDocumentVersionId = quote.TermsDocumentVersionID,
                     privacyNoticeVersionId = quote.PrivacyNoticeVersionID,
@@ -619,7 +614,7 @@ namespace CarRentalSystem.Controllers
             decimal discountAmount = quotes.Sum(q => q.DiscountAmount);
             decimal totalAmount = quotes.Sum(q => q.TotalPrice);
             decimal holdingFee = quotes.Sum(q => q.HoldingFee);
-            decimal totalDeposit = quotes.Sum(q => q.CollateralAmount);
+            decimal totalDeposit = quotes.Sum(q => q.HoldingFee);
             decimal memDiscount = user?.MembershipTier?.DiscountPercent ?? 0;
 
             var cartConsentEvidence = System.Text.Json.JsonSerializer.Serialize(new

@@ -35,7 +35,18 @@ public class OwnerCarCardViewModel
     public string ServiceLabel { get; set; } = "Xe tự lái";
     public string StatusName { get; set; } = string.Empty;
     public bool IsApproved { get; set; }
+    public string ApprovalStatus { get; set; } = CarApprovalStatusConstants.Pending;
+    public string? ApprovalRejectionReason { get; set; }
+    public bool IsPendingDeletion { get; set; }
+    public bool HasPendingChange { get; set; }
+    public string? PendingChangeOperation { get; set; }
+    public string? PendingChangeStage { get; set; }
+    public string? PendingApprovalLabel { get; set; }
+    public DateTime? PendingChangeCreatedAt { get; set; }
     public decimal PricePerDay { get; set; }
+    public decimal CommissionRate { get; set; }
+    public decimal CommissionAmountPerDay { get; set; }
+    public decimal OwnerIncomePerDay { get; set; }
     public int TripCount { get; set; }
     public int ActiveBookingCount { get; set; }
     public decimal MonthRevenue { get; set; }
@@ -52,6 +63,57 @@ public class OwnerCarCardViewModel
     public string InspectionStatusClass { get; set; } = "warn";
     public string InspectionStatusIcon { get; set; } = "bi-calendar-x";
 }
+
+public class OwnerCarDetailsViewModel
+{
+    public OwnerPortalChromeViewModel Chrome { get; set; } = new();
+    public int CarID { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string LicensePlate { get; set; } = string.Empty;
+    public IReadOnlyList<string> ImageUrls { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Amenities { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<OwnerCarActionItemViewModel> ActionItems { get; set; } = Array.Empty<OwnerCarActionItemViewModel>();
+    public string ServiceLabel { get; set; } = string.Empty;
+    public string StatusName { get; set; } = string.Empty;
+    public bool IsApproved { get; set; }
+    public string ApprovalStatus { get; set; } = CarApprovalStatusConstants.Pending;
+    public string? ApprovalRejectionReason { get; set; }
+    public bool IsPendingDeletion { get; set; }
+    public bool HasPendingChange { get; set; }
+    public string? PendingChangeOperation { get; set; }
+    public string? PendingChangeStage { get; set; }
+    public string? PendingChangeStatus { get; set; }
+    public string? PendingApprovalLabel { get; set; }
+    public DateTime? PendingChangeCreatedAt { get; set; }
+    public decimal PricePerDay { get; set; }
+    public decimal CommissionRate { get; set; }
+    public decimal CommissionAmountPerDay { get; set; }
+    public decimal OwnerIncomePerDay { get; set; }
+    public decimal MonthGmv { get; set; }
+    public decimal MonthCommission { get; set; }
+    public decimal MonthOwnerIncome { get; set; }
+    public int CompletedTripCount { get; set; }
+    public int ActiveBookingCount { get; set; }
+    public bool HasGps { get; set; }
+    public DateTime? LatestGpsAt { get; set; }
+    public bool HasEnoughImages { get; set; }
+    public bool HasRequiredDocuments { get; set; }
+    public string ContractSigningModeLabel { get; set; } = string.Empty;
+    public int Seats { get; set; }
+    public string FuelType { get; set; } = string.Empty;
+    public string Transmission { get; set; } = string.Empty;
+    public string? FuelConsumption { get; set; }
+    public string? Description { get; set; }
+    public string? CarAddress { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public DateTime? NextInspectionDate { get; set; }
+    public string InspectionStatusLabel { get; set; } = string.Empty;
+    public string InspectionStatusClass { get; set; } = "warn";
+    public string InspectionStatusIcon { get; set; } = "bi-calendar-x";
+}
+
+public record OwnerCarActionItemViewModel(string Title, string Description, string CssClass, string Icon);
 
 public class OwnerCalendarViewModel
 {
@@ -107,12 +169,6 @@ public class OwnerGuideViewModel
 public class OwnerFinesViewModel
 {
     public OwnerPortalChromeViewModel Chrome { get; set; } = new();
-    public IReadOnlyList<OwnerCarOptionViewModel> Cars { get; set; } = Array.Empty<OwnerCarOptionViewModel>();
-    public int? CarId { get; set; }
-    public string? Plate { get; set; }
-    public string? NormalizedPlate { get; set; }
-    public bool HasQuery { get; set; }
-    public bool IsPlateOwned { get; set; }
 }
 
 public class OwnerTaxInfoViewModel
@@ -235,6 +291,9 @@ public class OwnerWalletViewModel
     public decimal GrossRevenue { get; set; }
     public decimal EstimatedOwnerIncome { get; set; }
     public decimal MonthIncome { get; set; }
+    public decimal HeldDeposits { get; set; }
+    public decimal RefundedDeposits { get; set; }
+    public decimal DepositDeductions { get; set; }
     public int CompletedTrips { get; set; }
     public IReadOnlyList<OwnerWalletTransactionRowViewModel> Transactions { get; set; } = Array.Empty<OwnerWalletTransactionRowViewModel>();
     public IReadOnlyList<OwnerWalletBookingRowViewModel> BookingRows { get; set; } = Array.Empty<OwnerWalletBookingRowViewModel>();
@@ -256,7 +315,53 @@ public class OwnerWalletBookingRowViewModel
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal RentalAmount { get; set; }
-    public decimal CommissionRate { get; set; }
     public decimal OwnerIncome { get; set; }
+    public decimal DepositAmount { get; set; }
+    public string DepositStatus { get; set; } = string.Empty;
     public string StatusName { get; set; } = string.Empty;
+}
+
+public class OwnerBookingsViewModel
+{
+    public OwnerPortalChromeViewModel Chrome { get; set; } = new();
+    public string Tab { get; set; } = "pending";
+    public IReadOnlyList<OwnerBookingRowViewModel> PendingBookings { get; set; } = Array.Empty<OwnerBookingRowViewModel>();
+    public IReadOnlyList<OwnerBookingRowViewModel> CurrentBookings { get; set; } = Array.Empty<OwnerBookingRowViewModel>();
+    public IReadOnlyList<OwnerBookingRowViewModel> HistoryBookings { get; set; } = Array.Empty<OwnerBookingRowViewModel>();
+}
+
+public class OwnerBookingRowViewModel
+{
+    public int BookingID { get; set; }
+    public int CarID { get; set; }
+    public string CarName { get; set; } = string.Empty;
+    public string LicensePlate { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerPhone { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public string StatusName { get; set; } = string.Empty;
+    public string StatusClass { get; set; } = "neutral";
+    public decimal TotalPrice { get; set; }
+    public decimal DepositAmount { get; set; }
+    public string DepositStatus { get; set; } = string.Empty;
+    public bool CanDecide { get; set; }
+}
+
+public class OwnerBookingDetailsViewModel : OwnerBookingRowViewModel
+{
+    public OwnerPortalChromeViewModel Chrome { get; set; } = new();
+    public string? CancelReason { get; set; }
+    public IReadOnlyList<OwnerHandoverRecordRowViewModel> HandoverRecords { get; set; } = Array.Empty<OwnerHandoverRecordRowViewModel>();
+}
+
+public class OwnerHandoverRecordRowViewModel
+{
+    public int HandoverID { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public string TypeLabel { get; set; } = string.Empty;
+    public DateTime RecordDate { get; set; }
+    public int Odo { get; set; }
+    public string FuelLevel { get; set; } = string.Empty;
+    public decimal CompensationAmount { get; set; }
 }

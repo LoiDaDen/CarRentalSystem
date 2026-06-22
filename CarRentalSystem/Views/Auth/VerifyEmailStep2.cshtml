@@ -2,7 +2,6 @@
     ViewData["Title"] = "Nhập Mã Xác Thực";
     var errorMessage = ViewBag.Error?.ToString() ?? TempData["ErrorMessage"]?.ToString();
     var successMessage = TempData["SuccessMessage"]?.ToString();
-    var developmentOtp = ViewBag.DevelopmentOtp?.ToString();
 }
 
 <div class="container">
@@ -55,17 +54,6 @@
                         <div class="alert alert-success alert-dismissible fade show animate__animated animate__bounceIn" role="alert">
                             <i class="bi bi-check-circle-fill me-2"></i>@successMessage
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(developmentOtp))
-                    {
-                        <div class="alert alert-info" role="alert">
-                            <div class="fw-semibold mb-1">
-                                <i class="bi bi-terminal me-2"></i>Development OTP
-                            </div>
-                            <div>Local OTP: <strong class="fs-5">@developmentOtp</strong></div>
-                            <small class="d-block mt-1">Thong tin nay chi hien thi khi chay moi truong Development.</small>
                         </div>
                     }
 

@@ -1,3 +1,4 @@
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Data;
 using CarRentalSystem.BackgroundJobs;
 using CarRentalSystem.Models;
@@ -9,33 +10,40 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class UserController : Controller
     {
         private readonly ApplicationDbContext _context;
         private readonly IPiiEncryptionService _piiEncryption;
         private readonly IConfiguration _configuration;
+        private readonly ICustomerRiskScoringService _riskScoringService;
+        private readonly IPiiAccessService _piiAccess;
 
         public UserController(
             ApplicationDbContext context,
             IPiiEncryptionService piiEncryption,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ICustomerRiskScoringService riskScoringService,
+            IPiiAccessService piiAccess)
         {
             _context = context;
             _piiEncryption = piiEncryption;
             _configuration = configuration;
+            _riskScoringService = riskScoringService;
+            _piiAccess = piiAccess;
         }
 
         public async Task<IActionResult> Index(string? search, string? role)
         {
             ViewBag.Search = search;
             ViewBag.ActiveRole = role;
-            ViewBag.PinVerified = HttpContext.Session.GetString("AdminPinVerified") == "true";
+            ViewBag.PinVerified = _piiAccess.HasActiveGrant(HttpContext);
 
             ViewBag.TotalUsers = await _context.Users.CountAsync();
             ViewBag.TotalAdmins = await _context.Users.CountAsync(u => u.Role == "Admin");
@@ -55,6 +63,14 @@ namespace CarRentalSystem.Areas.Admin.Controllers
                 users = users.Where(u => u.Role == role);
 
             var list = await users.OrderByDescending(u => u.CreatedAt).ToListAsync();
+            var userIds = list.Select(u => u.UserID).ToList();
+            var riskRows = await _context.CustomerRiskAssessments.AsNoTracking()
+                .Where(r => userIds.Contains(r.UserID))
+                .OrderByDescending(r => r.AssessedAtUtc)
+                .ToListAsync();
+            ViewBag.LatestRiskByUser = riskRows
+                .GroupBy(r => r.UserID)
+                .ToDictionary(g => g.Key, g => g.First());
 
             // 🔓 Chỉ decrypt PII khi đã verify PIN
             if (ViewBag.PinVerified == true)
@@ -70,29 +86,52 @@ namespace CarRentalSystem.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public IActionResult VerifyAdminPin(string pin)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AssessRisk(int id)
         {
-            // Load PIN tu config/environment
+            try
+            {
+                var result = await _riskScoringService.AssessAsync(id, DateTime.UtcNow);
+                TempData["Success"] = $"Đã đánh giá risk score user #{id}: {result.Score}/100 ({result.RiskLevel}).";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> VerifyAdminPin(string pin)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
             var adminPin = _configuration["Admin:Pin"]
                 ?? Environment.GetEnvironmentVariable("ADMIN_PIN");
 
-            // Development fallback - chi trong Dev environment
-            if (string.IsNullOrEmpty(adminPin) && HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+            if (string.IsNullOrWhiteSpace(adminPin) &&
+                (HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment() ||
+                 HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsEnvironment("Playwright")))
             {
-                adminPin = "123456"; // Dev only fallback
+                adminPin = "123456";
             }
 
-            if (string.IsNullOrEmpty(adminPin))
+            if (string.IsNullOrWhiteSpace(adminPin))
             {
-                TempData["PinError"] = "Hệ thống chưa cấu hình Admin PIN. Vui lòng liên hệ quản trị.";
+                TempData["PinError"] = "Hệ thống chưa cấu hình mã PIN danh sách khách hàng.";
                 return RedirectToAction(nameof(Index));
             }
 
             if (pin == adminPin)
             {
-                HttpContext.Session.SetString("AdminPinVerified", "true");
+                await _piiAccess.GrantAsync(HttpContext, userId, "Shared admin customer-list PIN verified.");
                 return RedirectToAction(nameof(Index));
             }
+            await _piiAccess.RecordDeniedAsync(HttpContext, userId, "Invalid shared admin customer-list PIN.");
             TempData["PinError"] = "Mã PIN không chính xác!";
             return RedirectToAction(nameof(Index));
         }

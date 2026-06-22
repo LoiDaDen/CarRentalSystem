@@ -1,6 +1,7 @@
 using CarRentalSystem.Data;
 using CarRentalSystem.Models;
 using CarRentalSystem.Services;
+using CarRentalSystem.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -44,7 +45,7 @@ namespace CarRentalSystem.Controllers
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
             var booking = await LoadBookingForHandoverAsync(bookingId);
-            if (booking == null || !await CanAccessBookingAsync(booking, userId))
+            if (booking == null || !await CanViewBookingAsync(booking, userId))
                 return NotFound("Không tìm thấy chuyến đi.");
 
             ViewBag.Booking = booking;
@@ -63,11 +64,14 @@ namespace CarRentalSystem.Controllers
 
             var record = await _context.HandoverRecords
                 .Include(h => h.Booking)
+                .ThenInclude(b => b!.User)
+                .Include(h => h.Booking)
                 .ThenInclude(b => b.Car)
                 .ThenInclude(c => c!.CarBrand)
+                .Include(h => h.InventoryItems)
                 .FirstOrDefaultAsync(h => h.HandoverID == id && !h.IsDeleted);
 
-            if (record?.Booking == null || !await CanAccessBookingAsync(record.Booking, userId))
+            if (record?.Booking == null || !await CanViewBookingAsync(record.Booking, userId))
                 return NotFound("Không tìm thấy biên bản.");
 
             return View(record);
@@ -79,7 +83,7 @@ namespace CarRentalSystem.Controllers
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
             var booking = await LoadBookingForHandoverAsync(bookingId);
-            if (booking == null || !await CanAccessBookingAsync(booking, userId))
+            if (booking == null || !await CanCaptureBookingAsync(booking, userId))
                 return NotFound("Không tìm thấy chuyến đi.");
 
             var normalizedType = NormalizeType(type);
@@ -103,52 +107,44 @@ namespace CarRentalSystem.Controllers
                 return RedirectToAction("Details", "Booking", new { id = bookingId });
             }
 
-            ViewBag.Type = normalizedType;
-            ViewBag.Booking = booking;
-            return View();
+            return View(await BuildCaptureViewModelAsync(booking, normalizedType));
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(
-            int BookingID,
-            string Type,
-            int Odo,
-            string FuelLevel,
-            IFormFile? imgFront,
-            IFormFile? imgBack,
-            IFormFile? imgLeft,
-            IFormFile? imgRight,
-            IFormFile? imgInside,
-            double? GeoLatitude,
-            double? GeoLongitude,
-            string? SignatureBase64)
+        public async Task<IActionResult> Submit(HandoverCaptureViewModel model)
         {
             if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
 
-            var booking = await LoadBookingForHandoverAsync(BookingID);
-            if (booking == null || !await CanAccessBookingAsync(booking, userId))
+            var booking = await LoadBookingForHandoverAsync(model.BookingID);
+            if (booking == null || !await CanCaptureBookingAsync(booking, userId))
                 return NotFound();
 
-            var normalizedType = NormalizeType(Type);
+            var normalizedType = NormalizeType(model.Type);
             if (!IsStatusAllowedForHandover(booking.BookingStatus?.Name, normalizedType))
             {
                 TempData["ErrorMessage"] = "Trạng thái đơn thuê không hợp lệ để lập biên bản bàn giao.";
-                return RedirectToAction("Details", "Booking", new { id = BookingID });
+                return RedirectToAction("Details", "Booking", new { id = model.BookingID });
             }
 
             if (normalizedType == "CheckIn" && RequiresSignedDigitalContract(booking) && !HasSignedDigitalContract(booking))
             {
                 TempData["ErrorMessage"] = "Vui lòng ký hợp đồng số trước khi lập biên bản nhận xe.";
-                return RedirectToAction("Details", "Booking", new { id = BookingID });
+                return RedirectToAction("Details", "Booking", new { id = model.BookingID });
             }
 
             var alreadyCaptured = await _context.HandoverRecords
-                .AnyAsync(h => h.BookingID == BookingID && h.Type == normalizedType && !h.IsDeleted);
+                .AnyAsync(h => h.BookingID == model.BookingID && h.Type == normalizedType && !h.IsDeleted);
             if (alreadyCaptured)
             {
                 TempData["ErrorMessage"] = $"Biên bản {normalizedType} đã tồn tại.";
-                return RedirectToAction("Details", "Booking", new { id = BookingID });
+                return RedirectToAction("Details", "Booking", new { id = model.BookingID });
+            }
+
+            if (!HasRequiredEvidenceImages(model) || string.IsNullOrWhiteSpace(model.SignatureBase64))
+            {
+                TempData["ErrorMessage"] = "Vui lòng chụp đủ 5 ảnh và ký xác nhận trước khi gửi biên bản.";
+                return RedirectToAction("Capture", new { bookingId = model.BookingID, type = normalizedType });
             }
 
             var uploadPath = Path.Combine(_env.ContentRootPath, "App_Data", "SecureUploads", "Handovers");
@@ -159,42 +155,53 @@ namespace CarRentalSystem.Controllers
             {
                 record = new HandoverRecord
                 {
-                    BookingID = BookingID,
+                    BookingID = model.BookingID,
                     Type = normalizedType,
                     RecordDate = DateTime.UtcNow,
-                    Odo = Odo,
-                    FuelLevel = FuelLevel,
+                    Odo = model.Odo,
+                    FuelLevel = model.FuelLevel,
                     RecordedByUserId = userId,
-                    FrontImgUrl = await SaveEvidenceFileAsync(uploadPath, imgFront),
-                    BackImgUrl = await SaveEvidenceFileAsync(uploadPath, imgBack),
-                    LeftImgUrl = await SaveEvidenceFileAsync(uploadPath, imgLeft),
-                    RightImgUrl = await SaveEvidenceFileAsync(uploadPath, imgRight),
-                    InsideImgUrl = await SaveEvidenceFileAsync(uploadPath, imgInside),
-                    GeoLatitude = GeoLatitude,
-                    GeoLongitude = GeoLongitude
+                    FrontImgUrl = await SaveEvidenceFileAsync(uploadPath, model.ImgFront, booking.UserID, "Handovers"),
+                    BackImgUrl = await SaveEvidenceFileAsync(uploadPath, model.ImgBack, booking.UserID, "Handovers"),
+                    LeftImgUrl = await SaveEvidenceFileAsync(uploadPath, model.ImgLeft, booking.UserID, "Handovers"),
+                    RightImgUrl = await SaveEvidenceFileAsync(uploadPath, model.ImgRight, booking.UserID, "Handovers"),
+                    InsideImgUrl = await SaveEvidenceFileAsync(uploadPath, model.ImgInside, booking.UserID, "Handovers"),
+                    GeoLatitude = model.GeoLatitude,
+                    GeoLongitude = model.GeoLongitude
                 };
+
+                foreach (var item in BuildInventorySnapshots(model.InventoryItems, normalizedType))
+                    record.InventoryItems.Add(item);
+
             }
             catch (InvalidOperationException ex)
             {
                 TempData["ErrorMessage"] = ex.Message;
-                return RedirectToAction("Capture", new { bookingId = BookingID, type = normalizedType });
+                return RedirectToAction("Capture", new { bookingId = model.BookingID, type = normalizedType });
             }
 
-            var signatureResult = await SaveSignatureAsync(uploadPath, SignatureBase64);
+            if (record.InventoryItems.Count == 0)
+            {
+                TempData["ErrorMessage"] = "Checklist phụ kiện đang trống. Vui lòng thử lại sau khi hệ thống tải danh mục phụ kiện.";
+                return RedirectToAction("Capture", new { bookingId = model.BookingID, type = normalizedType });
+            }
+
+            var signatureResult = await SaveSignatureAsync(uploadPath, model.SignatureBase64, booking.UserID);
             if (!signatureResult.IsValid)
             {
                 TempData["ErrorMessage"] = "Chữ ký không hợp lệ. Vui lòng ký lại.";
-                return RedirectToAction("Capture", new { bookingId = BookingID, type = normalizedType });
+                return RedirectToAction("Capture", new { bookingId = model.BookingID, type = normalizedType });
             }
 
             record.SignatureUrl = signatureResult.Url;
-            if (!string.IsNullOrWhiteSpace(SignatureBase64))
-                record.CustomerSignatureHash = _evidenceHash.ComputeTextHash(SignatureBase64);
+            if (!string.IsNullOrWhiteSpace(model.SignatureBase64))
+                record.CustomerSignatureHash = _evidenceHash.ComputeTextHash(model.SignatureBase64);
 
             record.EvidenceHash = _evidenceHash.ComputeHandoverEvidenceHash(record);
             _context.HandoverRecords.Add(record);
             await _context.SaveChangesAsync();
 
+            var compensationAmount = record.InventoryItems.Sum(i => i.MissingCharge);
             await _auditTrail.RecordAsync(new AuditLog
             {
                 Action = "CreateHandoverEvidence",
@@ -202,11 +209,18 @@ namespace CarRentalSystem.Controllers
                 EntityId = record.HandoverID,
                 UserId = userId,
                 Reason = $"Handover {record.Type} evidence captured.",
-                NewValues = System.Text.Json.JsonSerializer.Serialize(new { record.BookingID, record.Type, record.EvidenceHash })
+                NewValues = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    record.BookingID,
+                    record.Type,
+                    record.EvidenceHash,
+                    InventoryItems = record.InventoryItems.Count,
+                    CompensationAmount = compensationAmount
+                })
             });
 
             TempData["SuccessMessage"] = $"Biên bản {record.Type} đã được lưu trữ an toàn.";
-            return RedirectToAction("Details", "Booking", new { id = BookingID });
+            return RedirectToAction("Details", "Booking", new { id = model.BookingID });
         }
 
         private async Task<Booking?> LoadBookingForHandoverAsync(int bookingId)
@@ -215,10 +229,162 @@ namespace CarRentalSystem.Controllers
                 .Include(b => b.BookingStatus)
                 .Include(b => b.Car)
                 .ThenInclude(c => c!.CarBrand)
+                .Include(b => b.Car)
+                .ThenInclude(c => c!.InventoryItems)
                 .Include(b => b.DigitalContract)
                 .Include(b => b.BookingTransaction)
                 .ThenInclude(t => t!.DigitalContract)
                 .FirstOrDefaultAsync(b => b.BookingID == bookingId);
+        }
+
+        private async Task<HandoverCaptureViewModel> BuildCaptureViewModelAsync(Booking booking, string normalizedType)
+        {
+            var model = new HandoverCaptureViewModel
+            {
+                BookingID = booking.BookingID,
+                Type = normalizedType,
+                Booking = booking,
+                Odo = booking.Car?.CurrentOdometer ?? 0,
+                FuelLevel = "F",
+                InventoryItems = await BuildInventoryInputsAsync(booking, normalizedType)
+            };
+
+            return model;
+        }
+
+        private async Task<List<HandoverInventoryInput>> BuildInventoryInputsAsync(Booking booking, string normalizedType)
+        {
+            if (normalizedType == "CheckOut")
+            {
+                var checkIn = await _context.HandoverRecords
+                    .Include(h => h.InventoryItems)
+                    .Where(h => h.BookingID == booking.BookingID && h.Type == "CheckIn")
+                    .OrderByDescending(h => h.RecordDate)
+                    .FirstOrDefaultAsync();
+
+                if (checkIn?.InventoryItems.Any() == true)
+                {
+                    return checkIn.InventoryItems
+                        .OrderBy(i => i.ItemName)
+                        .Select(i => new HandoverInventoryInput
+                        {
+                            CarInventoryItemID = i.CarInventoryItemID,
+                            ItemName = i.ItemName,
+                            ExpectedQuantity = i.ActualQuantity,
+                            ActualQuantity = i.ActualQuantity,
+                            ConditionStatus = i.ActualQuantity > 0
+                                ? HandoverInventoryConditionStatusConstants.Intact
+                                : HandoverInventoryConditionStatusConstants.Absent,
+                            UnitReplacementCost = i.UnitReplacementCost,
+                            Notes = i.Notes
+                        })
+                        .ToList();
+                }
+            }
+
+            var carInventory = booking.Car?.InventoryItems?
+                .Where(i => i.IsActive && !i.IsDeleted)
+                .OrderBy(i => i.ItemName)
+                .Select(i => new HandoverInventoryInput
+                {
+                    CarInventoryItemID = i.CarInventoryItemID,
+                    ItemName = i.ItemName,
+                    ExpectedQuantity = i.Quantity,
+                    ActualQuantity = i.Quantity,
+                    ConditionStatus = HandoverInventoryConditionStatusConstants.Present,
+                    UnitReplacementCost = i.UnitReplacementCost
+                })
+                .ToList();
+
+            return carInventory?.Count > 0 ? carInventory : BuildFallbackInventoryInputs();
+        }
+
+        private static List<HandoverInventoryInput> BuildFallbackInventoryInputs()
+        {
+            return new List<HandoverInventoryInput>
+            {
+                new() { ItemName = "Đăng kiểm/bảo hiểm bản sao", ExpectedQuantity = 1, ActualQuantity = 1, ConditionStatus = HandoverInventoryConditionStatusConstants.Present, UnitReplacementCost = 200000 },
+                new() { ItemName = "Thảm sàn", ExpectedQuantity = 1, ActualQuantity = 1, ConditionStatus = HandoverInventoryConditionStatusConstants.Present, UnitReplacementCost = 500000 },
+                new() { ItemName = "Bánh dự phòng", ExpectedQuantity = 1, ActualQuantity = 1, ConditionStatus = HandoverInventoryConditionStatusConstants.Present, UnitReplacementCost = 2500000 },
+                new() { ItemName = "Bộ kích và cờ lê", ExpectedQuantity = 1, ActualQuantity = 1, ConditionStatus = HandoverInventoryConditionStatusConstants.Present, UnitReplacementCost = 1200000 },
+                new() { ItemName = "Camera hành trình/thẻ nhớ", ExpectedQuantity = 1, ActualQuantity = 1, ConditionStatus = HandoverInventoryConditionStatusConstants.Present, UnitReplacementCost = 1800000 },
+                new() { ItemName = "Cáp sạc điện thoại", ExpectedQuantity = 1, ActualQuantity = 1, ConditionStatus = HandoverInventoryConditionStatusConstants.Present, UnitReplacementCost = 250000 },
+                new() { ItemName = "Bơm lốp mini", ExpectedQuantity = 1, ActualQuantity = 1, ConditionStatus = HandoverInventoryConditionStatusConstants.Present, UnitReplacementCost = 700000 }
+            };
+        }
+
+        private static List<HandoverInventoryItem> BuildInventorySnapshots(IEnumerable<HandoverInventoryInput>? inputs, string normalizedType)
+        {
+            var snapshots = new List<HandoverInventoryItem>();
+            foreach (var input in inputs ?? Enumerable.Empty<HandoverInventoryInput>())
+            {
+                var itemName = input.ItemName?.Trim();
+                if (string.IsNullOrWhiteSpace(itemName))
+                    continue;
+
+                var unitCost = Math.Max(0, input.UnitReplacementCost);
+                var originalExpectedQuantity = Math.Max(0, input.ExpectedQuantity);
+                var status = NormalizeInventoryCondition(input.ConditionStatus, normalizedType);
+                var expectedQuantity = normalizedType == "CheckIn"
+                    ? (status == HandoverInventoryConditionStatusConstants.Present ? originalExpectedQuantity : 0)
+                    : originalExpectedQuantity;
+                var actualQuantity = normalizedType == "CheckIn"
+                    ? expectedQuantity
+                    : status switch
+                    {
+                        HandoverInventoryConditionStatusConstants.Missing => 0,
+                        _ => expectedQuantity
+                    };
+                var missingQuantity = normalizedType == "CheckOut" && status == HandoverInventoryConditionStatusConstants.Missing
+                    ? expectedQuantity
+                    : 0;
+                var compensationCharge = normalizedType == "CheckOut" && status is HandoverInventoryConditionStatusConstants.Missing or HandoverInventoryConditionStatusConstants.Damaged
+                    ? Math.Max(0, expectedQuantity) * unitCost
+                    : 0m;
+
+                snapshots.Add(new HandoverInventoryItem
+                {
+                    CarInventoryItemID = input.CarInventoryItemID,
+                    ItemName = itemName,
+                    ExpectedQuantity = expectedQuantity,
+                    ActualQuantity = actualQuantity,
+                    MissingQuantity = missingQuantity,
+                    ConditionStatus = status,
+                    UnitReplacementCost = unitCost,
+                    MissingCharge = compensationCharge,
+                    Notes = input.Notes?.Trim()
+                });
+            }
+
+            return snapshots;
+        }
+
+        private static string NormalizeInventoryCondition(string? conditionStatus, string normalizedType)
+        {
+            var value = conditionStatus?.Trim();
+            if (normalizedType == "CheckOut")
+            {
+                return value switch
+                {
+                    HandoverInventoryConditionStatusConstants.Missing => HandoverInventoryConditionStatusConstants.Missing,
+                    HandoverInventoryConditionStatusConstants.Damaged => HandoverInventoryConditionStatusConstants.Damaged,
+                    HandoverInventoryConditionStatusConstants.Absent => HandoverInventoryConditionStatusConstants.Absent,
+                    _ => HandoverInventoryConditionStatusConstants.Intact
+                };
+            }
+
+            return value == HandoverInventoryConditionStatusConstants.Absent
+                ? HandoverInventoryConditionStatusConstants.Absent
+                : HandoverInventoryConditionStatusConstants.Present;
+        }
+
+        private static bool HasRequiredEvidenceImages(HandoverCaptureViewModel model)
+        {
+            return model.ImgFront?.Length > 0 &&
+                   model.ImgBack?.Length > 0 &&
+                   model.ImgLeft?.Length > 0 &&
+                   model.ImgRight?.Length > 0 &&
+                   model.ImgInside?.Length > 0;
         }
 
         private static bool HasSignedDigitalContract(Booking booking)
@@ -232,7 +398,7 @@ namespace CarRentalSystem.Controllers
             return CarContractSigningModes.Normalize(booking.Car?.ContractSigningMode) == CarContractSigningModes.Digital;
         }
 
-        private async Task<string?> SaveEvidenceFileAsync(string uploadPath, IFormFile? file)
+        private async Task<string?> SaveEvidenceFileAsync(string uploadPath, IFormFile? file, int ownerUserId, string folder)
         {
             if (file == null || file.Length == 0)
                 return null;
@@ -242,13 +408,16 @@ namespace CarRentalSystem.Controllers
 
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             var fileName = $"{Guid.NewGuid()}{extension}";
-            var filePath = Path.Combine(uploadPath, fileName);
+            var ownerFolder = Path.Combine(uploadPath, ownerUserId.ToString());
+            Directory.CreateDirectory(ownerFolder);
+            var relativeFileName = $"{ownerUserId}/{fileName}";
+            var filePath = Path.Combine(ownerFolder, fileName);
             await using var stream = new FileStream(filePath, FileMode.CreateNew);
             await file.CopyToAsync(stream);
-            return $"/SecureFile/GetSecureImage?folder=Handovers&fileName={fileName}";
+            return $"/SecureFile/GetSecureImage?folder={folder}&fileName={relativeFileName}";
         }
 
-        private static async Task<(bool IsValid, string? Url)> SaveSignatureAsync(string uploadPath, string? signatureBase64)
+        private static async Task<(bool IsValid, string? Url)> SaveSignatureAsync(string uploadPath, string? signatureBase64, int ownerUserId)
         {
             if (string.IsNullOrWhiteSpace(signatureBase64))
                 return (true, null);
@@ -267,14 +436,29 @@ namespace CarRentalSystem.Controllers
             }
 
             var signFileName = $"{Guid.NewGuid()}_sig.png";
-            var signPath = Path.Combine(uploadPath, signFileName);
+            var ownerFolder = Path.Combine(uploadPath, ownerUserId.ToString());
+            Directory.CreateDirectory(ownerFolder);
+            var relativeFileName = $"{ownerUserId}/{signFileName}";
+            var signPath = Path.Combine(ownerFolder, signFileName);
             await System.IO.File.WriteAllBytesAsync(signPath, bytes);
-            return (true, $"/SecureFile/GetSecureImage?folder=Handovers&fileName={signFileName}");
+            return (true, $"/SecureFile/GetSecureImage?folder=Handovers&fileName={relativeFileName}");
         }
 
-        private async Task<bool> CanAccessBookingAsync(Booking booking, int userId)
+        private async Task<bool> CanViewBookingAsync(Booking booking, int userId)
         {
             if (booking.UserID == userId) return true;
+            if (booking.Car?.OwnerID == userId) return true;
+            return await CanInternalAccessBookingAsync(booking, userId);
+        }
+
+        private async Task<bool> CanCaptureBookingAsync(Booking booking, int userId)
+        {
+            if (booking.UserID == userId) return true;
+            return await CanInternalAccessBookingAsync(booking, userId);
+        }
+
+        private async Task<bool> CanInternalAccessBookingAsync(Booking booking, int userId)
+        {
             if (User.IsInRole(UserRoleConstants.Admin)) return true;
 
             if (!User.IsInRole(UserRoleConstants.Manager) && !User.IsInRole(UserRoleConstants.Staff))

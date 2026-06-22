@@ -1,0 +1,8 @@
+@model PortalProfileViewModel
+@{
+    ViewData["Title"] = "Hồ sơ cá nhân";
+}
+<div class="portal-card"><div class="portal-card-body">
+    <h1 class="h4 fw-bold mb-4">Hồ sơ Staff</h1>
+    <dl class="row mb-0"><dt class="col-sm-3">Họ tên</dt><dd class="col-sm-9">@Model.Name</dd><dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Email</dd><dt class="col-sm-3">Điện thoại</dt><dd class="col-sm-9">@Model.MaskedPhone</dd><dt class="col-sm-3">Khu vực</dt><dd class="col-sm-9">@string.Join(", ", Model.Areas)</dd></dl>
+</div></div>

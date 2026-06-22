@@ -94,6 +94,7 @@ public class SnapshotService : ISnapshotService
                 data["CarModels"] = await GetTableData<CarModel>();
                 data["CarAmenities"] = await GetTableData<CarAmenity>();
                 data["CarAmenityMappings"] = await GetTableData<CarAmenityMapping>();
+                data["CarInventoryItems"] = await GetTableData<CarInventoryItem>();
                 data["CarBrands"] = await GetTableData<CarBrand>();
                 data["CarStatuses"] = await GetTableData<CarStatus>();
                 data["CarTypes"] = await GetTableData<CarType>();
@@ -116,6 +117,8 @@ public class SnapshotService : ISnapshotService
                 data["PhysicalContracts"] = await GetTableData<PhysicalContract>();
                 data["LongTermRentals"] = await GetTableData<LongTermRental>();
                 data["HandoverRecords"] = await GetTableData<HandoverRecord>();
+                data["HandoverInventoryItems"] = await GetTableData<HandoverInventoryItem>();
+                data["LostFoundItems"] = await GetTableData<LostFoundItem>();
                 data["InspectionRecords"] = await GetTableData<InspectionRecord>();
                 data["VehicleTracking"] = await GetTableData<VehicleTracking>();
                 data["ContactMessages"] = await GetTableData<ContactMessage>();
@@ -343,6 +346,7 @@ public class SnapshotService : ISnapshotService
                 "CarModels" => typeof(CarModel),
                 "CarAmenities" => typeof(CarAmenity),
                 "CarAmenityMappings" => typeof(CarAmenityMapping),
+                "CarInventoryItems" => typeof(CarInventoryItem),
                 "CarBrands" => typeof(CarBrand),
                 "CarStatuses" => typeof(CarStatus),
                 "CarTypes" => typeof(CarType),
@@ -365,6 +369,8 @@ public class SnapshotService : ISnapshotService
                 "PhysicalContracts" => typeof(PhysicalContract),
                 "LongTermRentals" => typeof(LongTermRental),
                 "HandoverRecords" => typeof(HandoverRecord),
+                "HandoverInventoryItems" => typeof(HandoverInventoryItem),
+                "LostFoundItems" => typeof(LostFoundItem),
                 "InspectionRecords" => typeof(InspectionRecord),
                 "VehicleTracking" => typeof(VehicleTracking),
                 "ContactMessages" => typeof(ContactMessage),

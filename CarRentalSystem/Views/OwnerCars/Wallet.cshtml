@@ -15,24 +15,26 @@
         <div class="owner-panel mb-0">
             <h2>Bảng tổng hợp</h2>
             <div class="owner-stats mt-3" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
-                <div class="owner-stat"><span>Thu nhập ước tính</span><strong>@Model.EstimatedOwnerIncome.ToString("N0")đ</strong></div>
-                <div class="owner-stat"><span>Thu nhập tháng</span><strong>@Model.MonthIncome.ToString("N0")đ</strong></div>
-                <div class="owner-stat"><span>Doanh thu gộp</span><strong>@Model.GrossRevenue.ToString("N0")đ</strong></div>
+                <div class="owner-stat"><span>Giá thuê dự kiến nhận</span><strong>@Model.EstimatedOwnerIncome.ToString("N0")đ</strong></div>
+                <div class="owner-stat"><span>Giá thuê trong tháng</span><strong>@Model.MonthIncome.ToString("N0")đ</strong></div>
+                <div class="owner-stat"><span>Tổng giá trị booking</span><strong>@Model.GrossRevenue.ToString("N0")đ</strong></div>
                 <div class="owner-stat"><span>Chuyến hoàn tất</span><strong>@Model.CompletedTrips</strong></div>
+                <div class="owner-stat"><span>Tiền cọc hệ thống giữ</span><strong>@Model.HeldDeposits.ToString("N0")đ</strong></div>
+                <div class="owner-stat"><span>Khấu trừ/bồi thường từ cọc</span><strong>@Model.DepositDeductions.ToString("N0")đ</strong></div>
             </div>
             <button class="owner-filter-button w-100" type="button" disabled>Yêu cầu rút tiền đang phát triển</button>
         </div>
     </section>
 
     <section class="owner-panel">
-        <h2>Doanh thu theo chuyến</h2>
+        <h2>Giá thuê và tiền cọc theo chuyến</h2>
         @if (!Model.BookingRows.Any())
         {
             <div class="owner-empty">
                 <div>
                     <i class="bi bi-wallet2"></i>
                     <h2>Chưa có giao dịch chuyến xe</h2>
-                    <p class="owner-muted">Khi xe có booking được xác nhận hoặc hoàn tất, doanh thu sẽ hiển thị tại đây.</p>
+                    <p class="owner-muted">Khi xe có booking được xác nhận hoặc hoàn tất, giá thuê và tiền cọc sẽ hiển thị tại đây.</p>
                 </div>
             </div>
         }
@@ -47,8 +49,8 @@
                             <th>Ngày đi</th>
                             <th>Ngày về</th>
                             <th class="text-end">Tiền thuê</th>
-                            <th class="text-end">Hoa hồng</th>
-                            <th class="text-end">Thu nhập chủ xe</th>
+                            <th class="text-end">Tiền cọc</th>
+                            <th class="text-end">Giá thuê chủ xe nhận</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -60,7 +62,7 @@
                                 <td>@row.StartDate.ToString("dd/MM/yyyy")</td>
                                 <td>@row.EndDate.ToString("dd/MM/yyyy")</td>
                                 <td class="text-end">@row.RentalAmount.ToString("N0")đ</td>
-                                <td class="text-end">@row.CommissionRate.ToString("N0")%</td>
+                                <td class="text-end">@row.DepositAmount.ToString("N0")đ<br /><span class="owner-muted">@row.DepositStatus</span></td>
                                 <td class="text-end"><strong>@row.OwnerIncome.ToString("N0")đ</strong></td>
                             </tr>
                         }

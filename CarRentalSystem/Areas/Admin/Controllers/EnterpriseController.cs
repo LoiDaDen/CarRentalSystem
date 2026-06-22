@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using CarRentalSystem.Authorization;
 using CarRentalSystem.Filters;
 using CarRentalSystem.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -5,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CarRentalSystem.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [RoleAuthorize("Admin", "Manager", "Staff")]
+    [Authorize(Policy = PortalPolicyNames.RequireAdmin)]
     public class EnterpriseController : Controller
     {
         private readonly IEnterpriseOperationsService _enterpriseOperations;

@@ -1,0 +1,17 @@
+{
+  "controllerActions": 378,
+  "swaggerEndpoints": 23,
+  "mockups": 8,
+  "apiEvidenceGroups": 3,
+  "swaggerTags": {
+    "Ai": 1,
+    "AreaApi": 2,
+    "Blog": 4,
+    "BlogApi": 9,
+    "CameraIntegration": 1,
+    "CarRentalSystem": 3,
+    "Chat": 1,
+    "Faq": 1,
+    "Voucher": 1
+  }
+}

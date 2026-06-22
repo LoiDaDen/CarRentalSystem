@@ -1,18 +1,37 @@
 @model CarRentalSystem.ViewModels.OwnerCarsDashboardViewModel
 @{
-    ViewData["Title"] = "Quản lý cho thuê";
+    ViewData["Title"] = "Danh sách xe";
 }
 
 <div class="owner-portal">
     @await Html.PartialAsync("_OwnerPortalHeader", Model.Chrome)
 
-    <form method="get" class="owner-toolbar">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <section class="owner-panel">
+        <div class="owner-stats">
+            <div class="owner-stat"><span>Tổng số xe</span><strong>@Model.TotalCars</strong></div>
+            <div class="owner-stat"><span>Xe đã duyệt</span><strong>@Model.ApprovedCars</strong></div>
+            <div class="owner-stat"><span>Xe chờ duyệt</span><strong>@Model.PendingCars</strong></div>
+            <div class="owner-stat"><span>Booking đang chạy</span><strong>@Model.ActiveTrips</strong></div>
+            <div class="owner-stat"><span>GMV tháng</span><strong>@Model.MonthRevenue.ToString("N0")đ</strong></div>
+        </div>
+    </section>
+
+    <form method="get" class="owner-toolbar" data-tutorial-target="partner-cars">
         <div class="owner-field">
             <label for="q">Tìm xe</label>
             <input id="q" name="q" value="@Model.Query" placeholder="Tên xe hoặc biển số" />
         </div>
         <div class="owner-field">
-            <label for="service">Dòng xe</label>
+            <label for="service">Loại dịch vụ</label>
             <select id="service" name="service">
                 <option value="all" selected="@(Model.Service == "all")">Tất cả</option>
                 <option value="selfdrive" selected="@(Model.Service == "selfdrive")">Xe tự lái</option>
@@ -27,93 +46,83 @@
                 <option value="pending" selected="@(Model.Status == "pending")">Chờ duyệt</option>
                 <option value="available" selected="@(Model.Status == "available")">Sẵn sàng</option>
                 <option value="rented" selected="@(Model.Status == "rented")">Đang thuê</option>
-                <option value="maintenance" selected="@(Model.Status == "maintenance")">Bảo trì</option>
+                <option value="maintenance" selected="@(Model.Status == "maintenance")">Bảo dưỡng</option>
             </select>
         </div>
-        <button class="owner-filter-button" type="submit">
-            <i class="bi bi-funnel"></i>
-            Lọc
-        </button>
+        <button class="owner-filter-button" type="submit">Lọc</button>
     </form>
-
-    <section class="owner-stats" aria-label="Tổng quan xe cho thuê">
-        <div class="owner-stat"><span>Tổng xe</span><strong>@Model.TotalCars</strong></div>
-        <div class="owner-stat"><span>Đã duyệt</span><strong>@Model.ApprovedCars</strong></div>
-        <div class="owner-stat"><span>Đang thuê</span><strong>@Model.ActiveTrips</strong></div>
-        <div class="owner-stat"><span>Doanh thu tháng</span><strong>@Model.MonthRevenue.ToString("N0")đ</strong></div>
-    </section>
-
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success rounded-3">@TempData["Success"]</div>
-    }
 
     @if (!Model.Cars.Any())
     {
         <section class="owner-empty">
             <div>
                 <i class="bi bi-car-front"></i>
-                <h2>Chưa tìm thấy xe phù hợp</h2>
-                <p class="owner-muted mb-3">Bạn có thể đổi bộ lọc hoặc đăng xe mới để bắt đầu cho thuê.</p>
-                <a class="owner-pill primary" asp-action="Create"><i class="bi bi-plus-circle"></i> Đăng xe</a>
+                <h2>Chưa có xe phù hợp</h2>
+                <p class="owner-muted">Hãy đăng xe mới hoặc điều chỉnh bộ lọc để xem danh sách xe của bạn.</p>
             </div>
         </section>
     }
     else
     {
-        <section class="owner-card-grid">
+        <section class="owner-car-grid">
             @foreach (var car in Model.Cars)
             {
                 <article class="owner-car-card">
-                    <img src="@car.ImageUrl" alt="@car.DisplayName" />
-                    <div>
-                        <h2>@car.DisplayName</h2>
-                        <div class="owner-car-meta">
-                            <span><i class="bi bi-credit-card-2-front"></i> @car.LicensePlate</span>
-                            <span><i class="bi bi-people"></i> @car.Seats chỗ</span>
-                            <span><i class="bi bi-fuel-pump"></i> @car.FuelType</span>
-                            <span><i class="bi bi-gear"></i> @car.Transmission</span>
+                    <img src="@car.ImageUrl" alt="@car.DisplayName" loading="lazy" />
+                    <div class="owner-car-card-body">
+                        <div class="d-flex justify-content-between gap-2 align-items-start">
+                            <div>
+                                <h3>@car.DisplayName</h3>
+                                <div class="owner-car-meta">
+                                    <span><i class="bi bi-credit-card-2-front"></i> @car.LicensePlate</span>
+                                    <span><i class="bi bi-people"></i> @car.Seats chỗ</span>
+                                </div>
+                            </div>
+                            <span class="owner-badge @(car.IsApproved ? "ok" : car.ApprovalStatus == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected ? "danger" : "warn")">
+                                @(car.IsApproved ? "Đã duyệt" : car.ApprovalStatus == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected ? "Bị từ chối" : "Chờ duyệt")
+                            </span>
                         </div>
-                        <div class="owner-badges">
+                        <div class="owner-badges mt-3">
                             <span class="owner-badge info">@car.ServiceLabel</span>
-                            <span class="owner-badge @(car.IsApproved ? "ok" : "warn")">
-                                <i class="bi @(car.IsApproved ? "bi-check-circle" : "bi-hourglass-split")"></i>
-                                @(car.IsApproved ? "Đã duyệt" : "Chờ duyệt")
-                            </span>
                             <span class="owner-badge">@car.StatusName</span>
-                            <span class="owner-badge @car.InspectionStatusClass">
-                                <i class="bi @car.InspectionStatusIcon"></i>
-                                @car.InspectionStatusLabel
-                            </span>
-                            <span class="owner-badge @(car.HasGps ? "ok" : "warn")">
-                                <i class="bi bi-geo-alt"></i>
-                                @(car.HasGps ? "Có GPS" : "Chưa có GPS")
-                            </span>
-                            <span class="owner-badge @(car.ContractSigningMode == CarRentalSystem.Models.CarContractSigningModes.Digital ? "ok" : "info")">
-                                <i class="bi bi-file-earmark-text"></i>
-                                @car.ContractSigningModeLabel
-                            </span>
-                            @if (!car.HasEnoughImages)
+                            <span class="owner-badge @car.InspectionStatusClass"><i class="bi @car.InspectionStatusIcon"></i> @car.InspectionStatusLabel</span>
+                            @if (car.HasPendingChange)
                             {
-                                <span class="owner-badge warn"><i class="bi bi-image"></i> Thiếu ảnh</span>
+                                <span class="owner-badge warn"><i class="bi bi-hourglass-split"></i> @(car.PendingApprovalLabel ?? "Đã gửi duyệt")</span>
                             }
-                            @if (!car.HasRequiredDocuments)
+                            @if (car.IsPendingDeletion)
                             {
-                                <span class="owner-badge warn"><i class="bi bi-file-earmark-text"></i> Thiếu hồ sơ</span>
+                                <span class="owner-badge danger"><i class="bi bi-trash"></i> Tạm ngưng booking mới</span>
                             }
+                        </div>
+                        @if (car.ApprovalStatus == CarRentalSystem.Models.CarApprovalStatusConstants.Rejected && !string.IsNullOrWhiteSpace(car.ApprovalRejectionReason))
+                        {
+                            <div class="alert alert-danger py-2 mt-3 mb-0">
+                                <strong>Lý do từ chối:</strong> @car.ApprovalRejectionReason
+                            </div>
+                        }
+                        <div class="owner-card-actions">
+                            <button type="button"
+                                    class="owner-pill primary"
+                                    data-owner-car-detail="@Url.Action("Details", "OwnerCars", new { id = car.CarID, partial = true })"
+                                    data-owner-car-id="@car.CarID">
+                                <i class="bi bi-eye"></i>
+                                Xem chi tiết
+                            </button>
                         </div>
                     </div>
                     <div class="owner-card-numbers">
                         <div>
-                            <span class="owner-muted">Đơn giá</span>
+                            <span class="owner-muted">Giá khách thấy</span>
                             <strong>@car.PricePerDay.ToString("N0")đ/ngày</strong>
                         </div>
                         <div>
-                            <span class="owner-muted">Chuyến hoàn tất</span>
-                            <strong>@car.TripCount</strong>
+                            <span class="owner-muted">Giá thuê chủ xe nhận</span>
+                            <strong class="text-success">@car.OwnerIncomePerDay.ToString("N0")đ/ngày</strong>
                         </div>
-                        <div>
-                            <span class="owner-muted">Doanh thu tháng</span>
+                        <div class="owner-card-number-inline">
+                            <span><span class="owner-muted">Chuyến hoàn tất</span> <strong>@car.TripCount</strong></span>
+                            <span class="owner-muted">GMV booking tháng</span>
                             <strong>@car.MonthRevenue.ToString("N0")đ</strong>
                         </div>
                     </div>
@@ -122,3 +131,31 @@
         </section>
     }
 </div>
+
+<div class="modal fade owner-car-modal" id="ownerCarModal" tabindex="-1" aria-labelledby="ownerCarModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ownerCarModalTitle">Chi tiết xe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+            </div>
+            <div class="modal-body" id="ownerCarModalBody"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('[data-owner-car-detail]').forEach(button => {
+            button.addEventListener('click', async () => {
+                const url = button.getAttribute('data-owner-car-detail');
+                const body = document.getElementById('ownerCarModalBody');
+                body.innerHTML = '<div class="p-4 text-center owner-muted">Đang tải...</div>';
+                const modal = new bootstrap.Modal(document.getElementById('ownerCarModal'));
+                modal.show();
+                const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                body.innerHTML = response.ok ? await response.text() : '<div class="alert alert-danger">Không tải được chi tiết xe.</div>';
+            });
+        });
+    </script>
+}

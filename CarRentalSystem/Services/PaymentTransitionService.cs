@@ -58,8 +58,12 @@ namespace CarRentalSystem.Services
 
             payment.PaymentStatus = PaymentStatusConstants.Paid;
             payment.PaymentDate = DateTime.UtcNow;
-            if (payment.Booking != null && payment.Booking.DepositAmount > 0)
+            if (payment.Booking != null)
+            {
+                payment.Booking.ReservationFee = payment.Amount;
+                payment.Booking.DepositAmount = payment.Amount;
                 payment.Booking.DepositStatus = DepositStatusConstants.Holding;
+            }
 
             await _ledger.RecordAsync(new PaymentLedgerEntry
             {
@@ -131,6 +135,7 @@ namespace CarRentalSystem.Services
             transaction.Status = PaymentStatusConstants.Paid;
             transaction.PaidAt = DateTime.UtcNow;
             transaction.Booking.ReservationFee = transaction.Amount;
+            transaction.Booking.DepositAmount = transaction.Amount;
             transaction.Booking.DepositStatus = DepositStatusConstants.Holding;
 
             var pendingStatus = await _context.BookingStatuses.FirstOrDefaultAsync(s => s.Name == BookingStatusConstants.Pending);

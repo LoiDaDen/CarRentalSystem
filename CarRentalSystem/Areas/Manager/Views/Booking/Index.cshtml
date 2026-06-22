@@ -1,0 +1,13 @@
+@model IReadOnlyList<PortalBookingRowViewModel>
+@{
+    ViewData["Title"] = "Quản lý booking";
+    var staff = ViewBag.Staff as IReadOnlyList<User> ?? Array.Empty<User>();
+}
+<h1 class="portal-page-title h3 mb-4">Quản lý booking</h1>
+<div class="portal-card"><div class="table-responsive"><table class="table portal-table">
+<thead><tr><th>Booking</th><th>Khách</th><th>Xe</th><th>Trạng thái</th><th>Phân công Staff</th><th></th></tr></thead><tbody>
+@foreach (var item in Model) {
+<tr><td>#@item.BookingID</td><td>@item.CustomerName<br /><small>@item.MaskedPhone</small></td><td>@item.CarName · @item.LicensePlate</td><td>@item.Status</td><td>
+<form asp-action="Assign" method="post" class="d-flex gap-2"><input type="hidden" name="bookingId" value="@item.BookingID" /><select name="staffUserId" class="form-select form-select-sm"><option value="">Chọn nhân viên</option>@foreach(var person in staff){<option value="@person.UserID">@person.Name</option>}</select><button class="btn btn-sm btn-primary">Giao</button></form>
+</td><td><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.BookingID">Xem</a></td></tr> }
+</tbody></table></div></div>

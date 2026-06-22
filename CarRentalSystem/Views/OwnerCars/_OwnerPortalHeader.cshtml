@@ -3,14 +3,18 @@
 <div class="owner-hero">
     <div>
         <h1>Quản lý cho thuê</h1>
-        <p>Quản lý xe, lịch thuê, định vị, chứng từ và doanh thu của bạn trong một nơi.</p>
+        <p>Quản lý xe, lịch thuê, định vị, chứng từ, GMV và thu nhập chủ xe trong một nơi.</p>
     </div>
-    <div class="owner-actions">
-        <a class="owner-pill primary" asp-controller="OwnerCars" asp-action="Create">
+    <div class="owner-actions" data-tutorial-target="partner-dashboard">
+        <button type="button" class="owner-pill" data-tutorial-replay data-panel="Partner">
+            <i class="bi bi-question-circle"></i>
+            Hướng dẫn
+        </button>
+        <a class="owner-pill primary" data-tutorial-target="partner-create-car" asp-controller="OwnerCars" asp-action="Create">
             <i class="bi bi-plus-circle"></i>
             Đăng xe
         </a>
-        <a class="owner-pill success" asp-controller="OwnerCars" asp-action="Wallet">
+        <a class="owner-pill success" data-tutorial-target="partner-wallet" asp-controller="OwnerCars" asp-action="Wallet">
             <i class="bi bi-wallet2"></i>
             Số dư @Model.WalletBalance.ToString("N0")đ
         </a>
@@ -20,7 +24,9 @@
 <nav class="owner-tabs" aria-label="Quản lý cho thuê">
     @foreach (var tab in Model.Tabs)
     {
-        <a class="@(tab.Key == Model.ActiveTab ? "active" : "")" asp-controller="OwnerCars" asp-action="@tab.Action">
+        <a class="@(tab.Key == Model.ActiveTab ? "active" : "")"
+           data-tutorial-target="@(tab.Key switch { "Cars" => "partner-cars", "Calendar" => "partner-calendar", "Contracts" => "partner-contracts", "Wallet" => "partner-wallet", _ => null })"
+           asp-controller="OwnerCars" asp-action="@tab.Action">
             <i class="bi @tab.Icon"></i>
             @tab.Text
         </a>

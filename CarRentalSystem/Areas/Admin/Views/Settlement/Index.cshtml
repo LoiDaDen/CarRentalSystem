@@ -1,52 +1,87 @@
 @model IEnumerable<CarRentalSystem.Models.SettlementReview>
+@using CarRentalSystem.Models
 @{
-    ViewData["Title"] = "Settlement Reviews";
+    ViewData["Title"] = "Duyệt quyết toán";
+    var items = Model?.ToList() ?? new List<SettlementReview>();
+    var pending = items.Count(item => item.Status == SettlementReviewStatusConstants.PendingReview);
+    var approved = items.Count(item => item.Status == SettlementReviewStatusConstants.Approved);
+    var rejected = items.Count(item => item.Status == SettlementReviewStatusConstants.Rejected);
+    string Tone(string? status) => status switch
+    {
+        SettlementReviewStatusConstants.Approved => "admin-status-success",
+        SettlementReviewStatusConstants.PendingReview => "admin-status-warning",
+        SettlementReviewStatusConstants.Rejected => "admin-status-danger",
+        _ => "admin-status-neutral"
+    };
 }
 
-<h2>Settlement Reviews</h2>
+<div class="page-header">
+    <div>
+        <h2>Hàng đợi quyết toán</h2>
+        <p>Rà soát các khoản khấu trừ, phí phát sinh và bằng chứng bàn giao trước khi hạch toán.</p>
+    </div>
+    <a class="btn btn-outline-primary" asp-area="Admin" asp-controller="Payment" asp-action="Index"><i class="bi bi-credit-card"></i> Thanh toán</a>
+</div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Booking</th>
-            <th>Type</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Reason</th>
-            <th>Created</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var item in Model)
-    {
-        <tr>
-            <td>@item.SettlementReviewID</td>
-            <td>@item.BookingID</td>
-            <td>@item.ReviewType</td>
-            <td>@item.Amount.ToString("N0") @item.Currency</td>
-            <td>@item.Status</td>
-            <td>@item.Reason</td>
-            <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-            <td>
-                @if (item.Status == CarRentalSystem.Models.SettlementReviewStatusConstants.PendingReview)
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-inboxes"></i></span><div class="admin-kpi-value">@items.Count</div><div class="admin-kpi-label">Tổng yêu cầu</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-hourglass-split"></i></span><div class="admin-kpi-value">@pending</div><div class="admin-kpi-label">Chờ duyệt</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-check2-circle"></i></span><div class="admin-kpi-value">@approved</div><div class="admin-kpi-label">Đã duyệt</div></div></div>
+    <div class="col-md-3 col-6"><div class="admin-kpi-card"><span class="admin-kpi-icon"><i class="bi bi-x-circle"></i></span><div class="admin-kpi-value">@rejected</div><div class="admin-kpi-label">Từ chối</div></div></div>
+</div>
+
+@if (items.Count == 0)
+{
+    <partial name="_AdminEmptyState" model="@(new EmptyStateViewModel { Icon = "bi-receipt", Title = "Không có yêu cầu quyết toán", Message = "Hàng đợi hiện đã được xử lý hết." })" />
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Yêu cầu</th><th>Booking</th><th>Loại</th><th>Số tiền</th><th>Trạng thái</th><th>Lý do</th><th>Bằng chứng</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+                <tbody>
+                @foreach (var item in items)
                 {
-                    <form asp-action="Approve" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@item.SettlementReviewID" />
-                        <input type="hidden" name="reason" value="Approved from admin settlement review." />
-                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                    </form>
-                    <form asp-action="Reject" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@item.SettlementReviewID" />
-                        <input type="hidden" name="reason" value="Rejected from admin settlement review." />
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
-                    </form>
+                    <tr>
+                        <td><strong>#@item.SettlementReviewID</strong></td>
+                        <td><a asp-area="Admin" asp-controller="Booking" asp-action="Details" asp-route-id="@item.BookingID">#@item.BookingID</a></td>
+                        <td>@UiLabels.SettlementReviewType(item.ReviewType)</td>
+                        <td><strong>@item.Amount.ToString("N0") @item.Currency</strong></td>
+                        <td><span class="admin-status-badge @Tone(item.Status)">@UiLabels.SettlementReviewStatus(item.Status)</span></td>
+                        <td><div class="admin-table-description">@item.Reason</div></td>
+                        <td>
+                            @if (item.HandoverID.HasValue)
+                            {
+                                <a asp-area="" asp-controller="Handover" asp-action="ViewRecord" asp-route-id="@item.HandoverID" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-earmark-text"></i> Biên bản</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Chưa có</span>
+                            }
+                        </td>
+                        <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            @if (item.Status == SettlementReviewStatusConstants.PendingReview)
+                            {
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <form asp-action="Approve" method="post">
+                                        <input type="hidden" name="id" value="@item.SettlementReviewID" />
+                                        <input type="hidden" name="reason" value="Đã duyệt từ hàng đợi quyết toán admin." />
+                                        <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check2"></i> Duyệt</button>
+                                    </form>
+                                    <form asp-action="Reject" method="post">
+                                        <input type="hidden" name="id" value="@item.SettlementReviewID" />
+                                        <input type="hidden" name="reason" value="Đã từ chối từ hàng đợi quyết toán admin." />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Từ chối</button>
+                                    </form>
+                                </div>
+                            }
+                        </td>
+                    </tr>
                 }
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

@@ -15,10 +15,14 @@ namespace CarRentalSystem.Services
     public class BookingBusinessRuleService : IBookingBusinessRuleService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ICustomerDrivingLicenseSyncService _drivingLicenseSync;
 
-        public BookingBusinessRuleService(ApplicationDbContext context)
+        public BookingBusinessRuleService(
+            ApplicationDbContext context,
+            ICustomerDrivingLicenseSyncService drivingLicenseSync)
         {
             _context = context;
+            _drivingLicenseSync = drivingLicenseSync;
         }
 
         public async Task<int> GetServiceTypeIdAsync(string serviceTypeCode)
@@ -44,7 +48,7 @@ namespace CarRentalSystem.Services
             if (license != null)
                 return license;
 
-            return null;
+            return await _drivingLicenseSync.EnsureVerifiedLicenseForUserAsync(userId);
         }
 
         public async Task ValidateSelfDriveAsync(Booking booking, decimal driverFee = 0m)

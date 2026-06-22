@@ -15,8 +15,20 @@ namespace CarRentalSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Models(int brandId)
         {
+            if (!ModelState.IsValid || brandId <= 0)
+                return BadRequest(new { message = "brandId must be a positive integer." });
+
             var models = await _catalogCache.GetCarModelsAsync(brandId);
-            return Json(models);
+            return Json(models.Select(model => new
+            {
+                id = model.Id,
+                name = model.Name,
+                seatCount = model.SeatCount,
+                fuelType = model.FuelType,
+                transmission = model.Transmission,
+                fromYear = model.FromYear,
+                toYear = model.ToYear
+            }));
         }
     }
 }

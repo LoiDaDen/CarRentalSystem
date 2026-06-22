@@ -1,7 +1,7 @@
 # Rà Soát Pháp Lý Việt Nam 2026 - CarRentalSystem
 
 Ngày rà soát: 2026-05-20  
-Phạm vi: toàn bộ repo, gồm mã nguồn ASP.NET Core, views, services, migrations, SQL/docs/scripts, cấu hình Docker/nginx, `.env.example`, Cypress/test assets và tài liệu vận hành.
+Phạm vi: toàn bộ repo, gồm mã nguồn ASP.NET Core, views, services, migrations, SQL/docs/scripts, cấu hình Docker/nginx, `.env.example`, Playwright/test assets và tài liệu vận hành.
 
 Tài liệu này là rà soát kỹ thuật theo dấu vết trong repo, không thay thế ý kiến luật sư. Các giấy phép, hợp đồng DPA, đăng ký website TMĐT, hóa đơn điện tử và điều kiện kinh doanh vận tải nếu không có file chứng minh trong repo đều được đánh dấu là **chưa đủ bằng chứng**.
 

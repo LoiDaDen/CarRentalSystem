@@ -104,8 +104,25 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
+            if (EndDate <= StartDate)
+            {
+                TempData["BookingError"] = "Ngày kết thúc phải sau ngày bắt đầu.";
+                return RedirectToAction("Details", "Car", new { id = CarID });
+            }
+
+            if (StartDate < DateTime.UtcNow.AddMinutes(-5))
+            {
+                TempData["BookingError"] = "Không thể đặt xe trong quá khứ.";
+                return RedirectToAction("Details", "Car", new { id = CarID });
+            }
+
             var car = await _carService.GetCarByIdAsync(CarID);
             if (car == null) return NotFound();
+            if (!CarRentabilityPolicy.IsSelfDriveRentable(car))
+            {
+                TempData["BookingError"] = CarRentabilityPolicy.GetUnavailableReason(car);
+                return RedirectToAction("Index", "Car");
+            }
 
             var deliveryMode = string.Equals(pickupLocationType, "owner", StringComparison.OrdinalIgnoreCase)
                 ? DeliveryModeConstants.OwnerDelivery
@@ -128,12 +145,6 @@ namespace CarRentalSystem.Controllers
             if (car.NextInspectionDate.HasValue && car.NextInspectionDate.Value.Date < GetVietnamToday())
             {
                 TempData["BookingError"] = "Xe này đang tạm ngưng cho thuê do quá hạn Đăng Kiểm. Vui lòng chọn xe khác.";
-                return RedirectToAction("Details", "Car", new { id = CarID });
-            }
-
-            if (EndDate <= StartDate)
-            {
-                TempData["BookingError"] = "Ngày kết thúc phải sau ngày bắt đầu.";
                 return RedirectToAction("Details", "Car", new { id = CarID });
             }
 
@@ -188,6 +199,7 @@ namespace CarRentalSystem.Controllers
             };
 
             decimal totalPrice = calcPrice(totalHours);
+            decimal depositAmount = DepositPolicy.Calculate(totalPrice);
 
             int days = totalHours / 24;
             int remHours = totalHours % 24;
@@ -200,7 +212,8 @@ namespace CarRentalSystem.Controllers
                 EndDate = EndDate,
                 TotalPrice = totalPrice,
                 TotalHours = totalHours,
-                DepositAmount = car.DefaultDeposit,
+                DepositAmount = depositAmount,
+                ReservationFee = depositAmount,
                 DepositStatus = "Holding",
                 DeliveryMode = deliveryMode,
                 DeliveryAddress = deliveryMode == DeliveryModeConstants.OwnerDelivery ? PickupLocation : null,
@@ -249,31 +262,51 @@ namespace CarRentalSystem.Controllers
 
             if (int.TryParse(userIdString, out int quoteUserId))
             {
-                var quote = await _quoteService.BuildQuoteAsync(new BookingQuoteRequest
+                try
                 {
-                    UserID = quoteUserId,
-                    CarID = CarID,
-                    StartDate = StartDate,
-                    EndDate = EndDate,
-                    InsuranceTier = "Basic",
-                    DeliveryFee = deliveryQuote?.Fee ?? 0m,
-                    DeliveryAddress = deliveryMode == DeliveryModeConstants.OwnerDelivery ? PickupLocation : null,
-                    DeliveryMode = deliveryMode,
-                    DeliveryLatitude = deliveryQuote?.Latitude,
-                    DeliveryLongitude = deliveryQuote?.Longitude,
-                    DeliveryDistanceKm = deliveryQuote?.DistanceKm ?? 0m,
-                    DeliveryEtaMinutes = deliveryQuote?.EtaMinutes,
-                    DeliveryQuotedAt = deliveryQuote?.QuotedAtUtc,
-                    SelectedAddons = SelectedAddons
-                });
+                    var quote = await _quoteService.BuildQuoteAsync(new BookingQuoteRequest
+                    {
+                        UserID = quoteUserId,
+                        CarID = CarID,
+                        StartDate = StartDate,
+                        EndDate = EndDate,
+                        InsuranceTier = "Basic",
+                        DeliveryFee = deliveryQuote?.Fee ?? 0m,
+                        DeliveryAddress = deliveryMode == DeliveryModeConstants.OwnerDelivery ? PickupLocation : null,
+                        DeliveryMode = deliveryMode,
+                        DeliveryLatitude = deliveryQuote?.Latitude,
+                        DeliveryLongitude = deliveryQuote?.Longitude,
+                        DeliveryDistanceKm = deliveryQuote?.DistanceKm ?? 0m,
+                        DeliveryEtaMinutes = deliveryQuote?.EtaMinutes,
+                        DeliveryQuotedAt = deliveryQuote?.QuotedAtUtc,
+                        SelectedAddons = SelectedAddons
+                    });
 
-                booking.TotalPrice = quote.TotalPrice;
-                booking.TotalHours = quote.TotalHours;
-                booking.DepositAmount = quote.CollateralAmount;
-                booking.ReservationFee = quote.HoldingFee;
-                booking.DiscountAmount = quote.DiscountAmount;
-                booking.AddOnFee = quote.AddOnFee;
-                ViewBag.Quote = quote;
+                    booking.TotalPrice = quote.TotalPrice;
+                    booking.TotalHours = quote.TotalHours;
+                    booking.DepositAmount = quote.HoldingFee;
+                    booking.ReservationFee = quote.HoldingFee;
+                    booking.DiscountAmount = quote.DiscountAmount;
+                    booking.AddOnFee = quote.AddOnFee;
+                    ViewBag.Quote = quote;
+                }
+                catch (BookingQuoteException ex) when (ex.Code == BookingQuoteFailureCode.MissingDrivingLicense)
+                {
+                    TempData["ShowEkycModal"] = "true";
+                    TempData["EkycReturnUrl"] = $"{Request.Path}{Request.QueryString}";
+                    TempData["WarningMessage"] = "Bạn cần xác thực GPLX hợp lệ trước khi thuê xe tự lái.";
+                    return RedirectToAction("Details", "Car", new { id = CarID });
+                }
+                catch (BookingQuoteException ex)
+                {
+                    TempData["BookingError"] = ex.Message;
+                    return RedirectToAction("Details", "Car", new { id = CarID });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    TempData["BookingError"] = ex.Message;
+                    return RedirectToAction("Details", "Car", new { id = CarID });
+                }
             }
 
             // Generate a temporary booking code for display
@@ -385,12 +418,15 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
-            var car = await _context.Cars.Include(c => c.Location).FirstOrDefaultAsync(c => c.CarID == booking.CarID);
+            var car = await _context.Cars
+                .Include(c => c.Location)
+                .Include(c => c.CarStatus)
+                .FirstOrDefaultAsync(c => c.CarID == booking.CarID);
             if (car == null) return NotFound();
 
-            if (!car.IsSelfDriveAllowed || car.IsWithDriverAllowed)
+            if (!CarRentabilityPolicy.IsSelfDriveRentable(car))
             {
-                TempData["BookingError"] = "Xe này không thuộc luồng thuê xe tự lái.";
+                TempData["BookingError"] = CarRentabilityPolicy.GetUnavailableReason(car);
                 return RedirectToAction("Details", "Car", new { id = booking.CarID });
             }
 
@@ -749,6 +785,7 @@ namespace CarRentalSystem.Controllers
 
             // BẮT BUỘC: Kiểm tra biên bản trả xe (CheckOut) đã được tạo chưa
             var checkOutRecord = await _context.HandoverRecords
+                .Include(h => h.InventoryItems)
                 .Where(h => h.BookingID == id && h.Type == "CheckOut" && !h.IsDeleted)
                 .OrderByDescending(h => h.RecordDate)
                 .FirstOrDefaultAsync();
@@ -797,6 +834,13 @@ namespace CarRentalSystem.Controllers
                 }
             }
 
+            var lostItemCharge = checkOutRecord.InventoryItems.Sum(i => i.MissingCharge);
+            if (lostItemCharge > 0)
+            {
+                hasViolation = true;
+                msg += $" Phat hien thieu phu kien xe: {lostItemCharge:N0}đ.";
+            }
+
             // ═══════════════════════════════════════════════════
             // 📊 CẬP NHẬT ODOMETER TỪ HANDOVER RECORD
             // ═══════════════════════════════════════════════════
@@ -821,7 +865,7 @@ namespace CarRentalSystem.Controllers
             // ═══════════════════════════════════════════════════
             // 💰 DEPOSIT REFUND LOGIC — Giữ 15 ngày rồi hoàn trả
             // ═══════════════════════════════════════════════════
-            if (!hasViolation && booking.LateFeeAmount == 0)
+            if (booking.LateFeeAmount == 0 && lostItemCharge == 0)
             {
                 // Không vi phạm → lên lịch hoàn cọc sau 15 ngày (chờ kiểm tra phạt nguồi)
                 await _paymentTransitionService.SetBookingDepositStatusAsync(id, DepositStatusConstants.PendingRefund, userId, "Customer", "Clean return pending deposit refund.");
@@ -831,13 +875,27 @@ namespace CarRentalSystem.Controllers
             {
                 // Có vi phạm → Admin sẽ xử lý cọc thủ công
                 await _paymentTransitionService.SetBookingDepositStatusAsync(id, DepositStatusConstants.UnderReview, userId, "Customer", "Return requires settlement review.");
-                await _settlementReviewService.CreateAsync(
-                    id,
-                    booking.LateFeeAmount > 0 ? SettlementReviewTypeConstants.Late : SettlementReviewTypeConstants.Other,
-                    booking.LateFeeAmount,
-                    "Return generated settlement review.",
-                    userId,
-                    checkOutRecord.HandoverID);
+                if (booking.LateFeeAmount > 0)
+                {
+                    await _settlementReviewService.CreateAsync(
+                        id,
+                        SettlementReviewTypeConstants.Late,
+                        booking.LateFeeAmount,
+                        "Return generated late-fee settlement review.",
+                        userId,
+                        checkOutRecord.HandoverID);
+                }
+
+                if (lostItemCharge > 0)
+                {
+                    await _settlementReviewService.CreateAsync(
+                        id,
+                        SettlementReviewTypeConstants.LostItem,
+                        lostItemCharge,
+                        BuildLostItemSettlementReason(checkOutRecord),
+                        userId,
+                        checkOutRecord.HandoverID);
+                }
                 msg += " Tiền cọc đang được xem xét do phát sinh phí.";
             }
 
@@ -951,7 +1009,7 @@ namespace CarRentalSystem.Controllers
                     BookingID = id,
                     Amount = booking.ReservationFee > 0
                         ? booking.ReservationFee
-                        : Math.Round(booking.TotalPrice * 0.2m, 0, MidpointRounding.AwayFromZero),
+                        : DepositPolicy.Calculate(booking.TotalPrice),
                     PaymentMethod = "Manual Transfer",
                     PaymentStatus = "Pending",
                     PaymentDate = DateTime.UtcNow
@@ -1038,8 +1096,9 @@ namespace CarRentalSystem.Controllers
                         maxEnd = item.GetProperty("endDate").GetDateTime() > maxEnd ? item.GetProperty("endDate").GetDateTime() : maxEnd;
                         carsList.Add(item.GetProperty("licensePlate").GetString() ?? "N/A");
                         carsModels.Add($"{item.GetProperty("carBrand").GetString()} {item.GetProperty("carName").GetString()}");
-                        baseTotal += item.GetProperty("totalPrice").GetDecimal();
-                        totalDeposit += item.GetProperty("defaultDeposit").GetDecimal();
+                        var itemTotalPrice = item.GetProperty("totalPrice").GetDecimal();
+                        baseTotal += itemTotalPrice;
+                        totalDeposit += DepositPolicy.Calculate(itemTotalPrice);
                     }
 
                     var termsCarsStr = "";
@@ -1094,6 +1153,8 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                     {
                         var carId = item.GetProperty("carId").GetInt32();
                         var days = item.GetProperty("days").GetInt32();
+                        var bookingTotalPrice = item.GetProperty("totalPrice").GetDecimal();
+                        var bookingDeposit = DepositPolicy.Calculate(bookingTotalPrice);
 
                         var booking = new Booking
                         {
@@ -1104,11 +1165,12 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                             ContractTypeCode = "SELF_DRIVE_CONTRACT",
                             StartDate = item.GetProperty("startDate").GetDateTime(),
                             EndDate = item.GetProperty("endDate").GetDateTime(),
-                            TotalPrice = item.GetProperty("totalPrice").GetDecimal(),
+                            TotalPrice = bookingTotalPrice,
                             DiscountAmount = 0,
                             TotalHours = item.GetProperty("hours").GetInt32(),
                             BookingStatusID = pendingStatus.BookingStatusID,
-                            DepositAmount = item.GetProperty("defaultDeposit").GetDecimal(),
+                            DepositAmount = bookingDeposit,
+                            ReservationFee = bookingDeposit,
                             DepositStatus = DepositStatusConstants.Holding,
                             TransactionID = transaction.TransactionID,
                             PickupLocationID = item.GetProperty("locationId").GetInt32(),
@@ -1185,12 +1247,18 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
                 .Include(b => b.RentalContract)
                 .Include(b => b.DigitalContract)
                 .Include(b => b.BookingTransaction).ThenInclude(t => t!.DigitalContract)
-                .Include(b => b.HandoverRecords)
+                .Include(b => b.HandoverRecords).ThenInclude(h => h.InventoryItems)
                 .Include(b => b.BookingAddOns).ThenInclude(ba => ba.AddOn)
                 .FirstOrDefaultAsync(b => b.BookingID == id);
 
             if (booking == null) return NotFound();
-            if (booking.UserID != userId && !IsInternalUser()) return Forbid();
+            if (booking.UserID != userId && !IsInternalUser())
+            {
+                if (booking.Car?.OwnerID == userId)
+                    return RedirectToAction("BookingDetails", "OwnerCars", new { id = booking.BookingID });
+
+                return Forbid();
+            }
             return View(booking);
         }
 
@@ -1204,6 +1272,21 @@ Hợp đồng điện tử này có giá trị pháp lý tương đương bản 
         private static DigitalContract? ResolveDigitalContract(Booking booking)
         {
             return booking.DigitalContract ?? booking.BookingTransaction?.DigitalContract;
+        }
+
+        private static string BuildLostItemSettlementReason(HandoverRecord checkOutRecord)
+        {
+            var lines = checkOutRecord.InventoryItems
+                .Where(i => i.MissingQuantity > 0)
+                .OrderBy(i => i.ItemName)
+                .Select(i => $"{i.ItemName}: missing {i.MissingQuantity} x {i.UnitReplacementCost:N0} = {i.MissingCharge:N0} VND")
+                .ToList();
+
+            var reason = lines.Count == 0
+                ? "Return generated lost-item settlement review."
+                : "Return generated lost-item settlement review. " + string.Join("; ", lines);
+
+            return reason.Length <= 1000 ? reason : reason[..1000];
         }
 
         private async Task<DeliveryQuoteBuildResult> TryBuildDeliveryQuoteAsync(Car car, string? deliveryAddress, double? deliveryLatitude, double? deliveryLongitude)

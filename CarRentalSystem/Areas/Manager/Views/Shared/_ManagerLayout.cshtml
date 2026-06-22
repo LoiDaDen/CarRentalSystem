@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Manager Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="~/css/enterprise-common.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/manager.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/tutorial.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="portal-body manager-portal">
+    <div class="portal-shell">
+        @await Html.PartialAsync("_ManagerSidebar")
+        <div class="portal-workspace">
+            @await Html.PartialAsync("_ManagerTopbar")
+            <main class="portal-content">
+                @await Html.PartialAsync("_ManagerBreadcrumb")
+                @await Html.PartialAsync("_PortalFlash")
+                @RenderBody()
+                @await Component.InvokeAsync("QuickGuide", new { panel = "Manager" })
+            </main>
+        </div>
+    </div>
+    @await Component.InvokeAsync("TutorialPopup", new { panel = "Manager" })
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/chart.min.js"></script>
+    <script src="~/js/enterprise-common.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("_ManagerScripts")
+    <script src="~/js/tutorial.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
